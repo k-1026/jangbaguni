@@ -1,0 +1,3 @@
+- 용도: 10/27~29 지역 장소·관광 리서치 노트 (출처 URL 필수 기재)
+- 파일 예시: 1028_landmark_note.md, 1029_walking_course_note.md
+- 파일명 규칙: 영문 소문자와 밑줄(_)만 사용 (예: 1028_landmark_note.md)

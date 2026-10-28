@@ -1,0 +1,3 @@
+- 용도: 10/27~29 지역 역사·문화 리서치 노트 (출처 URL 필수 기재)
+- 파일 예시: 1027_local_history_note.md, 1028_folk_festival_note.md
+- 파일명 규칙: 영문 소문자와 밑줄(_)만 사용 (예: 1027_local_history_note.md)

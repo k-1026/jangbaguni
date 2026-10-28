@@ -1,0 +1,3 @@
+- 용도: 11/4 디지털 내러티브 스토리보드 보관
+- 파일 예시: narrative_storyboard_v1.md, scene_01_sketch.png
+- 파일명 규칙: 영문 소문자와 밑줄(_)만 사용 (예: narrative_storyboard_v1.md)

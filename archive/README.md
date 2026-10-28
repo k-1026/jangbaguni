@@ -1,0 +1,3 @@
+- 용도: 10/30 디지털 필드워크 수집물(사진·영상·문서)과 그 목록을 관리하는 metadata.csv 보관
+- 파일 예시: metadata.csv, 1030_market_photo_01.jpg, 1030_interview_audio_01.mp3
+- 파일명 규칙: 영문 소문자와 밑줄(_)만 사용 (예: 1030_market_photo_01.jpg)

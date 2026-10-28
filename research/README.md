@@ -1,0 +1,3 @@
+- 용도: 10/27~29 리서치 노트 모음 (주제별 하위 폴더로 분류, 모든 노트에 출처 URL 포함)
+- 파일 예시: history_culture/, industry_food/, place_tour/ 하위 폴더의 리서치 노트(.md)
+- 파일명 규칙: 영문 소문자와 밑줄(_)만 사용 (예: 1027_topic_note.md)

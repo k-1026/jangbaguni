@@ -110,18 +110,16 @@ function renderSlides() {
     }).join("");
 }
 
-// 슬라이드 넘기기: 손가락 스와이프는 브라우저 스크롤, 화살표는 끝에서 처음으로(처음에서 끝으로) 돌아감
+// 슬라이드 넘기기: 화살표 · 8초 자동 · 휴대폰 손가락. 끝에서 처음으로(처음에서 끝으로) 돌아감
 const slider = $("#slider");
 const slides = () => [...slider.querySelectorAll(".slide")];
 const SLIDE_PAD = 32, SLIDE_GAP = 64;   // style.css 의 .slider 여백 · 간격과 같게
 function slideIndex() { return Math.round(slider.scrollLeft / (slider.clientWidth - 2 * SLIDE_PAD + SLIDE_GAP)); }
-let autoScroll = false;   // 화살표로 넘어가는 중 (이때 생기는 스크롤 끝 신호는 무시)
 let cur = 0;   // 지금 보고 있는 장 (화살표는 이 값 기준 — 넘어가는 도중의 스크롤 위치로 계산하면 어긋남)
 function goSlide(i, behavior = "smooth") {
   const s = slides();
   if (!s.length) return;
   cur = ((i % s.length) + s.length) % s.length;
-  autoScroll = behavior === "smooth";
   slider.scrollTo({ left: s[cur].offsetLeft - s[0].offsetLeft, behavior });
   onSlideChange(cur);
 }
@@ -135,15 +133,29 @@ function onSlideChange(target) {
   drawSlideChart(i);
   renderDetail(s[i]?.dataset.item || slideOrder()[0]?.item);
 }
-// 손가락으로 넘긴 경우: 다 넘어간 뒤 그 장을 지금 장으로
-slider.addEventListener("scrollend", () => {
-  if (autoScroll && slideIndex() !== cur) return;   // 화살표 이동이 아직 도착 전
-  autoScroll = false;
-  cur = Math.min(slideIndex(), slides().length - 1);
-  onSlideChange(cur);
+$("#prevSlide").onclick = () => { goSlide(cur - 1); restartAuto(); };
+$("#nextSlide").onclick = () => { goSlide(cur + 1); restartAuto(); };
+
+// 휴대폰: 손가락으로 옆으로 밀면 넘김 (마우스 끌기는 그래프 보기와 겹쳐서 쓰지 않음)
+let touchX = null;
+slider.addEventListener("pointerdown", (e) => { if (e.pointerType === "touch") touchX = e.clientX; });
+slider.addEventListener("pointerup", (e) => {
+  if (touchX == null) return;
+  const dx = e.clientX - touchX;
+  touchX = null;
+  if (Math.abs(dx) > 50) { goSlide(cur + (dx < 0 ? 1 : -1)); restartAuto(); }
 });
-$("#prevSlide").onclick = () => goSlide(cur - 1);
-$("#nextSlide").onclick = () => goSlide(cur + 1);
+
+// 8초마다 자동으로 다음 장. 대시보드에 마우스를 올려 보는 동안 · 다른 탭을 볼 때는 멈춤
+const AUTO_MS = 8000;
+let autoTimer = null, hovering = false;
+function restartAuto() {
+  clearInterval(autoTimer);
+  autoTimer = setInterval(() => { if (!hovering && !document.hidden && slides().length > 1) goSlide(cur + 1); }, AUTO_MS);
+}
+$(".hero-board").addEventListener("mouseenter", () => { hovering = true; });
+$(".hero-board").addEventListener("mouseleave", () => { hovering = false; });
+restartAuto();
 
 function drawSlideChart(i) {
   const el = slides()[i];

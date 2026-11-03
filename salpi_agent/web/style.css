@@ -29,6 +29,7 @@ button { font: inherit; cursor: pointer; }
 
 /* 상단 */
 .topbar { position: sticky; top: 0; z-index: 20; background: rgba(255,255,255,.96); border-bottom: 1px solid var(--border); backdrop-filter: blur(6px); }
+.topbar .wrap { max-width: none; padding: 0 28px; }   /* 로고 · 메뉴는 화면 맨 왼쪽부터 */
 .topbar-inner { display: flex; align-items: center; gap: 28px; height: 64px; }
 .logo img { height: 44px; display: block; }
 .nav { display: flex; gap: 22px; }
@@ -39,7 +40,7 @@ button { font: inherit; cursor: pointer; }
 /* 첫 화면 (초록 칠판 영역) */
 .hero { background: var(--deep); color: #fff; overflow: hidden; scroll-margin-top: 64px; }
 .hero .wrap { max-width: 1720px; }
-.hero-inner { display: grid; grid-template-columns: 380px minmax(0, 1fr) 150px; gap: 28px; padding-top: 30px; padding-bottom: 30px; }
+.hero-inner { display: grid; grid-template-columns: 360px minmax(0, 1fr) 190px; gap: 28px; padding-top: 24px; padding-bottom: 24px; }
 .hero-inner > * { min-width: 0; }
 .hero-text { position: relative; display: flex; flex-direction: column; }
 .eyebrow { color: var(--mint); font-weight: 700; margin: 0 0 8px; font-size: 14px; }
@@ -55,12 +56,12 @@ button { font: inherit; cursor: pointer; }
 .skeleton { height: 56px; animation: pulse 1.2s infinite; }
 @keyframes pulse { 50% { opacity: .5; } }
 /* 살피: 대시보드 오른쪽에서 좌우반전해 지시봉으로 왼쪽(대시보드)을 가리킴 */
-.hero-salpi { width: 240px; align-self: center; margin-left: -10px; margin-right: -80px; transform: scaleX(-1);
+.hero-salpi { width: 100%; max-width: 230px; align-self: center; margin-left: -16px; transform: scaleX(-1);
   filter: drop-shadow(0 10px 18px rgba(0,0,0,.35)); pointer-events: none; }
 
 /* 오른쪽 대시보드 슬라이드 */
 .hero-board { display: flex; flex-direction: column; gap: 8px; }
-.slider-head { display: flex; justify-content: space-between; align-items: center; }
+.slider-head { display: flex; justify-content: space-between; align-items: center; position: relative; z-index: 2; }   /* 아래 대시보드 여백이 화살표를 덮지 않게 */
 .slider-title { font-weight: 700; color: var(--mint); font-size: 14px; }
 .slider-nav { display: flex; align-items: center; gap: 8px; }
 .slider-nav button { width: 34px; height: 34px; border-radius: 50%; border: 0; background: var(--deep); color: #fff; font-size: 18px; line-height: 1;
@@ -68,13 +69,14 @@ button { font: inherit; cursor: pointer; }
 .slider-nav button:active { box-shadow: inset 3px 3px 7px #0a1b17, inset -3px -3px 7px #1a453c; }
 .slide-count { font-size: 12px; color: #C9D6D1; min-width: 44px; text-align: center; }
 /* 그림자가 잘리지 않게 안쪽 여백 32px, 다음 장이 옆에 비치지 않게 장 사이 간격은 여백의 2배 */
-.slider { display: flex; gap: 64px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none;
-  padding: 32px; margin: -32px; scroll-padding-inline: 32px; }
+.slider { display: flex; gap: 64px; overflow: hidden;   /* 마우스로 끌어 넘기지 않음 — 화살표 · 자동 넘김 · 손가락 넘기기만 */
+  padding: 32px; margin: -32px; }
 .slide.card { background: #F2F4F1; border: 0; border-radius: 26px; padding: 24px;
   box-shadow: 12px 12px 26px #091915, -10px -10px 24px #1d4b42, inset 3px 3px 6px #ffffff, inset -3px -3px 8px #dfe3dd; }
 .slider::-webkit-scrollbar { display: none; }
 .slider::after { content: ""; flex: 0 0 1px; }   /* 마지막 장까지 끝까지 넘어가게 */
-.slide { flex: 0 0 100%; scroll-snap-align: start; color: var(--ink); height: 600px; display: flex; flex-direction: column; }
+/* 창 높이에 맞춤: 위 메뉴 · 제목 · 아래 안내 글을 뺀 만큼 (최소 380px, 최대 600px) */
+.slide { flex: 0 0 100%; color: var(--ink); height: clamp(380px, calc(100vh - 210px), 600px); display: flex; flex-direction: column; }
 .swipe-hint { margin: 0; font-size: 12px; color: #9FB7AF; }
 .swipe-hint b { color: #FFC266; font-weight: 500; }
 
@@ -235,6 +237,7 @@ body.chat-open .salpi-fab .bubble, .salpi-fab.dragging .bubble { display: none; 
   .hero h1, .eyebrow, .hero-sub { padding-right: 90px; }
   .summary { max-width: none; }
   .slide { height: 500px; }
+  .topbar .wrap { padding: 0 16px; }
   .fc-strip { padding-right: 84px; }
   .fc-strip .pose { height: 90px; }
   .fc-strip .range { white-space: normal; }

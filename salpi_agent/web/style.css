@@ -40,24 +40,25 @@ button { font: inherit; cursor: pointer; }
 /* 첫 화면 (초록 칠판 영역) */
 .hero { background: var(--deep); color: #fff; overflow: hidden; scroll-margin-top: 64px; }
 .hero .wrap { max-width: 1720px; }
-.hero-inner { display: grid; grid-template-columns: 360px minmax(0, 1fr) 190px; gap: 28px; padding-top: 24px; padding-bottom: 24px; }
+.hero-inner { display: grid; grid-template-columns: 500px minmax(0, 1fr); gap: 36px; padding-top: 24px; padding-bottom: 24px; }
 .hero-inner > * { min-width: 0; }
 .hero-text { position: relative; display: flex; flex-direction: column; }
 .eyebrow { color: var(--mint); font-weight: 700; margin: 0 0 8px; font-size: 14px; }
-.hero h1 { font-size: 32px; line-height: 1.3; margin: 0 0 10px; font-weight: 900; }
+.hero-title { display: flex; align-items: center; gap: 14px; margin: 14px 0 14px; }
+.hero h1 { font-size: 32px; line-height: 1.3; margin: 0; font-weight: 900; }
 .hero-sub { color: #C9D6D1; margin: 0 0 18px; }
-.summary { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 400px; margin-top: 6px; }
+.summary { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 6px; }
 /* 뉴모피즘 (바탕과 같은 색 + 밝은 그림자 · 어두운 그림자) */
-.chip { background: var(--deep); border: 0; border-radius: 18px; padding: 12px 14px;
+.chip { background: var(--deep); border: 0; border-radius: 20px; padding: 18px 20px;
   box-shadow: 7px 7px 14px #0a1b17, -7px -7px 14px #1a453c; }
-.chip b { display: block; font-size: 18px; }
-.chip small { color: #C9D6D1; font-size: 12px; }
+.chip b { display: block; font-size: 24px; }
+.chip small { color: #C9D6D1; font-size: 14px; }
 .chip.up b { color: #FF8A7A; } .chip.down b { color: var(--mint); } .chip.warn b { color: #FFC266; }
-.skeleton { height: 56px; animation: pulse 1.2s infinite; }
+.skeleton { height: 86px; animation: pulse 1.2s infinite; }
 @keyframes pulse { 50% { opacity: .5; } }
-/* 살피: 대시보드 오른쪽에서 좌우반전해 지시봉으로 왼쪽(대시보드)을 가리킴 */
-.hero-salpi { width: 100%; max-width: 230px; align-self: center; margin-left: -16px; transform: scaleX(-1);
-  filter: drop-shadow(0 10px 18px rgba(0,0,0,.35)); pointer-events: none; }
+/* 살피: 제목 두 줄 왼쪽, 원본 방향(지시봉이 오른쪽 글자를 가리킴) */
+.hero-salpi { flex: none; width: 118px; margin: -10px 0 -14px -8px;
+  filter: drop-shadow(0 8px 14px rgba(0,0,0,.35)); pointer-events: none; }
 
 /* 오른쪽 대시보드 슬라이드 */
 .hero-board { display: flex; flex-direction: column; gap: 8px; }
@@ -107,7 +108,13 @@ button { font: inherit; cursor: pointer; }
 .fc-strip.up .verdict { color: var(--up); } .fc-strip.down .verdict { color: var(--down); } .fc-strip.flat .verdict { color: #5A615C; }
 .fc-strip .range { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fc-strip ul { margin: 4px 0 0; padding-left: 18px; font-size: 12.5px; color: #4C524E; }
-.fc-strip .pose { position: absolute; right: 8px; bottom: 4px; height: 128px; filter: drop-shadow(0 4px 6px rgba(0,0,0,.18)); pointer-events: none; }
+/* 살피 포즈(좌우반전) + 머리 옆 제안 말풍선 */
+.fc-strip .verdict, .fc-strip .range { max-width: calc(100% - 230px); }
+.fc-strip .advice { position: absolute; right: 8px; bottom: 4px; display: flex; align-items: flex-start; gap: 4px; pointer-events: none; }
+.fc-strip .pose { height: 128px; transform: scaleX(-1); filter: drop-shadow(0 4px 6px rgba(0,0,0,.18)); }
+.fc-strip .say { position: relative; margin-top: 8px; background: #fff; color: var(--ink); border-radius: 14px; padding: 8px 13px;
+  font-size: 13px; font-weight: 700; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,.12); }
+.fc-strip .say::after { content: ""; position: absolute; right: -7px; top: 12px; border: 7px solid transparent; border-left-color: #fff; border-right: 0; }
 .fc-strip li b { color: var(--ink); }
 .overview-note { margin: 8px 0 0; font-size: 12.5px; color: #4C524E; background: var(--paper); border-radius: 10px; padding: 8px 12px; }
 
@@ -221,8 +228,6 @@ body.chat-open .salpi-fab .bubble, .salpi-fab.dragging .bubble { display: none; 
   .hero-inner { grid-template-columns: 1fr; position: relative; }
 }
 @media (max-width: 1000px) {
-  .hero-salpi { position: absolute; right: 20px; top: 20px; width: 120px; margin: 0; }
-  .hero-text { padding-right: 130px; }
   .grid { grid-template-columns: repeat(3, 1fr); }
   .detail { grid-template-columns: 1fr; }
 }
@@ -232,9 +237,12 @@ body.chat-open .salpi-fab .bubble, .salpi-fab.dragging .bubble { display: none; 
   .logo img { height: 38px; }
   .hero h1 { font-size: 24px; }
   .hero-sub { font-size: 13px; }
-  .hero-text { padding-right: 0; }
-  .hero-salpi { width: 96px; top: 40px; }
-  .hero h1, .eyebrow, .hero-sub { padding-right: 90px; }
+  .hero-salpi { width: 84px; }
+  .chip { padding: 12px 14px; }
+  .chip b { font-size: 19px; }
+  .chip small { font-size: 12px; }
+  .fc-strip .verdict, .fc-strip .range { max-width: none; }
+  .fc-strip .say { position: absolute; right: 70px; bottom: 74px; margin: 0; font-size: 12px; }
   .summary { max-width: none; }
   .slide { height: 500px; }
   .topbar .wrap { padding: 0 16px; }

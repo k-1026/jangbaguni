@@ -84,6 +84,7 @@ function renderSlides() {
         .sort((a, b) => Math.abs(b.effect_pct) - Math.abs(a.effect_pct)).slice(0, 2);
       // 오름: 경광등 살피(2 · 4번째 포즈 번갈아) · 유지: 알람시계 살피(1 · 3번째) · 내림: 쇼핑백 살피(6번째)
       const pose = v.kind === "down" ? "alert_down" : `alert_${v.kind === "up" ? "rise" : "flat"}${(idx % 2) + 1}`;
+      const say = { up: "미리 사두는 게 좋을 것 같아요.", flat: "평소대로 구매하셔도 좋아요", down: "급하지 않으면 나중에 사셔도 좋아요" }[v.kind];
       return `
     <article class="slide card" data-item="${esc(r.item)}" data-title="${esc(r.item)} 시세">
       <div class="chart-head">
@@ -99,12 +100,12 @@ function renderSlides() {
       </div>
       <div class="chart-box"><canvas></canvas></div>
       <div class="fc-strip ${v.kind}">
-        <img class="pose" src="/static/img/${pose}.png" alt="">
+        <div class="advice"><span class="say">${say}</span><img class="pose" src="/static/img/${pose}.png" alt=""></div>
         <span class="verdict">${v.text}</span>
         <span class="range">예상 ${pct(f.range_pct?.[0])} ~ ${pct(f.range_pct?.[1])}
           (${won(f.expected_kg_price_range?.[0])} ~ ${won(f.expected_kg_price_range?.[1])}/kg · 믿을 만한 정도 ${esc(f.confidence || "-")})</span>
         <ul>${reasons.map((x) => `<li><b>${esc(x.factor)}</b> ${pct(x.effect_pct)} — ${esc(x.detail)}</li>`).join("")
-          || "<li>뚜렷하게 오르거나 내릴 이유가 적어요</li>"}<li><b>살피 제안</b> — ${esc(f.suggestion || "-")}</li></ul>
+          || "<li>뚜렷하게 오르거나 내릴 이유가 적어요</li>"}</ul>
       </div>
     </article>`;
     }).join("");

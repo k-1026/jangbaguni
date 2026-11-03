@@ -11,13 +11,14 @@
 import math
 import statistics
 from collections import defaultdict
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 import analysis
 import supabase_db as db
 from data_sources import ITEMS, holidays_between
 
 WEEKDAYS = "월화수목금토일"
+KST = timezone(timedelta(hours=9))   # Vercel 서버는 세계 표준시라 한국 날짜로 맞춤
 SAFETY = 0.10   # 발주할 때 예측보다 10% 더 (모자라면 장사를 못 하니까)
 
 
@@ -93,7 +94,7 @@ def forecast(store_id=db.DEMO_STORE, target=None, price_outlook=None, save=True)
     price_outlook: {재료 이름: 다음 7일 예상 변화율(%)} — 대시보드 시세 예측. 발주 판단(지금 사기 · 나눠 사기)에 씀.
     save: 결과를 Supabase menu_forecasts · order_recommendations 에 저장.
     """
-    today = date.today()
+    today = datetime.now(KST).date()
     target = target or today + timedelta(1)
     store, menus, sales, recipes, stock = _load(store_id)
     if not sales:

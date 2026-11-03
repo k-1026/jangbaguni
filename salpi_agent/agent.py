@@ -15,6 +15,7 @@ import re
 import requests
 
 import analysis
+import demand
 import menu_cost
 from data_sources import ITEMS, ApiKeyMissing, daegu_events, holidays
 
@@ -134,8 +135,34 @@ def calc_menu_margin(menu: str, sale_price: int, ingredients: str = "") -> dict:
     return _safe(menu_cost.menu_cost, menu, sale_price, parsed or None)
 
 
+def forecast_store_demand() -> dict:
+    """시연용 가게('살피 시연 한식당')의 판매 기록으로 내일 메뉴별 예상 그릇 수(범위 포함)와
+    다음 입고일 전까지 모자란 재료의 발주량 · 판단(지금 사기 · 나눠 사기)을 돌려준다.
+    menus 와 orders 에 있는 숫자 · 재료만 그대로 말한다."""
+    def run():
+        r = demand.forecast()
+        if r.get("error"):
+            return r
+        reason = {}
+        for m in r["menus"]:   # 가장 영향이 큰 이유 한 줄
+            name, v = max(m["factors"].items(), key=lambda kv: abs(kv[1]))
+            reason[m["menu"]] = ("평소와 비슷" if abs(v) < 0.02 else
+                                 f"{name} 영향 {v * 100:+.0f}%")
+        return {
+            "store": r["store"]["name"] + (" (시연용)" if r["store"]["is_demo"] else ""),
+            "target_date": f"{r['target_date']}({r['target_weekday']})", "last_sales_date": r["last_sales_date"],
+            "next_delivery_date": r["next_delivery_date"], "total_bowls": r["total_predicted"],
+            "menus": [{"menu": m["menu"], "bowls": m["predicted"], "range": f"{m['range'][0]}~{m['range'][1]}",
+                       "reason": reason[m["menu"]]} for m in r["menus"]],
+            "orders": [{"item": i["item"], "order": f"{i['order_qty']:g}{i['unit']}", "decision": i["decision"],
+                        "why": i["reason"]} for i in r["items"] if i["order_qty"] > 0][:5],
+            "enough_stock": [i["item"] for i in r["items"] if i["order_qty"] <= 0],
+        }
+    return _safe(run)
+
+
 TOOLS = [list_supported_items, get_market_overview, get_item_price_trend, forecast_item_price,
-         recommend_buy_now, list_standard_menus, calc_menu_margin,
+         recommend_buy_now, list_standard_menus, calc_menu_margin, forecast_store_demand,
          get_weather_summary, get_daegu_events, get_upcoming_holidays]
 
 
@@ -180,6 +207,12 @@ B. "이 가격에 팔아도 남아?"처럼 메뉴나 판매가 없이 마진을 
    참고 단가(시연용 가정값)를 쓴 재료가 있으면 "영수증 값을 알려 주시면 더 정확해져요"를 덧붙인다.
    재료 양을 지어내지 않는다. 사장님이 말한 양이나 표준 레시피만 쓴다.
 C. "지금 사면 이득인 야채" 질문 → recommend_buy_now 를 부르고, 미리 사면 좋은 것·지금 싼 것·기다릴 것 순서로 말한다.
+D. "내일 얼마나 준비할까?", 판매량 · 몇 그릇 · 발주량 질문 → forecast_store_demand 를 부른다.
+   첫 줄에 "시연용 가게(살피 시연 한식당) 판매 기록 기준"이라고 밝힌다.
+   메뉴별 예상 그릇 수를 범위와 함께 말하고(예: 김치찌개 101그릇, 96~106), 영향이 큰 이유 1개를 쉬운 말로 붙인다.
+   그다음 orders 의 앞에서 3개를 "재료 · 발주량 · 판단(지금 사기/나눠 사기)" 한 줄씩 그대로 말하고,
+   (orders 에 없는 재료 · 숫자를 말하지 않는다. 메뉴는 menus 에 있는 것만 전부 말한다)
+   다음 입고일(next_delivery_date)까지 기준이라고 덧붙인다. 우리 가게 판매량을 넣으면 그 가게 기준으로 바뀐다고 안내한다.
 
 출력 형식
 - 짧게. 전체 10줄 이내, 묶음마다 재료 3개까지, 재료당 한 줄. [무엇이] → [얼마나] → [그래서 어떻게].

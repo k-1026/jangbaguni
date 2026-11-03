@@ -8,12 +8,15 @@ import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+from datetime import date
+
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 import analysis
+import demand
 import foodspring
 from agent import SalpiAgent
 from data_sources import ITEMS, ApiError, ApiKeyMissing, daegu_events, holidays
@@ -100,6 +103,27 @@ def products():
 def context():
     return _guard(lambda: memo("context", lambda: {
         "weather": analysis.weather_summary(7), "holidays": holidays(30), "events": daegu_events(14)}))
+
+
+# ---------------------------------------------------------------
+# 우리 가게 내일 준비: 판매 기록(Supabase)으로 메뉴별 그릇 수 · 재료 필요량 · 발주 추천
+# 지금은 시연용 가게 한 곳 (로그인이 없어서)
+# ---------------------------------------------------------------
+
+
+def _price_outlook():
+    """대시보드 시세 예측이 이미 계산돼 있으면 그대로 씀 (없으면 demand 가 필요한 재료만 계산)."""
+    hit = _memo.get("overview")
+    return {r["item"]: (r.get("forecast") or {}).get("expected_change_pct") for r in hit[1]} if hit else None
+
+
+@app.get("/api/demand")
+def demand_forecast(target: str | None = None):
+    try:
+        day = date.fromisoformat(target) if target else None
+    except ValueError:
+        raise HTTPException(400, "날짜는 2026-11-05 형식으로 보내 주세요")
+    return _guard(lambda: memo(f"demand:{day}", lambda: demand.forecast(target=day, price_outlook=_price_outlook()), ttl=600))
 
 
 # ---------------------------------------------------------------

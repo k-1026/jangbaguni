@@ -251,12 +251,28 @@ body.chat-open .salpi-fab .bubble, .salpi-fab.dragging .bubble { display: none; 
 .chat-input button:active { box-shadow: inset 3px 3px 7px #0a1b17, inset -3px -3px 7px #1a453c; }
 
 /* 화면이 좁을 때 */
+/* 우리 가게 내일 준비 */
+.store-grid { display: grid; grid-template-columns: 1fr 1.25fr; gap: 16px; }
+.store-grid > * { min-width: 0; }
+.demand-total { font-size: 18px; margin: 6px 0 10px; } .demand-total b { color: var(--accent); font-size: 24px; }
+.demand-row { display: grid; grid-template-columns: 1.3fr 1fr auto; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid #F3F1EC; }
+.demand-name b { display: block; font-size: 16px; } .demand-name small, .demand-qty small { color: var(--muted); font-size: 12px; }
+.demand-qty { text-align: right; } .demand-qty b { display: block; font-size: 20px; }
+.spark { display: flex; align-items: flex-end; gap: 2px; height: 40px; }
+.spark i { flex: 1; background: #CFD8D3; border-radius: 2px 2px 0 0; min-height: 2px; }
+.spark i.next { background: var(--accent); }
+.order-card { max-height: none; }
+.decision { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+.decision.buy { background: #FFE3E0; color: var(--up); } .decision.split { background: #FFF3CC; color: #8A6A00; }
+.decision.wait { background: #DDF3EA; color: var(--down); }
+.order-table td { color: var(--ink); }
+
 @media (max-width: 1200px) {
   .hero-inner { grid-template-columns: 1fr; position: relative; }
 }
 @media (max-width: 1000px) {
   .grid { grid-template-columns: repeat(3, 1fr); }
-  .detail { grid-template-columns: 1fr; }
+  .detail, .store-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 700px) {
   .wrap { padding: 0 16px; }

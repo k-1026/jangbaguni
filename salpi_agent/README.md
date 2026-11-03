@@ -8,6 +8,7 @@
 1. 저장소 맨 위 `.env` 에 키 넣기 (견본: `.env.example`)
    - 공공데이터포털 키 (정산정보 · 일별 도·소매가 · 기상청 · 특일 · 관광공사)
    - `GEMINI_API_KEY` — https://aistudio.google.com → Get API key (무료)
+   - `SUPABASE_URL` · `SUPABASE_SECRET_KEY` — 판매량 예측(우리 가게 내일 준비)용. supabase.com → Project Settings → API Keys 의 Secret keys
 2. 이 폴더에서 설치
    ```
    python -m venv .venv

@@ -327,6 +327,58 @@ function renderForecast(f) {
 }
 
 // ---------------------------------------------------------------
+// 우리 가게 내일 준비 (판매 기록 → 예상 그릇 수 → 재료 필요량 · 발주)
+// ---------------------------------------------------------------
+const qty = (v, unit) => (unit === "모" ? `${Math.round(v)}모` : `${(+v).toFixed(1)}${unit}`);
+
+// 가장 영향이 큰 이유 한 줄 (factors: 0.05 = 평소보다 +5%)
+function demandReason(factors) {
+  const [name, v] = Object.entries(factors).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))[0] || [];
+  if (name === "휴무일") return "가게 쉬는 날이에요";
+  if (v == null || Math.abs(v) < 0.02) return "평소와 비슷하게 팔릴 날이에요";
+  const p = Math.round(Math.abs(v) * 100);
+  if (name === "최근 2주 흐름") return `최근 2주 판매가 그 전보다 ${p}% ${v > 0 ? "늘었어요" : "줄었어요"}`;
+  return `${name}은 평소보다 ${p}% ${v > 0 ? "많이" : "적게"} 팔려요`;
+}
+
+async function loadDemand() {
+  let d;
+  try {
+    d = await getJSON("/api/demand");
+  } catch (e) {
+    $("#storeBasis").textContent = "";
+    $("#menuForecast").innerHTML = `<p class="muted">판매 기록을 불러오지 못했어요. ${esc(e.message)}</p>`;
+    return;
+  }
+  if (d.error) { $("#menuForecast").innerHTML = `<p class="muted">${esc(d.error)}</p>`; return; }
+  const day = `${mmdd(d.target_date)}(${d.target_weekday})`;
+  $("#storeBasis").textContent = `${d.store.is_demo ? "시연용 가게 · " : ""}${d.store.name} · 판매 기록 ${mmdd(d.last_sales_date)}까지 · ${d.method}`;
+  $("#menuForecast").innerHTML = `
+    <span class="badge">내일 ${day}${d.is_holiday ? " · 공휴일" : ""} 예상 판매</span>
+    <p class="demand-total">${d.is_open ? `모두 <b>${d.total_predicted}그릇</b> 팔릴 것 같아요` : "내일은 가게 쉬는 날이에요"}</p>
+    ${d.menus.map((m) => {
+      const max = Math.max(m.range[1], ...m.recent.map((x) => x.qty), 1);
+      const bars = m.recent.map((x) => `<i style="height:${(x.qty / max) * 100}%" title="${mmdd(x.date)} ${x.qty}그릇"></i>`).join("");
+      return `<div class="demand-row">
+        <div class="demand-name"><b>${esc(m.menu)}</b><small>${esc(demandReason(m.factors))}</small></div>
+        <div class="spark" aria-hidden="true">${bars}<i class="next" style="height:${(m.predicted / max) * 100}%" title="내일 예상 ${m.predicted}그릇"></i></div>
+        <div class="demand-qty"><b>${m.predicted}그릇</b><small>${m.range[0]} ~ ${m.range[1]}</small></div>
+      </div>`;
+    }).join("")}
+    <p class="muted small">막대: 최근 14일 판매 · <span style="color:var(--accent)">주황</span>은 내일 예상</p>`;
+  $("#orderCard").innerHTML = `
+    <table class="price-table order-table">
+      <thead><tr><th>재료</th><th>내일 필요</th><th>${d.next_delivery_date ? `${mmdd(d.next_delivery_date)} 입고 전까지` : "필요"}</th><th>재고</th><th>발주</th><th>판단</th></tr></thead>
+      <tbody>${d.items.map((i) => `<tr title="${esc(i.reason)}">
+        <td>${esc(i.item)}</td><td>${qty(i.need_target, i.unit)}</td><td>${qty(i.need_until_delivery, i.unit)}</td>
+        <td>${qty(i.on_hand, i.unit)}</td><td class="price">${i.order_qty > 0 ? qty(i.order_qty, i.unit) : "-"}</td>
+        <td><span class="decision ${i.decision === "지금 사기" ? "buy" : i.decision === "나눠 사기" ? "split" : "wait"}">${esc(i.decision)}</span></td>
+      </tr>`).join("")}</tbody>
+    </table>
+    <p class="muted small" style="padding:0 8px">발주 = 다음 입고 전까지 필요량 + 10% 여유 − 재고. 줄에 마우스를 올리면 이유가 보여요.</p>`;
+}
+
+// ---------------------------------------------------------------
 // 식봄 상품 목록
 // ---------------------------------------------------------------
 let filterItem = "전체";
@@ -574,5 +626,6 @@ $("#chatForm").addEventListener("submit", (e) => { e.preventDefault(); const t =
 loadOverview();
 loadProducts();
 loadContext();
+loadDemand();
 if (location.hash === "#chat") openChat();   // 주소 끝에 #chat 을 붙이면 채팅창이 열린 채로 시작
 if (location.hash === "#rise") setTimeout(() => goSlide(1, "instant"), 4000);   // 시연용: 첫 야채 대시보드부터

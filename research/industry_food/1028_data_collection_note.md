@@ -1,7 +1,7 @@
 # 데이터 수집 현황: 떡볶이 재료 가격 예측 · 발주 제안 서비스 (10/28)
 
 > 발표자료 6번 슬라이드 "활용 데이터" 6종 + 보완 데이터의 수집 상태 정리
-> 원본: 루트 `research.md`(상세) · `research.json`(엔드포인트 · 코드 · 통계, 기계 판독용)
+> 원본: `1028_data_collection_detail.md`(상세) · `1028_data_collection_detail.json`(엔드포인트 · 코드 · 통계, 기계 판독용)
 > 주제 근거: `industry_food/1028_wholesale_price_forecast_note.md` · 발표 정리: `industry_food/1028_topic_pitch.md`
 
 ---

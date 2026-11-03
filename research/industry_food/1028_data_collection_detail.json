@@ -1,7 +1,7 @@
 {
   "project": "떡볶이 재료, 다음 주엔 얼마일까? - 도매시장 시세 기반 가격 예측·재고·발주 제안 서비스",
   "collected_at": "2026-10-28",
-  "doc": "research.md",
+  "doc": "1028_data_collection_detail.md",
   "target_region": {
     "name": "대구",
     "kamis_country_code": "2200",

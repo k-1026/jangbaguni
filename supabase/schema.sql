@@ -1,7 +1,7 @@
 -- 살피 DB 스키마 (Supabase / PostgreSQL)
 -- 실행: Supabase 대시보드 → SQL Editor에 전체 붙여 넣고 Run → 그다음 seed.sql
 -- 근거: brand/살피_브랜드키트_기획서.md 11-4 도구 목록 · 11-5 필수 데이터 · 3-3 행동 이벤트
--- 다시 실행해도 안전하도록 if not exists / drop policy if exists 사용
+-- 다시 실행해도 안전 (if not exists · 이미 있으면 건너뜀), 지우는 명령(drop) 없음
 
 -- =========================================================
 -- C. 기준 정보 (팀이 만드는 데이터)
@@ -22,6 +22,7 @@ create table if not exists items (
   at_gds_sclsf_cd     text,                                 -- aT 정산정보 품목 소분류 코드
   note                text
 );
+alter table items enable row level security;
 
 -- 영수증 품목 매핑표: OCR로 읽은 이름 → 품목 마스터 ("깐양파 15kg" → 양파 15kg)
 create table if not exists item_aliases (
@@ -30,6 +31,7 @@ create table if not exists item_aliases (
   item_id           bigint not null references items(id) on delete cascade,
   base_qty_per_unit numeric(10,3) not null default 1        -- 영수증 1개 = 기준단위 몇 개
 );
+alter table item_aliases enable row level security;
 
 -- =========================================================
 -- B. 외부 데이터 (공식 API 수집)
@@ -54,6 +56,7 @@ create table if not exists wholesale_prices (
   collected_at  timestamptz not null default now(),
   unique nulls not distinct (trade_date, whsl_mrkt_cd, gds_sclsf_cd, grade_nm, unit_qty, unit_nm)
 );
+alter table wholesale_prices enable row level security;
 create index if not exists wholesale_prices_item_date on wholesale_prices (item_id, trade_date desc);
 
 -- KAMIS 도·소매가, 대구 = 2200
@@ -73,6 +76,7 @@ create table if not exists kamis_prices (
   collected_at  timestamptz not null default now(),
   unique (price_date, product_cls, item_code, kind_code, rank_code, country_code, market_name)
 );
+alter table kamis_prices enable row level security;
 create index if not exists kamis_prices_item_date on kamis_prices (item_id, price_date desc);
 
 -- 기상청 ASOS 일자료, 대구 = 143
@@ -87,6 +91,7 @@ create table if not exists weather_daily (
   collected_at   timestamptz not null default now(),
   primary key (obs_date, stn_id)
 );
+alter table weather_daily enable row level security;
 
 -- 한국천문연구원 특일 정보 (공휴일 · 기념일 · 절기)
 create table if not exists special_days (
@@ -97,6 +102,7 @@ create table if not exists special_days (
   source      text not null default 'api',
   primary key (locdate, date_name)
 );
+alter table special_days enable row level security;
 
 -- 한국관광공사 국문 관광정보 — 대구(lDongRegnCd 27) 행사·축제
 create table if not exists local_events (
@@ -111,6 +117,7 @@ create table if not exists local_events (
   map_y          numeric(12,8),
   collected_at   timestamptz not null default now()
 );
+alter table local_events enable row level security;
 create index if not exists local_events_dates on local_events (start_date, end_date);
 
 -- =========================================================
@@ -132,6 +139,7 @@ create table if not exists stores (
   is_demo             boolean not null default false,       -- 시연용 가상 매장 (누구나 조회 가능)
   created_at          timestamptz not null default now()
 );
+alter table stores enable row level security;
 
 create table if not exists menus (
   id          bigint generated always as identity primary key,
@@ -142,6 +150,7 @@ create table if not exists menus (
   is_active   boolean not null default true,
   unique (store_id, name)
 );
+alter table menus enable row level security;
 
 -- 레시피: 메뉴 1인분에 들어가는 재료량 (품목 base_unit 기준)
 create table if not exists recipe_items (
@@ -152,6 +161,7 @@ create table if not exists recipe_items (
                    check (loss_rate >= 0 and loss_rate < 1),
   primary key (menu_id, item_id)
 );
+alter table recipe_items enable row level security;
 
 -- 메뉴별 판매량 (POS · 배달앱 정산 · 직접 입력)
 create table if not exists sales_daily (
@@ -162,6 +172,7 @@ create table if not exists sales_daily (
   qty        int not null check (qty >= 0),
   primary key (store_id, menu_id, sale_date, channel)
 );
+alter table sales_daily enable row level security;
 
 -- 영수증 (실구매 기록)
 create table if not exists purchases (
@@ -174,6 +185,7 @@ create table if not exists purchases (
   image_path    text,                                       -- Supabase Storage 경로
   created_at    timestamptz not null default now()
 );
+alter table purchases enable row level security;
 
 create table if not exists purchase_items (
   id              bigint generated always as identity primary key,
@@ -184,6 +196,7 @@ create table if not exists purchase_items (
   amount          int not null,                             -- 합계 금액 (원)
   unit_price_base numeric(12,2) generated always as (amount / nullif(qty_base, 0)) stored
 );
+alter table purchase_items enable row level security;
 create index if not exists purchase_items_item on purchase_items (item_id);
 
 -- 재고 (발주 전 "남은 양" 입력)
@@ -195,6 +208,7 @@ create table if not exists inventory (
   updated_at          timestamptz not null default now(),
   primary key (store_id, item_id)
 );
+alter table inventory enable row level security;
 
 -- =========================================================
 -- 계산 도구 결과 · 알림 · 행동 로그
@@ -213,6 +227,7 @@ create table if not exists menu_forecasts (
   created_at     timestamptz not null default now(),
   primary key (store_id, menu_id, target_date)
 );
+alter table menu_forecasts enable row level security;
 
 -- recommend_order_qty + judge_wait_or_buy 결과
 create table if not exists order_recommendations (
@@ -226,6 +241,7 @@ create table if not exists order_recommendations (
   created_at       timestamptz not null default now(),
   unique (store_id, item_id, target_date)
 );
+alter table order_recommendations enable row level security;
 
 create table if not exists alerts (
   id          bigint generated always as identity primary key,
@@ -235,6 +251,7 @@ create table if not exists alerts (
   sent_at     timestamptz not null default now(),
   clicked_at  timestamptz
 );
+alter table alerts enable row level security;
 
 -- 3-3 행동 이벤트 로그 (세그먼트 S1~S5 계산 재료)
 create table if not exists event_logs (
@@ -247,6 +264,7 @@ create table if not exists event_logs (
   payload     jsonb not null default '{}',
   created_at  timestamptz not null default now()
 );
+alter table event_logs enable row level security;
 create index if not exists event_logs_store_time on event_logs (store_id, created_at desc);
 
 -- =========================================================
@@ -277,62 +295,94 @@ left join v_latest_purchase_price lp on lp.store_id = m.store_id and lp.item_id 
 where m.is_active
 group by m.store_id, m.id, m.name, m.price;
 
+
 -- =========================================================
--- 접근 권한 (RLS)
+-- 접근 권한 규칙 (RLS 정책) — 접근 잠금은 각 표 바로 아래에서 켬
 -- 외부·기준 데이터: 누구나 읽기, 쓰기는 수집 스크립트(service_role)만
 -- 가게 데이터: 가게 주인만 읽기·쓰기, 시연용 매장(is_demo)은 누구나 읽기
+-- 이미 만들어져 있으면 건너뜀 (다시 실행해도 안전, 지우는 명령 없음)
 -- =========================================================
 
 do $$
-declare t text;
 begin
-  foreach t in array array['items','item_aliases','wholesale_prices','kamis_prices',
-                           'weather_daily','special_days','local_events'] loop
-    execute format('alter table %I enable row level security', t);
-    execute format('drop policy if exists "public read" on %I', t);
-    execute format('create policy "public read" on %I for select to anon, authenticated using (true)', t);
-  end loop;
+  if exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'items') then
+    return;
+  end if;
+
+  -- 외부·기준 데이터
+  create policy "public read" on items            for select to anon, authenticated using (true);
+  create policy "public read" on item_aliases     for select to anon, authenticated using (true);
+  create policy "public read" on wholesale_prices for select to anon, authenticated using (true);
+  create policy "public read" on kamis_prices     for select to anon, authenticated using (true);
+  create policy "public read" on weather_daily    for select to anon, authenticated using (true);
+  create policy "public read" on special_days     for select to anon, authenticated using (true);
+  create policy "public read" on local_events     for select to anon, authenticated using (true);
+
+  -- 가게
+  create policy "owner or demo read" on stores for select
+    using (owner_id = auth.uid() or is_demo);
+  create policy "owner write" on stores for all to authenticated
+    using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+
+  -- store_id가 있는 가게 데이터
+  create policy "store read" on menus for select
+    using (store_id in (select id from stores where owner_id = auth.uid() or is_demo));
+  create policy "store write" on menus for all to authenticated
+    using (store_id in (select id from stores where owner_id = auth.uid()))
+    with check (store_id in (select id from stores where owner_id = auth.uid()));
+
+  create policy "store read" on sales_daily for select
+    using (store_id in (select id from stores where owner_id = auth.uid() or is_demo));
+  create policy "store write" on sales_daily for all to authenticated
+    using (store_id in (select id from stores where owner_id = auth.uid()))
+    with check (store_id in (select id from stores where owner_id = auth.uid()));
+
+  create policy "store read" on purchases for select
+    using (store_id in (select id from stores where owner_id = auth.uid() or is_demo));
+  create policy "store write" on purchases for all to authenticated
+    using (store_id in (select id from stores where owner_id = auth.uid()))
+    with check (store_id in (select id from stores where owner_id = auth.uid()));
+
+  create policy "store read" on inventory for select
+    using (store_id in (select id from stores where owner_id = auth.uid() or is_demo));
+  create policy "store write" on inventory for all to authenticated
+    using (store_id in (select id from stores where owner_id = auth.uid()))
+    with check (store_id in (select id from stores where owner_id = auth.uid()));
+
+  create policy "store read" on menu_forecasts for select
+    using (store_id in (select id from stores where owner_id = auth.uid() or is_demo));
+  create policy "store write" on menu_forecasts for all to authenticated
+    using (store_id in (select id from stores where owner_id = auth.uid()))
+    with check (store_id in (select id from stores where owner_id = auth.uid()));
+
+  create policy "store read" on order_recommendations for select
+    using (store_id in (select id from stores where owner_id = auth.uid() or is_demo));
+  create policy "store write" on order_recommendations for all to authenticated
+    using (store_id in (select id from stores where owner_id = auth.uid()))
+    with check (store_id in (select id from stores where owner_id = auth.uid()));
+
+  create policy "store read" on alerts for select
+    using (store_id in (select id from stores where owner_id = auth.uid() or is_demo));
+  create policy "store write" on alerts for all to authenticated
+    using (store_id in (select id from stores where owner_id = auth.uid()))
+    with check (store_id in (select id from stores where owner_id = auth.uid()));
+
+  create policy "store read" on event_logs for select
+    using (store_id in (select id from stores where owner_id = auth.uid() or is_demo));
+  create policy "store write" on event_logs for all to authenticated
+    using (store_id in (select id from stores where owner_id = auth.uid()))
+    with check (store_id in (select id from stores where owner_id = auth.uid()));
+
+  -- store_id가 없는 하위 표는 상위 표를 따라감
+  create policy "store read" on recipe_items for select
+    using (menu_id in (select id from menus));             -- menus의 RLS가 그대로 적용됨
+  create policy "store write" on recipe_items for all to authenticated
+    using (menu_id in (select m.id from menus m join stores s on s.id = m.store_id where s.owner_id = auth.uid()))
+    with check (menu_id in (select m.id from menus m join stores s on s.id = m.store_id where s.owner_id = auth.uid()));
+
+  create policy "store read" on purchase_items for select
+    using (purchase_id in (select id from purchases));      -- purchases의 RLS가 그대로 적용됨
+  create policy "store write" on purchase_items for all to authenticated
+    using (purchase_id in (select p.id from purchases p join stores s on s.id = p.store_id where s.owner_id = auth.uid()))
+    with check (purchase_id in (select p.id from purchases p join stores s on s.id = p.store_id where s.owner_id = auth.uid()));
 end $$;
-
-alter table stores enable row level security;
-drop policy if exists "owner or demo read" on stores;
-create policy "owner or demo read" on stores for select
-  using (owner_id = auth.uid() or is_demo);
-drop policy if exists "owner write" on stores;
-create policy "owner write" on stores for all to authenticated
-  using (owner_id = auth.uid()) with check (owner_id = auth.uid());
-
-do $$
-declare t text;
-begin
-  foreach t in array array['menus','sales_daily','purchases','inventory',
-                           'menu_forecasts','order_recommendations','alerts','event_logs'] loop
-    execute format('alter table %I enable row level security', t);
-    execute format('drop policy if exists "store read" on %I', t);
-    execute format('create policy "store read" on %I for select using (
-      store_id in (select id from stores where owner_id = auth.uid() or is_demo))', t);
-    execute format('drop policy if exists "store write" on %I', t);
-    execute format('create policy "store write" on %I for all to authenticated
-      using (store_id in (select id from stores where owner_id = auth.uid()))
-      with check (store_id in (select id from stores where owner_id = auth.uid()))', t);
-  end loop;
-end $$;
-
--- store_id가 없는 하위 표는 상위 표를 따라감
-alter table recipe_items enable row level security;
-drop policy if exists "store read" on recipe_items;
-create policy "store read" on recipe_items for select using (
-  menu_id in (select id from menus));                      -- menus의 RLS가 그대로 적용됨
-drop policy if exists "store write" on recipe_items;
-create policy "store write" on recipe_items for all to authenticated
-  using (menu_id in (select m.id from menus m join stores s on s.id = m.store_id where s.owner_id = auth.uid()))
-  with check (menu_id in (select m.id from menus m join stores s on s.id = m.store_id where s.owner_id = auth.uid()));
-
-alter table purchase_items enable row level security;
-drop policy if exists "store read" on purchase_items;
-create policy "store read" on purchase_items for select using (
-  purchase_id in (select id from purchases));               -- purchases의 RLS가 그대로 적용됨
-drop policy if exists "store write" on purchase_items;
-create policy "store write" on purchase_items for all to authenticated
-  using (purchase_id in (select p.id from purchases p join stores s on s.id = p.store_id where s.owner_id = auth.uid()))
-  with check (purchase_id in (select p.id from purchases p join stores s on s.id = p.store_id where s.owner_id = auth.uid()));

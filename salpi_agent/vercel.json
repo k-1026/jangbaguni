@@ -1,8 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "cp ../brand/SKILL.md brand_skill.md || echo 'brand/SKILL.md 없음 - 기본 말투로 동작'",
-  "regions": ["icn1"],
-  "functions": {
-    "server.py": { "maxDuration": 300 }
-  }
+  "regions": ["icn1"]
 }

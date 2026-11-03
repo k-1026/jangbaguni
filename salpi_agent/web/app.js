@@ -6,10 +6,9 @@ const cls = (v, band = 0) => (v == null ? "" : v > band ? "up" : v < -band ? "do
 const mmdd = (d) => `${d.slice(5, 7)}.${d.slice(8, 10)}`;
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
-let overview = [];          // 재료별 시세 · 예측
+let overview = [];          // 재료별 시세 · 날짜별 기록 · 예측 (/api/overview 한 번으로 받음)
 let shop = {};              // 재료별 식봄 상품
-let current = null;
-let chart = null;
+const charts = {};          // 슬라이드별 차트 (보이는 슬라이드만 그림)
 
 async function getJSON(url) {
   const r = await fetch(url);
@@ -18,17 +17,26 @@ async function getJSON(url) {
   return body;
 }
 const byItem = (name) => overview.find((r) => r.item === name);
-const rising = () => overview.filter((r) => (r.forecast.expected_change_pct ?? 0) >= 2)
-  .sort((a, b) => b.forecast.expected_change_pct - a.forecast.expected_change_pct);
+const expOf = (r) => r.forecast?.expected_change_pct ?? 0;
+// 예측 한마디: 오를 / 떨어질 / 유지될
+function verdict(f) {
+  const e = f?.expected_change_pct ?? 0;
+  if (e >= 2) return { kind: "up", text: "다음 주 오를 가능성이 있어요" };
+  if (e <= -2) return { kind: "down", text: "다음 주 떨어질 가능성이 있어요" };
+  return { kind: "flat", text: "다음 주 지금 가격이 유지될 가능성이 커요" };
+}
 
 // ---------------------------------------------------------------
-// 첫 화면: 요약 · 재료 칩 · 슬라이드
+// 첫 화면: 요약 · 슬라이드(전체 → 야채별)
 // ---------------------------------------------------------------
-async function loadOverview() {
+async function loadOverview(attempt = 1) {
   try {
     overview = (await getJSON("/api/overview")).items;
   } catch (e) {
-    $("#summary").innerHTML = `<div class="error-box">${esc(e.message)}</div>`;
+    if (attempt < 4) { setTimeout(() => loadOverview(attempt + 1), 5000); return; }   // 서버가 막 켜졌을 때는 잠시 뒤 다시
+    $("#slider").innerHTML = `<article class="slide card loading-card"><b>시세를 불러오지 못했어요</b>
+      <p class="muted">${esc(e.message)}</p><button class="sort" onclick="location.reload()">다시 불러오기</button></article>`;
+    $("#summary").innerHTML = "";
     return;
   }
   const dated = overview.map((r) => r.wholesale_date).filter(Boolean).sort();
@@ -36,200 +44,121 @@ async function loadOverview() {
 
   const up = overview.filter((r) => (r.wholesale_change_pct ?? 0) >= 3);
   const down = overview.filter((r) => (r.wholesale_change_pct ?? 0) <= -3);
+  const rising = overview.filter((r) => expOf(r) >= 2);
   const top = [...overview].sort((a, b) => (b.wholesale_change_pct ?? -999) - (a.wholesale_change_pct ?? -999))[0];
   $("#summary").innerHTML = `
     <div class="chip up"><b>${up.length}개</b><small>지난주보다 오른 야채</small></div>
     <div class="chip down"><b>${down.length}개</b><small>지난주보다 내린 야채</small></div>
-    <div class="chip warn"><b>${rising().length}개</b><small>다음 주 오를 가능성</small></div>
+    <div class="chip warn"><b>${rising.length}개</b><small>다음 주 오를 가능성</small></div>
     ${top ? `<div class="chip up"><b>${esc(top.item)} ${pct(top.wholesale_change_pct)}</b><small>가장 많이 오른 야채</small></div>` : ""}`;
 
-  $("#itemTabs").innerHTML = overview.map((r) => `
-    <button data-item="${esc(r.item)}">${esc(r.item)}<span class="pct ${cls(r.wholesale_change_pct, 3)}">${pct(r.wholesale_change_pct)}</span></button>`).join("");
-  $("#itemTabs").onclick = (e) => {
-    const b = e.target.closest("button[data-item]");
-    if (b) { selectItem(b.dataset.item); goSlide(0); }
-  };
-  renderRiseSlides();
+  renderSlides();
   renderFilter();
   renderProducts();
-  selectItem(top ? top.item : overview[0].item);
+  onSlideChange();
 }
 
-function cheapest(item) {
-  // kg당 가격이 있는 상품 중 가장 싼 것, 없으면 첫 상품
-  const list = shop[item] || [];
-  return [...list].filter((g) => g.price_per_kg).sort((a, b) => a.price_per_kg - b.price_per_kg)[0] || list[0];
-}
+// 슬라이드 순서: 전체 → 오를 가능성 높은 순 → 유지 → 떨어질 가능성
+function slideOrder() { return [...overview].sort((a, b) => expOf(b) - expOf(a)); }
 
-function renderRiseSlides() {
-  const slider = $("#slider");
-  slider.querySelectorAll(".rise-card").forEach((el) => el.remove());
-  rising().slice(0, 6).forEach((r) => {
-    const f = r.forecast;
-    const g = cheapest(r.item);
-    const el = document.createElement("article");
-    el.className = "slide card rise-card";
-    el.dataset.title = "다음 주 오를 가능성";
-    el.innerHTML = `
-      <span class="rise-label"><i></i>다음 주 오를 가능성이 있어요</span>
-      <div class="rise-top">
-        <h3>${esc(r.item)}</h3>
-        <div class="now">지금 도매 kg당<b>${won(r.wholesale_kg)}</b>1주 <span class="${cls(r.wholesale_change_pct, 3)}">${pct(r.wholesale_change_pct)}</span></div>
+function renderSlides() {
+  Object.values(charts).forEach((c) => c.destroy());
+  Object.keys(charts).forEach((k) => delete charts[k]);
+  lastSlide = -1;
+  $("#slider").innerHTML = `
+    <article class="slide card" data-item="" data-title="전체 야채 시세">
+      <div class="chart-head">
+        <div><h3>전체 야채 시세</h3><p class="price-now muted">지난주보다 얼마나 올랐나 · 내렸나 (도매 kg당)</p></div>
+        <div class="legend"><span><i class="lg up"></i>올랐어요</span><span><i class="lg down"></i>내렸어요</span></div>
       </div>
-      <div class="rise-range">다음 7일 <b>${pct(f.range_pct?.[0])} ~ ${pct(f.range_pct?.[1])}</b>
-        <span class="muted"> · 믿을 만한 정도 ${esc(f.confidence)}</span><br>${esc(f.suggestion)}</div>
-      <ul class="rise-reasons"><li>이유를 불러오는 중</li></ul>
-      ${g ? `<a class="rise-shop" href="${esc(g.url)}" target="_blank" rel="noopener">
-        <img src="${esc(g.image)}" alt="" loading="lazy">
-        <div><span>식봄 · ${esc(g.vendor || "")}</span><b>${won(g.sale_price)}</b> <span style="display:inline">${esc(g.standard || "")}${g.price_per_kg ? ` · kg당 ${won(g.price_per_kg)}` : ""}</span></div>
-        <em>식봄에서 보기 →</em></a>` : ""}`;
-    slider.appendChild(el);
-    // 이유 2개는 재료 상세에서 가져옴
-    getJSON(`/api/item/${encodeURIComponent(r.item)}`).then((d) => {
-      const top2 = [...d.forecast.factors].sort((a, b) => b.effect_pct - a.effect_pct).filter((x) => x.effect_pct > 0).slice(0, 2);
-      el.querySelector(".rise-reasons").innerHTML = top2.map((x) => `<li><b>${esc(x.factor)}</b> — ${esc(x.detail)}</li>`).join("") || "<li>뚜렷한 이유가 적어요</li>";
-    }).catch(() => {});
-  });
-  updateDots();
+      <div class="chart-box"><canvas></canvas></div>
+      <p class="overview-note">막대를 누르거나 옆으로 넘기면 야채별 시세와 다음 주 예측을 볼 수 있어요.
+        다음 주 <b class="up">오를 가능성 ${overview.filter((r) => expOf(r) >= 2).length}개</b> ·
+        <b>유지 ${overview.filter((r) => Math.abs(expOf(r)) < 2).length}개</b> ·
+        <b class="down">떨어질 가능성 ${overview.filter((r) => expOf(r) <= -2).length}개</b></p>
+    </article>` + slideOrder().map((r) => {
+      const f = r.forecast || {};
+      const v = verdict(f);
+      const reasons = [...(f.factors || [])].filter((x) => x.effect_pct !== 0)
+        .sort((a, b) => Math.abs(b.effect_pct) - Math.abs(a.effect_pct)).slice(0, 2);
+      return `
+    <article class="slide card" data-item="${esc(r.item)}" data-title="${esc(r.item)} 시세">
+      <div class="chart-head">
+        <div>
+          <h3>${esc(r.item)} 시세</h3>
+          <p class="price-now"><strong>${won(r.wholesale_kg)}/kg</strong>
+            <span class="${cls(r.wholesale_change_pct, 3)}">1주 전보다 ${pct(r.wholesale_change_pct)}</span></p>
+        </div>
+        <div class="legend">
+          <span><i class="lg line"></i>도매 kg당</span><span><i class="lg fc"></i>7일 예측</span>
+          <span><i class="lg rain"></i>비</span><span><i class="lg event"></i>행사</span><span><i class="lg hol"></i>공휴일</span>
+        </div>
+      </div>
+      <div class="chart-box"><canvas></canvas></div>
+      <div class="fc-strip ${v.kind}">
+        <span class="verdict">${v.text}</span>
+        <span class="range">예상 ${pct(f.range_pct?.[0])} ~ ${pct(f.range_pct?.[1])}
+          <small>(${won(f.expected_kg_price_range?.[0])} ~ ${won(f.expected_kg_price_range?.[1])}/kg · 믿을 만한 정도 ${esc(f.confidence || "-")})</small></span>
+        <a class="shop" href="${esc(r.foodspring_url)}" target="_blank" rel="noopener">식봄에서 보기 →</a>
+        <ul>${reasons.map((x) => `<li><b>${esc(x.factor)}</b> ${pct(x.effect_pct)} — ${esc(x.detail)}</li>`).join("")
+          || "<li>뚜렷하게 오르거나 내릴 이유가 적어요</li>"}<li><b>살피 제안</b> — ${esc(f.suggestion || "-")}</li></ul>
+      </div>
+    </article>`;
+    }).join("");
 }
 
-// 슬라이드 넘기기 (손가락 스와이프는 브라우저 스크롤로 동작)
+// 슬라이드 넘기기: 손가락 스와이프는 브라우저 스크롤, 화살표는 끝에서 처음으로(처음에서 끝으로) 돌아감
 const slider = $("#slider");
 const slides = () => [...slider.querySelectorAll(".slide")];
 function slideIndex() { return Math.round(slider.scrollLeft / (slider.clientWidth + 14)); }
 function goSlide(i, behavior = "smooth") {
   const s = slides();
-  i = Math.max(0, Math.min(s.length - 1, i));
+  if (!s.length) return;
+  i = ((i % s.length) + s.length) % s.length;
   slider.scrollTo({ left: s[i].offsetLeft - slider.offsetLeft, behavior });
-  if (behavior !== "smooth") updateDots();
+  if (behavior !== "smooth") onSlideChange();
 }
-function updateDots() {
-  const s = slides(), i = slideIndex();
-  $("#dots").innerHTML = s.map((_, k) => `<i class="${k === i ? "on" : ""}"></i>`).join("");
-  $("#slideTitle").textContent = s[i]?.dataset.title || "";
+let lastSlide = -1;
+function onSlideChange() {
+  const s = slides(), i = Math.min(slideIndex(), s.length - 1);
+  $("#dots").textContent = s.length > 1 ? `${i + 1} / ${s.length}` : "";
+  $("#slideTitle").textContent = s[i]?.dataset.title || "야채 시세";
+  if (i === lastSlide || !overview.length) return;
+  lastSlide = i;
+  drawSlideChart(i);
+  renderDetail(s[i]?.dataset.item || slideOrder()[0]?.item);
 }
-slider.addEventListener("scroll", () => requestAnimationFrame(updateDots));
+slider.addEventListener("scroll", () => requestAnimationFrame(onSlideChange));
 $("#prevSlide").onclick = () => goSlide(slideIndex() - 1);
 $("#nextSlide").onclick = () => goSlide(slideIndex() + 1);
 
-// ---------------------------------------------------------------
-// 식봄 상품 목록
-// ---------------------------------------------------------------
-let filterItem = "전체";
-async function loadProducts() {
-  try {
-    shop = (await getJSON("/api/products")).items;
-  } catch (e) {
-    $("#productGrid").innerHTML = `<div class="error-box">식봄 상품을 불러오지 못했어요</div>`;
-    return;
-  }
-  renderProducts();
-  if (overview.length) renderRiseSlides();
+function drawSlideChart(i) {
+  const el = slides()[i];
+  if (!el || charts[i]) return;
+  const item = el.dataset.item;
+  charts[i] = item ? drawItemChart(el.querySelector("canvas"), byItem(item)) : drawOverviewChart(el.querySelector("canvas"));
 }
 
-function renderFilter() {
-  $("#productFilter").innerHTML = ["전체", ...overview.map((r) => r.item)]
-    .map((n) => `<button data-f="${esc(n)}" class="${n === filterItem ? "active" : ""}">${esc(n)}</button>`).join("");
-  $("#productFilter").onclick = (e) => {
-    const b = e.target.closest("button[data-f]");
-    if (!b) return;
-    filterItem = b.dataset.f;
-    renderFilter();
-    renderProducts();
-  };
-}
-
-function renderProducts() {
-  if (!Object.keys(shop).length || !overview.length) return;
-  const items = filterItem === "전체" ? overview.map((r) => r.item) : [filterItem];
-  const perItem = filterItem === "전체" ? 2 : 8;
-  const cards = items.flatMap((item) => (shop[item] || []).slice(0, perItem).map((g) => ({ item, g })));
-  if (!cards.length) {
-    // 식봄 상품을 못 받아 왔을 때: 재료별 식봄 검색으로 연결
-    $("#productGrid").innerHTML = items.map((item) => {
-      const r = byItem(item) || {};
-      return `<a class="product" href="${esc(r.foodspring_url || "https://www.foodspring.co.kr")}" target="_blank" rel="noopener">
-        <div class="img" style="display:grid;place-items:center;font-size:26px;font-weight:900;color:#6F7570">${esc(item)}</div>
-        <span class="name">식봄에서 ${esc(item)} 찾아보기 →</span>
-        ${r.wholesale_kg ? `<span class="per">도매 kg당 ${won(r.wholesale_kg)} · 1주 <b class="${cls(r.wholesale_change_pct, 3)}">${pct(r.wholesale_change_pct)}</b></span>` : ""}
-      </a>`;
-    }).join("");
-    return;
-  }
-  $("#productGrid").innerHTML = cards.map(({ item, g }) => {
-    const r = byItem(item) || { forecast: {} };
-    const exp = r.forecast.expected_change_pct ?? 0;
-    const flag = exp >= 2 ? `<span class="flag" style="background:var(--up)">다음 주 오를 듯</span>`
-      : exp <= -2 ? `<span class="flag" style="background:var(--down)">다음 주 내릴 듯</span>` : "";
-    const salpi = r.wholesale_change_pct == null ? ""
-      : `<span class="salpi">살피: ${esc(item)} 도매 1주 <b class="${cls(r.wholesale_change_pct, 3)}">${pct(r.wholesale_change_pct)}</b></span>`;
-    const sale = g.discount_rate && g.original_price > g.sale_price;
-    return `
-      <a class="product" href="${esc(g.url)}" target="_blank" rel="noopener">
-        <div class="img">${g.image ? `<img src="${esc(g.image)}" alt="" loading="lazy">` : ""}${flag}</div>
-        <span class="vendor">${esc(g.vendor || "")}</span>
-        <span class="name">${esc(g.name)}</span>
-        ${sale ? `<span class="orig">${won(g.original_price)}</span>` : ""}
-        <span class="price">${sale ? `<span class="rate">${g.discount_rate}%</span>` : ""}${won(g.sale_price)}</span>
-        ${g.price_per_kg ? `<span class="per">kg당 ${won(g.price_per_kg)}</span>` : ""}
-        ${salpi}
-      </a>`;
-  }).join("");
-}
-
-// ---------------------------------------------------------------
-// 재료 하나: 차트 · 날짜별 표 · 예측 이유
-// ---------------------------------------------------------------
-async function selectItem(name) {
-  current = name;
-  document.querySelectorAll("#itemTabs button").forEach((b) => b.classList.toggle("active", b.dataset.item === name));
-  $("#chartTitle").textContent = `${name} 시세`;
-  $("#detailTitle").textContent = `${name} 날짜별 시세`;
-  $("#priceRows").innerHTML = `<tr><td colspan="4">불러오는 중</td></tr>`;
-  let d;
-  try {
-    d = await getJSON(`/api/item/${encodeURIComponent(name)}`);
-  } catch (e) {
-    $("#priceRows").innerHTML = `<tr><td colspan="4">${esc(e.message)}</td></tr>`;
-    return;
-  }
-  if (current !== name) return;    // 그사이 다른 재료를 눌렀으면 무시
-  const last = d.history.at(-1);
-  $("#priceNow").textContent = last ? `${won(last.kg_price)}/kg` : "-";
-  const wc = d.trend.wholesale.week_change_pct;
-  $("#priceDelta").innerHTML = wc == null ? "" : `<span class="${cls(wc, 3)}">1주 전보다 ${pct(wc)}</span>`;
-  drawChart(d);
-  renderTable(d.history);
-  renderForecast(d.forecast);
-}
-
-function renderTable(h) {
-  $("#priceRows").innerHTML = [...h].reverse().map((r) => {
-    const diff = r.diff == null ? "" : r.diff > 0 ? `<span class="up">▲ ${won(r.diff)}</span>`
-      : r.diff < 0 ? `<span class="down">▼ ${won(-r.diff)}</span>` : "-";
-    const wx = r.max_temp == null ? "" : `${r.rain_mm ? `비 ${r.rain_mm}mm · ` : ""}${Math.round(r.min_temp)}~${Math.round(r.max_temp)}℃`;
-    const tags = (r.holiday ? `<span class="tag hol">${esc(r.holiday)}</span>` : "")
-      + (r.events.length ? `<span class="tag" title="${esc(r.events.join(", "))}">행사 ${r.events.length}</span>` : "");
-    return `<tr><td>${mmdd(r.date)}${tags}</td><td class="price">${won(r.kg_price)}</td><td>${diff}</td><td>${wx}</td></tr>`;
-  }).join("");
-}
-
-function renderForecast(f) {
-  if (!f || f.error) { $("#forecastCard").innerHTML = ""; return; }
-  const maxAbs = Math.max(4, ...f.factors.map((x) => Math.abs(x.effect_pct)));
-  const g = cheapest(f.item);
-  $("#forecastCard").innerHTML = `
-    <span class="badge">다음 7일 예측 · 믿을 만한 정도 ${esc(f.confidence)}</span>
-    <p class="dir ${cls(f.expected_change_pct, 2)}">${esc(f.direction)}</p>
-    <p class="muted">예상 ${won(f.expected_kg_price_range?.[0])} ~ ${won(f.expected_kg_price_range?.[1])} /kg (${pct(f.range_pct[0])} ~ ${pct(f.range_pct[1])})</p>
-    <p class="tip">${esc(f.suggestion)}${g ? ` · <a href="${esc(g.url)}" target="_blank" rel="noopener" style="color:var(--accent)">식봄 ${won(g.sale_price)} 상품 보기 →</a>` : ""}</p>
-    ${f.factors.map((x) => {
-      const w = (Math.abs(x.effect_pct) / maxAbs) * 50;
-      const style = x.effect_pct >= 0 ? `left:50%;width:${w}%;background:var(--up)` : `right:50%;width:${w}%;background:var(--down)`;
-      return `<div class="factor"><span>${esc(x.factor)}</span><span class="bar"><i style="${style}"></i></span>
-        <b class="${cls(x.effect_pct)}">${pct(x.effect_pct)}</b><span class="detail-text">${esc(x.detail)}</span></div>`;
-    }).join("")}
-    <p class="muted" style="margin-top:8px;font-size:12px">${esc(f.method)}</p>`;
+function drawOverviewChart(canvas) {
+  const rows = [...overview].filter((r) => r.wholesale_change_pct != null).sort((a, b) => b.wholesale_change_pct - a.wholesale_change_pct);
+  return new Chart(canvas.getContext("2d"), {
+    type: "bar",
+    data: {
+      labels: rows.map((r) => r.item),
+      datasets: [{ data: rows.map((r) => r.wholesale_change_pct), borderRadius: 4,
+        backgroundColor: rows.map((r) => (r.wholesale_change_pct >= 0 ? "#E2453C" : "#1E9E7A")) }],
+    },
+    options: {
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: (c) => ` 1주 ${pct(c.raw)} · ${won(rows[c.dataIndex].wholesale_kg)}/kg · ${verdict(rows[c.dataIndex].forecast).text}` } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: "#4C524E", font: { size: 11 }, autoSkip: false, maxRotation: 0 } },
+        y: { grid: { color: "#F0EDE6" }, ticks: { color: "#8A918C", font: { size: 11 }, callback: (v) => `${v}%` } },
+      },
+      onClick: (_e, els) => { if (els.length) goSlide(slides().findIndex((s) => s.dataset.item === rows[els[0].index].item)); },
+    },
+  });
 }
 
 // 행사 수(위쪽 띠) · 공휴일(세로 점선)을 그리는 차트 플러그인
@@ -257,8 +186,8 @@ const overlayPlugin = {
   },
 };
 
-function drawChart(d) {
-  const h = d.history;
+function drawItemChart(canvas, d) {
+  const h = d.history || [];
   const f = d.forecast;
   const labels = h.map((r) => mmdd(r.date));
   const price = h.map((r) => r.kg_price);
@@ -278,14 +207,11 @@ function drawChart(d) {
   const rain = labels.map((_, i) => h[i]?.rain_mm ?? null);
   const eventCounts = labels.map((_, i) => h[i]?.events.length ?? 0);
   const hols = h.map((r, i) => (r.holiday ? { i, name: r.holiday } : null)).filter(Boolean);
-
-  const ctx = $("#priceChart").getContext("2d");
-  const grad = ctx.createLinearGradient(0, 0, 0, 280);
+  const ctx = canvas.getContext("2d");
+  const grad = ctx.createLinearGradient(0, 0, 0, 260);
   grad.addColorStop(0, "rgba(91, 194, 54, 0.30)");
   grad.addColorStop(1, "rgba(91, 194, 54, 0.02)");
-
-  if (chart) chart.destroy();
-  chart = new Chart(ctx, {
+  return new Chart(ctx, {
     data: {
       labels,
       datasets: [
@@ -329,6 +255,112 @@ function drawChart(d) {
     },
     plugins: [overlayPlugin],
   });
+}
+
+// ---------------------------------------------------------------
+// 아래 "날짜별 시세": 지금 보고 있는 야채 (전체 화면이면 오를 가능성이 가장 큰 야채)
+// ---------------------------------------------------------------
+function renderDetail(name) {
+  const d = byItem(name);
+  if (!d) return;
+  $("#detailTitle").textContent = `${name} 날짜별 시세`;
+  $("#priceRows").innerHTML = [...(d.history || [])].reverse().map((r) => {
+    const diff = r.diff == null ? "" : r.diff > 0 ? `<span class="up">▲ ${won(r.diff)}</span>`
+      : r.diff < 0 ? `<span class="down">▼ ${won(-r.diff)}</span>` : "-";
+    const wx = r.max_temp == null ? "" : `${r.rain_mm ? `비 ${r.rain_mm}mm · ` : ""}${Math.round(r.min_temp)}~${Math.round(r.max_temp)}℃`;
+    const tags = (r.holiday ? `<span class="tag hol">${esc(r.holiday)}</span>` : "")
+      + (r.events.length ? `<span class="tag" title="${esc(r.events.join(", "))}">행사 ${r.events.length}</span>` : "");
+    return `<tr><td>${mmdd(r.date)}${tags}</td><td class="price">${won(r.kg_price)}</td><td>${diff}</td><td>${wx}</td></tr>`;
+  }).join("") || `<tr><td colspan="4">최근 거래 기록이 없어요</td></tr>`;
+  renderForecast(d.forecast);
+}
+
+function cheapest(item) {
+  // kg당 가격이 있는 상품 중 가장 싼 것, 없으면 첫 상품
+  const list = shop[item] || [];
+  return [...list].filter((g) => g.price_per_kg).sort((a, b) => a.price_per_kg - b.price_per_kg)[0] || list[0];
+}
+
+function renderForecast(f) {
+  if (!f || f.error) { $("#forecastCard").innerHTML = ""; return; }
+  const maxAbs = Math.max(4, ...f.factors.map((x) => Math.abs(x.effect_pct)));
+  const g = cheapest(f.item);
+  const v = verdict(f);
+  $("#forecastCard").innerHTML = `
+    <span class="badge">다음 7일 예측 · 믿을 만한 정도 ${esc(f.confidence)}</span>
+    <p class="dir ${cls(f.expected_change_pct, 2)}">${esc(v.text)}</p>
+    <p class="muted">예상 ${won(f.expected_kg_price_range?.[0])} ~ ${won(f.expected_kg_price_range?.[1])} /kg (${pct(f.range_pct[0])} ~ ${pct(f.range_pct[1])})</p>
+    <p class="tip">${esc(f.suggestion)}${g ? ` · <a href="${esc(g.url)}" target="_blank" rel="noopener" style="color:var(--accent)">식봄 ${won(g.sale_price)} 상품 보기 →</a>` : ""}</p>
+    ${f.factors.map((x) => {
+      const w = (Math.abs(x.effect_pct) / maxAbs) * 50;
+      const style = x.effect_pct >= 0 ? `left:50%;width:${w}%;background:var(--up)` : `right:50%;width:${w}%;background:var(--down)`;
+      return `<div class="factor"><span>${esc(x.factor)}</span><span class="bar"><i style="${style}"></i></span>
+        <b class="${cls(x.effect_pct)}">${pct(x.effect_pct)}</b><span class="detail-text">${esc(x.detail)}</span></div>`;
+    }).join("")}
+    <p class="muted" style="margin-top:8px;font-size:12px">${esc(f.method)}</p>`;
+}
+
+// ---------------------------------------------------------------
+// 식봄 상품 목록
+// ---------------------------------------------------------------
+let filterItem = "전체";
+async function loadProducts() {
+  try {
+    shop = (await getJSON("/api/products")).items;
+  } catch (e) {
+    shop = {};
+  }
+  renderProducts();
+}
+
+function renderFilter() {
+  $("#productFilter").innerHTML = ["전체", ...overview.map((r) => r.item)]
+    .map((n) => `<button data-f="${esc(n)}" class="${n === filterItem ? "active" : ""}">${esc(n)}</button>`).join("");
+  $("#productFilter").onclick = (e) => {
+    const b = e.target.closest("button[data-f]");
+    if (!b) return;
+    filterItem = b.dataset.f;
+    renderFilter();
+    renderProducts();
+  };
+}
+
+function renderProducts() {
+  if (!overview.length) return;
+  const items = filterItem === "전체" ? overview.map((r) => r.item) : [filterItem];
+  const perItem = filterItem === "전체" ? 2 : 8;
+  const cards = items.flatMap((item) => (shop[item] || []).slice(0, perItem).map((g) => ({ item, g })));
+  if (!cards.length) {
+    // 식봄 상품을 못 받아 왔을 때: 재료별 식봄 검색으로 연결
+    $("#productGrid").innerHTML = items.map((item) => {
+      const r = byItem(item) || {};
+      return `<a class="product" href="${esc(r.foodspring_url || "https://www.foodspring.co.kr")}" target="_blank" rel="noopener">
+        <div class="img" style="display:grid;place-items:center;font-size:26px;font-weight:900;color:#6F7570">${esc(item)}</div>
+        <span class="name">식봄에서 ${esc(item)} 찾아보기 →</span>
+        ${r.wholesale_kg ? `<span class="per">도매 kg당 ${won(r.wholesale_kg)} · 1주 <b class="${cls(r.wholesale_change_pct, 3)}">${pct(r.wholesale_change_pct)}</b></span>` : ""}
+      </a>`;
+    }).join("");
+    return;
+  }
+  $("#productGrid").innerHTML = cards.map(({ item, g }) => {
+    const r = byItem(item) || { forecast: {} };
+    const exp = expOf(r);
+    const flag = exp >= 2 ? `<span class="flag" style="background:var(--up)">다음 주 오를 듯</span>`
+      : exp <= -2 ? `<span class="flag" style="background:var(--down)">다음 주 떨어질 듯</span>` : "";
+    const salpi = r.wholesale_change_pct == null ? ""
+      : `<span class="salpi">살피: ${esc(item)} 도매 1주 <b class="${cls(r.wholesale_change_pct, 3)}">${pct(r.wholesale_change_pct)}</b></span>`;
+    const sale = g.discount_rate && g.original_price > g.sale_price;
+    return `
+      <a class="product" href="${esc(g.url)}" target="_blank" rel="noopener">
+        <div class="img">${g.image ? `<img src="${esc(g.image)}" alt="" loading="lazy">` : ""}${flag}</div>
+        <span class="vendor">${esc(g.vendor || "")}</span>
+        <span class="name">${esc(g.name)}</span>
+        ${sale ? `<span class="orig">${won(g.original_price)}</span>` : ""}
+        <span class="price">${sale ? `<span class="rate">${g.discount_rate}%</span>` : ""}${won(g.sale_price)}</span>
+        ${g.price_per_kg ? `<span class="per">kg당 ${won(g.price_per_kg)}</span>` : ""}
+        ${salpi}
+      </a>`;
+  }).join("");
 }
 
 // ---------------------------------------------------------------
@@ -473,6 +505,5 @@ $("#chatForm").addEventListener("submit", (e) => { e.preventDefault(); const t =
 loadOverview();
 loadProducts();
 loadContext();
-updateDots();
 if (location.hash === "#chat") openChat();   // 주소 끝에 #chat 을 붙이면 채팅창이 열린 채로 시작
-if (location.hash === "#rise") setTimeout(() => goSlide(1, "instant"), 4000);   // 시연용: 오를 재료 카드부터
+if (location.hash === "#rise") setTimeout(() => goSlide(1, "instant"), 4000);   // 시연용: 첫 야채 대시보드부터

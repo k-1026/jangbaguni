@@ -58,10 +58,11 @@ def memo(key, fn, ttl=3600):
 
 
 def _overview():
+    """첫 화면에 필요한 것 전부 (재료별 시세 · 날짜별 기록 · 예측) — 화면은 이 한 번으로 모든 대시보드를 그림."""
     rows = analysis.market_overview()
     for r in rows:
-        f = analysis.forecast_item(r["item"])
-        r["forecast"] = {k: f.get(k) for k in ("direction", "expected_change_pct", "range_pct", "confidence", "suggestion")}
+        d = analysis.item_detail(r["item"])
+        r["history"], r["forecast"] = d["history"], d["forecast"]
     return rows
 
 

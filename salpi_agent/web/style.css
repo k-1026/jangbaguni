@@ -44,9 +44,10 @@ button { font: inherit; cursor: pointer; }
 .hero-inner > * { min-width: 0; }
 .hero-text { position: relative; display: flex; flex-direction: column; }
 .eyebrow { color: var(--mint); font-weight: 700; margin: 0 0 8px; font-size: 14px; }
-.hero-title { display: flex; align-items: center; gap: 14px; margin: 14px 0 14px; }
-.hero h1 { font-size: 32px; line-height: 1.3; margin: 0; font-weight: 900; }
-.hero-sub { color: #C9D6D1; margin: 0 0 18px; }
+.hero-title { display: flex; align-items: center; gap: 18px; margin: 10px 0 22px; }
+.hero-copy { min-width: 0; }
+.hero h1 { font-size: 32px; line-height: 1.3; margin: 0 0 12px; font-weight: 900; }
+.hero-sub { color: #C9D6D1; margin: 0; }
 .summary { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 6px; }
 /* 뉴모피즘 (바탕과 같은 색 + 밝은 그림자 · 어두운 그림자) */
 .chip { background: var(--deep); border: 0; border-radius: 20px; padding: 18px 20px;
@@ -57,7 +58,7 @@ button { font: inherit; cursor: pointer; }
 .skeleton { height: 86px; animation: pulse 1.2s infinite; }
 @keyframes pulse { 50% { opacity: .5; } }
 /* 살피: 제목 두 줄 왼쪽, 원본 방향(지시봉이 오른쪽 글자를 가리킴) */
-.hero-salpi { flex: none; width: 118px; margin: -10px 0 -14px -8px;
+.hero-salpi { flex: none; width: 150px; margin: 0 0 0 -6px;
   filter: drop-shadow(0 8px 14px rgba(0,0,0,.35)); pointer-events: none; }
 
 /* 오른쪽 대시보드 슬라이드 */
@@ -72,8 +73,19 @@ button { font: inherit; cursor: pointer; }
 /* 그림자가 잘리지 않게 안쪽 여백 32px, 다음 장이 옆에 비치지 않게 장 사이 간격은 여백의 2배 */
 .slider { display: flex; gap: 64px; overflow: hidden;   /* 마우스로 끌어 넘기지 않음 — 화살표 · 자동 넘김 · 손가락 넘기기만 */
   padding: 32px; margin: -32px; }
-.slide.card { background: #F2F4F1; border: 0; border-radius: 26px; padding: 24px;
-  box-shadow: 12px 12px 26px #091915, -10px -10px 24px #1d4b42, inset 3px 3px 6px #ffffff, inset -3px -3px 8px #dfe3dd; }
+/* 대시보드 뉴모피즘: 바탕 --neu, 밝은 그림자 #fff · 어두운 그림자 --neu-dark */
+.slide.card { --neu: #E8ECE7; --neu-dark: #c6cbc4; background: var(--neu); border: 0; border-radius: 26px; padding: 24px;
+  box-shadow: 12px 12px 26px #091915, -10px -10px 24px #1d4b42; }
+.slide.card .chart-box { border-radius: 18px; padding: 10px 8px 4px; margin-top: 6px;
+  box-shadow: inset 6px 6px 12px var(--neu-dark), inset -6px -6px 12px #ffffff; }
+.slide.card .legend span { padding: 3px 8px; border-radius: 999px; box-shadow: 3px 3px 6px var(--neu-dark), -3px -3px 6px #ffffff; }
+.slide.card .fc-strip { background: var(--neu); box-shadow: 7px 7px 14px var(--neu-dark), -7px -7px 14px #ffffff; }
+.slide.card .fc-strip::before { content: ""; position: absolute; left: 0; top: 14px; bottom: 14px; width: 5px; border-radius: 0 4px 4px 0; }
+.slide.card .fc-strip.up::before { background: var(--up); } .slide.card .fc-strip.down::before { background: var(--down); }
+.slide.card .fc-strip.flat::before { background: #9AA19C; }
+.slide.card .say { background: var(--neu); box-shadow: 4px 4px 9px var(--neu-dark), -4px -4px 9px #ffffff; }
+.slide.card .say::after { border-left-color: var(--neu); }
+.slide.card .overview-note { background: var(--neu); box-shadow: inset 4px 4px 9px var(--neu-dark), inset -4px -4px 9px #ffffff; }
 .slider::-webkit-scrollbar { display: none; }
 .slider::after { content: ""; flex: 0 0 1px; }   /* 마지막 장까지 끝까지 넘어가게 */
 /* 창 높이에 맞춤: 위 메뉴 · 제목 · 아래 안내 글을 뺀 만큼 (최소 380px, 최대 600px) */
@@ -200,14 +212,11 @@ body.chat-open .salpi-fab .bubble, .salpi-fab.dragging .bubble { display: none; 
   opacity: 0; transform: translateY(16px); pointer-events: none; transition: opacity .2s, transform .2s;
 }
 .chat.open { opacity: 1; transform: none; pointer-events: auto; }
-.chat.big { width: min(720px, calc(100vw - 32px)); height: calc(100vh - 110px); bottom: 24px; }
-.chat-grip { position: absolute; left: 0; top: 0; width: 18px; height: 18px; cursor: nwse-resize; z-index: 2;
-  background: linear-gradient(135deg, rgba(255,255,255,.7) 0 2px, transparent 2px 5px, rgba(255,255,255,.7) 5px 7px, transparent 7px); }
-.chat-size { margin-left: auto; background: rgba(255,255,255,.12); border: 0; color: #fff; border-radius: 8px; padding: 4px 10px; font-size: 12px; }
+.chat.resizing { transition: none; user-select: none; }
 .chat-head { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--deep); color: #fff; }
 .chat-head img { width: 44px; height: 40px; object-fit: contain; }
 .chat-head small { display: block; color: #C9D6D1; font-size: 12px; }
-.chat-close { background: none; border: 0; color: #fff; font-size: 24px; line-height: 1; }
+.chat-close { margin-left: auto; background: none; border: 0; color: #fff; font-size: 24px; line-height: 1; }
 .chat-body { flex: 1; overflow-y: auto; padding: 14px; background: var(--paper); display: flex; flex-direction: column; gap: 10px; }
 .msg { max-width: 85%; padding: 10px 12px; border-radius: 14px; font-size: 14px; word-break: keep-all; }
 .msg.bot { background: #fff; border: 1px solid var(--border); border-top-left-radius: 4px; align-self: flex-start; }
@@ -237,7 +246,8 @@ body.chat-open .salpi-fab .bubble, .salpi-fab.dragging .bubble { display: none; 
   .logo img { height: 38px; }
   .hero h1 { font-size: 24px; }
   .hero-sub { font-size: 13px; }
-  .hero-salpi { width: 84px; }
+  .hero-salpi { width: 96px; }
+  .hero-title { gap: 10px; }
   .chip { padding: 12px 14px; }
   .chip b { font-size: 19px; }
   .chip small { font-size: 12px; }

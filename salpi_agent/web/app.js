@@ -452,29 +452,48 @@ function closeChat() {
 }
 $("#chatClose").addEventListener("click", closeChat);
 
-// 채팅창 크기: [크게/작게] 버튼, 왼쪽 위 모서리를 끌면 원하는 만큼
-$("#chatSize").addEventListener("click", () => {
-  chatEl.style.width = chatEl.style.height = "";
-  const big = chatEl.classList.toggle("big");
-  $("#chatSize").textContent = big ? "작게" : "크게";
-  placeChat();
-});
-const grip = $("#chatGrip");
-let rs = null;
-grip.addEventListener("pointerdown", (e) => {
+// 채팅창 크기: 가장자리 · 모서리에 마우스를 대면 화살표 커서로 바뀌고, 끌면 크기 조절
+const EDGE = 8, CORNER = 22;   // 모서리는 둥글어서 끝점이 창 밖 → 가장자리 근처 22px까지 모서리로 봄
+const CURSOR = { n: "ns-resize", s: "ns-resize", e: "ew-resize", w: "ew-resize",
+                 ne: "nesw-resize", sw: "nesw-resize", nw: "nwse-resize", se: "nwse-resize" };
+function edgeAt(e) {
   const r = chatEl.getBoundingClientRect();
-  rs = { x: e.clientX, y: e.clientY, w: r.width, h: r.height, left: r.left, top: r.top };
-  grip.setPointerCapture(e.pointerId);
+  const near = (d) => (d < EDGE ? 2 : d < CORNER ? 1 : 0);   // 2: 가장자리 위, 1: 모서리 근처
+  const t = near(e.clientY - r.top), b = near(r.bottom - e.clientY), l = near(e.clientX - r.left), rt = near(r.right - e.clientX);
+  const v = t ? "n" : b ? "s" : "", h = l ? "w" : rt ? "e" : "";
+  if (v && h && Math.max(t, b) + Math.max(l, rt) >= 3) return v + h;   // 모서리
+  return (Math.max(t, b) === 2 ? v : "") + (Math.max(l, rt) === 2 ? h : "");
+}
+let rs = null;
+chatEl.addEventListener("pointermove", (e) => {
+  if (rs) {
+    const dx = e.clientX - rs.x, dy = e.clientY - rs.y;
+    let { left, top, width, height } = rs.box;
+    if (rs.dir.includes("e")) width += dx;
+    if (rs.dir.includes("s")) height += dy;
+    if (rs.dir.includes("w")) { width -= dx; left += dx; }
+    if (rs.dir.includes("n")) { height -= dy; top += dy; }
+    const w = Math.max(320, Math.min(window.innerWidth - 16, width));
+    const h = Math.max(360, Math.min(window.innerHeight - 16, height));
+    if (rs.dir.includes("w")) left += width - w;   // 최소 크기에 걸리면 반대쪽이 밀리지 않게
+    if (rs.dir.includes("n")) top += height - h;
+    Object.assign(chatEl.style, { width: `${w}px`, height: `${h}px`, right: "auto", bottom: "auto",
+      left: `${Math.max(0, Math.min(window.innerWidth - w, left))}px`, top: `${Math.max(0, Math.min(window.innerHeight - h, top))}px` });
+    return;
+  }
+  chatEl.style.cursor = CURSOR[edgeAt(e)] || "";
+});
+chatEl.addEventListener("pointerdown", (e) => {
+  const dir = edgeAt(e);
+  if (!dir) return;
+  const r = chatEl.getBoundingClientRect();
+  rs = { dir, x: e.clientX, y: e.clientY, box: { left: r.left, top: r.top, width: r.width, height: r.height } };
+  chatEl.setPointerCapture(e.pointerId);
+  chatEl.classList.add("resizing");
   e.preventDefault();
-});
-grip.addEventListener("pointermove", (e) => {
-  if (!rs) return;
-  const w = Math.max(320, Math.min(window.innerWidth - 16, rs.w + (rs.x - e.clientX)));
-  const h = Math.max(360, Math.min(window.innerHeight - 80, rs.h + (rs.y - e.clientY)));
-  // 오른쪽 아래를 고정하고 왼쪽 위로 늘림
-  Object.assign(chatEl.style, { width: `${w}px`, height: `${h}px`, left: `${rs.left + rs.w - w}px`, top: `${rs.top + rs.h - h}px`, right: "auto", bottom: "auto" });
-});
-grip.addEventListener("pointerup", () => { rs = null; });
+}, true);
+chatEl.addEventListener("pointerup", () => { if (rs) { rs = null; chatEl.classList.remove("resizing"); } });
+chatEl.addEventListener("pointerleave", () => { if (!rs) chatEl.style.cursor = ""; });
 
 // 살피 캐릭터 끌어서 옮기기 (살짝 누르면 채팅 열기 · 끌면 이동), 놓은 자리는 이 브라우저에 기억
 const fab = $("#fab");

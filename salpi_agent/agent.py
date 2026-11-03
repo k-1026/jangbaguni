@@ -12,6 +12,8 @@ from google.genai import errors, types
 
 import re
 
+import requests
+
 import analysis
 import menu_cost
 from data_sources import ITEMS, ApiKeyMissing, daegu_events, holidays
@@ -141,12 +143,18 @@ TOOLS = [list_supported_items, get_market_overview, get_item_price_trend, foreca
 # 살피 성격 (brand/SKILL.md + 기획서 11-3 판단 원칙)
 # ---------------------------------------------------------------
 
+SKILL_URL = "https://raw.githubusercontent.com/k-1026/jangbaguni/main/brand/SKILL.md"
+
+
 def _brand_skill():
-    # 저장소의 brand/SKILL.md, Vercel에서는 배포할 때 복사해 둔 brand_skill.md (vercel.json 참고)
-    for path in (ROOT.parent / "brand" / "SKILL.md", ROOT / "brand_skill.md"):
-        if path.exists():
-            return path.read_text(encoding="utf-8")
-    return ""
+    # 내 컴퓨터는 저장소의 brand/SKILL.md, Vercel은 salpi_agent 폴더만 올라가므로 GitHub에서 읽어 옴
+    path = ROOT.parent / "brand" / "SKILL.md"
+    if path.exists():
+        return path.read_text(encoding="utf-8")
+    try:
+        return requests.get(SKILL_URL, timeout=10).text
+    except requests.RequestException:
+        return ""
 
 
 SYSTEM_PROMPT = f"""너는 '살피'다. 대구 외식업 사장님의 식자재 시세 비서인 미어캣. 아무것도 팔지 않는다.

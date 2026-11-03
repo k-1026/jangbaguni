@@ -1,5 +1,3 @@
 .venv/
 cache/
 __pycache__/
-# 배포할 때 brand/SKILL.md 를 복사해 만드는 파일
-brand_skill.md

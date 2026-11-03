@@ -66,7 +66,7 @@ GitHub `main` 에 올리면 자동으로 배포됩니다. 처음 한 번만 Verc
 2. **Settings → Environment Variables** → 저장소 맨 위 `.env` 내용을 그대로 붙여 넣기 (키는 GitHub에 올리지 않음)
 3. **Deployments** → 맨 위 배포 `⋯` → **Redeploy**
 
-- `vercel.json`: 서울 지역(icn1)에서 실행, 배포할 때 `brand/SKILL.md` 를 복사해 살피 말투에 사용
+- `vercel.json`: FastAPI로 실행, 서울 지역(icn1). 살피 말투(`brand/SKILL.md`)는 GitHub에서 읽어 옴
 - Vercel은 `/tmp` 에만 저장할 수 있어 서버가 새로 켜지면 시세를 다시 받습니다 (약 15초)
 - 대화 기록은 브라우저가 들고 있다가 질문할 때마다 함께 보냅니다
 - 식봄이 자동 접속을 막으면 상품 대신 재료별 식봄 검색 링크가 나옵니다

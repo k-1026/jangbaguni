@@ -168,7 +168,10 @@ button { font: inherit; cursor: pointer; }
 .error-box { background: #FFF1EE; border: 1px solid #F4C6BE; color: #A33A2A; border-radius: 12px; padding: 12px 14px; font-size: 14px; }
 
 /* 살피 AI: 캐릭터 자체가 버튼 */
-.salpi-fab { position: fixed; right: 14px; bottom: 6px; z-index: 40; background: none; border: 0; padding: 0; }
+.salpi-fab { position: fixed; right: 14px; bottom: 6px; z-index: 40; background: none; border: 0; padding: 0;
+  cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+.salpi-fab.dragging { cursor: grabbing; }
+.salpi-fab.dragging img { transform: scale(1.06) rotate(-4deg); transition: none; }
 .salpi-fab img { width: 112px; display: block; filter: drop-shadow(0 8px 14px rgba(0,0,0,.28)); transition: transform .2s; }
 .salpi-fab:hover img { transform: translateY(-4px) rotate(-3deg); }
 .salpi-fab .bubble {
@@ -177,7 +180,9 @@ button { font: inherit; cursor: pointer; }
   box-shadow: 0 6px 16px rgba(0,0,0,.12);
 }
 .salpi-fab .bubble::after { content: ""; position: absolute; right: -6px; top: 12px; border: 6px solid transparent; border-left-color: #fff; border-right: 0; }
-body.chat-open .salpi-fab .bubble { display: none; }
+body.chat-open .salpi-fab .bubble, .salpi-fab.dragging .bubble { display: none; }
+.salpi-fab.on-left .bubble { right: auto; left: 104px; }
+.salpi-fab.on-left .bubble::after { right: auto; left: -6px; border-left: 0; border-right-color: #fff; border-right-width: 6px; border-right-style: solid; }
 
 /* 채팅창 */
 .chat {

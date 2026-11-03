@@ -373,6 +373,7 @@ function openChat() {
   chatEl.classList.add("open");
   chatEl.setAttribute("aria-hidden", "false");
   document.body.classList.add("chat-open");
+  placeChat();
   if (!body.children.length) addMsg("bot", "사장님, 오늘 대구 시세 살펴왔어요.\n아래 버튼을 누르거나 편하게 물어보세요.");
   $("#chatText").focus();
 }
@@ -381,8 +382,57 @@ function closeChat() {
   chatEl.setAttribute("aria-hidden", "true");
   document.body.classList.remove("chat-open");
 }
-$("#fab").addEventListener("click", () => (chatEl.classList.contains("open") ? closeChat() : openChat()));
 $("#chatClose").addEventListener("click", closeChat);
+
+// 살피 캐릭터 끌어서 옮기기 (살짝 누르면 채팅 열기 · 끌면 이동), 놓은 자리는 이 브라우저에 기억
+const fab = $("#fab");
+const FAB_KEY = "salpi_fab_pos";
+function placeFab(x, y) {
+  const w = fab.offsetWidth, h = fab.offsetHeight;
+  x = Math.max(0, Math.min(window.innerWidth - w, x));
+  y = Math.max(64, Math.min(window.innerHeight - h, y));
+  Object.assign(fab.style, { left: `${x}px`, top: `${y}px`, right: "auto", bottom: "auto" });
+  fab.classList.toggle("on-left", x + w / 2 < window.innerWidth / 2);   // 왼쪽에 있으면 말풍선을 오른쪽에
+  placeChat();
+}
+function placeChat() {
+  // 채팅창을 살피가 있는 쪽에 붙임 (넓은 화면만, 모바일은 아래에서 올라옴)
+  if (window.innerWidth <= 700 || !fab.style.left) { chatEl.style.left = chatEl.style.right = chatEl.style.top = chatEl.style.bottom = ""; return; }
+  const r = fab.getBoundingClientRect(), cw = chatEl.offsetWidth, ch = chatEl.offsetHeight;
+  const left = r.left + r.width / 2 < window.innerWidth / 2 ? r.right + 8 : r.left - cw - 8;
+  const top = Math.max(72, Math.min(window.innerHeight - ch - 12, r.bottom - ch));
+  Object.assign(chatEl.style, { left: `${Math.max(8, Math.min(window.innerWidth - cw - 8, left))}px`, top: `${top}px`, right: "auto", bottom: "auto" });
+}
+try {
+  const saved = JSON.parse(localStorage.getItem(FAB_KEY) || "null");
+  if (saved) requestAnimationFrame(() => placeFab(saved.x * window.innerWidth, saved.y * window.innerHeight));
+} catch (e) {}
+
+let drag = null;
+fab.addEventListener("pointerdown", (e) => {
+  const r = fab.getBoundingClientRect();
+  drag = { dx: e.clientX - r.left, dy: e.clientY - r.top, sx: e.clientX, sy: e.clientY, moved: false };
+  fab.setPointerCapture(e.pointerId);
+});
+fab.addEventListener("pointermove", (e) => {
+  if (!drag) return;
+  if (!drag.moved && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 6) return;   // 손 떨림은 클릭으로 봄
+  drag.moved = true;
+  fab.classList.add("dragging");
+  placeFab(e.clientX - drag.dx, e.clientY - drag.dy);
+});
+fab.addEventListener("pointerup", () => {
+  if (!drag) return;
+  fab.classList.remove("dragging");
+  if (drag.moved) {
+    const r = fab.getBoundingClientRect();
+    try { localStorage.setItem(FAB_KEY, JSON.stringify({ x: r.left / window.innerWidth, y: r.top / window.innerHeight })); } catch (e) {}
+  } else {
+    chatEl.classList.contains("open") ? closeChat() : openChat();
+  }
+  drag = null;
+});
+window.addEventListener("resize", () => { if (fab.style.left) placeFab(fab.offsetLeft, fab.offsetTop); });
 
 let busy = false;
 async function send(text) {

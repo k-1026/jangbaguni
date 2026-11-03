@@ -65,6 +65,7 @@ function renderSlides() {
   Object.values(charts).forEach((c) => c.destroy());
   Object.keys(charts).forEach((k) => delete charts[k]);
   lastSlide = -1;
+  cur = 0;
   $("#slider").innerHTML = `
     <article class="slide card" data-item="" data-title="전체 야채 시세">
       <div class="chart-head">
@@ -76,11 +77,13 @@ function renderSlides() {
         다음 주 <b class="up">오를 가능성 ${overview.filter((r) => expOf(r) >= 2).length}개</b> ·
         <b>유지 ${overview.filter((r) => Math.abs(expOf(r)) < 2).length}개</b> ·
         <b class="down">떨어질 가능성 ${overview.filter((r) => expOf(r) <= -2).length}개</b></p>
-    </article>` + slideOrder().map((r) => {
+    </article>` + slideOrder().map((r, idx) => {
       const f = r.forecast || {};
       const v = verdict(f);
       const reasons = [...(f.factors || [])].filter((x) => x.effect_pct !== 0)
         .sort((a, b) => Math.abs(b.effect_pct) - Math.abs(a.effect_pct)).slice(0, 2);
+      // 오름: 경광등 살피(2 · 4번째 포즈 번갈아) · 유지: 알람시계 살피(1 · 3번째) · 내림: 쇼핑백 살피(6번째)
+      const pose = v.kind === "down" ? "alert_down" : `alert_${v.kind === "up" ? "rise" : "flat"}${(idx % 2) + 1}`;
       return `
     <article class="slide card" data-item="${esc(r.item)}" data-title="${esc(r.item)} 시세">
       <div class="chart-head">
@@ -96,10 +99,10 @@ function renderSlides() {
       </div>
       <div class="chart-box"><canvas></canvas></div>
       <div class="fc-strip ${v.kind}">
+        <img class="pose" src="/static/img/${pose}.png" alt="">
         <span class="verdict">${v.text}</span>
         <span class="range">예상 ${pct(f.range_pct?.[0])} ~ ${pct(f.range_pct?.[1])}
-          <small>(${won(f.expected_kg_price_range?.[0])} ~ ${won(f.expected_kg_price_range?.[1])}/kg · 믿을 만한 정도 ${esc(f.confidence || "-")})</small></span>
-        <a class="shop" href="${esc(r.foodspring_url)}" target="_blank" rel="noopener">식봄에서 보기 →</a>
+          (${won(f.expected_kg_price_range?.[0])} ~ ${won(f.expected_kg_price_range?.[1])}/kg · 믿을 만한 정도 ${esc(f.confidence || "-")})</span>
         <ul>${reasons.map((x) => `<li><b>${esc(x.factor)}</b> ${pct(x.effect_pct)} — ${esc(x.detail)}</li>`).join("")
           || "<li>뚜렷하게 오르거나 내릴 이유가 적어요</li>"}<li><b>살피 제안</b> — ${esc(f.suggestion || "-")}</li></ul>
       </div>
@@ -110,17 +113,21 @@ function renderSlides() {
 // 슬라이드 넘기기: 손가락 스와이프는 브라우저 스크롤, 화살표는 끝에서 처음으로(처음에서 끝으로) 돌아감
 const slider = $("#slider");
 const slides = () => [...slider.querySelectorAll(".slide")];
-function slideIndex() { return Math.round(slider.scrollLeft / (slider.clientWidth + 14)); }
+const SLIDE_PAD = 32, SLIDE_GAP = 64;   // style.css 의 .slider 여백 · 간격과 같게
+function slideIndex() { return Math.round(slider.scrollLeft / (slider.clientWidth - 2 * SLIDE_PAD + SLIDE_GAP)); }
+let autoScroll = false;   // 화살표로 넘어가는 중 (이때 생기는 스크롤 끝 신호는 무시)
+let cur = 0;   // 지금 보고 있는 장 (화살표는 이 값 기준 — 넘어가는 도중의 스크롤 위치로 계산하면 어긋남)
 function goSlide(i, behavior = "smooth") {
   const s = slides();
   if (!s.length) return;
-  i = ((i % s.length) + s.length) % s.length;
-  slider.scrollTo({ left: s[i].offsetLeft - slider.offsetLeft, behavior });
-  if (behavior !== "smooth") onSlideChange();
+  cur = ((i % s.length) + s.length) % s.length;
+  autoScroll = behavior === "smooth";
+  slider.scrollTo({ left: s[cur].offsetLeft - s[0].offsetLeft, behavior });
+  onSlideChange(cur);
 }
 let lastSlide = -1;
-function onSlideChange() {
-  const s = slides(), i = Math.min(slideIndex(), s.length - 1);
+function onSlideChange(target) {
+  const s = slides(), i = target ?? Math.min(slideIndex(), s.length - 1);
   $("#dots").textContent = s.length > 1 ? `${i + 1} / ${s.length}` : "";
   $("#slideTitle").textContent = s[i]?.dataset.title || "야채 시세";
   if (i === lastSlide || !overview.length) return;
@@ -128,9 +135,15 @@ function onSlideChange() {
   drawSlideChart(i);
   renderDetail(s[i]?.dataset.item || slideOrder()[0]?.item);
 }
-slider.addEventListener("scroll", () => requestAnimationFrame(onSlideChange));
-$("#prevSlide").onclick = () => goSlide(slideIndex() - 1);
-$("#nextSlide").onclick = () => goSlide(slideIndex() + 1);
+// 손가락으로 넘긴 경우: 다 넘어간 뒤 그 장을 지금 장으로
+slider.addEventListener("scrollend", () => {
+  if (autoScroll && slideIndex() !== cur) return;   // 화살표 이동이 아직 도착 전
+  autoScroll = false;
+  cur = Math.min(slideIndex(), slides().length - 1);
+  onSlideChange(cur);
+});
+$("#prevSlide").onclick = () => goSlide(cur - 1);
+$("#nextSlide").onclick = () => goSlide(cur + 1);
 
 function drawSlideChart(i) {
   const el = slides()[i];
@@ -153,7 +166,7 @@ function drawOverviewChart(canvas) {
       plugins: { legend: { display: false },
         tooltip: { callbacks: { label: (c) => ` 1주 ${pct(c.raw)} · ${won(rows[c.dataIndex].wholesale_kg)}/kg · ${verdict(rows[c.dataIndex].forecast).text}` } } },
       scales: {
-        x: { grid: { display: false }, ticks: { color: "#4C524E", font: { size: 11 }, autoSkip: false, maxRotation: 0 } },
+        x: { grid: { display: false }, ticks: { color: "#1F2622", font: { size: 14, weight: "700" }, autoSkip: false, maxRotation: 0 } },
         y: { grid: { color: "#F0EDE6" }, ticks: { color: "#8A918C", font: { size: 11 }, callback: (v) => `${v}%` } },
       },
       onClick: (_e, els) => { if (els.length) goSlide(slides().findIndex((s) => s.dataset.item === rows[els[0].index].item)); },
@@ -383,7 +396,7 @@ async function loadContext() {
 }
 
 // ---------------------------------------------------------------
-// 살피 AI 채팅
+// 살피 챗봇
 // ---------------------------------------------------------------
 const chatEl = $("#chat"), body = $("#chatBody");
 const history = [];   // 지난 대화 (서버가 기억하지 않으므로 화면이 보관해서 매번 보냄)
@@ -425,6 +438,30 @@ function closeChat() {
   document.body.classList.remove("chat-open");
 }
 $("#chatClose").addEventListener("click", closeChat);
+
+// 채팅창 크기: [크게/작게] 버튼, 왼쪽 위 모서리를 끌면 원하는 만큼
+$("#chatSize").addEventListener("click", () => {
+  chatEl.style.width = chatEl.style.height = "";
+  const big = chatEl.classList.toggle("big");
+  $("#chatSize").textContent = big ? "작게" : "크게";
+  placeChat();
+});
+const grip = $("#chatGrip");
+let rs = null;
+grip.addEventListener("pointerdown", (e) => {
+  const r = chatEl.getBoundingClientRect();
+  rs = { x: e.clientX, y: e.clientY, w: r.width, h: r.height, left: r.left, top: r.top };
+  grip.setPointerCapture(e.pointerId);
+  e.preventDefault();
+});
+grip.addEventListener("pointermove", (e) => {
+  if (!rs) return;
+  const w = Math.max(320, Math.min(window.innerWidth - 16, rs.w + (rs.x - e.clientX)));
+  const h = Math.max(360, Math.min(window.innerHeight - 80, rs.h + (rs.y - e.clientY)));
+  // 오른쪽 아래를 고정하고 왼쪽 위로 늘림
+  Object.assign(chatEl.style, { width: `${w}px`, height: `${h}px`, left: `${rs.left + rs.w - w}px`, top: `${rs.top + rs.h - h}px`, right: "auto", bottom: "auto" });
+});
+grip.addEventListener("pointerup", () => { rs = null; });
 
 // 살피 캐릭터 끌어서 옮기기 (살짝 누르면 채팅 열기 · 끌면 이동), 놓은 자리는 이 브라우저에 기억
 const fab = $("#fab");

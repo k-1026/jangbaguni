@@ -1,2 +1,5 @@
 # API 키가 들어 있는 설정 파일 (견본 .env.example만 올림)
 .env
+
+# VS Code가 컴퓨터마다 자동으로 만드는 편집기 설정
+.vscode/

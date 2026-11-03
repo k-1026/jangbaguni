@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 import analysis
+import foodspring
 from agent import SalpiAgent
 from data_sources import ITEMS, ApiKeyMissing, daegu_events, holidays
 
@@ -29,6 +30,7 @@ async def lifespan(_app):
     def warm():
         try:
             memo("overview", _overview)
+            memo("products", lambda: {"items": foodspring.all_products(4)})
         except Exception:
             pass   # 키가 없거나 API 장애면 화면에서 안내
     threading.Thread(target=warm, daemon=True).start()
@@ -85,6 +87,12 @@ def item(name: str):
     if name not in ITEMS:
         raise HTTPException(404, f"'{name}'은(는) 아직 지원하지 않아요")
     return _guard(lambda: memo(f"item:{name}", lambda: analysis.item_detail(name)))
+
+
+@app.get("/api/products")
+def products():
+    """식봄 실제 상품 · 가격 (재료마다 4개). 살피 시세 정보는 화면에서 /api/overview 와 합침."""
+    return memo("products", lambda: {"items": foodspring.all_products(4)})
 
 
 @app.get("/api/context")

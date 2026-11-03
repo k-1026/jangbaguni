@@ -1,0 +1,5 @@
+google-genai
+streamlit
+pandas
+requests
+python-dotenv

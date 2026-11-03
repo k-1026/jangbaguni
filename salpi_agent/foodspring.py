@@ -7,10 +7,11 @@
 
 import json
 import re
+import time
 
 import requests
 
-from data_sources import FOODSPRING_SEARCH, ITEMS, _cached
+from data_sources import CACHE_DIR, FOODSPRING_SEARCH, ITEMS
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                          "(KHTML, like Gecko) Chrome/130.0 Safari/537.36"}
@@ -54,12 +55,24 @@ def _fetch(item):
     return goods
 
 
-def products(item, limit=4):
-    """재료 하나의 식봄 상품 (이름이 맞는 것만, 국내산 먼저)."""
+def _goods(item):
+    """6시간 안에 받은 게 있으면 그것을, 새로 받기에 실패하면(식봄이 막거나 빈 응답) 마지막으로 받은 것을 씀."""
+    path = CACHE_DIR / f"foodspring_{item}.json"
+    if path.exists() and time.time() - path.stat().st_mtime < 6 * 3600:
+        return json.loads(path.read_text(encoding="utf-8"))
     try:
-        goods = _cached(f"foodspring_{item}", 6, lambda: _fetch(item))
-    except requests.RequestException:
-        return []
+        goods = _fetch(item)
+    except (requests.RequestException, ValueError, KeyError):
+        goods = []
+    if goods:
+        path.write_text(json.dumps(goods, ensure_ascii=False), encoding="utf-8")
+        return goods
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else []
+
+
+def products(item, limit=4):
+    """재료 하나의 식봄 상품 (이름이 맞는 것만, 국내산 먼저). 못 받으면 빈 목록 → 화면은 식봄 검색 링크로 대신함."""
+    goods = _goods(item)
     must = NAME_MUST.get(item)
     hits = [g for g in goods if (must.search(g["name"]) if must else item in g["name"])]
     hits.sort(key=lambda g: ("수입" in g["name"] or "중국" in g["name"], ))   # 검색 순위는 유지, 수입산은 뒤로

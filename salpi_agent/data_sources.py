@@ -15,9 +15,10 @@ import requests
 from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parent
-load_dotenv(ROOT.parent / ".env")
-CACHE_DIR = ROOT / "cache"
-CACHE_DIR.mkdir(exist_ok=True)
+load_dotenv(ROOT.parent / ".env")   # 내 컴퓨터용. Vercel에서는 프로젝트 설정의 환경 변수를 씀
+# Vercel은 /tmp 에만 파일을 쓸 수 있음 (서버가 새로 켜지면 비워짐)
+CACHE_DIR = Path("/tmp/salpi_cache") if os.getenv("VERCEL") else ROOT / "cache"
+CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 DAEGU_MARKET = os.getenv("AT_WHSL_MRKT_CD", "220001")   # 대구 북부도매시장(매천시장)
 DAEGU_SGG = os.getenv("AT_PERDAY_SGG_CD", "2200")       # perDay 대구 지역 코드
@@ -64,17 +65,24 @@ def _key(name):
     return value
 
 
+class ApiError(RuntimeError):
+    """API 호출 실패 (오류 문장에 인증키가 찍히지 않게 주소를 뺌)."""
+
+
 def _get_json(url, params, key_name, key_param="serviceKey"):
     params = {key_param: _key(key_name), **params}
-    for attempt in range(3):
+    for attempt in range(4):
         try:
             r = requests.get(url, params=params, timeout=40)
+            if r.status_code == 429:          # 한꺼번에 너무 많이 부름 → 조금 쉬었다가 다시
+                raise requests.HTTPError("429")
             r.raise_for_status()
             return r.json()
-        except (requests.RequestException, ValueError):
-            if attempt == 2:
-                raise
-            time.sleep(1.5 * (attempt + 1))
+        except (requests.RequestException, ValueError) as e:
+            if attempt == 3:
+                code = getattr(getattr(e, "response", None), "status_code", None) or str(e)[:3]
+                raise ApiError(f"{url.rsplit('/', 2)[-2]} 호출 실패 ({code})") from None
+            time.sleep(2 ** attempt + 1)
 
 
 def _cached(name, max_age_hours, fetch):
@@ -104,18 +112,19 @@ _SALE_FIELDS = ("gds_mclsf_nm", "gds_sclsf_nm", "grd_nm", "unit_nm", "totprc", "
 
 def _fetch_sale_day(day):
     url = os.getenv("AT_SALE_ENDPOINT", "https://apis.data.go.kr/B552845/katSale") + "/trades"
-    rows, page = [], 1
-    while True:
-        body = _get_json(url, {
-            "returnType": "JSON", "numOfRows": 1000, "pageNo": page,
+
+    def page(n):
+        return _get_json(url, {
+            "returnType": "JSON", "numOfRows": 1000, "pageNo": n,
             "cond[whsl_mrkt_cd::EQ]": DAEGU_MARKET,
             "cond[trd_clcln_ymd::EQ]": day.isoformat(),
         }, "AT_SALE_API_KEY")["response"]["body"]
-        batch = _items(body)
-        rows += [{f: r.get(f) for f in _SALE_FIELDS} for r in batch]
-        if not batch or len(rows) >= int(body.get("totalCount") or 0):
-            return rows
-        page += 1
+
+    first = page(1)
+    pages = -(-int(first.get("totalCount") or 0) // 1000)   # 올림
+    with ThreadPoolExecutor(max_workers=1) as pool:          # 한 날짜 안에서는 차례로 (동시 요청을 줄임)
+        rest = list(pool.map(page, range(2, pages + 1)))
+    return [{f: r.get(f) for f in _SALE_FIELDS} for body in [first, *rest] for r in _items(body)]
 
 
 def sale_day(day):
@@ -127,7 +136,7 @@ def sale_day(day):
 def sale_days(days):
     """오늘부터 거꾸로 days일치 정산 결과를 {날짜: rows}로."""
     dates = [date.today() - timedelta(d) for d in range(days)]
-    with ThreadPoolExecutor(max_workers=6) as pool:
+    with ThreadPoolExecutor(max_workers=4) as pool:       # 공공데이터포털은 한꺼번에 많이 부르면 429로 막음
         results = pool.map(sale_day, dates)
     return dict(zip(dates, results))
 

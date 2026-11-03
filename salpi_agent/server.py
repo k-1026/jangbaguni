@@ -5,7 +5,6 @@
 
 import threading
 import time
-import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -17,7 +16,7 @@ from pydantic import BaseModel
 import analysis
 import foodspring
 from agent import SalpiAgent
-from data_sources import ITEMS, ApiKeyMissing, daegu_events, holidays
+from data_sources import ITEMS, ApiError, ApiKeyMissing, daegu_events, holidays
 
 ROOT = Path(__file__).resolve().parent
 WEB = ROOT / "web"
@@ -68,8 +67,8 @@ def _overview():
 def _guard(fn):
     try:
         return fn()
-    except ApiKeyMissing as e:
-        raise HTTPException(503, str(e))
+    except (ApiKeyMissing, ApiError) as e:
+        raise HTTPException(503, f"{e}. 잠시 뒤 새로고침해 주세요.")
 
 
 @app.get("/")
@@ -102,29 +101,27 @@ def context():
 
 
 # ---------------------------------------------------------------
-# 살피 AI 채팅: 브라우저마다 대화 기억을 따로 둠
+# 살피 AI 채팅: 지난 대화는 화면(브라우저)이 보관했다가 함께 보냄
+# (Vercel은 요청마다 다른 서버가 받을 수 있어 서버에 대화를 기억해 두지 않음)
 # ---------------------------------------------------------------
-_sessions = {}
 
 
 class ChatIn(BaseModel):
     message: str
-    session_id: str | None = None
+    history: list[dict] = []
 
 
 @app.post("/api/chat")
 def chat(body: ChatIn):
-    sid = body.session_id or uuid.uuid4().hex
     try:
-        agent = _sessions.get(sid) or _sessions.setdefault(sid, SalpiAgent())
-        reply = agent.ask(body.message.strip()[:1000])
+        reply = SalpiAgent(history=body.history).ask(body.message.strip()[:1000])
     except ApiKeyMissing as e:
         reply = str(e)
     except Exception as e:
         busy = "429" in str(e) or "503" in str(e) or type(e).__name__ == "ServerError"
         reply = ("지금 AI 서버가 바빠요. 잠시 뒤 다시 물어봐 주세요." if busy
                  else f"지금은 답을 만들지 못했어요 ({type(e).__name__}). 잠시 뒤 다시 물어봐 주세요.")
-    return {"session_id": sid, "reply": reply}
+    return {"reply": reply}
 
 
 if __name__ == "__main__":

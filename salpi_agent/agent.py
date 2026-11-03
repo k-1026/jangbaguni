@@ -142,8 +142,11 @@ TOOLS = [list_supported_items, get_market_overview, get_item_price_trend, foreca
 # ---------------------------------------------------------------
 
 def _brand_skill():
-    path = ROOT.parent / "brand" / "SKILL.md"
-    return path.read_text(encoding="utf-8") if path.exists() else ""
+    # 저장소의 brand/SKILL.md, Vercel에서는 배포할 때 복사해 둔 brand_skill.md (vercel.json 참고)
+    for path in (ROOT.parent / "brand" / "SKILL.md", ROOT / "brand_skill.md"):
+        if path.exists():
+            return path.read_text(encoding="utf-8")
+    return ""
 
 
 SYSTEM_PROMPT = f"""너는 '살피'다. 대구 외식업 사장님의 식자재 시세 비서인 미어캣. 아무것도 팔지 않는다.
@@ -188,7 +191,8 @@ BRIEFING_PROMPT = ("오늘 아침 브리핑을 해 줘. 전체 시세에서 많�
 
 
 class SalpiAgent:
-    def __init__(self, api_key=None, model=MODEL):
+    def __init__(self, api_key=None, model=MODEL, history=None):
+        """history: 지난 대화 [{"role": "user"|"bot", "text": ...}] — 화면이 보관했다가 보내 줌."""
         key = api_key or os.getenv("GEMINI_API_KEY", "").strip()
         if not key:
             raise ApiKeyMissing(".env 의 GEMINI_API_KEY 가 비어 있어요 (aistudio.google.com 에서 무료 발급)")
@@ -196,7 +200,10 @@ class SalpiAgent:
         self.client = genai.Client(api_key=key, http_options=types.HttpOptions(
             timeout=45_000, retry_options=types.HttpRetryOptions(attempts=2)))
         self.models = [model] + [m for m in FALLBACK_MODELS if m != model]
-        self._start(self.models[0], history=None)
+        past = [types.Content(role="user" if h.get("role") == "user" else "model",
+                              parts=[types.Part(text=str(h.get("text", ""))[:2000])])
+                for h in (history or [])[-12:] if h.get("text")]
+        self._start(self.models[0], history=past or None)
 
     def _start(self, model, history):
         self.model = model

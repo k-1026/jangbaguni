@@ -57,3 +57,16 @@
 - 제미나이 무료 API는 몰리면 잠깐 바쁘거나 하루 한도에 걸립니다. 그러면 `.env` 의 `GEMINI_FALLBACK_MODELS` 순서대로 다른 모델로 넘어갑니다.
 - 식봄 가격은 식봄 검색 결과(기본 배송 지역) 기준이라 대구 배송 판매자 · 가격과 다를 수 있습니다.
   식봄 화면 구조가 바뀌면 `foodspring.py` 를 고쳐야 합니다.
+
+## Vercel 배포 (https://jangbaguni-ten.vercel.app)
+GitHub `main` 에 올리면 자동으로 배포됩니다. 처음 한 번만 Vercel 프로젝트 설정이 필요합니다.
+1. Vercel → `jangbaguni` 프로젝트 → **Settings → Build and Deployment**
+   - **Root Directory**: `salpi_agent`
+   - **Framework Preset**: `FastAPI`
+2. **Settings → Environment Variables** → 저장소 맨 위 `.env` 내용을 그대로 붙여 넣기 (키는 GitHub에 올리지 않음)
+3. **Deployments** → 맨 위 배포 `⋯` → **Redeploy**
+
+- `vercel.json`: 서울 지역(icn1)에서 실행, 한 번에 최대 300초, 배포할 때 `brand/SKILL.md` 를 복사해 살피 말투에 사용
+- Vercel은 `/tmp` 에만 저장할 수 있어 서버가 새로 켜지면 시세를 다시 받습니다 (약 15초)
+- 대화 기록은 브라우저가 들고 있다가 질문할 때마다 함께 보냅니다
+- 식봄이 자동 접속을 막으면 상품 대신 재료별 식봄 검색 링크가 나옵니다

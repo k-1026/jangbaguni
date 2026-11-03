@@ -144,7 +144,18 @@ function renderProducts() {
   const items = filterItem === "전체" ? overview.map((r) => r.item) : [filterItem];
   const perItem = filterItem === "전체" ? 2 : 8;
   const cards = items.flatMap((item) => (shop[item] || []).slice(0, perItem).map((g) => ({ item, g })));
-  if (!cards.length) { $("#productGrid").innerHTML = `<p class="muted">식봄에서 찾은 상품이 없어요</p>`; return; }
+  if (!cards.length) {
+    // 식봄 상품을 못 받아 왔을 때: 재료별 식봄 검색으로 연결
+    $("#productGrid").innerHTML = items.map((item) => {
+      const r = byItem(item) || {};
+      return `<a class="product" href="${esc(r.foodspring_url || "https://www.foodspring.co.kr")}" target="_blank" rel="noopener">
+        <div class="img" style="display:grid;place-items:center;font-size:26px;font-weight:900;color:#6F7570">${esc(item)}</div>
+        <span class="name">식봄에서 ${esc(item)} 찾아보기 →</span>
+        ${r.wholesale_kg ? `<span class="per">도매 kg당 ${won(r.wholesale_kg)} · 1주 <b class="${cls(r.wholesale_change_pct, 3)}">${pct(r.wholesale_change_pct)}</b></span>` : ""}
+      </a>`;
+    }).join("");
+    return;
+  }
   $("#productGrid").innerHTML = cards.map(({ item, g }) => {
     const r = byItem(item) || { forecast: {} };
     const exp = r.forecast.expected_change_pct ?? 0;
@@ -343,8 +354,7 @@ async function loadContext() {
 // 살피 AI 채팅
 // ---------------------------------------------------------------
 const chatEl = $("#chat"), body = $("#chatBody");
-let sessionId = null;
-try { sessionId = sessionStorage.getItem("salpi_sid"); } catch (e) {}
+const history = [];   // 지난 대화 (서버가 기억하지 않으므로 화면이 보관해서 매번 보냄)
 
 function md(text) {
   // 굵게 · 목록 · 줄바꿈만 지원하는 간단한 변환
@@ -445,12 +455,11 @@ async function send(text) {
   typing.classList.add("typing");
   try {
     const r = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text, session_id: sessionId }) });
+      body: JSON.stringify({ message: text, history }) });
     const d = await r.json();
-    sessionId = d.session_id;
-    try { sessionStorage.setItem("salpi_sid", sessionId); } catch (e) {}
     typing.remove();
     addMsg("bot", d.reply);
+    history.push({ role: "user", text }, { role: "bot", text: d.reply });
   } catch (e) {
     typing.remove();
     addMsg("bot", "연결이 끊겼어요. 잠시 뒤 다시 물어봐 주세요.");

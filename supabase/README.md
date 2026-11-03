@@ -1,0 +1,3 @@
+- 용도: 살피 앱의 Supabase DB 설계(schema.sql)와 시연용 시작 데이터(seed.sql) 보관
+- 실행 순서: Supabase 대시보드 → SQL Editor → schema.sql 전체 Run → seed.sql 전체 Run (다시 실행해도 중복 안 됨)
+- 시연 데이터: '살피 시연 한식당' 1곳(is_demo), 가상 값은 source = 'demo'로 표시 — 실제 API 수집이 시작되면 삭제

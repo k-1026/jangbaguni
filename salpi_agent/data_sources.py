@@ -70,20 +70,24 @@ class ApiError(RuntimeError):
     """API 호출 실패 (오류 문장에 인증키가 찍히지 않게 주소를 뺌)."""
 
 
+_api_slots = threading.Semaphore(3)   # 공공데이터포털에 동시에 보내는 요청은 서버 전체에서 3개까지 (넘으면 429)
+
+
 def _get_json(url, params, key_name, key_param="serviceKey"):
     params = {key_param: _key(key_name), **params}
-    for attempt in range(4):
+    for attempt in range(5):
         try:
-            r = requests.get(url, params=params, timeout=40)
+            with _api_slots:
+                r = requests.get(url, params=params, timeout=40)
             if r.status_code == 429:          # 한꺼번에 너무 많이 부름 → 조금 쉬었다가 다시
                 raise requests.HTTPError("429")
             r.raise_for_status()
             return r.json()
         except (requests.RequestException, ValueError) as e:
-            if attempt == 3:
+            if attempt == 4:
                 code = getattr(getattr(e, "response", None), "status_code", None) or str(e)[:3]
                 raise ApiError(f"{url.rsplit('/', 2)[-2]} 호출 실패 ({code})") from None
-            time.sleep(2 ** attempt + 1)
+            time.sleep(2 ** (attempt + 1))   # 2 · 4 · 8 · 16초 쉬고 다시
 
 
 _cache_locks, _cache_locks_guard = {}, threading.Lock()

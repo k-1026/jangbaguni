@@ -8,13 +8,19 @@ import os
 from pathlib import Path
 
 from google import genai
-from google.genai import types
+from google.genai import errors, types
+
+import re
 
 import analysis
+import menu_cost
 from data_sources import ITEMS, ApiKeyMissing, daegu_events, holidays
 
 ROOT = Path(__file__).resolve().parent
-MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
+# 기본 모델이 바쁘거나(503) 무료 한도를 넘으면(429) 순서대로 갈아탐
+FALLBACK_MODELS = [m.strip() for m in os.getenv(
+    "GEMINI_FALLBACK_MODELS", "gemini-3-flash-preview,gemini-flash-latest,gemini-3.5-flash-lite").split(",") if m.strip()]
 
 
 # ---------------------------------------------------------------
@@ -41,13 +47,21 @@ def get_market_overview() -> dict:
     return _safe(lambda: {"rows": analysis.market_overview()})
 
 
+ITEM_ALIASES = {"청양": "청양고추", "고추": "청양고추", "파": "대파", "호박": "애호박", "깻잎순": "깻잎"}
+
+
+def _item(name):
+    name = (name or "").strip().replace(" ", "")
+    return ITEM_ALIASES.get(name, name)
+
+
 def get_item_price_trend(item: str) -> dict:
     """재료 하나의 대구 도매가·소매가와 1주 전 대비 변화, 최근 2주 도매가 기록을 돌려준다.
 
     Args:
         item: 재료 이름 (예: 양파, 대파, 양배추, 청양고추, 당근, 깻잎)
     """
-    return _safe(analysis.item_trend, item)
+    return _safe(analysis.item_trend, _item(item))
 
 
 def forecast_item_price(item: str) -> dict:
@@ -57,7 +71,7 @@ def forecast_item_price(item: str) -> dict:
     Args:
         item: 재료 이름 (예: 양파, 대파, 양배추, 청양고추, 당근, 깻잎)
     """
-    return _safe(analysis.forecast_item, item)
+    return _safe(analysis.forecast_item, _item(item))
 
 
 def get_weather_summary(days: int = 7) -> dict:
@@ -87,7 +101,39 @@ def get_upcoming_holidays(days_ahead: int = 30) -> dict:
     return _safe(lambda: {"holidays": holidays(days_ahead)})
 
 
+def recommend_buy_now() -> dict:
+    """지금 사면 이득인 재료를 나눠서 돌려준다.
+    buy_now_before_rise: 다음 7일 오를 가능성이 있어 미리 사면 좋은 재료,
+    cheap_now: 지난주보다 많이 내려 지금 싼 재료, wait: 내릴 가능성이 있어 기다리면 좋은 재료,
+    as_usual: 평소대로 사면 되는 재료. 각 재료에 식봄 검색 링크(foodspring_url)가 붙어 있다."""
+    return _safe(analysis.buy_now_recommendations)
+
+
+def list_standard_menus() -> dict:
+    """원가를 바로 계산할 수 있는 표준 레시피 메뉴 목록과 각 메뉴의 1인분 재료."""
+    return {"menus": {m: [f"{n} {a:g}{u}" for n, a, u in r] for m, r in menu_cost.STANDARD_RECIPES.items()}}
+
+
+def calc_menu_margin(menu: str, sale_price: int, ingredients: str = "") -> dict:
+    """메뉴 1인분 재료비, 원가율(재료비÷판매가), 재료비 뺀 남는 돈, 판단을 계산한다.
+    채소는 오늘 대구 시세, 나머지는 참고 단가를 쓴다.
+
+    Args:
+        menu: 메뉴 이름 (예: 제육볶음)
+        sale_price: 1인분 판매가(원). 사장님이 말한 값만 넣는다.
+        ingredients: 표준 레시피가 없거나 사장님이 직접 재료를 알려 준 경우만,
+            "돼지고기 앞다리 150g, 양파 100g, 두부 0.5모, 계란 1개" 형식. 아니면 빈 문자열.
+    """
+    parsed = [{"name": m.group(1).strip(), "amount": m.group(2), "unit": m.group(3)}
+              for m in re.finditer(r"([^,\d]+?)\s*([\d.]+)\s*(kg|g|모|개)", ingredients or "")]
+    for p in parsed:   # kg는 g로 맞춤
+        if p["unit"] == "kg":
+            p["amount"], p["unit"] = float(p["amount"]) * 1000, "g"
+    return _safe(menu_cost.menu_cost, menu, sale_price, parsed or None)
+
+
 TOOLS = [list_supported_items, get_market_overview, get_item_price_trend, forecast_item_price,
+         recommend_buy_now, list_standard_menus, calc_menu_margin,
          get_weather_summary, get_daegu_events, get_upcoming_holidays]
 
 
@@ -111,9 +157,26 @@ SYSTEM_PROMPT = f"""너는 '살피'다. 대구 외식업 사장님의 식자재 
 6. 지원하지 않는 재료를 물으면 list_supported_items 결과로 지금 볼 수 있는 재료를 안내한다.
 7. 도구가 error를 돌려주면 그 이유를 그대로 짧게 알리고 추측하지 않는다.
 
+자주 오는 질문 처리
+A. "시세변동 추이" 질문 → get_market_overview 와 recommend_buy_now 를 부른다.
+   많이 오른 재료·내린 재료를 각각 변화율 순서로 말하고, 마지막에 "지금 사기 좋은 야채"를 1~3개 추천한다.
+B. "이 가격에 팔아도 남아?"처럼 메뉴나 판매가 없이 마진을 물으면 계산하지 말고 먼저 묻는다:
+   "어떤 메뉴를 만드시는지, 한 그릇에 얼마에 파시는지 알려주세요." 그리고 바로 계산할 수 있는 메뉴로
+   {", ".join(menu_cost.STANDARD_RECIPES)} 을(를) 예시로 보여 준다 (이 목록에 없는 메뉴를 예시로 들지 않는다).
+   목록에 없는 메뉴도 1인분 재료와 양을 알려 주면 계산할 수 있다고 덧붙인다.
+   메뉴와 판매가를 들으면 calc_menu_margin 을 부른다. need_ingredients 가 오면 재료와 양을 물어본다.
+   답에는 재료비, 원가율, 재료비 뺀 남는 돈, 가장 비싼 재료 1~2개, 시세가 오르는 재료가 있으면 그 영향을 말한다.
+   참고 단가(시연용 가정값)를 쓴 재료가 있으면 "영수증 값을 알려 주시면 더 정확해져요"를 덧붙인다.
+   재료 양을 지어내지 않는다. 사장님이 말한 양이나 표준 레시피만 쓴다.
+C. "지금 사면 이득인 야채" 질문 → recommend_buy_now 를 부르고, 미리 사면 좋은 것·지금 싼 것·기다릴 것 순서로 말한다.
+
 출력 형식
-- 한 문단 2~4문장, 또는 재료가 여러 개면 재료당 한 줄. [무엇이] → [얼마나] → [그래서 어떻게].
-- 표·이모지·전문 용어(모델, 회귀, 피처 등) 쓰지 않는다.
+- 짧게. 전체 10줄 이내, 묶음마다 재료 3개까지, 재료당 한 줄. [무엇이] → [얼마나] → [그래서 어떻게].
+- "확실하지 않아요"는 답 맨 앞에 한 번만. 줄마다 반복하지 않는다.
+- 날짜·출처는 답 끝에 한 번만 (예: "11/2 대구 북부도매시장 kg당 도매가 기준").
+- 예측 범위는 "-24% ~ 0%"처럼 부호를 붙여 작은 값부터 쓴다.
+- 강조는 **굵게** 정도만. 표·이모지·전문 용어(모델, 회귀, 피처 등) 쓰지 않는다.
+- 링크 주소는 쓰지 않는다 (화면의 상품 카드에서 식봄으로 연결됨).
 
 아래는 살피 브랜드 규칙이다. 말투와 금칙어를 따른다.
 {_brand_skill()}
@@ -129,18 +192,36 @@ class SalpiAgent:
         key = api_key or os.getenv("GEMINI_API_KEY", "").strip()
         if not key:
             raise ApiKeyMissing(".env 의 GEMINI_API_KEY 가 비어 있어요 (aistudio.google.com 에서 무료 발급)")
-        self.client = genai.Client(api_key=key)
+        # 응답이 45초 넘게 없으면 끊고 다음 모델로 (바쁜 모델에 오래 묶이지 않게)
+        self.client = genai.Client(api_key=key, http_options=types.HttpOptions(
+            timeout=45_000, retry_options=types.HttpRetryOptions(attempts=2)))
+        self.models = [model] + [m for m in FALLBACK_MODELS if m != model]
+        self._start(self.models[0], history=None)
+
+    def _start(self, model, history):
+        self.model = model
         self.chat = self.client.chats.create(
             model=model,
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_PROMPT,
-                tools=TOOLS,
-                temperature=0.3,
-            ),
+            config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT, tools=TOOLS, temperature=0.3),
+            history=history,
         )
 
     def ask(self, message: str) -> str:
-        return self.chat.send_message(message).text or "답을 만들지 못했어요. 다시 물어봐 주세요."
+        # 무료 API는 몰리면 503·504(바쁨), 한도를 넘으면 429를 돌려줌
+        # → (SDK가 한 번 더 시도한 뒤) 다음 모델로 갈아타서 대화를 이어 감
+        last_error = None
+        for model in self.models[self.models.index(self.model):]:
+            if model != self.model:
+                self._start(model, history=self.chat.get_history())
+            try:
+                return self.chat.send_message(message).text or "답을 만들지 못했어요. 다시 물어봐 주세요."
+            except errors.APIError as e:
+                if 400 <= e.code < 500 and e.code not in (404, 429):
+                    raise      # 요청 자체가 잘못된 경우는 갈아타도 같음
+                last_error = e
+            except Exception as e:  # 시간 초과·연결 끊김
+                last_error = e
+        raise last_error
 
     def morning_briefing(self) -> str:
         return self.ask(BRIEFING_PROMPT)

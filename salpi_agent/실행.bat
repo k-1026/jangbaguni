@@ -1,3 +1,4 @@
 @echo off
 cd /d "%~dp0"
-.venv\Scripts\streamlit run app.py
+start "" http://localhost:8000
+.venv\Scripts\python server.py

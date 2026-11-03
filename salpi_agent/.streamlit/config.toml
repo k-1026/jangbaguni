@@ -1,7 +1,0 @@
-# 살피 브랜드 색 (brand/SKILL.md 비주얼)
-[theme]
-base = "light"
-primaryColor = "#E86A2E"
-backgroundColor = "#F5F3EE"
-secondaryBackgroundColor = "#FFFFFF"
-textColor = "#12302A"

@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>살피 · 대구 야채 시세</title>
+  <link rel="icon" href="/static/img/avatar.jpg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css?v=2">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <div class="logo-slot" aria-label="로고 자리">LOGO</div>
+    <nav class="nav">
+      <a href="#dashboard">시세 대시보드</a>
+      <a href="#products">오늘의 야채</a>
+      <a href="#context">날씨 · 행사</a>
+    </nav>
+    <span class="basis" id="basis">시세 불러오는 중</span>
+  </div>
+</header>
+
+<main>
+  <!-- 살피 메인 -->
+  <section class="hero">
+    <div class="wrap hero-inner">
+      <div class="hero-text">
+        <p class="eyebrow">대구 북부도매시장(매천시장) 새벽 시세</p>
+        <h1>사장님, 오늘 시세<br>살피가 먼저 살펴왔어요</h1>
+        <p class="hero-sub">날짜 · 날씨 · 공휴일 · 대구 행사까지 함께 보고<br>오를 재료와 기다릴 재료를 알려 드려요.</p>
+        <div class="summary" id="summary">
+          <div class="chip skeleton"></div><div class="chip skeleton"></div><div class="chip skeleton"></div>
+        </div>
+        <button class="hero-cta" data-open-chat>살피에게 물어보기</button>
+      </div>
+      <img class="hero-img" src="/static/img/hero.jpg" alt="시세 칠판을 가리키는 미어캣 살피">
+    </div>
+  </section>
+
+  <!-- 시세 대시보드 -->
+  <section class="wrap section" id="dashboard">
+    <div class="section-head">
+      <h2>야채 시세</h2>
+      <p class="muted">kg당 도매 경락가 · 1주 전 대비 · 다음 7일 예측</p>
+    </div>
+    <div class="item-tabs" id="itemTabs"></div>
+
+    <div class="board">
+      <div class="card chart-card">
+        <div class="chart-head">
+          <div>
+            <h3 id="chartTitle">시세</h3>
+            <p class="price-now"><strong id="priceNow">-</strong> <span id="priceDelta"></span></p>
+          </div>
+          <div class="legend">
+            <span><i class="lg line"></i>도매 kg당</span>
+            <span><i class="lg fc"></i>다음 7일 예측</span>
+            <span><i class="lg rain"></i>강수량</span>
+            <span><i class="lg event"></i>행사 · 축제</span>
+            <span><i class="lg hol"></i>공휴일</span>
+          </div>
+        </div>
+        <div class="chart-box"><canvas id="priceChart"></canvas></div>
+      </div>
+
+      <div class="card table-card">
+        <table class="price-table">
+          <thead><tr><th>날짜</th><th>가격</th><th>이전대비</th><th>날씨</th></tr></thead>
+          <tbody id="priceRows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card forecast-card" id="forecastCard"></div>
+  </section>
+
+  <!-- 상품 목록 -->
+  <section class="wrap section" id="products">
+    <div class="section-head">
+      <h2>오늘의 야채</h2>
+      <p class="muted">카드를 누르면 식봄에서 해당 상품을 찾아 드려요. 살피는 아무것도 팔지 않아요.</p>
+    </div>
+    <div class="sort-bar">
+      <button class="sort active" data-sort="default">기본순</button>
+      <button class="sort" data-sort="up">많이 오른 순</button>
+      <button class="sort" data-sort="down">많이 내린 순</button>
+      <button class="sort" data-sort="buy">지금 사기 좋은 순</button>
+    </div>
+    <div class="grid" id="productGrid"></div>
+  </section>
+
+  <!-- 날씨 · 공휴일 · 행사 -->
+  <section class="wrap section" id="context">
+    <div class="section-head"><h2>시세에 영향을 주는 것들</h2></div>
+    <div class="ctx-grid">
+      <div class="card" id="weatherCard"><h3>대구 날씨 (지난 7일)</h3><p class="muted">불러오는 중</p></div>
+      <div class="card" id="holidayCard"><h3>다가오는 공휴일 (30일)</h3><p class="muted">불러오는 중</p></div>
+      <div class="card" id="eventCard"><h3>대구 행사 · 축제 (14일)</h3><p class="muted">불러오는 중</p></div>
+    </div>
+  </section>
+
+  <footer class="wrap footer">
+    출처: aT 전국 공영도매시장 정산정보 · aT 일별 도·소매 가격정보(KAMIS) · 기상청 ASOS(대구 143) · 한국천문연구원 특일정보 · 한국관광공사 국문관광정보(대구)<br>
+    예측은 최근 시세 흐름 · 반입량 · 날씨 · 공휴일 · 행사를 더한 규칙 기반 추정이에요.
+  </footer>
+</main>
+
+<!-- 살피 AI 플로팅 버튼 + 채팅 -->
+<button class="fab" id="fab" data-open-chat aria-label="살피 AI 에이전트 열기">
+  <img src="/static/img/avatar.jpg" alt=""><span>살피 AI</span>
+</button>
+
+<aside class="chat" id="chat" aria-hidden="true">
+  <div class="chat-head">
+    <img src="/static/img/avatar.jpg" alt="">
+    <div><strong>살피 AI 에이전트</strong><small>대구 시세를 살펴 드려요</small></div>
+    <button class="chat-close" id="chatClose" aria-label="닫기">×</button>
+  </div>
+  <div class="chat-body" id="chatBody"></div>
+  <div class="quick" id="quick">
+    <button data-q="야채값 시세변동 추이 말해줘.">야채값 시세변동 추이 말해줘.</button>
+    <button data-q="이 가격에 팔아도 남아?">이 가격에 팔아도 남아?</button>
+    <button data-q="지금 사면 이득인 야채 알려줘">지금 사면 이득인 야채 알려줘</button>
+  </div>
+  <form class="chat-input" id="chatForm">
+    <input id="chatText" autocomplete="off" placeholder="예: 대파 다음 주에 오를까?">
+    <button type="submit">보내기</button>
+  </form>
+</aside>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="/static/app.js?v=2"></script>
+</body>
+</html>

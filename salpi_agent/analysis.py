@@ -7,7 +7,8 @@
 import statistics
 from datetime import date, timedelta
 
-from data_sources import ITEMS, daegu_events, holidays, perday_prices, sale_days, weather_days
+from data_sources import (ITEMS, daegu_events, events_between, foodspring_url, holidays,
+                          holidays_between, perday_prices, sale_days, weather_days)
 
 FLAT_BAND = 3.0  # ±3% 안쪽은 '비슷함'으로 본다
 
@@ -48,22 +49,27 @@ def wholesale_series(item_name, days=28):
     return series
 
 
+def _unit_price(r):
+    """perDay 한 줄 → (단위당 가격, 단위). kg·g는 kg당, 개·포기는 1개(포기)당."""
+    unit, size = r.get("unit") or "", float(r.get("unit_sz") or 1)
+    if unit.startswith("kg") and "포기" not in unit or unit == "g":
+        return float(r["exmn_dd_cnvs_prc"]), "kg"
+    return float(r["exmn_dd_prc"]) / size, unit.split("(")[0] or "개"
+
+
 def retail_series(item_name, days=35):
-    """KAMIS 조사가격(대구, 상품 등급): 날짜별 소매 kg당 평균가와 중도매 kg당 가격."""
-    by_date = {}
+    """KAMIS 조사가격(대구, 상품 등급): 날짜별 소매 평균가(단위 포함)."""
+    by_date, unit = {}, None
     for r in perday_prices(item_name, days):
-        if r.get("grd_cd") != "04":
+        if r.get("grd_cd") != "04" or r.get("se_nm") != "소매":
+            continue
+        try:
+            price, unit = _unit_price(r)
+        except (TypeError, ValueError):
             continue
         d = f"{r['exmn_ymd'][:4]}-{r['exmn_ymd'][4:6]}-{r['exmn_ymd'][6:]}"
-        kind = "retail" if r.get("se_nm") == "소매" else "middle"
-        try:
-            by_date.setdefault(d, {"retail": [], "middle": []})[kind].append(float(r["exmn_dd_cnvs_prc"]))
-        except (TypeError, ValueError):
-            pass
-    return [{"date": d,
-             "retail_kg": round(statistics.mean(v["retail"])) if v["retail"] else None,
-             "middle_kg": round(statistics.mean(v["middle"])) if v["middle"] else None}
-            for d, v in sorted(by_date.items())]
+        by_date.setdefault(d, []).append(price)
+    return [{"date": d, "retail": round(statistics.mean(v)), "unit": unit} for d, v in sorted(by_date.items())]
 
 
 def _week_change(series, key):
@@ -86,14 +92,14 @@ def item_trend(item_name):
     whl = wholesale_series(item_name)
     ret = retail_series(item_name)
     w_price, w_pct, w_date = _week_change(whl, "kg_price")
-    r_price, r_pct, r_date = _week_change(ret, "retail_kg")
+    r_price, r_pct, r_date = _week_change(ret, "retail")
     return {
         "item": item_name,
         "wholesale": {"source": "aT 정산정보 · 대구 북부도매시장(매천시장)", "date": w_date,
                       "kg_price": w_price, "week_change_pct": w_pct, "direction": _direction(w_pct),
                       "volume_kg": whl[-1]["volume_kg"] if whl else None},
         "retail": {"source": "aT 일별 도·소매가(KAMIS 조사) · 대구 소매 평균, 상품", "date": r_date,
-                   "kg_price": r_price, "week_change_pct": r_pct, "direction": _direction(r_pct)},
+                   "price": r_price, "unit": ret[-1]["unit"] if ret else None, "week_change_pct": r_pct, "direction": _direction(r_pct)},
         "wholesale_history": whl[-14:],
     }
 
@@ -106,7 +112,8 @@ def market_overview():
         rows.append({"item": name,
                      "wholesale_kg": t["wholesale"]["kg_price"], "wholesale_change_pct": t["wholesale"]["week_change_pct"],
                      "wholesale_date": t["wholesale"]["date"], "direction": t["wholesale"]["direction"],
-                     "retail_kg": t["retail"]["kg_price"], "retail_change_pct": t["retail"]["week_change_pct"]})
+                     "retail_price": t["retail"]["price"], "retail_unit": t["retail"]["unit"],
+                     "retail_change_pct": t["retail"]["week_change_pct"], "foodspring_url": foodspring_url(name)})
     return rows
 
 
@@ -114,8 +121,8 @@ def market_overview():
 # 다음 7일 가격 방향 추정
 # ---------------------------------------------------------------
 
-LEAFY = {"대파", "깻잎", "양배추"}           # 비·한파에 민감한 잎·줄기 채소
-COLD_SENSITIVE = {"대파", "깻잎", "청양고추"}
+LEAFY = {"대파", "깻잎", "양배추", "배추", "상추", "시금치"}   # 비·한파에 민감한 잎·줄기 채소
+COLD_SENSITIVE = {"대파", "깻잎", "청양고추", "상추", "시금치", "오이", "애호박", "가지", "토마토"}  # 한파·난방비 영향
 
 
 def _clip(x, lo, hi):
@@ -123,7 +130,7 @@ def _clip(x, lo, hi):
 
 
 def weather_summary(days=7):
-    w = weather_days(21)[-days:]
+    w = weather_days(35)[-days:]
     if not w:
         return {"days": 0}
     return {"days": len(w), "from": w[0]["date"], "to": w[-1]["date"],
@@ -216,3 +223,70 @@ def forecast_item(item_name):
         "factors": factors,
         "method": "규칙 기반 추정(추세·반입량·날씨·공휴일·행사). 주산지 날씨와 수입량은 아직 반영하지 않음",
     }
+
+
+# ---------------------------------------------------------------
+# 대시보드 상세: 날짜별 시세 + 그날 날씨 · 공휴일 · 행사
+# ---------------------------------------------------------------
+
+def item_detail(item_name, days=28):
+    if item_name not in ITEMS:
+        return {"error": f"'{item_name}'은(는) 아직 지원하지 않아요"}
+    series = wholesale_series(item_name, days)
+    start, end = date.today() - timedelta(days), date.today()
+    weather = {w["date"]: w for w in weather_days(35)}
+    hols = {f"{h['date'][:4]}-{h['date'][4:6]}-{h['date'][6:]}": h["name"] for h in holidays_between(start, end)}
+    events = events_between(start, end)
+
+    def active(d):
+        k = d.replace("-", "")
+        return [e["title"] for e in events if (e["start"] or "") <= k <= (e["end"] or "")]
+
+    rows, prev = [], None
+    for p in series:
+        w = weather.get(p["date"], {})
+        rows.append({**p, "diff": p["kg_price"] - prev if prev else None,
+                     "rain_mm": w.get("rain_mm"), "max_temp": w.get("max_temp"), "min_temp": w.get("min_temp"),
+                     "holiday": hols.get(p["date"]), "events": active(p["date"])})
+        prev = p["kg_price"]
+    return {"item": item_name, "history": rows,
+            "holidays": [{"date": d, "name": n} for d, n in sorted(hols.items())],
+            "events": events, "forecast": forecast_item(item_name),
+            "trend": {k: v for k, v in item_trend(item_name).items() if k != "wholesale_history"},
+            "foodspring_url": foodspring_url(item_name)}
+
+
+# ---------------------------------------------------------------
+# 지금 사면 이득인 재료
+# ---------------------------------------------------------------
+
+def buy_now_recommendations():
+    """지금 사기 / 지금 싸요 / 기다리기 로 나눔.
+    - 다음 7일 오를 가능성 → 지금 사기
+    - 1주 새 5% 넘게 내렸고 더 내릴 신호가 없으면 → 지금 싸요
+    - 다음 7일 내릴 가능성 → 기다리기"""
+    buy, cheap, wait, normal = [], [], [], []
+    for name in ITEMS:
+        f = forecast_item(name)
+        t = item_trend(name)["wholesale"]
+        row = {"item": name, "kg_price": t["kg_price"], "week_change_pct": t["week_change_pct"],
+               "next_week": f.get("direction"), "expected_change_pct": f.get("expected_change_pct"),
+               "range_pct": f.get("range_pct"), "confidence": f.get("confidence"),
+               "main_reason": max(f.get("factors", []), key=lambda x: abs(x["effect_pct"]), default={}).get("detail"),
+               "foodspring_url": foodspring_url(name)}
+        exp = f.get("expected_change_pct") or 0
+        if exp >= 2:
+            buy.append(row)
+        elif exp <= -2:
+            wait.append(row)
+        elif (t["week_change_pct"] or 0) <= -5:
+            cheap.append(row)
+        else:
+            normal.append(row)
+    buy.sort(key=lambda r: -(r["expected_change_pct"] or 0))
+    cheap.sort(key=lambda r: r["week_change_pct"] or 0)
+    wait.sort(key=lambda r: r["expected_change_pct"] or 0)
+    # 답이 길어지지 않게 묶음마다 3개까지만, 나머지는 이름만
+    return {"buy_now_before_rise": buy[:3], "cheap_now": cheap[:3], "wait": wait[:3],
+            "more_buy_now": [r["item"] for r in buy[3:]], "more_wait": [r["item"] for r in wait[3:]],
+            "as_usual": [r["item"] for r in normal]}

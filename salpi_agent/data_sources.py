@@ -26,15 +26,31 @@ DAEGU_LDONG = os.getenv("KTO_TOUR_LDONG_REGN_CD", "27") # 관광공사 대구 �
 
 # 품목 목록: perDay(KAMIS 코드)와 정산정보(품목 이름)를 함께 적어 둠
 # sale_sub: 정산정보 소분류 이름에 이 글자가 들어간 것만 사용 (다른 상품·수입산 섞임 방지)
-# 코드 근거: research/industry_food/1028_data_collection_detail.json
+# 코드 근거: research/industry_food/1028_data_collection_detail.json + perDay 응답으로 품목명 확인 (2026-11-03)
 ITEMS = {
     "양파":     {"ctgry": "200", "item": "245", "vrty": None, "sale_name": "양파",   "sale_sub": None},
     "대파":     {"ctgry": "200", "item": "246", "vrty": None, "sale_name": "대파",   "sale_sub": None},
+    "배추":     {"ctgry": "200", "item": "211", "vrty": None, "sale_name": "배추",   "sale_sub": None},
+    "무":       {"ctgry": "200", "item": "231", "vrty": None, "sale_name": "무",     "sale_sub": None},
     "양배추":   {"ctgry": "200", "item": "212", "vrty": None, "sale_name": "양배추", "sale_sub": None},
-    "청양고추": {"ctgry": "200", "item": "242", "vrty": "03", "sale_name": "풋고추", "sale_sub": "청양"},
+    "감자":     {"ctgry": "100", "item": "152", "vrty": None, "sale_name": "감자",   "sale_sub": None},
     "당근":     {"ctgry": "200", "item": "232", "vrty": None, "sale_name": "당근",   "sale_sub": "당근(일반)"},  # 수입 제외
+    "애호박":   {"ctgry": "200", "item": "224", "vrty": "01", "sale_name": "호박",   "sale_sub": "애호박"},
+    "오이":     {"ctgry": "200", "item": "223", "vrty": None, "sale_name": "오이",   "sale_sub": None},
+    "청양고추": {"ctgry": "200", "item": "242", "vrty": "03", "sale_name": "풋고추", "sale_sub": "청양"},
     "깻잎":     {"ctgry": "200", "item": "253", "vrty": None, "sale_name": "깻잎",   "sale_sub": "깻잎(일반)"},  # 깻잎순 제외
+    "상추":     {"ctgry": "200", "item": "214", "vrty": None, "sale_name": "상추",   "sale_sub": None},
+    "시금치":   {"ctgry": "200", "item": "213", "vrty": None, "sale_name": "시금치", "sale_sub": None},
+    "토마토":   {"ctgry": "200", "item": "225", "vrty": None, "sale_name": "토마토", "sale_sub": None},
+    "가지":     {"ctgry": "200", "item": "251", "vrty": None, "sale_name": "가지",   "sale_sub": None},
 }
+
+FOODSPRING_SEARCH = "https://www.foodspring.co.kr/search/all"
+
+
+def foodspring_url(item_name):
+    """식봄 검색 결과로 연결 (살피는 판매하지 않고 연결만 함)."""
+    return requests.Request("GET", FOODSPRING_SEARCH, params={"key": item_name}).prepare().url
 
 
 class ApiKeyMissing(RuntimeError):
@@ -173,7 +189,8 @@ def weather_days(days=21):
 # 한국관광공사 행사·축제 (대구)
 # ---------------------------------------------------------------
 
-def daegu_events(days_ahead=14):
+def _events_raw():
+    """오늘 기준 60일 전부터 시작한 대구 행사 전부 (12시간마다 갱신)."""
     today = date.today()
 
     def fetch():
@@ -185,19 +202,29 @@ def daegu_events(days_ahead=14):
         return [{"title": r.get("title"), "start": r.get("eventstartdate"), "end": r.get("eventenddate"),
                  "addr": r.get("addr1")} for r in _items(body)]
 
-    events = _cached(f"events_{today.isoformat()}", 12, fetch)
-    until = (today + timedelta(days_ahead)).strftime("%Y%m%d")
-    now = today.strftime("%Y%m%d")
-    return [e for e in events if (e["end"] or "") >= now and (e["start"] or "") <= until]
+    return _cached(f"events_{today.isoformat()}", 12, fetch)
+
+
+def events_between(start, end):
+    """start~end(date) 기간과 하루라도 겹치는 행사."""
+    a, z = start.strftime("%Y%m%d"), end.strftime("%Y%m%d")
+    return [e for e in _events_raw() if (e["end"] or "") >= a and (e["start"] or "") <= z]
+
+
+def daegu_events(days_ahead=14):
+    return events_between(date.today(), date.today() + timedelta(days_ahead))
 
 
 # ---------------------------------------------------------------
 # 한국천문연구원 특일 정보 (공휴일)
 # ---------------------------------------------------------------
 
-def holidays(days_ahead=30):
-    today = date.today()
-    months = sorted({(d.year, d.month) for d in (today, today + timedelta(days_ahead))})
+def holidays_between(start, end):
+    """start~end(date) 사이 공휴일."""
+    months, d = set(), start.replace(day=1)
+    while d <= end:
+        months.add((d.year, d.month))
+        d = (d + timedelta(32)).replace(day=1)
 
     def fetch(y, m):
         url = os.getenv("KASI_SPCDE_ENDPOINT", "https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService") + "/getRestDeInfo"
@@ -206,7 +233,11 @@ def holidays(days_ahead=30):
         return [{"date": str(r["locdate"]), "name": r["dateName"]} for r in _items(body) if r.get("isHoliday") == "Y"]
 
     result = []
-    for y, m in months:
+    for y, m in sorted(months):
         result += _cached(f"holidays_{y}_{m:02d}", 24 * 7, lambda y=y, m=m: fetch(y, m))
-    start, until = today.strftime("%Y%m%d"), (today + timedelta(days_ahead)).strftime("%Y%m%d")
-    return [h for h in result if start <= h["date"] <= until]
+    a, z = start.strftime("%Y%m%d"), end.strftime("%Y%m%d")
+    return [h for h in result if a <= h["date"] <= z]
+
+
+def holidays(days_ahead=30):
+    return holidays_between(date.today(), date.today() + timedelta(days_ahead))

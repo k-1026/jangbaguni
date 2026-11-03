@@ -6,6 +6,7 @@ cache/ 폴더에 저장해 두고 다시 부르지 않는다 (API 호출 횟수 
 
 import json
 import os
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, timedelta
@@ -85,16 +86,22 @@ def _get_json(url, params, key_name, key_param="serviceKey"):
             time.sleep(2 ** attempt + 1)
 
 
+_cache_locks, _cache_locks_guard = {}, threading.Lock()
+
+
 def _cached(name, max_age_hours, fetch):
-    """max_age_hours=None 이면 영구 보관 (지난 날짜용)."""
-    path = CACHE_DIR / f"{name}.json"
-    if path.exists():
-        age = (time.time() - path.stat().st_mtime) / 3600
-        if max_age_hours is None or age < max_age_hours:
-            return json.loads(path.read_text(encoding="utf-8"))
-    data = fetch()
-    path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
-    return data
+    """max_age_hours=None 이면 영구 보관 (지난 날짜용). 같은 이름은 한 번만 받고 나머지는 기다림."""
+    with _cache_locks_guard:
+        lock = _cache_locks.setdefault(name, threading.Lock())
+    with lock:
+        path = CACHE_DIR / f"{name}.json"
+        if path.exists():
+            age = (time.time() - path.stat().st_mtime) / 3600
+            if max_age_hours is None or age < max_age_hours:
+                return json.loads(path.read_text(encoding="utf-8"))
+        data = fetch()
+        path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+        return data
 
 
 def _items(body):

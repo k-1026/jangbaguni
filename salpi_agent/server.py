@@ -42,18 +42,19 @@ app.mount("/static", StaticFiles(directory=WEB), name="static")
 # ---------------------------------------------------------------
 # 계산 결과 1시간 보관 (같은 화면을 여러 명이 열어도 다시 계산하지 않음)
 # ---------------------------------------------------------------
-_memo, _memo_lock = {}, threading.Lock()
+_memo, _memo_lock, _key_locks = {}, threading.Lock(), {}
 
 
 def memo(key, fn, ttl=3600):
     with _memo_lock:
+        lock = _key_locks.setdefault(key, threading.Lock())
+    with lock:   # 같은 계산을 여러 요청이 동시에 시작하지 않게 (공공데이터포털 429 방지) — 나중 요청은 결과를 기다림
         hit = _memo.get(key)
         if hit and time.time() - hit[0] < ttl:
             return hit[1]
-    value = fn()
-    with _memo_lock:
+        value = fn()
         _memo[key] = (time.time(), value)
-    return value
+        return value
 
 
 def _overview():

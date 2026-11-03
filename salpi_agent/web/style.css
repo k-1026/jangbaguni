@@ -207,7 +207,7 @@ body.chat-open .salpi-fab .bubble, .salpi-fab.dragging .bubble { display: none; 
 
 /* 채팅창 뉴모피즘: 바탕 --cneu, 밝은 그림자 #fff · 어두운 그림자 --cneu-dark (튀어나옴 = 바깥 그림자, 눌림 = 안쪽 그림자) */
 .chat {
-  --cneu: #E8ECE7; --cneu-dark: #c6cbc4;
+  --cneu: #E1E6E0; --cneu-dark: #a9b1a7; --cneu-light: #ffffff;
   position: fixed; right: 24px; bottom: 150px; z-index: 50; width: 400px; height: min(600px, calc(100vh - 230px));
   background: var(--cneu); border-radius: 26px; box-shadow: 14px 14px 30px rgba(0,0,0,.22), -6px -6px 18px rgba(255,255,255,.5);
   display: flex; flex-direction: column; overflow: hidden;
@@ -215,32 +215,32 @@ body.chat-open .salpi-fab .bubble, .salpi-fab.dragging .bubble { display: none; 
 }
 .chat.open { opacity: 1; transform: none; pointer-events: auto; }
 .chat.resizing { transition: none; user-select: none; }
-.chat-head { display: flex; align-items: center; gap: 10px; margin: 12px 12px 4px; padding: 10px 14px; border-radius: 18px;
-  background: var(--deep); color: #fff; box-shadow: 5px 5px 10px var(--cneu-dark), -5px -5px 10px #ffffff; }
+.chat-head { display: flex; align-items: center; gap: 10px; margin: 16px 16px 6px; padding: 10px 14px; border-radius: 18px;
+  background: var(--deep); color: #fff; box-shadow: 8px 8px 16px var(--cneu-dark), -8px -8px 16px var(--cneu-light); }
 .chat-head img { width: 44px; height: 40px; object-fit: contain; }
 .chat-head small { display: block; color: #C9D6D1; font-size: 12px; }
 .chat-close { margin-left: auto; width: 32px; height: 32px; border-radius: 50%; border: 0; background: var(--deep); color: #fff; font-size: 20px; line-height: 1;
   box-shadow: 3px 3px 6px #0a1b17, -3px -3px 6px #1a453c; }
 .chat-close:active { box-shadow: inset 3px 3px 6px #0a1b17, inset -3px -3px 6px #1a453c; }
-.chat-body { flex: 1; overflow-y: auto; margin: 10px 12px; padding: 14px; border-radius: 20px; background: var(--cneu);
-  box-shadow: inset 6px 6px 12px var(--cneu-dark), inset -6px -6px 12px #ffffff; display: flex; flex-direction: column; gap: 12px; }
+.chat-body { flex: 1; overflow-y: auto; margin: 14px 16px; padding: 16px; border-radius: 20px; background: var(--cneu);
+  box-shadow: inset 9px 9px 18px var(--cneu-dark), inset -9px -9px 18px var(--cneu-light); display: flex; flex-direction: column; gap: 12px; }
 .msg { max-width: 85%; padding: 10px 13px; border-radius: 16px; font-size: 14px; word-break: keep-all; }
-.msg.bot { background: var(--cneu); border-top-left-radius: 5px; align-self: flex-start; box-shadow: 4px 4px 9px var(--cneu-dark), -4px -4px 9px #ffffff; }
-.msg.me { background: var(--accent); color: #fff; border-top-right-radius: 5px; align-self: flex-end; box-shadow: 4px 4px 9px var(--cneu-dark), -4px -4px 9px #ffffff; }
+.msg.bot { background: var(--cneu); border-top-left-radius: 5px; align-self: flex-start; box-shadow: 7px 7px 14px var(--cneu-dark), -7px -7px 14px var(--cneu-light); }
+.msg.me { background: var(--accent); color: #fff; border-top-right-radius: 5px; align-self: flex-end; box-shadow: 7px 7px 14px var(--cneu-dark), -7px -7px 14px var(--cneu-light); }
 .msg ul { margin: 4px 0; padding-left: 18px; }
 .msg p { margin: 0 0 6px; } .msg p:last-child { margin: 0; }
 .msg.typing { color: var(--muted); }
-.quick { display: flex; flex-direction: column; gap: 8px; padding: 4px 12px 8px; background: var(--cneu); }
+.quick { display: flex; flex-direction: column; gap: 12px; padding: 8px 16px 12px; background: var(--cneu); }
 .quick button { text-align: left; border: 0; background: var(--cneu); border-radius: 14px; padding: 9px 14px; font-size: 13px; color: var(--ink);
-  box-shadow: 4px 4px 8px var(--cneu-dark), -4px -4px 8px #ffffff; transition: box-shadow .15s, color .15s; }
+  box-shadow: 6px 6px 12px var(--cneu-dark), -6px -6px 12px var(--cneu-light); transition: box-shadow .15s, color .15s; }
 .quick button:hover { color: var(--accent); }
-.quick button:active { box-shadow: inset 3px 3px 7px var(--cneu-dark), inset -3px -3px 7px #ffffff; }
+.quick button:active { box-shadow: inset 5px 5px 10px var(--cneu-dark), inset -5px -5px 10px var(--cneu-light); }
 .quick button:disabled { opacity: .5; cursor: wait; }
-.chat-input { display: flex; gap: 10px; padding: 6px 12px 14px; background: var(--cneu); }
+.chat-input { display: flex; gap: 12px; padding: 8px 16px 18px; background: var(--cneu); }
 .chat-input input { flex: 1; border: 0; border-radius: 14px; padding: 11px 14px; font: inherit; background: var(--cneu); outline: none;
-  box-shadow: inset 4px 4px 8px var(--cneu-dark), inset -4px -4px 8px #ffffff; }
+  box-shadow: inset 6px 6px 12px var(--cneu-dark), inset -6px -6px 12px var(--cneu-light); }
 .chat-input button { border: 0; background: var(--deep); color: #fff; border-radius: 14px; padding: 0 16px; font-weight: 700;
-  box-shadow: 4px 4px 8px var(--cneu-dark), -4px -4px 8px #ffffff; }
+  box-shadow: 6px 6px 12px var(--cneu-dark), -6px -6px 12px var(--cneu-light); }
 .chat-input button:active { box-shadow: inset 3px 3px 7px #0a1b17, inset -3px -3px 7px #1a453c; }
 
 /* 화면이 좁을 때 */

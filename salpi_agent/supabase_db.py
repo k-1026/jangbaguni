@@ -105,3 +105,17 @@ def remove_file(path):
                         headers={"apikey": headers["apikey"], "Authorization": f"Bearer {headers['apikey']}"})
     except requests.RequestException:
         pass
+
+
+def signed_url(path, seconds=600):
+    """비공개 보관함 파일을 잠깐(기본 10분)만 열 수 있는 주소. 실패하면 None."""
+    base, headers = _base()
+    bucket, _, name = path.partition("/")
+    storage = base.replace("/rest/v1/", "/storage/v1")
+    try:
+        r = requests.post(f"{storage}/object/sign/{bucket}/{name}", json={"expiresIn": seconds}, timeout=20,
+                          headers={"apikey": headers["apikey"], "Authorization": f"Bearer {headers['apikey']}"})
+        r.raise_for_status()
+        return storage + r.json()["signedURL"]
+    except (requests.RequestException, KeyError, ValueError):
+        return None

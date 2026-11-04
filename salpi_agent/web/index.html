@@ -7,7 +7,7 @@
   <link rel="icon" href="/static/img/salpi_face.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=22">
+  <link rel="stylesheet" href="/static/style.css?v=23">
 </head>
 <body>
 
@@ -22,6 +22,10 @@
       <a href="#context">날씨 · 행사</a>
     </nav>
     <span class="basis" id="basis">시세 불러오는 중</span>
+    <div class="top-actions">
+      <button class="icon-btn" id="bellBtn" aria-label="알림 보기 (살피 챗봇 창에서 열려요)" title="알림"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2Z"/></svg><span class="count" id="bellCount" hidden></span></button>
+      <button class="me-btn" id="meBtn" aria-label="마이페이지"><img src="/static/img/salpi_face.png" alt=""><span>마이페이지</span></button>
+    </div>
   </div>
 </header>
 
@@ -142,9 +146,29 @@
 
 <!-- 살피 챗봇: 버튼 모양 없이 살피 캐릭터 자체를 누름 -->
 <button class="salpi-fab" id="fab" aria-label="살피 챗봇 열기 (끌어서 옮길 수 있어요)" title="누르면 대화, 끌면 이동">
-  <span class="bubble">살피 챗봇에게 물어보세요</span>
+  <span class="bubble" id="fabBubble">살피 챗봇에게 물어보세요</span>
+  <span class="fab-count" id="fabCount" hidden></span>
   <img src="/static/img/salpi_wave.png" alt="" draggable="false">
 </button>
+
+<!-- 마이페이지 (시연: 로그인했다고 치고 시연용 가게 계정으로 보여 줌) -->
+<div class="backdrop" id="backdrop" hidden></div>
+<aside class="drawer" id="mypage" aria-hidden="true">
+  <div class="drawer-head">
+    <button class="drawer-back" id="mypageBack" hidden aria-label="뒤로">‹</button>
+    <b id="mypageTitle">마이페이지</b>
+    <button class="drawer-close" id="mypageClose" aria-label="닫기">×</button>
+  </div>
+  <div class="drawer-body" id="mypageBody"></div>
+</aside>
+
+<!-- 영수증 한 장 자세히 -->
+<div class="modal" id="receiptModal" hidden>
+  <div class="modal-box" role="dialog" aria-label="영수증 자세히">
+    <button class="modal-close" id="receiptModalClose" aria-label="닫기">×</button>
+    <div id="receiptModalBody"></div>
+  </div>
+</div>
 
 <aside class="chat" id="chat" aria-hidden="true">
   <div class="chat-head">
@@ -167,6 +191,6 @@
 </aside>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="/static/app.js?v=22"></script>
+<script src="/static/app.js?v=23"></script>
 </body>
 </html>

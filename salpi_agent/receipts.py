@@ -229,6 +229,32 @@ def recent(store_id, limit=8):
     return [{**p, "items": counts.get(p["id"], 0), "image_path": bool(p["image_path"])} for p in ps]
 
 
+# 시연 기본 데이터(seed.sql) 영수증 4장은 같은 내용으로 그린 시연용 영수증 그림을 보여 줌
+DEMO_IMAGES = {"2026-10-12": "receipt_1012_statement", "2026-10-19": "receipt_1019_statement",
+               "2026-10-26": "receipt_1026_mart", "2026-11-02": "receipt_1102_handwritten"}
+
+
+def detail(store_id, purchase_id):
+    """영수증 한 장: 날짜 · 판매처 · 품목 줄 · 사진(10분 동안만 열리는 주소)."""
+    ps = db.select("purchases", id=f"eq.{purchase_id}", store_id=f"eq.{store_id}",
+                   select="id,purchased_on,supplier,total_amount,source,image_path,created_at")
+    if not ps:
+        raise ValueError("영수증을 찾지 못했어요")
+    p = ps[0]
+    rows = db.select("purchase_items", purchase_id=f"eq.{purchase_id}", order="id",
+                     select="raw_name,qty_base,amount,unit_price_base,items(name,base_unit)")
+    if p["image_path"]:
+        image = db.signed_url(p["image_path"])
+    elif p["source"] == "demo" and p["purchased_on"] in DEMO_IMAGES:
+        image = f"/receipts_demo/{DEMO_IMAGES[p['purchased_on']]}.png"
+    else:
+        image = None
+    return {**p, "image_url": image, "image_path": None,
+            "items": [{"raw_name": r["raw_name"], "item": (r["items"] or {}).get("name"), "unit": (r["items"] or {}).get("base_unit"),
+                       "qty_base": float(r["qty_base"]), "amount": r["amount"],
+                       "unit_price": round(float(r["unit_price_base"])) if r["unit_price_base"] else None} for r in rows]}
+
+
 def remove(store_id, purchase_id):
     gone = db.delete("purchases", id=f"eq.{purchase_id}", store_id=f"eq.{store_id}", source="eq.ocr")
     if not gone:

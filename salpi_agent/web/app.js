@@ -56,6 +56,7 @@ async function loadOverview(attempt = 1) {
   renderFilter();
   renderProducts();
   onSlideChange();
+  deliverAlerts();
 }
 
 // 슬라이드 순서: 전체 → 오를 가능성 높은 순 → 유지 → 떨어질 가능성
@@ -516,7 +517,7 @@ function renderCosts(r, withChange) {
 
 function receiptList(list) {
   return `<h3 class="sub-h">최근 영수증</h3><ul class="ctx-list receipt-list">${list.map((p) => `<li>
-    <span>${mmdd(p.purchased_on)} · ${esc(p.supplier || "판매처 모름")} · ${p.items}줄 · ${won(p.total_amount)}</span>
+    <button class="rc-open" data-rid="${p.id}" title="사진과 품목 보기">${mmdd(p.purchased_on)} · ${esc(p.supplier || "판매처 모름")} · ${p.items}줄 · ${won(p.total_amount)} <i>보기 ›</i></button>
     ${p.source === "ocr" ? `<button class="rc-remove" data-id="${p.id}">지우기</button>` : `<small>시연 기본 데이터</small>`}</li>`).join("")}</ul>`;
 }
 
@@ -539,6 +540,8 @@ $("#demoReceipts").onclick = async (e) => {
 };
 $("#receiptFile").onchange = (e) => { if (e.target.files[0]) readReceipt(e.target.files[0]); };
 $("#costCard").onclick = async (e) => {
+  const o = e.target.closest(".rc-open");
+  if (o) return openReceipt(o.dataset.rid);
   const b = e.target.closest(".rc-remove");
   if (!b || !confirm("이 영수증을 지울까요? 원가율이 다시 계산돼요.")) return;
   try { renderCosts(await sendJSON(`/api/receipt/${b.dataset.id}`, "DELETE"), false); loadCosts(false); }
@@ -662,6 +665,7 @@ function openChat() {
   document.body.classList.add("chat-open");
   placeChat();
   if (!body.children.length) addMsg("bot", "사장님, 오늘 대구 시세 살펴왔어요.\n아래 버튼을 누르거나 편하게 물어보세요.");
+  markAlertsRead();
   $("#chatText").focus();
 }
 function closeChat() {
@@ -797,3 +801,200 @@ loadDemand();
 loadCosts();
 if (location.hash === "#chat") openChat();   // 주소 끝에 #chat 을 붙이면 채팅창이 열린 채로 시작
 if (location.hash === "#rise") setTimeout(() => goSlide(1, "instant"), 4000);   // 시연용: 첫 야채 대시보드부터
+
+// ---------------------------------------------------------------
+// 영수증 한 장 자세히 (사진 + 품목) — '최근 영수증' 목록 · 마이페이지 '나의 영수증'에서 엶
+// ---------------------------------------------------------------
+async function openReceipt(id) {
+  const modal = $("#receiptModal");
+  $("#receiptModalBody").innerHTML = `<div class="reading"><div class="spinner"></div><b>영수증을 불러오는 중이에요</b></div>`;
+  modal.hidden = false;
+  let d;
+  try { d = await getJSON(`/api/receipt/${id}`); }
+  catch (e) { $("#receiptModalBody").innerHTML = `<p class="rc-warn">${esc(e.message)}</p>`; return; }
+  const qtyTxt = (x) => (x.unit ? qty(x.qty_base, x.unit) : "-");
+  $("#receiptModalBody").innerHTML = `
+    <h3>${mmdd(d.purchased_on)} · ${esc(d.supplier || "판매처 모름")}</h3>
+    <p class="muted small">${d.source === "ocr" ? "영수증 읽기로 저장" : "시연 기본 데이터 (같은 내용의 시연용 영수증 그림)"} · 합계 ${won(d.total_amount)}</p>
+    <div class="receipt-view">
+      ${d.image_url ? `<a href="${esc(d.image_url)}" target="_blank" rel="noopener" title="크게 보기"><img src="${esc(d.image_url)}" alt="영수증 사진"></a>`
+                    : `<div class="no-photo">사진이 없어요</div>`}
+      <table class="price-table">
+        <thead><tr><th>영수증 품목</th><th>재료</th><th>양</th><th>금액</th><th>kg·모당</th></tr></thead>
+        <tbody>${d.items.map((x) => `<tr><td>${esc(x.raw_name)}</td><td>${esc(x.item || "재료 아님")}</td><td>${qtyTxt(x)}</td>
+          <td class="price">${won(x.amount)}</td><td>${x.unit_price ? won(x.unit_price) : "-"}</td></tr>`).join("")}</tbody>
+      </table>
+    </div>`;
+}
+const closeReceipt = () => { $("#receiptModal").hidden = true; };
+$("#receiptModalClose").onclick = closeReceipt;
+$("#receiptModal").onclick = (e) => { if (e.target.id === "receiptModal") closeReceipt(); };
+
+// ---------------------------------------------------------------
+// 마이페이지 (시연: 로그인했다고 치고 시연용 가게 계정)
+// ---------------------------------------------------------------
+const ME = { name: "살피 사장님", store: "살피 시연 한식당", place: "대구 달서구", type: "한식 · 40석", email: "demo@salpi.example" };
+
+function openMypage(view = "home") {
+  $("#mypage").classList.add("open");
+  $("#mypage").setAttribute("aria-hidden", "false");
+  $("#backdrop").hidden = false;
+  renderMypage(view);
+}
+function closeMypage() {
+  $("#mypage").classList.remove("open");
+  $("#mypage").setAttribute("aria-hidden", "true");
+  $("#backdrop").hidden = true;
+}
+
+async function renderMypage(view) {
+  const box = $("#mypageBody");
+  $("#mypageBack").hidden = view === "home";
+  $("#mypageTitle").textContent = view === "home" ? "마이페이지" : "나의 영수증";
+  if (view === "receipts") {
+    box.innerHTML = `<p class="muted">불러오는 중이에요</p>`;
+    try {
+      const { receipts } = await getJSON("/api/receipts");
+      box.innerHTML = receipts.length ? `<ul class="my-receipts">${receipts.map((p) => `<li><button data-rid="${p.id}">
+        <b>${mmdd(p.purchased_on)} · ${esc(p.supplier || "판매처 모름")}</b>
+        <span>${p.items}줄 · ${won(p.total_amount)}${p.source === "ocr" ? " · 영수증 읽기" : " · 시연 기본"}</span><i>›</i></button></li>`).join("")}</ul>`
+        : `<p class="muted">아직 저장한 영수증이 없어요.</p>`;
+    } catch (e) { box.innerHTML = `<p class="rc-warn">${esc(e.message)}</p>`; }
+    return;
+  }
+  const prefs = alertPrefs();
+  box.innerHTML = `
+    <section class="my-card profile">
+      <img src="/static/img/salpi_face.png" alt="">
+      <div><b>${esc(ME.name)}</b><small>${esc(ME.email)} · 시연용 계정</small></div>
+    </section>
+    <section class="my-card">
+      <h4>내 정보</h4>
+      <dl><dt>가게</dt><dd>${esc(ME.store)}</dd><dt>지역</dt><dd>${esc(ME.place)}</dd><dt>업종</dt><dd>${esc(ME.type)}</dd></dl>
+      <button class="my-link" data-view="receipts"><span>나의 영수증</span><i>›</i></button>
+    </section>
+    <section class="my-card">
+      <h4>알림 설정</h4>
+      <p class="muted small">켜 둔 알림은 살피가 챗봇 창으로 보내 드려요.</p>
+      ${ALERT_TYPES.map(([k, title, desc]) => `<label class="toggle-row">
+        <span><b>${title}</b><small>${desc}</small></span>
+        <input type="checkbox" class="switch" data-pref="${k}" ${prefs[k] ? "checked" : ""}></label>`).join("")}
+    </section>`;
+}
+
+$("#meBtn").onclick = () => openMypage();
+$("#mypageClose").onclick = closeMypage;
+$("#mypageBack").onclick = () => renderMypage("home");
+$("#backdrop").onclick = closeMypage;
+$("#mypageBody").onclick = (e) => {
+  const v = e.target.closest("[data-view]");
+  if (v) return renderMypage(v.dataset.view);
+  const r = e.target.closest("[data-rid]");
+  if (r) openReceipt(r.dataset.rid);
+};
+$("#mypageBody").onchange = (e) => {
+  const k = e.target.dataset.pref;
+  if (!k) return;
+  const prefs = alertPrefs();
+  prefs[k] = e.target.checked;
+  store(ALERT_PREFS_KEY, prefs);
+  deliverAlerts();
+};
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeReceipt(); closeMypage(); } });
+
+// ---------------------------------------------------------------
+// 시세 알림: 켜 둔 종류만 살피 말투로 챗봇 창에 보냄 (규칙으로 만든 문장, 숫자는 대시보드 시세 그대로)
+// 읽음 여부 · 설정은 이 브라우저에 기억 (로그인이 생기면 Supabase로 옮김)
+// ---------------------------------------------------------------
+const ALERT_PREFS_KEY = "salpi_alert_prefs", ALERT_READ_KEY = "salpi_alert_read";
+const ALERT_TYPES = [
+  ["all", "모든 시세가 오르고 내릴 때", "지난주보다 3% 넘게 움직인 야채를 알려 드려요"],
+  ["up", "값이 오를 때만", "지난주보다 10% 넘게 오른 야채"],
+  ["down", "값이 내렸을 때만", "지난주보다 10% 넘게 내린 야채"],
+  ["unusual", "평소랑 다를 때만", "하루 사이에 평소보다 크게 움직인 야채"],
+  ["weekly", "주 1회 대시보드 리포트", "한 주 시세를 한 번에 정리해 드려요"],
+];
+const DEFAULT_PREFS = { all: false, up: true, down: false, unusual: true, weekly: true };
+const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } };
+function store(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+const alertPrefs = () => ({ ...DEFAULT_PREFS, ...load(ALERT_PREFS_KEY, {}) });
+const josa = (w, a, b) => { const c = w.charCodeAt(w.length - 1); return w + (c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 ? a : b); };
+let delivered = [];   // 지금 챗봇 창에 있는 알림 [{id, text}]
+
+function buildAlerts() {
+  if (!overview.length) return [];
+  const prefs = alertPrefs();
+  const day = overview.map((r) => r.wholesale_date).filter(Boolean).sort().at(-1) || "";
+  const tag = mmdd(day);
+  const out = [], seen = new Set();
+  const push = (id, text) => { if (!seen.has(id)) { seen.add(id); out.push({ id: `${day}|${id}`, text }); } };
+  const ch = (r) => r.wholesale_change_pct ?? 0;
+  const move = (r) => {
+    const f = expOf(r);
+    if (ch(r) > 0) return `사장님, **${josa(r.item, "이", "가")} 지난주보다 ${pct(ch(r))} 올랐어요** (${tag} 도매 kg당 ${won(r.wholesale_kg)}).\n`
+      + (f >= 2 ? "다음 주에도 오를 수 있어요. 필요한 만큼은 미리 사 두세요." : f <= -2 ? "다음 주엔 내릴 수 있어요. 급하지 않으면 조금 기다려 보세요." : "다음 주엔 비슷할 것 같아요. 필요한 만큼만 사 두세요.");
+    return `사장님, **${josa(r.item, "이", "가")} 지난주보다 ${pct(ch(r))} 내렸어요** (${tag} 도매 kg당 ${won(r.wholesale_kg)}).\n`
+      + (f >= 2 ? "다음 주엔 다시 오를 수 있어요. 지금 사 두면 좋아요." : "지금 사기 좋은 때예요.");
+  };
+  const byAbs = (a, b) => Math.abs(ch(b)) - Math.abs(ch(a));
+  if (prefs.all) overview.filter((r) => Math.abs(ch(r)) >= 3).sort(byAbs).slice(0, 6).forEach((r) => push(`move|${r.item}`, move(r)));
+  if (prefs.up) overview.filter((r) => ch(r) >= 10).sort(byAbs).slice(0, 3).forEach((r) => push(`move|${r.item}`, move(r)));
+  if (prefs.down) overview.filter((r) => ch(r) <= -10).sort(byAbs).slice(0, 3).forEach((r) => push(`move|${r.item}`, move(r)));
+  if (prefs.unusual) {
+    overview.map((r) => {
+      const h = (r.history || []).map((x) => x.kg_price).filter((v) => v > 0);
+      const d = h.slice(1).map((v, i) => (v / h[i] - 1) * 100);
+      if (d.length < 6) return null;
+      const last = d.at(-1), usual = d.slice(0, -1).reduce((s, v) => s + Math.abs(v), 0) / (d.length - 1);
+      return Math.abs(last) >= Math.max(10, usual * 2.5) ? { r, last, usual } : null;
+    }).filter(Boolean).sort((a, b) => Math.abs(b.last) - Math.abs(a.last)).slice(0, 3).forEach(({ r, last, usual }) =>
+      push(`unusual|${r.item}`, `사장님, **${josa(r.item, "이", "가")} 평소와 달라요.** 직전 거래일보다 ${pct(last)} ${last > 0 ? "올랐는데" : "내렸는데"}, `
+        + `보통은 하루 ${usual.toFixed(0)}% 안팎으로 움직여요.\n${last > 0 ? "주문 전에 가격을 한 번 더 확인해 보세요." : "필요하면 지금 사 두는 것도 좋아요."}`));
+  }
+  if (prefs.weekly && day) {
+    const d = new Date(day), monday = new Date(d - ((d.getDay() + 6) % 7) * 864e5).toISOString().slice(0, 10);
+    const ups = overview.filter((r) => ch(r) >= 3), downs = overview.filter((r) => ch(r) <= -3), rise = overview.filter((r) => expOf(r) >= 2);
+    const top = [...overview].sort((a, b) => ch(b) - ch(a));
+    out.push({ id: `week|${monday}`, text: `사장님, **이번 주 살피 리포트**예요 (${mmdd(monday)} 주).\n`
+      + `- 지난주보다 오른 야채 ${ups.length}개 · 내린 야채 ${downs.length}개\n`
+      + `- 가장 많이 오른 야채: ${top[0].item} ${pct(ch(top[0]))}\n`
+      + `- 가장 많이 내린 야채: ${top.at(-1).item} ${pct(ch(top.at(-1)))}\n`
+      + `- 다음 주 오를 가능성: ${rise.length}개${rise.length ? ` (${rise.sort((a, b) => expOf(b) - expOf(a)).slice(0, 3).map((r) => r.item).join(", ")} 등)` : ""}\n`
+      + "자세한 건 위의 시세 대시보드에서 보세요." });
+  }
+  return out;
+}
+
+function deliverAlerts() {
+  const list = buildAlerts();
+  document.querySelectorAll("#chatBody .msg.alert").forEach((el) => el.remove());
+  if (list.length && !body.children.length) addMsg("bot", "사장님, 오늘 대구 시세 살펴왔어요.\n아래 버튼을 누르거나 편하게 물어보세요.");
+  const read = new Set(load(ALERT_READ_KEY, []));
+  for (const a of list) {
+    const el = addMsg("bot", a.text);
+    el.classList.add("alert");
+    el.dataset.alertId = a.id;
+    el.insertAdjacentHTML("afterbegin", `<span class="alert-tag">시세 알림${read.has(a.id) ? "" : " · 새 알림"}</span>`);
+  }
+  delivered = list;
+  if (chatEl.classList.contains("open")) markAlertsRead();
+  updateBadges();
+}
+
+function unreadCount() {
+  const read = new Set(load(ALERT_READ_KEY, []));
+  return delivered.filter((a) => !read.has(a.id)).length;
+}
+function markAlertsRead() {
+  const read = new Set(load(ALERT_READ_KEY, []));
+  delivered.forEach((a) => read.add(a.id));
+  store(ALERT_READ_KEY, [...read].slice(-300));
+  updateBadges();
+}
+function updateBadges() {
+  const n = unreadCount();
+  for (const el of [$("#fabCount"), $("#bellCount")]) { el.hidden = !n; el.textContent = n > 99 ? "99+" : n; }
+  $("#fabBubble").textContent = n ? "새로운 알림이 왔어요." : "살피 챗봇에게 물어보세요";
+  $("#fab").classList.toggle("has-alert", n > 0);
+}
+$("#bellBtn").onclick = () => { openChat(); const first = $("#chatBody .msg.alert"); if (first) first.scrollIntoView({ block: "start" }); };

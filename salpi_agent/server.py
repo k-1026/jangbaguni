@@ -199,6 +199,16 @@ def costs():
     return _receipt_guard(lambda: {**receipts.cost_report(supabase_db.DEMO_STORE), "receipts": receipts.recent(supabase_db.DEMO_STORE)})
 
 
+@app.get("/api/receipt/{purchase_id}")
+def receipt_detail(purchase_id: int):
+    return _receipt_guard(lambda: receipts.detail(supabase_db.DEMO_STORE, purchase_id))
+
+
+@app.get("/api/receipts")
+def receipt_list():
+    return _receipt_guard(lambda: {"receipts": receipts.recent(supabase_db.DEMO_STORE, limit=50)})
+
+
 @app.delete("/api/receipt/{purchase_id}")
 def receipt_delete(purchase_id: int):
     return _receipt_guard(lambda: receipts.remove(supabase_db.DEMO_STORE, purchase_id))

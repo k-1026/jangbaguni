@@ -127,10 +127,13 @@
 </main>
 
 <!-- 살피 챗봇: 버튼 모양 없이 살피 캐릭터 자체를 누름 -->
-<button class="salpi-fab" id="fab" aria-label="살피 챗봇 열기 (끌어서 옮길 수 있어요)" title="누르면 대화, 끌면 이동">
-  <span class="bubble">살피 챗봇에게 물어보세요</span>
-  <img src="/static/img/salpi_wave.png" alt="" draggable="false">
-</button>
+<div class="salpi-fab" id="fab">
+  <button class="fab-main" id="fabMain" type="button" aria-label="살피 챗봇 열기 (끌어서 옮길 수 있어요)" title="누르면 대화, 끌면 이동">
+    <span class="bubble">살피 챗봇에게 물어보세요</span>
+    <img src="/static/img/salpi_wave.png" alt="" draggable="false">
+  </button>
+  <button class="fab-x" id="fabX" type="button" aria-label="살피 작게 줄이기" title="작게 줄이기">×</button>
+</div>
 
 <aside class="chat" id="chat" aria-hidden="true">
   <div class="chat-head">

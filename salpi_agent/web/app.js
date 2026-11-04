@@ -741,12 +741,13 @@ try {
 
 let drag = null;
 fab.addEventListener("pointerdown", (e) => {
+  if (e.target.closest(".fab-x")) return;   // ×는 끌기 · 채팅 열기와 따로
   const r = fab.getBoundingClientRect();
   drag = { dx: e.clientX - r.left, dy: e.clientY - r.top, sx: e.clientX, sy: e.clientY, moved: false };
   fab.setPointerCapture(e.pointerId);
 });
 fab.addEventListener("pointermove", (e) => {
-  if (!drag) return;
+  if (!drag || fabHidden()) return;   // 작은 살피는 제자리 고정
   if (!drag.moved && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 6) return;   // 손 떨림은 클릭으로 봄
   drag.moved = true;
   fab.classList.add("dragging");
@@ -758,12 +759,29 @@ fab.addEventListener("pointerup", () => {
   if (drag.moved) {
     const r = fab.getBoundingClientRect();
     try { localStorage.setItem(FAB_KEY, JSON.stringify({ x: r.left / window.innerWidth, y: r.top / window.innerHeight })); } catch (e) {}
+  } else if (fabHidden()) {
+    setFabHidden(false);
   } else {
     chatEl.classList.contains("open") ? closeChat() : openChat();
   }
   drag = null;
 });
-window.addEventListener("resize", () => { if (fab.style.left) placeFab(fab.offsetLeft, fab.offsetTop); });
+window.addEventListener("resize", () => { if (fab.style.left && !fabHidden()) placeFab(fab.offsetLeft, fab.offsetTop); });
+
+// 살피 줄이기: 머리 위 ×를 누르면 문장 없이 작게 아래에 있고, 작은 살피를 누르면 돌아옴 (이 브라우저에 기억)
+const FAB_HIDE_KEY = "salpi_fab_hidden";
+const fabHidden = () => document.body.classList.contains("fab-hidden");
+function setFabHidden(on, save = true) {
+  document.body.classList.toggle("fab-hidden", on);
+  $("#fabMain").setAttribute("aria-label", on ? "살피 다시 크게 보기" : "살피 챗봇 열기 (끌어서 옮길 수 있어요)");
+  $("#fabMain").title = on ? "다시 크게 보기" : "누르면 대화, 끌면 이동";
+  if (on) closeChat();
+  if (save) try { localStorage.setItem(FAB_HIDE_KEY, on ? "1" : "0"); } catch (e) {}
+}
+$("#fabX").addEventListener("click", () => setFabHidden(true));
+// 키보드로 누른 경우 (마우스 · 손가락은 위 pointerup에서 처리)
+$("#fabMain").addEventListener("click", (e) => { if (e.detail === 0) fabHidden() ? setFabHidden(false) : openChat(); });
+try { if (localStorage.getItem(FAB_HIDE_KEY) === "1") setFabHidden(true, false); } catch (e) {}
 
 let busy = false;
 async function send(text) {

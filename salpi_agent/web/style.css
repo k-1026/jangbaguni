@@ -316,6 +316,32 @@ body.chat-open .fab-count { display: none; }
 /* 챗봇 창 안 시세 알림 */
 .msg.alert .alert-tag { display: inline-block; font-size: 11px; font-weight: 900; color: #fff; background: var(--up); border-radius: 999px; padding: 1px 8px; margin-bottom: 4px; }
 
+/* 종: 알림 모아 보기 */
+.top-actions { position: relative; }
+.bell-panel { position: absolute; top: 50px; right: 0; width: min(360px, calc(100vw - 24px)); max-height: 70vh; overflow-y: auto; background: #fff;
+  border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 14px 40px rgba(0,0,0,.18); z-index: 30; }
+.bell-panel[hidden] { display: none; }
+.bell-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid #F3F1EC; position: sticky; top: 0; background: #fff; }
+.bell-head button { border: 0; background: none; color: var(--muted); font-size: 12px; }
+.bell-head button:hover { color: var(--accent); }
+.bell-list { list-style: none; margin: 0; padding: 6px; }
+.bell-list button[data-aid] { width: 100%; display: flex; gap: 10px; align-items: center; text-align: left; border: 0; background: none; border-radius: 12px;
+  padding: 10px; color: var(--muted); }
+.bell-list button[data-aid]:hover { background: #F7F5F0; }
+.bell-list button.unread { color: var(--ink); background: #FFF6F0; }
+.bell-list button.unread b::after { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--up); margin-left: 6px; vertical-align: middle; }
+.bell-list img { width: 34px; height: 34px; border-radius: 50%; background: #F0EDE6; object-fit: cover; flex: none; }
+.bell-list b { display: block; font-size: 14px; } .bell-list small { font-size: 12px; color: var(--muted); }
+.bell-list .empty { padding: 18px 12px; text-align: center; color: var(--muted); font-size: 13px; line-height: 1.8; }
+.bell-list .empty button { border: 0; background: none; color: var(--accent); font-weight: 700; }
+/* 챗봇 창 알림: 누르면 자세히 */
+.msg.alert { cursor: pointer; }
+.msg.alert:hover { filter: brightness(.98); }
+.msg.alert .alert-more { display: block; margin-top: 6px; font-size: 12px; font-weight: 700; color: var(--accent); }
+/* 알림에서 넘어온 대시보드 잠깐 강조 */
+.slide.card.flash { animation: flash 1.6s ease-out; }
+@keyframes flash { 0%, 30% { box-shadow: 0 0 0 4px var(--accent), 12px 12px 26px #091915; } 100% { box-shadow: 12px 12px 26px #091915, -10px -10px 24px #1d4b42; } }
+
 /* 마이페이지 (오른쪽에서 열리는 판) */
 .backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 60; }
 .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(420px, 100vw); background: var(--paper); z-index: 61; display: flex; flex-direction: column;

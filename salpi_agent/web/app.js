@@ -151,6 +151,7 @@ slider.addEventListener("pointerup", (e) => {
 // 8초마다 자동으로 다음 장. 대시보드에 마우스를 올려 보는 동안 · 다른 탭을 볼 때는 멈춤
 const AUTO_MS = 8000;
 let autoTimer = null, hovering = false;
+function stopAuto() { clearInterval(autoTimer); }
 function restartAuto() {
   clearInterval(autoTimer);
   autoTimer = setInterval(() => { if (!hovering && !document.hidden && slides().length > 1) goSlide(cur + 1); }, AUTO_MS);
@@ -927,7 +928,8 @@ function buildAlerts() {
   const day = overview.map((r) => r.wholesale_date).filter(Boolean).sort().at(-1) || "";
   const tag = mmdd(day);
   const out = [], seen = new Set();
-  const push = (id, text) => { if (!seen.has(id)) { seen.add(id); out.push({ id: `${day}|${id}`, text }); } };
+  const push = (id, text, title, item) => { if (!seen.has(id)) { seen.add(id); out.push({ id: `${day}|${id}`, text, title, item, day }); } };
+  const moveTitle = (r) => `${josa(r.item, "이", "가")} 지난주보다 ${pct(ch(r))} ${ch(r) > 0 ? "올랐어요" : "내렸어요"}`;
   const ch = (r) => r.wholesale_change_pct ?? 0;
   const move = (r) => {
     const f = expOf(r);
@@ -937,9 +939,10 @@ function buildAlerts() {
       + (f >= 2 ? "다음 주엔 다시 오를 수 있어요. 지금 사 두면 좋아요." : "지금 사기 좋은 때예요.");
   };
   const byAbs = (a, b) => Math.abs(ch(b)) - Math.abs(ch(a));
-  if (prefs.all) overview.filter((r) => Math.abs(ch(r)) >= 3).sort(byAbs).slice(0, 6).forEach((r) => push(`move|${r.item}`, move(r)));
-  if (prefs.up) overview.filter((r) => ch(r) >= 10).sort(byAbs).slice(0, 3).forEach((r) => push(`move|${r.item}`, move(r)));
-  if (prefs.down) overview.filter((r) => ch(r) <= -10).sort(byAbs).slice(0, 3).forEach((r) => push(`move|${r.item}`, move(r)));
+  const pushMove = (r) => push(`move|${r.item}`, move(r), moveTitle(r), r.item);
+  if (prefs.all) overview.filter((r) => Math.abs(ch(r)) >= 3).sort(byAbs).slice(0, 6).forEach(pushMove);
+  if (prefs.up) overview.filter((r) => ch(r) >= 10).sort(byAbs).slice(0, 3).forEach(pushMove);
+  if (prefs.down) overview.filter((r) => ch(r) <= -10).sort(byAbs).slice(0, 3).forEach(pushMove);
   if (prefs.unusual) {
     overview.map((r) => {
       const h = (r.history || []).map((x) => x.kg_price).filter((v) => v > 0);
@@ -949,13 +952,15 @@ function buildAlerts() {
       return Math.abs(last) >= Math.max(10, usual * 2.5) ? { r, last, usual } : null;
     }).filter(Boolean).sort((a, b) => Math.abs(b.last) - Math.abs(a.last)).slice(0, 3).forEach(({ r, last, usual }) =>
       push(`unusual|${r.item}`, `사장님, **${josa(r.item, "이", "가")} 평소와 달라요.** 직전 거래일보다 ${pct(last)} ${last > 0 ? "올랐는데" : "내렸는데"}, `
-        + `보통은 하루 ${usual.toFixed(0)}% 안팎으로 움직여요.\n${last > 0 ? "주문 전에 가격을 한 번 더 확인해 보세요." : "필요하면 지금 사 두는 것도 좋아요."}`));
+        + `보통은 하루 ${usual.toFixed(0)}% 안팎으로 움직여요.\n${last > 0 ? "주문 전에 가격을 한 번 더 확인해 보세요." : "필요하면 지금 사 두는 것도 좋아요."}`,
+        `${josa(r.item, "이", "가")} 평소와 달라요 (하루 ${pct(last)})`, r.item));
   }
   if (prefs.weekly && day) {
     const d = new Date(day), monday = new Date(d - ((d.getDay() + 6) % 7) * 864e5).toISOString().slice(0, 10);
     const ups = overview.filter((r) => ch(r) >= 3), downs = overview.filter((r) => ch(r) <= -3), rise = overview.filter((r) => expOf(r) >= 2);
     const top = [...overview].sort((a, b) => ch(b) - ch(a));
-    out.push({ id: `week|${monday}`, text: `사장님, **이번 주 살피 리포트**예요 (${mmdd(monday)} 주).\n`
+    out.push({ id: `week|${monday}`, title: `이번 주 살피 리포트 (${mmdd(monday)} 주)`, item: null, day,
+      text: `사장님, **이번 주 살피 리포트**예요 (${mmdd(monday)} 주).\n`
       + `- 지난주보다 오른 야채 ${ups.length}개 · 내린 야채 ${downs.length}개\n`
       + `- 가장 많이 오른 야채: ${top[0].item} ${pct(ch(top[0]))}\n`
       + `- 가장 많이 내린 야채: ${top.at(-1).item} ${pct(ch(top.at(-1)))}\n`
@@ -975,26 +980,68 @@ function deliverAlerts() {
     el.classList.add("alert");
     el.dataset.alertId = a.id;
     el.insertAdjacentHTML("afterbegin", `<span class="alert-tag">시세 알림${read.has(a.id) ? "" : " · 새 알림"}</span>`);
+    el.insertAdjacentHTML("beforeend", `<span class="alert-more">${a.item ? `${esc(a.item)} 시세 자세히 보기` : "시세 대시보드 보기"} ›</span>`);
+    el.title = "누르면 자세한 시세로 넘어가요";
   }
   delivered = list;
   if (chatEl.classList.contains("open")) markAlertsRead();
   updateBadges();
+  renderBell();
 }
 
 function unreadCount() {
   const read = new Set(load(ALERT_READ_KEY, []));
   return delivered.filter((a) => !read.has(a.id)).length;
 }
-function markAlertsRead() {
+function markAlertsRead(ids = delivered.map((a) => a.id)) {
   const read = new Set(load(ALERT_READ_KEY, []));
-  delivered.forEach((a) => read.add(a.id));
+  ids.forEach((id) => read.add(id));
   store(ALERT_READ_KEY, [...read].slice(-300));
   updateBadges();
 }
 function updateBadges() {
   const n = unreadCount();
   for (const el of [$("#fabCount"), $("#bellCount")]) { el.hidden = !n; el.textContent = n > 99 ? "99+" : n; }
-  $("#fabBubble").textContent = n ? "새로운 알림이 왔어요." : "살피 챗봇에게 물어보세요";
+  $("#fabBubble").textContent = n ? "시세 알림이 있어요" : "살피 챗봇에게 물어보세요";
   $("#fab").classList.toggle("has-alert", n > 0);
+  renderBell();
 }
-$("#bellBtn").onclick = () => { openChat(); const first = $("#chatBody .msg.alert"); if (first) first.scrollIntoView({ block: "start" }); };
+
+// 위쪽 종: 알림만 모아 보기. 누르면 그 알림의 자세한 시세로 넘어감
+function renderBell() {
+  const read = new Set(load(ALERT_READ_KEY, []));
+  $("#bellList").innerHTML = delivered.length ? delivered.map((a) => `<li><button data-aid="${esc(a.id)}" class="${read.has(a.id) ? "" : "unread"}">
+      <img src="/static/img/salpi_face.png" alt=""><span><b>${esc(a.title)}</b><small>${mmdd(a.day)} 시세 · ${a.item ? "누르면 시세 자세히" : "누르면 대시보드"}</small></span></button></li>`).join("")
+    : `<li class="empty">새 알림이 없어요.<br><button data-open-settings>마이페이지에서 알림 종류 켜기 ›</button></li>`;
+}
+function toggleBell(open = $("#bellPanel").hidden) {
+  $("#bellPanel").hidden = !open;
+  $("#bellBtn").setAttribute("aria-expanded", String(open));
+}
+$("#bellBtn").onclick = (e) => { e.stopPropagation(); toggleBell(); };
+$("#bellPanel").onclick = (e) => {
+  e.stopPropagation();
+  const a = e.target.closest("[data-aid]");
+  if (a) { toggleBell(false); return goToAlert(a.dataset.aid); }
+  if (e.target.closest("[data-open-settings]")) { toggleBell(false); openMypage(); }
+};
+$("#bellReadAll").onclick = () => markAlertsRead();
+document.addEventListener("click", () => toggleBell(false));
+
+// 알림 → 자세한 시세: 재료 알림은 그 재료 대시보드 + 날짜별 시세, 리포트는 전체 대시보드
+function goToAlert(id) {
+  const a = delivered.find((x) => x.id === id);
+  if (!a) return;
+  markAlertsRead([id]);
+  closeChat();
+  const idx = a.item ? slides().findIndex((s) => s.dataset.item === a.item) : 0;
+  goSlide(Math.max(0, idx), "auto");
+  stopAuto();   // 보는 동안 다른 야채로 넘어가지 않게 (화살표를 누르면 다시 자동)
+  $("#dashboard").scrollIntoView({ behavior: "smooth" });
+  const s = slides()[Math.max(0, idx)];
+  s?.classList.remove("flash"); void s?.offsetWidth; s?.classList.add("flash");
+}
+body.addEventListener("click", (e) => {
+  const m = e.target.closest(".msg.alert");
+  if (m) goToAlert(m.dataset.alertId);
+});

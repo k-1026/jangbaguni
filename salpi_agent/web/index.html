@@ -7,7 +7,7 @@
   <link rel="icon" href="/static/img/salpi_face.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=23">
+  <link rel="stylesheet" href="/static/style.css?v=24">
 </head>
 <body>
 
@@ -23,7 +23,11 @@
     </nav>
     <span class="basis" id="basis">시세 불러오는 중</span>
     <div class="top-actions">
-      <button class="icon-btn" id="bellBtn" aria-label="알림 보기 (살피 챗봇 창에서 열려요)" title="알림"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2Z"/></svg><span class="count" id="bellCount" hidden></span></button>
+      <button class="icon-btn" id="bellBtn" aria-label="알림 모아 보기" aria-expanded="false" title="알림"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2Z"/></svg><span class="count" id="bellCount" hidden></span></button>
+      <div class="bell-panel" id="bellPanel" hidden>
+        <div class="bell-head"><b>알림</b><button id="bellReadAll">모두 읽음</button></div>
+        <ul class="bell-list" id="bellList"></ul>
+      </div>
       <button class="me-btn" id="meBtn" aria-label="마이페이지"><img src="/static/img/salpi_face.png" alt=""><span>마이페이지</span></button>
     </div>
   </div>
@@ -70,7 +74,7 @@
   </section>
 
   <!-- 고른 재료 자세히 -->
-  <section class="wrap section">
+  <section class="wrap section" id="detail">
     <div class="section-head">
       <h2 id="detailTitle">날짜별 시세</h2>
       <p class="muted">도매 kg당 · 그날 날씨와 행사 · 다음 7일 예측 이유</p>
@@ -191,6 +195,6 @@
 </aside>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="/static/app.js?v=23"></script>
+<script src="/static/app.js?v=24"></script>
 </body>
 </html>

@@ -134,7 +134,10 @@ def demand_forecast(target: str | None = None):
         day = date.fromisoformat(target) if target else None
     except ValueError:
         raise HTTPException(400, "날짜는 2026-11-05 형식으로 보내 주세요")
-    return _guard(lambda: memo(f"demand:{day}", lambda: demand.forecast(target=day, price_outlook=_price_outlook()), ttl=600))
+    # 대시보드 시세가 아직 준비 전이면 기다리지 않고 시세 없이 계산 (1분 뒤 다시 계산할 때 시세 반영)
+    outlook = _price_outlook()
+    key = f"demand:{day}:{'price' if outlook else 'noprice'}"
+    return _guard(lambda: memo(key, lambda: demand.forecast(target=day, price_outlook=outlook or {}), ttl=600 if outlook else 60))
 
 
 # ---------------------------------------------------------------

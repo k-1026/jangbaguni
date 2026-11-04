@@ -163,5 +163,26 @@
    }
   ],
   "total": 230100
+ },
+ "receipt_1104_mart_up": {
+  "date": "2026-11-04",
+  "items": [
+   {
+    "raw_name": "깐양파15K",
+    "qty": 1,
+    "amount": 34500
+   },
+   {
+    "raw_name": "돈앞다리(냉장)1K",
+    "qty": 12,
+    "amount": 168000
+   },
+   {
+    "raw_name": "대파1단",
+    "qty": 3,
+    "amount": 11400
+   }
+  ],
+  "total": 213900
  }
 }

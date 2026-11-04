@@ -379,6 +379,173 @@ async function loadDemand() {
 }
 
 // ---------------------------------------------------------------
+// 영수증으로 원가율 (사진 → 읽기 → 확인 · 수정 → 저장 → 원가율)
+// ---------------------------------------------------------------
+const DEMO_RECEIPTS = [
+  ["receipt_1104_mart_up", "11/4 값 오른 마트 영수증"], ["receipt_1012_statement", "10/12 도매상 명세서"], ["receipt_1019_photo_tilted", "10/19 기울어진 사진"],
+  ["receipt_1026_mart", "10/26 마트 영수증"], ["receipt_1102_handwritten", "11/2 손글씨 영수증"],
+];
+let receipt = null;   // { image, mime, data(읽은 결과) }
+
+async function sendJSON(url, method, body) {
+  const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: body && JSON.stringify(body) });
+  const out = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(out.detail || "잠시 뒤 다시 해 주세요");
+  return out;
+}
+
+// 사진을 긴 쪽 1600px JPEG로 줄임 (요청 크기 제한 · 읽기 속도)
+function shrink(blob) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, 1600 / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      const g = c.getContext("2d");
+      g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height);
+      g.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(img.src);
+      resolve(c.toDataURL("image/jpeg", 0.88));
+    };
+    img.onerror = () => reject(new Error("사진을 열지 못했어요"));
+    img.src = URL.createObjectURL(blob);
+  });
+}
+
+async function readReceipt(blob) {
+  const box = $("#receiptResult");
+  $("#receiptStart").hidden = true;
+  box.innerHTML = `<div class="reading"><div class="spinner"></div><b>살피가 영수증을 읽는 중이에요</b><p class="muted">10~30초쯤 걸려요</p></div>`;
+  try {
+    const image = await shrink(blob);
+    receipt = { image, mime: "image/jpeg" };
+    receipt.data = await sendJSON("/api/receipt/read", "POST", { image, mime: "image/jpeg" });
+    renderReceiptEdit();
+  } catch (e) {
+    box.innerHTML = `<p class="warn">${esc(e.message)}</p><button class="btn" id="receiptAgain">다시 하기</button>`;
+    $("#receiptAgain").onclick = resetReceipt;
+  }
+}
+
+function resetReceipt() {
+  receipt = null;
+  $("#receiptResult").innerHTML = "";
+  $("#receiptStart").hidden = false;
+  $("#receiptFile").value = "";
+}
+
+function renderReceiptEdit() {
+  const d = receipt.data;
+  const opts = (sel) => `<option value="">재료 아님</option>` + d.items_list.map((i) =>
+    `<option value="${i.id}" ${i.id === sel ? "selected" : ""}>${esc(i.name)}</option>`).join("");
+  const unitOf = (id) => d.items_list.find((i) => i.id === +id)?.base_unit || "";
+  $("#receiptResult").innerHTML = `
+    <div class="receipt-edit">
+      <img class="receipt-thumb" src="${receipt.image}" alt="올린 영수증">
+      <div>
+        <span class="badge">살피가 읽은 내용 · 틀린 곳은 고쳐 주세요</span>
+        <div class="receipt-meta">
+          <label>날짜 <input type="date" id="rcDate" value="${esc(d.date || "")}"></label>
+          <label>판매처 <input id="rcSupplier" value="${esc(d.supplier || "")}"></label>
+        </div>
+        ${d.total_matches ? "" : `<p class="warn">줄 금액을 더하면 ${won(d.line_sum)}인데 합계는 ${won(d.total)}이에요. 빠진 줄이 없는지 봐 주세요.</p>`}
+      </div>
+    </div>
+    <table class="price-table edit-table">
+      <thead><tr><th>영수증 품목</th><th>재료</th><th>양</th><th>금액(원)</th><th></th></tr></thead>
+      <tbody>${d.items.map((x, i) => `<tr data-i="${i}">
+        <td><input class="rc-name" value="${esc(x.raw_name)}"></td>
+        <td><select class="rc-item">${opts(x.item_id)}</select></td>
+        <td class="qty-cell"><input class="rc-qty" type="number" step="0.1" min="0" value="${x.qty_base ?? ""}"><span class="rc-unit">${esc(x.base_unit || "")}</span></td>
+        <td><input class="rc-amount" type="number" min="0" value="${x.amount ?? ""}"></td>
+        <td><button class="rc-del" title="이 줄 빼기">×</button></td></tr>`).join("")}</tbody>
+    </table>
+    <p class="muted small">양은 재료 기준 단위(kg · 모)로 바꾼 전체 양이에요. 예: 깐양파 15kg 1망 → 15</p>
+    <div class="receipt-actions"><button class="btn" id="rcCancel">취소</button><button class="btn primary" id="rcSave">확인했어요, 저장</button></div>`;
+  const tb = $("#receiptResult tbody");
+  tb.onchange = (e) => {
+    if (e.target.classList.contains("rc-item")) e.target.closest("tr").querySelector(".rc-unit").textContent = unitOf(e.target.value);
+  };
+  tb.onclick = (e) => { if (e.target.classList.contains("rc-del")) e.target.closest("tr").remove(); };
+  $("#rcCancel").onclick = resetReceipt;
+  $("#rcSave").onclick = saveReceipt;
+}
+
+async function saveReceipt() {
+  const btn = $("#rcSave");
+  const items = [...document.querySelectorAll("#receiptResult tbody tr")].map((tr) => {
+    const orig = receipt.data.items[+tr.dataset.i];
+    const itemId = tr.querySelector(".rc-item").value;
+    return { raw_name: tr.querySelector(".rc-name").value.trim(), qty: orig.qty, item_id: itemId ? +itemId : null,
+             qty_base: parseFloat(tr.querySelector(".rc-qty").value) || null, amount: parseFloat(tr.querySelector(".rc-amount").value) || null };
+  });
+  btn.disabled = true; btn.textContent = "저장하는 중";
+  try {
+    const r = await sendJSON("/api/receipt/save", "POST", { image: receipt.image, mime: receipt.mime,
+      date: $("#rcDate").value || null, supplier: $("#rcSupplier").value || null, items });
+    resetReceipt();
+    $("#receiptResult").innerHTML = `<p class="ok">${mmdd(r.date)} 영수증 ${r.saved_items}줄을 저장했어요. 오른쪽 원가율이 새로 계산됐어요.</p>`;
+    renderCosts(r, true);
+    loadCosts(false);
+  } catch (e) {
+    btn.disabled = false; btn.textContent = "확인했어요, 저장";
+    alert(e.message);
+  }
+}
+
+const ratioCls = (v) => (v == null ? "" : v > 35 ? "up" : v > 30 ? "warnc" : "down");
+
+function renderCosts(r, withChange) {
+  const rows = r.menus.map((m) => {
+    const ch = withChange && m.change_pt ? ` <small class="${m.change_pt > 0 ? "up" : "down"}">(${m.change_pt > 0 ? "+" : ""}${m.change_pt}%p)</small>` : "";
+    return `<tr><td>${esc(m.menu)}</td><td>${won(m.price)}</td><td>${won(m.cost_per_serving)}</td>
+      <td class="price ${ratioCls(m.cost_ratio_pct)}">${m.cost_ratio_pct ?? "-"}%${ch}</td><td>${won(m.margin)}</td></tr>
+      ${m.tips.length ? `<tr class="tips"><td colspan="5">${m.tips.map((t) => `<span>${esc(t)}</span>`).join("")}</td></tr>` : ""}`;
+  }).join("");
+  const keep = $("#receiptList")?.innerHTML || "";
+  $("#costCard").innerHTML = `
+    <span class="badge">시연용 가게 · 최근 영수증 단가 기준 · 목표 원가율 ${r.target_ratio_pct}%</span>
+    <table class="price-table cost-table">
+      <thead><tr><th>메뉴</th><th>판매가</th><th>1인분 재료비</th><th>원가율</th><th>남는 돈</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <p class="muted small">${esc(r.method)}. 시연용 레시피는 주재료만 들어 있어 실제보다 원가율이 낮게 나와요.</p>
+    <div id="receiptList">${r.receipts ? receiptList(r.receipts) : keep}</div>`;
+}
+
+function receiptList(list) {
+  return `<h3 class="sub-h">최근 영수증</h3><ul class="ctx-list receipt-list">${list.map((p) => `<li>
+    <span>${mmdd(p.purchased_on)} · ${esc(p.supplier || "판매처 모름")} · ${p.items}줄 · ${won(p.total_amount)}</span>
+    ${p.source === "ocr" ? `<button class="rc-remove" data-id="${p.id}">지우기</button>` : `<small>시연 기본 데이터</small>`}</li>`).join("")}</ul>`;
+}
+
+async function loadCosts(full = true) {
+  try {
+    const r = await getJSON("/api/costs");
+    if (full) renderCosts(r, false);
+    else $("#receiptList").innerHTML = receiptList(r.receipts);
+  } catch (e) {
+    if (full) $("#costCard").innerHTML = `<p class="muted">원가율을 불러오지 못했어요. ${esc(e.message)}</p>`;
+  }
+}
+
+$("#demoReceipts").innerHTML = DEMO_RECEIPTS.map(([f, label]) =>
+  `<button data-f="${f}"><img src="/receipts_demo/${f}.png" alt="" loading="lazy"><span>${label}</span></button>`).join("");
+$("#demoReceipts").onclick = async (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  readReceipt(await (await fetch(`/receipts_demo/${b.dataset.f}.png`)).blob());
+};
+$("#receiptFile").onchange = (e) => { if (e.target.files[0]) readReceipt(e.target.files[0]); };
+$("#costCard").onclick = async (e) => {
+  const b = e.target.closest(".rc-remove");
+  if (!b || !confirm("이 영수증을 지울까요? 원가율이 다시 계산돼요.")) return;
+  try { renderCosts(await sendJSON(`/api/receipt/${b.dataset.id}`, "DELETE"), false); loadCosts(false); }
+  catch (err) { alert(err.message); }
+};
+
+// ---------------------------------------------------------------
 // 식봄 상품 목록
 // ---------------------------------------------------------------
 let filterItem = "전체";
@@ -627,5 +794,6 @@ loadOverview();
 loadProducts();
 loadContext();
 loadDemand();
+loadCosts();
 if (location.hash === "#chat") openChat();   // 주소 끝에 #chat 을 붙이면 채팅창이 열린 채로 시작
 if (location.hash === "#rise") setTimeout(() => goSlide(1, "instant"), 4000);   // 시연용: 첫 야채 대시보드부터

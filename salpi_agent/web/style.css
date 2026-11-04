@@ -267,12 +267,43 @@ body.chat-open .salpi-fab .bubble, .salpi-fab.dragging .bubble { display: none; 
 .decision.wait { background: #DDF3EA; color: var(--down); }
 .order-table td { color: var(--ink); }
 
+/* 영수증으로 원가율 */
+.upload-btn { display: inline-block; background: var(--accent); color: #fff; font-weight: 700; padding: 12px 22px; border-radius: 12px; cursor: pointer; }
+.demo-receipts { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 8px; }
+.demo-receipts button { border: 1px solid var(--border); background: #fff; border-radius: 10px; padding: 6px; font-size: 12px; color: var(--ink); }
+.demo-receipts button:hover { border-color: var(--accent); }
+.demo-receipts img { display: block; width: 100%; height: 110px; object-fit: cover; object-position: top; border-radius: 6px; margin-bottom: 4px; }
+.reading { text-align: center; padding: 30px 0; } .reading .spinner { margin: 0 auto 10px; }
+.receipt-edit { display: grid; grid-template-columns: 110px 1fr; gap: 14px; margin-bottom: 10px; }
+.receipt-thumb { width: 110px; max-height: 150px; object-fit: cover; object-position: top; border-radius: 8px; border: 1px solid var(--border); }
+.receipt-meta { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; font-size: 13px; }
+.receipt-meta input { display: block; border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; font: inherit; }
+.edit-table input, .edit-table select { width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 5px 6px; font: inherit; font-size: 13px; background: #fff; }
+.edit-table td { color: var(--ink); padding: 4px; }
+.edit-table .qty-cell { display: flex; align-items: center; gap: 4px; } .edit-table .qty-cell input { width: 70px; }
+.edit-table .rc-item { min-width: 130px; } .edit-table .rc-name { min-width: 110px; }
+.rc-del { border: 0; background: none; color: var(--muted); font-size: 18px; }
+.receipt-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
+.btn { border: 1px solid var(--border); background: #fff; border-radius: 10px; padding: 8px 16px; font-weight: 700; }
+.btn.primary { background: var(--deep); color: #fff; border-color: var(--deep); }
+.btn:disabled { opacity: .6; cursor: wait; }
+.warn { background: #FFF3CC; color: #6b5200; border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+.ok { background: #DDF3EA; color: #0f5e47; border-radius: 8px; padding: 8px 10px; font-size: 14px; font-weight: 700; }
+.cost-table td { color: var(--ink); } .cost-table td.up { color: var(--up); } .cost-table td.down { color: var(--down); } .cost-table td.warnc { color: #B07A00; }
+.cost-table small.up { color: var(--up); } .cost-table small.down { color: var(--down); }
+.cost-table tr.tips td { text-align: left; white-space: normal; padding-top: 0; }
+.cost-table tr.tips span { display: block; font-size: 12px; color: #4C524E; } .cost-table tr.tips span::before { content: "· "; }
+.sub-h { font-size: 15px; margin: 16px 0 6px; }
+.receipt-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; }
+.rc-remove { border: 1px solid var(--border); background: #fff; border-radius: 8px; padding: 2px 8px; font-size: 12px; color: var(--up); }
+
 @media (max-width: 1200px) {
   .hero-inner { grid-template-columns: 1fr; position: relative; }
 }
 @media (max-width: 1000px) {
   .grid { grid-template-columns: repeat(3, 1fr); }
   .detail, .store-grid { grid-template-columns: 1fr; }
+  .demo-receipts { grid-template-columns: repeat(3, 1fr); }
 }
 @media (max-width: 700px) {
   .wrap { padding: 0 16px; }

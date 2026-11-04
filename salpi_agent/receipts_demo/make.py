@@ -15,6 +15,8 @@ R = {
     "1026": ("2026-10-26", [("깐양파15K", "", 1, 25500), ("돈앞다리(냉장)1K", "", 12, 150000), ("국산두부300G", "", 45, 54000),
              ("포기김치10K", "", 2, 76000)]),
     "1102": ("2026-11-02", [("양파 1망", "1", 1, 28500), ("돼지 앞다리", "12kg", 12, 153600), ("대파", "3kg", 3, 10500)]),
+    # 시연용: 값이 오른 오늘 영수증 → 저장하면 원가율이 오르는 걸 보여 줌
+    "1104": ("2026-11-04", [("깐양파15K", "", 1, 34500), ("돈앞다리(냉장)1K", "", 12, 168000), ("대파1단", "", 3, 11400)]),
 }
 
 
@@ -90,7 +92,7 @@ td:last-child{{text-align:right}} .w{{font-family:'Nanum Pen Script';font-size:2
 
 
 pages = {"receipt_1012_statement": statement("1012"), "receipt_1019_statement": statement("1019"),
-         "receipt_1026_mart": mart("1026"), "receipt_1102_handwritten": hand("1102")}
+         "receipt_1026_mart": mart("1026"), "receipt_1102_handwritten": hand("1102"), "receipt_1104_mart_up": mart("1104")}
 # 사진처럼: 1019 명세서를 기울이고 흐리게 + 그림자
 html, w, h = statement("1019")
 html = html.replace("<div class=p>", '<div class=p style="transform:rotate(-4deg) translateY(30px);filter:blur(.7px) brightness(.93) contrast(.95);box-shadow:30px 30px 60px rgba(0,0,0,.45)">')
@@ -102,7 +104,7 @@ for name, (html, w, h) in pages.items():
 
 # 정답지: OCR이 이렇게 읽어야 맞음 (정확도 시험용)
 keys = {"receipt_1012_statement": "1012", "receipt_1019_statement": "1019", "receipt_1026_mart": "1026",
-        "receipt_1102_handwritten": "1102", "receipt_1019_photo_tilted": "1019"}
+        "receipt_1102_handwritten": "1102", "receipt_1019_photo_tilted": "1019", "receipt_1104_mart_up": "1104"}
 ans = {name: {"date": R[k][0], "items": [{"raw_name": n, "qty": c, "amount": a} for n, u, c, a in R[k][1]],
               "total": sum(r[3] for r in R[k][1])} for name, k in keys.items()}
 (OUT / "answers.json").write_text(json.dumps(ans, ensure_ascii=False, indent=1), encoding="utf-8")

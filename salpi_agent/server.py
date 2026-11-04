@@ -4,6 +4,7 @@
 """
 
 import os
+import base64
 import threading
 import time
 from contextlib import asynccontextmanager
@@ -19,6 +20,8 @@ from pydantic import BaseModel
 import analysis
 import demand
 import foodspring
+import receipts
+import supabase_db
 from agent import SalpiAgent
 from data_sources import ITEMS, ApiError, ApiKeyMissing, daegu_events, holidays
 
@@ -42,6 +45,7 @@ async def lifespan(_app):
 
 app = FastAPI(title="살피", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=WEB), name="static")
+app.mount("/receipts_demo", StaticFiles(directory=ROOT / "receipts_demo"), name="receipts_demo")   # 시연용 가상 영수증
 
 # ---------------------------------------------------------------
 # 계산 결과 1시간 보관 (같은 화면을 여러 명이 열어도 다시 계산하지 않음)
@@ -138,6 +142,66 @@ def demand_forecast(target: str | None = None):
     outlook = _price_outlook()
     key = f"demand:{day}:{'price' if outlook else 'noprice'}"
     return _guard(lambda: memo(key, lambda: demand.forecast(target=day, price_outlook=outlook or {}), ttl=600 if outlook else 60))
+
+
+# ---------------------------------------------------------------
+# 영수증으로 원가율: 사진 읽기(Gemini) → 사장님 확인 · 수정 → 저장(Supabase) → 원가율 다시 계산
+# 사진은 화면에서 줄여서(긴 쪽 1600px) base64 로 보냄 (Vercel 요청 크기 4.5MB 제한)
+# ---------------------------------------------------------------
+MAX_IMAGE = 4_000_000
+
+
+def _image(b64, mime):
+    if not b64:
+        return None, None
+    data = base64.b64decode(b64.split(",")[-1])
+    if len(data) > MAX_IMAGE:
+        raise HTTPException(413, "사진이 너무 커요. 다시 찍어 주세요.")
+    if mime not in ("image/jpeg", "image/png", "image/webp"):
+        raise HTTPException(400, "사진 파일(jpg · png)만 올릴 수 있어요")
+    return data, mime
+
+
+class ReceiptIn(BaseModel):
+    image: str = ""
+    mime: str = "image/jpeg"
+
+
+class ReceiptSave(ReceiptIn):
+    date: str | None = None
+    supplier: str | None = None
+    items: list[dict] = []
+
+
+def _receipt_guard(fn):
+    try:
+        return _guard(fn)
+    except (ValueError, RuntimeError) as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/receipt/read")
+def receipt_read(body: ReceiptIn):
+    data, mime = _image(body.image, body.mime)
+    if not data:
+        raise HTTPException(400, "영수증 사진을 골라 주세요")
+    return _receipt_guard(lambda: receipts.read(data, mime))
+
+
+@app.post("/api/receipt/save")
+def receipt_save(body: ReceiptSave):
+    data, mime = _image(body.image, body.mime)
+    return _receipt_guard(lambda: receipts.save(supabase_db.DEMO_STORE, body.model_dump(), data, mime))
+
+
+@app.get("/api/costs")
+def costs():
+    return _receipt_guard(lambda: {**receipts.cost_report(supabase_db.DEMO_STORE), "receipts": receipts.recent(supabase_db.DEMO_STORE)})
+
+
+@app.delete("/api/receipt/{purchase_id}")
+def receipt_delete(purchase_id: int):
+    return _receipt_guard(lambda: receipts.remove(supabase_db.DEMO_STORE, purchase_id))
 
 
 # ---------------------------------------------------------------

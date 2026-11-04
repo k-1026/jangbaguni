@@ -1416,7 +1416,7 @@ function updateBadges() {
 function renderBell() {
   const read = new Set(load(ALERT_READ_KEY, []));
   $("#bellList").innerHTML = delivered.length ? delivered.map((a) => `<li><button data-aid="${esc(a.id)}" class="${read.has(a.id) ? "" : "unread"}">
-      <img src="/static/img/salpi_face.png" alt=""><span><b>${esc(a.title)}</b><small>${mmdd(a.day)} 시세 · ${a.item ? "누르면 시세 자세히" : "누르면 대시보드"}</small></span></button></li>`).join("")
+      <img src="/static/img/salpi_face.png" alt=""><span><b>${esc(a.title)}</b><small>${mmdd(a.day)} 시세 · ${a.item ? "누르면 재료 페이지" : "누르면 대시보드"}</small></span></button></li>`).join("")
     : `<li class="empty">새 알림이 없어요.<br><button data-open-settings>마이페이지에서 알림 종류 켜기 ›</button></li>`;
 }
 function toggleBell(open = $("#bellPanel").hidden) {
@@ -1433,18 +1433,18 @@ $("#bellPanel").onclick = (e) => {
 $("#bellReadAll").onclick = () => markAlertsRead();
 document.addEventListener("click", () => toggleBell(false));
 
-// 알림 → 자세한 시세: 재료 알림은 그 재료 대시보드, 리포트는 전체 대시보드
+// 알림 → 자세한 시세: 재료 알림은 그 재료 페이지(/?item=재료), 리포트는 첫 화면 전체 대시보드
 function goToAlert(id) {
   const a = delivered.find((x) => x.id === id);
   if (!a) return;
   markAlertsRead([id]);
+  if (a.item) { location.href = `/?item=${encodeURIComponent(a.item)}`; return; }
   closeChat();
-  if (ITEM) { location.href = a.item ? `/?item=${encodeURIComponent(a.item)}` : "/#dashboard"; return; }   // 재료 페이지에는 슬라이드가 없음
-  const idx = a.item ? slides().findIndex((s) => s.dataset.item === a.item) : 0;
-  goSlide(Math.max(0, idx), "auto");
-  setPaused(true);   // 보는 동안 다른 야채로 넘어가지 않게 (일시정지 버튼으로 다시 시작)
+  if (ITEM) { location.href = "/#dashboard"; return; }
+  goSlide(0, "auto");
+  setPaused(true);   // 보는 동안 다른 야채로 넘어가지 않게 (일시정지 버튼으로 다시 자동)
   $("#dashboard").scrollIntoView({ behavior: "smooth" });
-  const s = slides()[Math.max(0, idx)];
+  const s = slides()[0];
   s?.classList.remove("flash"); void s?.offsetWidth; s?.classList.add("flash");
 }
 body.addEventListener("click", (e) => {

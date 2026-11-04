@@ -23,6 +23,7 @@ async function getJSON(url) {
 }
 const byItem = (name) => overview.find((r) => r.item === name);
 const expOf = (r) => r.forecast?.expected_change_pct ?? 0;
+const factorName = (name) => name.replace(/\s*\(.*\)/, "");   // 화면에는 괄호 설명 없이 표시
 // 예측 한마디: 오를 / 떨어질 / 유지될
 function verdict(f) {
   const e = f?.expected_change_pct ?? 0;
@@ -84,38 +85,41 @@ function renderSlides() {
         다음 주 <b class="up">오를 가능성 ${overview.filter((r) => expOf(r) >= 2).length}개</b> ·
         <b>유지 ${overview.filter((r) => Math.abs(expOf(r)) < 2).length}개</b> ·
         <b class="down">떨어질 가능성 ${overview.filter((r) => expOf(r) <= -2).length}개</b></p>
-    </article>` + slideOrder().map((r, idx) => {
-      const f = r.forecast || {};
-      const v = verdict(f);
-      const reasons = [...(f.factors || [])].filter((x) => x.effect_pct !== 0)
-        .sort((a, b) => Math.abs(b.effect_pct) - Math.abs(a.effect_pct)).slice(0, 2);
-      // 오름: 경광등 살피(2 · 4번째 포즈 번갈아) · 유지: 알람시계 살피(1 · 3번째) · 내림: 쇼핑백 살피(6번째)
-      const pose = v.kind === "down" ? "alert_down" : `alert_${v.kind === "up" ? "rise" : "flat"}${(idx % 2) + 1}`;
-      const say = { up: "미리 사두는 게 좋을 것 같아요.", flat: "평소대로 구매하셔도 좋아요", down: "급하지 않으면 나중에 사셔도 좋아요" }[v.kind];
-      return `
-    <article class="slide card" data-item="${esc(r.item)}" data-title="${esc(r.item)} 시세">
-      <div class="chart-head">
-        <div>
-          <h3>${esc(r.item)} 시세</h3>
-          <p class="price-now"><strong>${won(r.wholesale_kg)}/kg</strong>
-            <span class="${cls(r.wholesale_change_pct, 3)}">1주 전보다 ${pct(r.wholesale_change_pct)}</span></p>
-        </div>
-        <div class="legend">
-          <span><i class="lg line"></i>도매 kg당</span><span><i class="lg fc"></i>7일 예측</span>
-          <span><i class="lg rain"></i>비</span><span><i class="lg event"></i>행사</span><span><i class="lg hol"></i>공휴일</span>
-        </div>
-      </div>
-      <div class="chart-box"><canvas></canvas></div>
-      <div class="fc-strip ${v.kind}">
-        <div class="advice"><span class="say">${say}</span><img class="pose" src="/static/img/${pose}.png" alt=""></div>
-        <span class="verdict">${v.text}</span>
-        <span class="range">예상 ${pct(f.range_pct?.[0])} ~ ${pct(f.range_pct?.[1])}
-          (${won(f.expected_kg_price_range?.[0])} ~ ${won(f.expected_kg_price_range?.[1])}/kg · 믿을 만한 정도 ${esc(f.confidence || "-")})</span>
-        <ul>${reasons.map((x) => `<li><b>${esc(x.factor)}</b> ${pct(x.effect_pct)} — ${esc(x.detail)}</li>`).join("")
-          || "<li>뚜렷하게 오르거나 내릴 이유가 적어요</li>"}</ul>
-      </div>
-    </article>`;
-    }).join("");
+    </article>` + slideOrder().map(itemSlide).join("");
+}
+
+// 재료 한 장: 메인 슬라이드와 재료 페이지가 함께 씀
+function itemSlide(r, idx) {
+  const f = r.forecast || {};
+  const v = verdict(f);
+  const reasons = [...(f.factors || [])].filter((x) => x.effect_pct !== 0)
+    .sort((a, b) => Math.abs(b.effect_pct) - Math.abs(a.effect_pct)).slice(0, 2);
+  // 오름: 경광등 살피(2 · 4번째 포즈 번갈아) · 유지: 알람시계 살피(1 · 3번째) · 내림: 쇼핑백 살피(6번째)
+  const pose = v.kind === "down" ? "alert_down" : `alert_${v.kind === "up" ? "rise" : "flat"}${(idx % 2) + 1}`;
+  const say = { up: "미리 사두는 게 좋을 것 같아요.", flat: "평소대로 구매하셔도 좋아요", down: "급하지 않으면 나중에 사셔도 좋아요" }[v.kind];
+  return `
+<article class="slide card" data-item="${esc(r.item)}" data-title="${esc(r.item)} 시세">
+  <div class="chart-head">
+    <div>
+      <h3>${esc(r.item)} 시세</h3>
+      <p class="price-now"><strong>${won(r.wholesale_kg)}/kg</strong>
+        <span class="${cls(r.wholesale_change_pct, 3)}">1주 전보다 ${pct(r.wholesale_change_pct)}</span></p>
+    </div>
+    <div class="legend">
+      <span><i class="lg line"></i>도매 kg당</span><span><i class="lg fc"></i>7일 예측</span>
+      <span><i class="lg rain"></i>비</span><span><i class="lg event"></i>행사</span><span><i class="lg hol"></i>공휴일</span>
+    </div>
+  </div>
+  <div class="chart-box"><canvas></canvas></div>
+  <div class="fc-strip ${v.kind}">
+    <div class="advice"><span class="say">${say}</span><img class="pose" src="/static/img/${pose}.png" alt=""></div>
+    <span class="verdict">${v.text}</span>
+    <span class="range">예상 ${pct(f.range_pct?.[0])} ~ ${pct(f.range_pct?.[1])}
+      (${won(f.expected_kg_price_range?.[0])} ~ ${won(f.expected_kg_price_range?.[1])}/kg · 믿을 만한 정도 ${esc(f.confidence || "-")})</span>
+    <ul>${reasons.map((x) => `<li><b>${esc(factorName(x.factor))}</b> ${pct(x.effect_pct)} — ${esc(x.detail)}</li>`).join("")
+      || "<li>뚜렷하게 오르거나 내릴 이유가 적어요</li>"}</ul>
+  </div>
+</article>`;
 }
 
 // 슬라이드 넘기기: 화살표 · 8초 자동 · 휴대폰 손가락. 끝에서 처음으로(처음에서 끝으로) 돌아감
@@ -304,6 +308,8 @@ function renderItemPage() {
     <div><h1>${esc(r.item)}</h1><p class="${v.kind === "flat" ? "" : v.kind}">${esc(v.text)}</p></div>
     <a class="item-shop" href="${esc(r.foodspring_url || "https://www.foodspring.co.kr")}" target="_blank" rel="noopener">${esc(r.item)} 구매 바로가기 →</a>`;
   $("#itemBody").hidden = false;
+  $("#itemDash").innerHTML = itemSlide(r, 0);
+  drawItemChart($("#itemDash canvas"), r);
   renderDetail(r.item);
   renderProducts();
 }
@@ -327,12 +333,10 @@ function renderDetail(name) {
 
 // 시세판: 최근 10거래일의 직전 거래일 대비 증감 (등락액 원 / 등락률 %)
 const BOARD_DAYS = 10;
-const RAIN_ICON = `<svg class="board-rain" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="비 1mm 이상"><path d="M7 15a4 4 0 0 1-.6-8A5.5 5.5 0 0 1 17 8a3.5 3.5 0 0 1 .5 7"/><path d="M9 18v2M13 16v4M17 18v2"/></svg>`;
 let boardItem = null, boardMode = "won";
 
 const rate = (r) => (r.diff == null || r.kg_price === r.diff ? null : (r.diff / (r.kg_price - r.diff)) * 100);
 const arrow = (v) => (v > 0 ? "▲" : v < 0 ? "▼" : "");
-const dayName = (d) => "일월화수목금토"[new Date(`${d}T00:00:00`).getDay()];
 const number = (v) => Math.round(v).toLocaleString("ko-KR");
 // 그래프 값 · 표시: 등락액은 원, 등락률은 %
 const boardValue = (r) => (boardMode === "won" ? r.diff : rate(r));
@@ -358,14 +362,6 @@ function renderBoard() {
   const totalName = boardMode === "won" ? "합계" : "평균";
   const big = [...moved].sort((a, b) => Math.abs(boardValue(b)) - Math.abs(boardValue(a)))[0];
   const change = boardValue(last);
-  const closed = [];
-  rows.forEach((r, i) => {
-    if (!i) return;
-    for (let t = Date.parse(`${rows[i - 1].date}T00:00:00Z`) + 864e5; t < Date.parse(`${r.date}T00:00:00Z`); t += 864e5) {
-      const day = new Date(t).toISOString().slice(0, 10);
-      closed.push(`${mmdd(day)}(${dayName(day)})`);
-    }
-  });
 
   const { step, top } = boardScale(Math.max(0, ...moved.map((r) => Math.abs(boardValue(r)))));
   const place = (v) => 50 - (v / top) * 50;   // 값 → 위에서부터 %
@@ -382,12 +378,7 @@ function renderBoard() {
     return `<div class="board-col">${bar}<b class="board-val ${kind}" style="${at}">${arrow(v)}${boardMode === "won" ? number(Math.abs(v)) : boardText(v)}</b></div>`;
   }).join("");
 
-  const days = rows.map((r) => `<div class="board-day ${r === last ? "today" : ""}">
-    <span>${mmdd(r.date)}</span><b>${won(r.kg_price)}</b>
-    ${(r.rain_mm ?? 0) >= 1 ? RAIN_ICON : ""}
-    ${r.holiday ? `<span class="board-tag hol" title="${esc(r.holiday)}">공휴일</span>` : ""}
-    ${r.events?.length ? `<span class="board-tag" title="${esc(r.events.join(", "))}">행사</span>` : ""}
-  </div>`).join("");
+  const days = rows.map((r) => `<div class="board-day ${r === last ? "today" : ""}"><span>${mmdd(r.date)}</span><b>${won(r.kg_price)}</b></div>`).join("");
 
   $("#priceBoard").innerHTML = `
     <div class="board-head">
@@ -415,8 +406,6 @@ function renderBoard() {
     </div></div>
     <p class="board-legend">
       <span><i style="background:var(--up)"></i>▲ 상승</span><span><i style="background:var(--down)"></i>▼ 하락</span>
-      <span>${RAIN_ICON}비 1mm 이상</span><span><span class="board-tag">행사</span>대구 행사 있음</span>
-      ${closed.length ? `<span>${closed.join(" · ")} 거래 없음</span>` : ""}
     </p>`;
   const scroll = $(".board-scroll");
   scroll.scrollLeft = scroll.scrollWidth;   // 좁은 화면은 최근 날짜부터 보이게
@@ -440,14 +429,13 @@ function renderForecast(f) {
   const g = cheapest(f.item);
   const v = verdict(f);
   $("#forecastCard").innerHTML = `
-    <span class="badge">다음 7일 예측 · 믿을 만한 정도 ${esc(f.confidence)}</span>
     <p class="dir ${cls(f.expected_change_pct, 2)}">${esc(v.text)}</p>
-    <p class="muted">예상 ${won(f.expected_kg_price_range?.[0])} ~ ${won(f.expected_kg_price_range?.[1])} /kg (${pct(f.range_pct[0])} ~ ${pct(f.range_pct[1])})</p>
     <p class="tip">${esc(f.suggestion)}${g ? ` · <a href="${esc(g.url)}" target="_blank" rel="noopener" style="color:var(--accent)">식봄 ${won(g.sale_price)} 상품 보기 →</a>` : ""}</p>
+    <p class="muted range">예상 ${won(f.expected_kg_price_range?.[0])} ~ ${won(f.expected_kg_price_range?.[1])} /kg</p>
     ${f.factors.map((x) => {
       const w = (Math.abs(x.effect_pct) / maxAbs) * 50;
       const style = x.effect_pct >= 0 ? `left:50%;width:${w}%;background:var(--up)` : `right:50%;width:${w}%;background:var(--down)`;
-      return `<div class="factor"><span>${esc(x.factor)}</span><span class="bar"><i style="${style}"></i></span>
+      return `<div class="factor"><span>${esc(factorName(x.factor))}</span><span class="bar"><i style="${style}"></i></span>
         <b class="${cls(x.effect_pct)}">${pct(x.effect_pct)}</b><span class="detail-text">${esc(x.detail)}</span></div>`;
     }).join("")}
     <p class="muted" style="margin-top:8px;font-size:12px">${esc(f.method)}</p>`;

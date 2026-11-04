@@ -1,4 +1,3 @@
-- 용도: 발표 자료 보관. 발표는 캔바(Canva)에서 진행
-- 캔바 발표 자료: https://www.canva.com/design/DAHZ18idJs8/VTAzzUVMKThUVPJmfql69A/edit
+- 용도: 발표 자료 보관
 - 시연 사이트: https://jangbaguni-ten.vercel.app
-- 이 폴더의 pptx · pdf: 11월 4일 이전 발표 자료 (지난 버전)
+- 살피.pptx · 살피.pdf: 최신 발표 자료

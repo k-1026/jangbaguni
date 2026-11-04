@@ -46,16 +46,62 @@ async function loadOverview(attempt = 1) {
   const down = overview.filter((r) => (r.wholesale_change_pct ?? 0) <= -3);
   const rising = overview.filter((r) => expOf(r) >= 2);
   const top = [...overview].sort((a, b) => (b.wholesale_change_pct ?? -999) - (a.wholesale_change_pct ?? -999))[0];
+  const week = (r) => r.wholesale_change_pct;
+  summaryLists = {
+    up: [...up].sort((a, b) => week(b) - week(a)).map((r) => [r.item, week(r)]),
+    down: [...down].sort((a, b) => week(a) - week(b)).map((r) => [r.item, week(r)]),
+    rising: [...rising].sort((a, b) => expOf(b) - expOf(a)).map((r) => [r.item, expOf(r)]),
+  };
+  const chip = (key, tone, count, label) => `<button class="chip ${tone}" type="button" data-list="${key}" aria-expanded="false" aria-controls="summaryList"><b>${count}개</b><small>${label}</small></button>`;
   $("#summary").innerHTML = `
-    <div class="chip up"><b>${up.length}개</b><small>지난주보다 오른 야채</small></div>
-    <div class="chip down"><b>${down.length}개</b><small>지난주보다 내린 야채</small></div>
-    <div class="chip warn"><b>${rising.length}개</b><small>다음 주 오를 가능성</small></div>
-    ${top ? `<div class="chip up"><b>${esc(top.item)} ${pct(top.wholesale_change_pct)}</b><small>가장 많이 오른 야채</small></div>` : ""}`;
+    ${chip("up", "up", up.length, "지난주보다 오른 야채")}
+    ${chip("down", "down", down.length, "지난주보다 내린 야채")}
+    ${chip("rising", "warn", rising.length, "다음 주 오를 가능성")}
+    ${top ? `<button class="chip up" type="button" data-item="${esc(top.item)}"><b>${esc(top.item)} ${pct(top.wholesale_change_pct)}</b><small>가장 많이 오른 야채</small></button>` : ""}`;
 
   renderSlides();
   renderFilter();
   renderProducts();
   onSlideChange();
+}
+
+// 요약 칸을 누르면 해당 야채 목록을 펼침 · 다시 누르면 접음 · 야채를 누르면 그 대시보드에서 멈춤
+let summaryLists = {};
+$("#summary").onclick = (e) => {
+  const b = e.target.closest("button.chip");
+  if (!b) return;
+  if (b.dataset.item) return showItem(b.dataset.item);
+  const open = b.getAttribute("aria-expanded") !== "true";
+  $("#summary").querySelectorAll("[aria-expanded]").forEach((c) => c.setAttribute("aria-expanded", "false"));
+  b.setAttribute("aria-expanded", open);
+  const list = summaryLists[b.dataset.list] || [];
+  $("#summaryList").hidden = !open;
+  $("#summaryList").innerHTML = list.map(([item, v]) => `<button type="button" data-item="${esc(item)}"><b>${esc(item)}</b> <span class="${v > 0 ? "rise" : "fall"}">${pct(v)}</span></button>`).join("")
+    || "<p>해당하는 야채가 없어요</p>";
+};
+$("#summaryList").onclick = (e) => {
+  const b = e.target.closest("button[data-item]");
+  if (b) showItem(b.dataset.item);
+};
+
+// 고른 야채의 대시보드로 가서 자동 넘김을 멈춤
+function showItem(name) {
+  setPaused(true);
+  goSlide(slides().findIndex((s) => s.dataset.item === name));
+  $(".hero-board").scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+// 예측 근거를 사장님 말로 한 줄만: 판단과 같은 방향에서 가장 큰 이유
+function plainReason(factors, kind) {
+  const sign = { up: 1, down: -1 }[kind];
+  if (!sign) return "";
+  const top = (factors || []).filter((x) => x.effect_pct * sign > 0).sort((a, b) => Math.abs(b.effect_pct) - Math.abs(a.effect_pct))[0];
+  if (!top) return "";
+  if (top.factor.startsWith("최근 2주")) return `최근 2주 동안 ${sign > 0 ? "올랐어요" : "내렸어요"}`;
+  if (top.factor.startsWith("도매시장")) return `시장에 들어오는 양이 ${sign > 0 ? "줄었어요" : "늘었어요"}`;
+  if (top.factor.startsWith("날씨")) return "최근 날씨 영향이 있어요";
+  if (top.factor.includes("공휴일")) return "공휴일을 앞두고 있어요";
+  return "대구 행사가 많아요";
 }
 
 // 슬라이드 순서: 전체 → 오를 가능성 높은 순 → 유지 → 떨어질 가능성
@@ -73,15 +119,13 @@ function renderSlides() {
         <div class="legend"><span><i class="lg up"></i>올랐어요</span><span><i class="lg down"></i>내렸어요</span></div>
       </div>
       <div class="chart-box"><canvas></canvas></div>
-      <p class="overview-note">막대를 누르거나 옆으로 넘기면 야채별 시세와 다음 주 예측을 볼 수 있어요.
-        다음 주 <b class="up">오를 가능성 ${overview.filter((r) => expOf(r) >= 2).length}개</b> ·
+      <p class="overview-note">다음 주 <b class="up">오를 가능성 ${overview.filter((r) => expOf(r) >= 2).length}개</b> ·
         <b>유지 ${overview.filter((r) => Math.abs(expOf(r)) < 2).length}개</b> ·
         <b class="down">떨어질 가능성 ${overview.filter((r) => expOf(r) <= -2).length}개</b></p>
     </article>` + slideOrder().map((r, idx) => {
       const f = r.forecast || {};
       const v = verdict(f);
-      const reasons = [...(f.factors || [])].filter((x) => x.effect_pct !== 0)
-        .sort((a, b) => Math.abs(b.effect_pct) - Math.abs(a.effect_pct)).slice(0, 2);
+      const why = plainReason(f.factors, v.kind);
       // 오름: 경광등 살피(2 · 4번째 포즈 번갈아) · 유지: 알람시계 살피(1 · 3번째) · 내림: 쇼핑백 살피(6번째)
       const pose = v.kind === "down" ? "alert_down" : `alert_${v.kind === "up" ? "rise" : "flat"}${(idx % 2) + 1}`;
       const say = { up: "미리 사두는 게 좋을 것 같아요.", flat: "평소대로 구매하셔도 좋아요", down: "급하지 않으면 나중에 사셔도 좋아요" }[v.kind];
@@ -100,12 +144,11 @@ function renderSlides() {
       </div>
       <div class="chart-box"><canvas></canvas></div>
       <div class="fc-strip ${v.kind}">
+        <div class="fc-text">
+          <span class="verdict">${v.text}</span>
+          <span class="range">예상 ${won(f.expected_kg_price_range?.[0])} ~ ${won(f.expected_kg_price_range?.[1])}/kg${why ? ` · ${why}` : ""}</span>
+        </div>
         <div class="advice"><span class="say">${say}</span><img class="pose" src="/static/img/${pose}.png" alt=""></div>
-        <span class="verdict">${v.text}</span>
-        <span class="range">예상 ${pct(f.range_pct?.[0])} ~ ${pct(f.range_pct?.[1])}
-          (${won(f.expected_kg_price_range?.[0])} ~ ${won(f.expected_kg_price_range?.[1])}/kg · 믿을 만한 정도 ${esc(f.confidence || "-")})</span>
-        <ul>${reasons.map((x) => `<li><b>${esc(x.factor)}</b> ${pct(x.effect_pct)} — ${esc(x.detail)}</li>`).join("")
-          || "<li>뚜렷하게 오르거나 내릴 이유가 적어요</li>"}</ul>
       </div>
     </article>`;
     }).join("");
@@ -149,14 +192,28 @@ slider.addEventListener("pointerup", (e) => {
 
 // 8초마다 자동으로 다음 장. 대시보드에 마우스를 올려 보는 동안 · 다른 탭을 볼 때는 멈춤
 const AUTO_MS = 8000;
-let autoTimer = null, hovering = false;
+let autoTimer = null, hovering = false, paused = false;
 function restartAuto() {
   clearInterval(autoTimer);
+  if (paused) return;
   autoTimer = setInterval(() => { if (!hovering && !document.hidden && slides().length > 1) goSlide(cur + 1); }, AUTO_MS);
 }
 $(".hero-board").addEventListener("mouseenter", () => { hovering = true; });
 $(".hero-board").addEventListener("mouseleave", () => { hovering = false; });
 restartAuto();
+
+// 일시정지 버튼: 누르면 자동 넘김을 멈추고 다시 누르면 이어서 넘김
+function setPaused(on) {
+  paused = on;
+  const b = $("#pauseSlide");
+  b.setAttribute("aria-pressed", on);
+  b.setAttribute("aria-label", on ? "자동 넘김 다시 시작" : "자동 넘김 멈춤");
+  b.title = on ? "다시 시작" : "멈춤";
+  b.innerHTML = on ? '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 1.5v9l7.5-4.5z"/></svg>'
+    : '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 1.5h2.5v9H2.5zM7 1.5h2.5v9H7z"/></svg>';
+  restartAuto();
+}
+$("#pauseSlide").onclick = () => setPaused(!paused);
 
 function drawSlideChart(i) {
   const el = slides()[i];
@@ -182,7 +239,7 @@ function drawOverviewChart(canvas) {
         x: { grid: { display: false }, ticks: { color: "#1F2622", font: { size: 14, weight: "700" }, autoSkip: false, maxRotation: 0 } },
         y: { grid: { color: "#F0EDE6" }, ticks: { color: "#8A918C", font: { size: 11 }, callback: (v) => `${v}%` } },
       },
-      onClick: (_e, els) => { if (els.length) goSlide(slides().findIndex((s) => s.dataset.item === rows[els[0].index].item)); },
+      onClick: (_e, els) => { if (els.length) showItem(rows[els[0].index].item); },
     },
   });
 }
@@ -774,8 +831,8 @@ function pickSearch(hit) {
     window.open(`https://www.foodspring.co.kr/search/all?key=${encodeURIComponent(hit.shop)}`, "_blank", "noopener");
     return;
   }
-  // 고른 재료를 자동 넘김이 덮어쓰지 않게 멈춤 (화살표를 누르면 다시 시작)
-  clearInterval(autoTimer);
+  // 고른 재료를 자동 넘김이 덮어쓰지 않게 멈춤 (일시정지 버튼으로 다시 시작)
+  setPaused(true);
   goSlide(slides().findIndex((s) => s.dataset.item === hit.item));
   filterItem = hit.item;
   renderFilter();

@@ -45,6 +45,7 @@
         <div class="summary" id="summary">
           <div class="chip skeleton"></div><div class="chip skeleton"></div><div class="chip skeleton"></div>
         </div>
+        <div class="summary-list" id="summaryList" hidden></div>
       </div>
 
       <div class="hero-board">
@@ -54,6 +55,7 @@
             <button id="prevSlide" aria-label="이전">‹</button>
             <span class="slide-count" id="dots"></span>
             <button id="nextSlide" aria-label="다음">›</button>
+            <button id="pauseSlide" type="button" aria-pressed="false" aria-label="자동 넘김 멈춤" title="멈춤"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 1.5h2.5v9H2.5zM7 1.5h2.5v9H7z"/></svg></button>
           </div>
         </div>
         <div class="slider" id="slider">
@@ -64,7 +66,6 @@
             <p class="muted">처음 열 때는 1분쯤 걸려요. 그다음부터는 바로 떠요.</p>
           </article>
         </div>
-        <p class="swipe-hint">‹ › 화살표를 누르면 <b>야채별 시세와 다음 주 예측</b>을 볼 수 있어요 · 8초마다 자동으로 넘어가요</p>
       </div>
     </div>
   </section>

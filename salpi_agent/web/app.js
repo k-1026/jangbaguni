@@ -734,6 +734,70 @@ async function send(text) {
 $("#quick").addEventListener("click", (e) => { const b = e.target.closest("button[data-q]"); if (b) send(b.dataset.q); });
 $("#chatForm").addEventListener("submit", (e) => { e.preventDefault(); const t = $("#chatText"); send(t.value); t.value = ""; });
 
+// ---------------------------------------------------------------
+// 식재료 검색: 시세가 있는 재료는 사이트 안에서, 없는 재료는 식봄 검색으로 연결
+// ---------------------------------------------------------------
+const searchBox = $("#itemSearch"), searchList = $("#itemResults");
+let searchHits = [], searchOn = 0;
+
+function closeSearch() {
+  searchList.hidden = true;
+  searchBox.setAttribute("aria-expanded", "false");
+  searchBox.removeAttribute("aria-activedescendant");
+}
+
+function renderSearch() {
+  const q = searchBox.value.replace(/\s/g, "");
+  if (!q) return closeSearch();
+  searchHits = [...overview.filter((r) => r.item.includes(q)), { shop: q }];
+  searchOn = 0;
+  searchList.innerHTML = searchHits.map((h, i) => `<li role="option" id="searchHit${i}" data-i="${i}" aria-selected="${i === 0}">${h.shop
+    ? `<span class="hit-shop">식봄에서 '${esc(h.shop)}' 찾아보기 →</span>`
+    : `<b>${esc(h.item)}</b><span>${h.wholesale_kg ? won(h.wholesale_kg) : "시세 없음"}/kg</span><span class="${cls(h.wholesale_change_pct, 3)}">${h.wholesale_change_pct == null ? "" : pct(h.wholesale_change_pct)}</span>`}</li>`).join("");
+  searchList.hidden = false;
+  searchBox.setAttribute("aria-expanded", "true");
+  searchBox.setAttribute("aria-activedescendant", "searchHit0");
+}
+
+function moveSearch(step) {
+  searchList.children[searchOn].setAttribute("aria-selected", "false");
+  searchOn = (searchOn + step + searchHits.length) % searchHits.length;
+  searchList.children[searchOn].setAttribute("aria-selected", "true");
+  searchBox.setAttribute("aria-activedescendant", `searchHit${searchOn}`);
+}
+
+function pickSearch(hit) {
+  searchBox.value = "";
+  closeSearch();
+  searchBox.blur();
+  if (hit.shop) {
+    window.open(`https://www.foodspring.co.kr/search/all?key=${encodeURIComponent(hit.shop)}`, "_blank", "noopener");
+    return;
+  }
+  // 고른 재료를 자동 넘김이 덮어쓰지 않게 멈춤 (화살표를 누르면 다시 시작)
+  clearInterval(autoTimer);
+  goSlide(slides().findIndex((s) => s.dataset.item === hit.item));
+  filterItem = hit.item;
+  renderFilter();
+  renderProducts();
+  $("#itemDetail").scrollIntoView({ behavior: "smooth" });
+}
+
+searchBox.addEventListener("input", renderSearch);
+searchBox.addEventListener("focus", renderSearch);
+searchBox.addEventListener("blur", closeSearch);
+searchBox.addEventListener("keydown", (e) => {
+  if (searchList.hidden) return;
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); moveSearch(e.key === "ArrowDown" ? 1 : -1); }
+  else if (e.key === "Enter") { e.preventDefault(); pickSearch(searchHits[searchOn]); }
+  else if (e.key === "Escape") closeSearch();
+});
+searchList.addEventListener("mousedown", (e) => e.preventDefault());   // 고르기 전에 입력칸이 포커스를 잃어 목록이 닫히지 않게
+searchList.addEventListener("click", (e) => {
+  const li = e.target.closest("li");
+  if (li) pickSearch(searchHits[+li.dataset.i]);
+});
+
 loadOverview();
 loadProducts();
 loadContext();

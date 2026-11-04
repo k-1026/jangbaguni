@@ -20,6 +20,11 @@
       <a href="#products">오늘의 야채</a>
       <a href="#context">날씨 · 행사</a>
     </nav>
+    <div class="item-search">
+      <input id="itemSearch" type="search" role="combobox" placeholder="식재료 검색" aria-label="식재료 검색"
+        aria-autocomplete="list" aria-expanded="false" aria-controls="itemResults" autocomplete="off">
+      <ul id="itemResults" role="listbox" aria-label="검색 결과" hidden></ul>
+    </div>
     <span class="basis" id="basis">시세 불러오는 중</span>
   </div>
 </header>
@@ -65,7 +70,7 @@
   </section>
 
   <!-- 고른 재료 자세히 -->
-  <section class="wrap section">
+  <section class="wrap section" id="itemDetail">
     <div class="section-head">
       <h2 id="detailTitle">날짜별 시세</h2>
       <p class="muted">도매 kg당 · 그날 날씨와 행사 · 다음 7일 예측 이유</p>

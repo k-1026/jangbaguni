@@ -479,9 +479,9 @@ async function loadContext() {
   $("#holidayCard").innerHTML = `<h3>다가오는 공휴일 (30일)</h3>` + (c.holidays.length
     ? `<ul class="ctx-list">${c.holidays.map((x) => `<li>${fmt(x.date)} ${esc(x.name)}<small>도매시장 휴장 전 수요가 몰릴 수 있어요</small></li>`).join("")}</ul>`
     : `<p class="muted">30일 안에 공휴일이 없어요</p>`);
-  $("#eventCard").innerHTML = `<h3>대구 행사 · 축제 (14일, ${c.events.length}개)</h3>` + (c.events.length
+  $("#eventCard").innerHTML = `<h3>이달의 대구 행사 (${c.events.length}개)</h3>` + (c.events.length
     ? `<ul class="ctx-list">${c.events.slice(0, 8).map((x) => `<li>${esc(x.title)}<small>${fmt(x.start)} ~ ${fmt(x.end)} · ${esc((x.addr || "").replace("대구광역시 ", ""))}</small></li>`).join("")}</ul>`
-    : `<p class="muted">14일 안에 열리는 행사가 없어요</p>`);
+    : `<p class="muted">이달에 남은 행사가 없어요</p>`);
 }
 
 // ---------------------------------------------------------------

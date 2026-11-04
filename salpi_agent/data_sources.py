@@ -236,6 +236,13 @@ def daegu_events(days_ahead=14):
     return events_between(date.today(), date.today() + timedelta(days_ahead))
 
 
+def month_events():
+    """오늘부터 이달 말일까지 열리는 행사 (이미 끝난 행사는 뺌)."""
+    today = date.today()
+    month_end = (today.replace(day=28) + timedelta(4)).replace(day=1) - timedelta(1)
+    return events_between(today, month_end)
+
+
 # ---------------------------------------------------------------
 # 한국천문연구원 특일 정보 (공휴일)
 # ---------------------------------------------------------------

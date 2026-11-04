@@ -7,7 +7,6 @@ const mmdd = (d) => `${d.slice(5, 7)}.${d.slice(8, 10)}`;
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
 let overview = [];          // 재료별 시세 · 날짜별 기록 · 예측 (/api/overview 한 번으로 받음)
-let shop = {};              // 재료별 식봄 상품
 const charts = {};          // 슬라이드별 차트 (보이는 슬라이드만 그림)
 
 async function getJSON(url) {
@@ -53,8 +52,6 @@ async function loadOverview(attempt = 1) {
     ${top ? `<div class="chip up"><b>${esc(top.item)} ${pct(top.wholesale_change_pct)}</b><small>가장 많이 오른 야채</small></div>` : ""}`;
 
   renderSlides();
-  renderFilter();
-  renderProducts();
   onSlideChange();
   deliverAlerts();
 }
@@ -303,22 +300,16 @@ function renderDetail(name) {
   renderForecast(d.forecast);
 }
 
-function cheapest(item) {
-  // kg당 가격이 있는 상품 중 가장 싼 것, 없으면 첫 상품
-  const list = shop[item] || [];
-  return [...list].filter((g) => g.price_per_kg).sort((a, b) => a.price_per_kg - b.price_per_kg)[0] || list[0];
-}
-
 function renderForecast(f) {
   if (!f || f.error) { $("#forecastCard").innerHTML = ""; return; }
   const maxAbs = Math.max(4, ...f.factors.map((x) => Math.abs(x.effect_pct)));
-  const g = cheapest(f.item);
+  const url = byItem(f.item)?.foodspring_url;
   const v = verdict(f);
   $("#forecastCard").innerHTML = `
     <span class="badge">다음 7일 예측 · 믿을 만한 정도 ${esc(f.confidence)}</span>
     <p class="dir ${cls(f.expected_change_pct, 2)}">${esc(v.text)}</p>
     <p class="muted">예상 ${won(f.expected_kg_price_range?.[0])} ~ ${won(f.expected_kg_price_range?.[1])} /kg (${pct(f.range_pct[0])} ~ ${pct(f.range_pct[1])})</p>
-    <p class="tip">${esc(f.suggestion)}${g ? ` · <a href="${esc(g.url)}" target="_blank" rel="noopener" style="color:var(--accent)">식봄 ${won(g.sale_price)} 상품 보기 →</a>` : ""}</p>
+    <p class="tip">${esc(f.suggestion)}${url ? ` · <a href="${esc(url)}" target="_blank" rel="noopener" style="color:var(--accent)">식봄에서 ${esc(f.item)} 보기 →</a>` : ""}</p>
     ${f.factors.map((x) => {
       const w = (Math.abs(x.effect_pct) / maxAbs) * 50;
       const style = x.effect_pct >= 0 ? `left:50%;width:${w}%;background:var(--up)` : `right:50%;width:${w}%;background:var(--down)`;
@@ -550,69 +541,6 @@ $("#costCard").onclick = async (e) => {
 };
 
 // ---------------------------------------------------------------
-// 식봄 상품 목록
-// ---------------------------------------------------------------
-let filterItem = "전체";
-async function loadProducts() {
-  try {
-    shop = (await getJSON("/api/products")).items;
-  } catch (e) {
-    shop = {};
-  }
-  renderProducts();
-}
-
-function renderFilter() {
-  $("#productFilter").innerHTML = ["전체", ...overview.map((r) => r.item)]
-    .map((n) => `<button data-f="${esc(n)}" class="${n === filterItem ? "active" : ""}">${esc(n)}</button>`).join("");
-  $("#productFilter").onclick = (e) => {
-    const b = e.target.closest("button[data-f]");
-    if (!b) return;
-    filterItem = b.dataset.f;
-    renderFilter();
-    renderProducts();
-  };
-}
-
-function renderProducts() {
-  if (!overview.length) return;
-  const items = filterItem === "전체" ? overview.map((r) => r.item) : [filterItem];
-  const perItem = filterItem === "전체" ? 2 : 8;
-  const cards = items.flatMap((item) => (shop[item] || []).slice(0, perItem).map((g) => ({ item, g })));
-  if (!cards.length) {
-    // 식봄 상품을 못 받아 왔을 때: 재료별 식봄 검색으로 연결
-    $("#productGrid").innerHTML = items.map((item) => {
-      const r = byItem(item) || {};
-      return `<a class="product" href="${esc(r.foodspring_url || "https://www.foodspring.co.kr")}" target="_blank" rel="noopener">
-        <div class="img" style="display:grid;place-items:center;font-size:26px;font-weight:900;color:#6F7570">${esc(item)}</div>
-        <span class="name">식봄에서 ${esc(item)} 찾아보기 →</span>
-        ${r.wholesale_kg ? `<span class="per">도매 kg당 ${won(r.wholesale_kg)} · 1주 <b class="${cls(r.wholesale_change_pct, 3)}">${pct(r.wholesale_change_pct)}</b></span>` : ""}
-      </a>`;
-    }).join("");
-    return;
-  }
-  $("#productGrid").innerHTML = cards.map(({ item, g }) => {
-    const r = byItem(item) || { forecast: {} };
-    const exp = expOf(r);
-    const flag = exp >= 2 ? `<span class="flag" style="background:var(--up)">다음 주 오를 듯</span>`
-      : exp <= -2 ? `<span class="flag" style="background:var(--down)">다음 주 떨어질 듯</span>` : "";
-    const salpi = r.wholesale_change_pct == null ? ""
-      : `<span class="salpi">살피: ${esc(item)} 도매 1주 <b class="${cls(r.wholesale_change_pct, 3)}">${pct(r.wholesale_change_pct)}</b></span>`;
-    const sale = g.discount_rate && g.original_price > g.sale_price;
-    return `
-      <a class="product" href="${esc(g.url)}" target="_blank" rel="noopener">
-        <div class="img">${g.image ? `<img src="${esc(g.image)}" alt="" loading="lazy">` : ""}${flag}</div>
-        <span class="vendor">${esc(g.vendor || "")}</span>
-        <span class="name">${esc(g.name)}</span>
-        ${sale ? `<span class="orig">${won(g.original_price)}</span>` : ""}
-        <span class="price">${sale ? `<span class="rate">${g.discount_rate}%</span>` : ""}${won(g.sale_price)}</span>
-        ${g.price_per_kg ? `<span class="per">kg당 ${won(g.price_per_kg)}</span>` : ""}
-        ${salpi}
-      </a>`;
-  }).join("");
-}
-
-// ---------------------------------------------------------------
 // 날씨 · 공휴일 · 행사
 // ---------------------------------------------------------------
 async function loadContext() {
@@ -796,7 +724,6 @@ $("#quick").addEventListener("click", (e) => { const b = e.target.closest("butto
 $("#chatForm").addEventListener("submit", (e) => { e.preventDefault(); const t = $("#chatText"); send(t.value); t.value = ""; });
 
 loadOverview();
-loadProducts();
 loadContext();
 loadDemand();
 loadCosts();

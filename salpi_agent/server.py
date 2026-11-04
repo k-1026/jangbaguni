@@ -36,7 +36,6 @@ async def lifespan(_app):
     def warm():
         try:
             memo("overview", _overview)
-            memo("products", lambda: {"items": foodspring.all_products(4)})
         except Exception:
             pass   # 키가 없거나 API 장애면 화면에서 안내
     threading.Thread(target=warm, daemon=True).start()

@@ -7,7 +7,7 @@
   <link rel="icon" href="/static/img/salpi_face.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=24">
+  <link rel="stylesheet" href="/static/style.css?v=25">
 </head>
 <body>
 
@@ -18,7 +18,6 @@
       <a href="#dashboard">시세 대시보드</a>
       <a href="#store">내일 준비</a>
       <a href="#receipt">영수증 원가율</a>
-      <a href="#products">오늘의 야채</a>
       <a href="#context">날씨 · 행사</a>
     </nav>
     <span class="basis" id="basis">시세 불러오는 중</span>
@@ -49,6 +48,11 @@
         <div class="summary" id="summary">
           <div class="chip skeleton"></div><div class="chip skeleton"></div><div class="chip skeleton"></div>
         </div>
+        <!-- 식자재 구매는 식봄으로 연결만 (살피는 팔지 않음) -->
+        <a class="buy-link" href="https://www.foodspring.co.kr" target="_blank" rel="noopener">
+          <span><b>식자재 구매 바로가기</b><small>식봄에서 오늘 필요한 식자재를 사요</small></span>
+          <i aria-hidden="true">→</i>
+        </a>
       </div>
 
       <div class="hero-board">
@@ -121,17 +125,6 @@
     </div>
   </section>
 
-  <!-- 식봄 실제 상품 -->
-  <section class="wrap section" id="products">
-    <div class="section-head">
-      <h2>오늘의 야채</h2>
-      <p class="muted">식봄에서 지금 파는 상품과 가격이에요. 누르면 식봄 상품 페이지로 이동해요. 살피는 아무것도 팔지 않아요.</p>
-    </div>
-    <div class="filter" id="productFilter"></div>
-    <div class="grid" id="productGrid"><p class="muted">식봄 상품을 불러오는 중이에요</p></div>
-    <p class="muted small">가격은 식봄 검색 결과 기준(배송 지역에 따라 판매자 · 가격이 다를 수 있어요). 6시간마다 새로 받아요.</p>
-  </section>
-
   <!-- 날씨 · 공휴일 · 행사 -->
   <section class="wrap section" id="context">
     <div class="section-head"><h2>시세에 영향을 주는 것들</h2></div>
@@ -195,6 +188,6 @@
 </aside>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="/static/app.js?v=24"></script>
+<script src="/static/app.js?v=25"></script>
 </body>
 </html>

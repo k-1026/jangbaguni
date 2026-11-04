@@ -444,13 +444,37 @@ function renderProducts() {
 // ---------------------------------------------------------------
 // 날씨 · 공휴일 · 행사
 // ---------------------------------------------------------------
+const WX_SUN = `<circle cx="16" cy="16" r="6.5" fill="#F5B02E"/><g stroke="#F5B02E" stroke-width="2.4" stroke-linecap="round"><path d="M16 3.5v3M16 25.5v3M3.5 16h3M25.5 16h3M7.2 7.2l2.1 2.1M22.7 22.7l2.1 2.1M7.2 24.8l2.1-2.1M22.7 9.3l2.1-2.1"/></g>`;
+const WX_CLOUD = (fill) => `<path fill="${fill}" d="M9 24a5.5 5.5 0 0 1-.7-11 7.5 7.5 0 0 1 14.4 1.1A5 5 0 0 1 22.5 24Z"/>`;
+const WX_ICONS = {
+  "맑음": WX_SUN,
+  "구름 많음": `<g transform="translate(5 -3) scale(.75)">${WX_SUN}</g><g transform="translate(-1 5) scale(.9)">${WX_CLOUD("#AEB8BF")}</g>`,
+  "흐림": WX_CLOUD("#98A4AC"),
+  "비": `<g transform="translate(0 -4)">${WX_CLOUD("#98A4AC")}</g><g stroke="#3F8FD8" stroke-width="2.4" stroke-linecap="round"><path d="M11 23.5l-1.5 4M17 23.5l-1.5 4M23 23.5l-1.5 4"/></g>`,
+  "눈": `<g transform="translate(0 -4)">${WX_CLOUD("#98A4AC")}</g><g fill="#6FB1E6"><circle cx="10" cy="25.5" r="2"/><circle cx="16" cy="28" r="2"/><circle cx="22" cy="25.5" r="2"/></g>`,
+};
+
+// 기상청 하늘 상태 기준: 전운량 0~5 맑음, 6~8 구름 많음, 9~10 흐림. 비는 위 요약과 같이 1mm 이상부터
+function sky(d) {
+  if (d.snow_cm > 0) return "눈";
+  if (d.rain_mm >= 1) return "비";
+  if (d.cloud >= 9) return "흐림";
+  if (d.cloud >= 6 || d.rain_mm > 0) return "구름 많음";
+  return d.cloud == null ? "" : "맑음";
+}
+
+function wxIcon(d) {
+  const s = sky(d);
+  return `<svg class="wx-icon" viewBox="0 0 32 32" role="img" aria-label="${s}"><title>${s}</title>${WX_ICONS[s] || ""}</svg>`;
+}
+
 async function loadContext() {
   let c;
   try { c = await getJSON("/api/context"); } catch (e) { return; }
   const w = c.weather;
   $("#weatherCard").innerHTML = `<h3>대구 날씨 (지난 7일)</h3>
     <p class="muted" style="margin-bottom:10px">비 ${w.rain_total_mm}mm (${w.rain_days}일) · 최저 ${w.min_temp}℃ · 최고 ${w.max_temp}℃</p>
-    <div class="wx">${(w.daily || []).map((d) => `<div>${mmdd(d.date)}<b>${Math.round(d.max_temp)}°</b>${d.rain_mm ? `비 ${d.rain_mm}` : "-"}</div>`).join("")}</div>`;
+    <div class="wx">${(w.daily || []).map((d) => `<div>${mmdd(d.date)}${wxIcon(d)}<b>${Math.round(d.max_temp)}°</b>${d.rain_mm ? `비 ${d.rain_mm}` : "-"}</div>`).join("")}</div>`;
   const fmt = (s) => `${s.slice(4, 6)}.${s.slice(6, 8)}`;
   $("#holidayCard").innerHTML = `<h3>다가오는 공휴일 (30일)</h3>` + (c.holidays.length
     ? `<ul class="ctx-list">${c.holidays.map((x) => `<li>${fmt(x.date)} ${esc(x.name)}<small>도매시장 휴장 전 수요가 몰릴 수 있어요</small></li>`).join("")}</ul>`

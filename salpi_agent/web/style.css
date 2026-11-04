@@ -184,6 +184,7 @@ button { font: inherit; cursor: pointer; }
 .wx { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 12px; }
 .wx div { background: var(--paper); border-radius: 8px; padding: 6px 2px; }
 .wx b { display: block; font-size: 13px; }
+.wx-icon { display: block; width: 32px; height: 32px; margin: 4px auto 2px; max-width: 100%; }
 
 .footer { color: var(--muted); font-size: 12px; padding: 40px 20px 150px; }
 .error-box { background: #FFF1EE; border: 1px solid #F4C6BE; color: #A33A2A; border-radius: 12px; padding: 12px 14px; font-size: 14px; }

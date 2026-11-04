@@ -200,9 +200,10 @@ def weather_days(days=21):
 
         return [{"date": r["tm"], "avg_temp": num(r.get("avgTa")), "min_temp": num(r.get("minTa")),
                  "max_temp": num(r.get("maxTa")), "rain_mm": num(r.get("sumRn")) or 0.0,
-                 "humidity": num(r.get("avgRhm"))} for r in _items(body)]
+                 "humidity": num(r.get("avgRhm")), "cloud": num(r.get("avgTca")),   # 전운량 0~10
+                 "snow_cm": num(r.get("ddMefs")) or 0.0} for r in _items(body)]
 
-    return _cached(f"weather_{end.isoformat()}_{days}", 6, fetch)
+    return _cached(f"weather_sky_{end.isoformat()}_{days}", 6, fetch)
 
 
 # ---------------------------------------------------------------

@@ -53,6 +53,7 @@
         <div class="summary" id="summary">
           <div class="chip skeleton"></div><div class="chip skeleton"></div><div class="chip skeleton"></div>
         </div>
+        <div class="summary-list" id="summaryList" hidden></div>
         <!-- 식자재 구매는 식봄으로 연결만 (살피는 팔지 않음) -->
         <a class="buy-link" href="https://www.foodspring.co.kr" target="_blank" rel="noopener">
           <span><b>식자재 구매 바로가기</b><small>식봄에서 오늘 필요한 식자재를 사요</small></span>
@@ -67,6 +68,7 @@
             <button id="prevSlide" aria-label="이전">‹</button>
             <span class="slide-count" id="dots"></span>
             <button id="nextSlide" aria-label="다음">›</button>
+            <button id="pauseSlide" type="button" aria-pressed="false" aria-label="자동 넘김 멈춤" title="멈춤"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 1.5h2.5v9H2.5zM7 1.5h2.5v9H7z"/></svg></button>
           </div>
         </div>
         <div class="slider" id="slider">
@@ -77,7 +79,6 @@
             <p class="muted">처음 열 때는 1분쯤 걸려요. 그다음부터는 바로 떠요.</p>
           </article>
         </div>
-        <p class="swipe-hint">‹ › 화살표를 누르면 <b>야채별 시세와 다음 주 예측</b>을 볼 수 있어요 · 8초마다 자동으로 넘어가요</p>
       </div>
     </div>
   </section>
@@ -105,7 +106,7 @@
     </div>
     <div class="store-grid">
       <div class="card" id="menuForecast"><p class="muted">불러오는 중</p></div>
-      <div class="card table-card order-card" id="orderCard"></div>
+      <div class="card order-card" id="orderCard"></div>
     </div>
   </section>
 
@@ -134,7 +135,7 @@
     <div class="ctx-grid">
       <div class="card" id="weatherCard"><h3>대구 날씨 (지난 7일)</h3><p class="muted">불러오는 중</p></div>
       <div class="card" id="holidayCard"><h3>다가오는 공휴일 (30일)</h3><p class="muted">불러오는 중</p></div>
-      <div class="card" id="eventCard"><h3>대구 행사 · 축제 (14일)</h3><p class="muted">불러오는 중</p></div>
+      <div class="card" id="eventCard"><h3>이달의 대구 행사</h3><p class="muted">불러오는 중</p></div>
     </div>
   </section>
 
@@ -145,11 +146,14 @@
 </main>
 
 <!-- 살피 챗봇: 버튼 모양 없이 살피 캐릭터 자체를 누름 -->
-<button class="salpi-fab" id="fab" aria-label="살피 챗봇 열기 (끌어서 옮길 수 있어요)" title="누르면 대화, 끌면 이동">
-  <span class="bubble" id="fabBubble">살피 챗봇에게 물어보세요</span>
-  <span class="fab-count" id="fabCount" hidden></span>
-  <img src="/static/img/salpi_wave.png" alt="" draggable="false">
-</button>
+<div class="salpi-fab" id="fab">
+  <button class="fab-main" id="fabMain" type="button" aria-label="살피 챗봇 열기 (끌어서 옮길 수 있어요)" title="누르면 대화, 끌면 이동">
+    <span class="bubble" id="fabBubble">살피 챗봇에게 물어보세요</span>
+    <span class="fab-count" id="fabCount" hidden></span>
+    <img src="/static/img/salpi_wave.png" alt="" draggable="false">
+  </button>
+  <button class="fab-x" id="fabX" type="button" aria-label="살피 작게 줄이기" title="작게 줄이기">×</button>
+</div>
 
 <!-- 마이페이지 (시연: 로그인했다고 치고 시연용 가게 계정으로 보여 줌) -->
 <div class="backdrop" id="backdrop" hidden></div>

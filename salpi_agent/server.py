@@ -23,7 +23,7 @@ import foodspring
 import receipts
 import supabase_db
 from agent import SalpiAgent
-from data_sources import ITEMS, ApiError, ApiKeyMissing, daegu_events, holidays
+from data_sources import ITEMS, ApiError, ApiKeyMissing, holidays, month_events
 
 ROOT = Path(__file__).resolve().parent
 WEB = ROOT / "web"
@@ -116,7 +116,7 @@ def products():
 @app.get("/api/context")
 def context():
     return _guard(lambda: memo("context", lambda: {
-        "weather": analysis.weather_summary(7), "holidays": holidays(30), "events": daegu_events(14)}))
+        "weather": analysis.weather_summary(7), "holidays": holidays(30), "events": month_events()}))
 
 
 # ---------------------------------------------------------------

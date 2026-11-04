@@ -287,7 +287,7 @@ body.chat-open .salpi-fab .bubble, .salpi-fab.dragging .bubble { display: none; 
 .btn { border: 1px solid var(--border); background: #fff; border-radius: 10px; padding: 8px 16px; font-weight: 700; }
 .btn.primary { background: var(--deep); color: #fff; border-color: var(--deep); }
 .btn:disabled { opacity: .6; cursor: wait; }
-.warn { background: #FFF3CC; color: #6b5200; border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+.rc-warn { background: #FFF3CC; color: #6b5200; border-radius: 8px; padding: 8px 10px; font-size: 13px; }
 .ok { background: #DDF3EA; color: #0f5e47; border-radius: 8px; padding: 8px 10px; font-size: 14px; font-weight: 700; }
 .cost-table td { color: var(--ink); } .cost-table td.up { color: var(--up); } .cost-table td.down { color: var(--down); } .cost-table td.warnc { color: #B07A00; }
 .cost-table small.up { color: var(--up); } .cost-table small.down { color: var(--down); }

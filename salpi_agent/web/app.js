@@ -423,7 +423,7 @@ async function readReceipt(blob) {
     receipt.data = await sendJSON("/api/receipt/read", "POST", { image, mime: "image/jpeg" });
     renderReceiptEdit();
   } catch (e) {
-    box.innerHTML = `<p class="warn">${esc(e.message)}</p><button class="btn" id="receiptAgain">다시 하기</button>`;
+    box.innerHTML = `<p class="rc-warn">${esc(e.message)}</p><button class="btn" id="receiptAgain">다시 하기</button>`;
     $("#receiptAgain").onclick = resetReceipt;
   }
 }
@@ -449,7 +449,7 @@ function renderReceiptEdit() {
           <label>날짜 <input type="date" id="rcDate" value="${esc(d.date || "")}"></label>
           <label>판매처 <input id="rcSupplier" value="${esc(d.supplier || "")}"></label>
         </div>
-        ${d.total_matches ? "" : `<p class="warn">줄 금액을 더하면 ${won(d.line_sum)}인데 합계는 ${won(d.total)}이에요. 빠진 줄이 없는지 봐 주세요.</p>`}
+        ${d.total_matches ? "" : `<p class="rc-warn">줄 금액을 더하면 ${won(d.line_sum)}인데 합계는 ${won(d.total)}이에요. 빠진 줄이 없는지 봐 주세요.</p>`}
       </div>
     </div>
     <table class="price-table edit-table">

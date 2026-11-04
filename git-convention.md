@@ -13,10 +13,11 @@
 
 # 🌿 Branch Strategy
 
-본 프로젝트는 **Frontend / Backend 작업을 구분하되 하나의 개발 브랜치(dev)에서 통합하는 방식**을 사용한다.
+본 프로젝트는 **기능 단위 브랜치**에서 작업하고, 하나의 개발 브랜치(dev)에서 통합하는 방식을 사용한다.
 
-프론트엔드와 백엔드 작업 구분을 위해 브랜치 이름에
-**fe / be prefix**를 사용한다.
+- **기능 하나 = 브랜치 하나 = PR 하나**
+- 기능 단위: 사용자가 보는 기능 하나 (예: 시세 알림 설정, 영수증 사진 읽기, 내일 준비 표)
+- 여러 기능을 한 브랜치에 몰아 작업하지 않는다. 기능이 끝나면 PR → 머지하고, 다음 기능은 새 브랜치에서 시작한다
 
 ---
 
@@ -26,12 +27,8 @@
 main - 배포 브랜치 (실제 사이트 https://jangbaguni-ten.vercel.app 에 바로 반영)
 dev  - 개발 통합 브랜치
 
-fe/feat/*
-be/feat/*
-
-fe/fix/*
-be/fix/*
-
+feat/*
+fix/*
 hotfix/*
 docs/*
 ```
@@ -53,41 +50,31 @@ docs/*
 
 # 🏷 Branch Naming Rule
 
-Frontend와 Backend 작업을 구분하기 위해
-브랜치 이름에 **fe 또는 be**를 포함한다.
+브랜치 이름은 **작업 종류 / 기능 이름**으로 짓는다.
 
 ### 형식
 
 ```
-fe/feat/기능명
-be/feat/기능명
-
-fe/fix/이슈명
-be/fix/이슈명
+feat/기능명
+fix/이슈명
+hotfix/이슈명
+docs/문서명
 ```
 
 - 기능명 · 이슈명은 **영어 소문자**, 단어 사이는 `-` (예: `receipt-detail`)
-- **기능 하나 = 브랜치 하나.** 여러 기능을 한 브랜치에 몰아 작업하지 않는다
-
-### 우리 저장소에서 fe / be 구분
-
-| 고치는 곳 | prefix |
-| --- | --- |
-| `salpi_agent/web/` (화면 · 디자인) | `fe` |
-| `salpi_agent/*.py` (서버 · 예측 · 챗봇), `supabase/` (저장소) | `be` |
-| `research/` · `brand/` · `ppt/` · 문서(md) | `docs` |
+- 이름만 보고 **어떤 기능인지** 알 수 있게 짓는다 (`feat/work`, `feat/kim` 같은 이름 금지)
 
 ### 예시
 
 ```
-fe/feat/login-ui
-fe/feat/alert-settings
+feat/alert-settings
+feat/receipt-ocr
+feat/tomorrow-order
 
-be/feat/auth-api
-be/feat/receipt-ocr
+fix/chat-resize-bug
+fix/demand-timezone
 
-fe/fix/chat-resize-bug
-be/fix/demand-timezone
+hotfix/site-down
 
 docs/git-convention
 docs/seomun-market-note
@@ -102,13 +89,7 @@ docs/seomun-market-note
 ```bash
 git checkout dev
 git pull origin dev
-git checkout -b fe/feat/기능명
-```
-
-또는
-
-```bash
-git checkout -b be/feat/기능명
+git checkout -b feat/기능명
 ```
 
 ---
@@ -133,7 +114,7 @@ git commit -m "feat : auth/login 로그인 API 구현"
 ## 4️⃣ 원격 저장소 push
 
 ```bash
-git push origin fe/feat/기능명
+git push origin feat/기능명
 ```
 
 ---
@@ -158,7 +139,7 @@ git push origin fe/feat/기능명
 ```bash
 git checkout dev
 git pull origin dev
-git branch -d fe/feat/기능명
+git branch -d feat/기능명
 ```
 
 > 머지가 끝난 PR은 **Closed** 목록으로 옮겨지고 보라색 **Merged** 표시가 붙는다. 실패가 아니다.
@@ -168,7 +149,7 @@ git branch -d fe/feat/기능명
 ## 7️⃣ 배포 (dev → main)
 
 - dev에 모인 작업을 실제 사이트에 올릴 때, 배포 담당자가 **dev → main PR**을 만든다
-- 제목 예: `[INFRA : release] 11/5 시연 버전 배포`
+- 제목 예: `[release] 11/5 시연 버전 배포`
 - 머지하면 Vercel이 실제 사이트(main)를 자동으로 다시 배포한다
 - dev나 기능 브랜치에 push하면 Vercel이 **미리보기 사이트**만 따로 만든다 (실제 사이트는 그대로)
 
@@ -262,15 +243,16 @@ docs : research/place_tour 서문시장 노트 추가
 MR 제목은 다음 형식을 따른다.
 
 ```
-[파트 : 타입] 작업 내용
+[타입] 기능 이름 + 작업 내용
 ```
 
 ### 예시
 
-- [BE : feat] JWT 발급 로직 구현
-- [FE : feat] 로그인 페이지 UI 구현
-- [INFRA : chore] GitLab MR 템플릿 추가
-- [DOCS : docs] 서문시장 리서치 노트 추가
+- [feat] 시세 알림 설정 토글 추가
+- [feat] 영수증 사진 읽기 · 원가율 다시 계산
+- [fix] 채팅창 크기 조절 오류 수정
+- [docs] 서문시장 리서치 노트 추가
+- [release] 11/5 시연 버전 배포
 
 ### 작성 규칙
 
@@ -292,13 +274,6 @@ MR 제목은 다음 형식을 따른다.
 모든 MR은 아래 템플릿을 기반으로 작성한다. 이 템플릿은 `.github/pull_request_template.md`에 있어서 **PR을 만들면 본문에 자동으로 채워진다.**
 
 ```
-## 🔘 Part
-- [ ] FE
-- [ ] BE
-- [ ] INFRA
-
----
-
 ## 🔍 변경 사항
 - [ ] 새로운 기능 추가
 - [ ] 버그 수정
@@ -331,7 +306,7 @@ MR 제목은 다음 형식을 따른다.
 
 작업을 마치고 Claude Code에 **"다 했어, 커밋 푸시해줘"** 라고 말하면 Claude가 아래를 **끝까지** 진행한다. (Claude가 따르는 자세한 순서는 [claude.md](claude.md))
 
-1. 지금 브랜치 확인 — `main` · `dev`에서 작업했으면 기능 브랜치(`fe/feat/…` 등)를 만들어 작업을 옮긴다
+1. 지금 브랜치 확인 — `main` · `dev`에서 작업했으면 기능 브랜치(`feat/기능명` 등)를 만들어 작업을 옮긴다
 2. 바뀐 파일 목록을 보여 주고 규칙대로 커밋
 3. `dev` 최신 내용을 받아 합치고(충돌이 나면 알려 주고 같이 해결) push
 4. **PR 등록** — dev로 가는 PR을 템플릿을 채워 만든다 (못 만드는 환경이면 PR 만들기 링크와 채운 제목 · 본문을 준다)

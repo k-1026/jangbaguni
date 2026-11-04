@@ -7,20 +7,21 @@
 ```
 main  배포 — 실제 사이트(Vercel)에 바로 반영. 직접 push 금지
 dev   개발 통합 — 모든 기능 브랜치가 합쳐지는 곳. 직접 push 금지
-fe/feat/기능명 · fe/fix/이슈명   화면(salpi_agent/web/)
-be/feat/기능명 · be/fix/이슈명   서버 · 예측 · 챗봇(salpi_agent/*.py), 저장소(supabase/)
-docs/작업명                      research/ · brand/ · ppt/ · 문서(md)
-hotfix/이슈명                     급한 버그
+feat/기능명   새 기능
+fix/이슈명    버그 수정
+hotfix/이슈명 급한 버그
+docs/문서명   research/ · brand/ · ppt/ · 문서(md)
 ```
 
-- **작업은 기능 단위 브랜치에서만.** 기능 하나 = 브랜치 하나. 이름은 영어 소문자, 단어 사이 `-`
+- **작업은 기능 단위 브랜치에서만.** 기능 하나 = 브랜치 하나 = PR 하나. 이름은 영어 소문자, 단어 사이 `-`, 이름만 보고 어떤 기능인지 알 수 있게
+- 한 브랜치에서 다른 기능을 시작하려 하면 지금 기능을 먼저 PR로 마무리하고 새 브랜치를 만들자고 안내
 - 기능 브랜치는 항상 최신 `dev`에서 만든다
 
 ## 작업을 시작할 때
 
 1. `git status`로 지금 브랜치와 안 올린 변경 확인
 2. `git checkout dev` → `git pull origin dev`
-3. 무슨 작업인지 듣고 브랜치 이름을 제안해 만든다: `git checkout -b fe/feat/기능명`
+3. 무슨 작업인지 듣고 브랜치 이름을 제안해 만든다: `git checkout -b feat/기능명`
 4. 이미 기능 브랜치에서 이어서 하면 `git pull origin dev`로 팀원 변경부터 받는다
 
 ## 커밋 규칙
@@ -33,13 +34,13 @@ hotfix/이슈명                     급한 버그
 
 ## "다 했어" · "커밋 푸시해줘"라고 하면 — PR 등록 · 머지 안내까지 끝까지 진행
 
-1. **브랜치 확인**: `main` · `dev`에 있으면 변경을 그대로 가지고 기능 브랜치로 옮긴다 (`git checkout -b fe/feat/기능명`). 이름은 작업 내용을 보고 정하고 사용자에게 알린다
+1. **브랜치 확인**: `main` · `dev`에 있으면 변경을 그대로 가지고 기능 브랜치로 옮긴다 (`git checkout -b feat/기능명`). 이름은 작업 내용을 보고 정하고 사용자에게 알린다
 2. **커밋**: 바뀐 파일 목록을 보여 주고 위 규칙대로 커밋 (의미 단위로 나눠서)
 3. **최신 dev 합치기**: `git pull origin dev`. 충돌이 나면 어느 파일 어느 부분인지 알리고, 어느 쪽을 살릴지 확인한 뒤 해결 · 커밋
 4. **올리기**: `git push -u origin <브랜치>`
 5. **PR 등록** (보내는 곳 `dev`)
-   - 제목: `[파트 : 타입] 작업 내용` (파트 FE · BE · INFRA · DOCS, 예: `[FE : feat] 시세 알림 설정 토글 추가`)
-   - 본문: [.github/pull_request_template.md](.github/pull_request_template.md) 양식을 그대로 쓰고 채운다 — Part · 변경 사항 체크, 상세 내용(무엇을 · 왜 · 어떻게 확인했는지), 체크리스트는 **실제로 한 것만** 체크, 화면을 바꿨으면 스크린샷을 붙이라고 안내
+   - 제목: `[타입] 기능 이름 + 작업 내용` (예: `[feat] 시세 알림 설정 토글 추가`, `[fix] 채팅창 크기 조절 오류 수정`)
+   - 본문: [.github/pull_request_template.md](.github/pull_request_template.md) 양식을 그대로 쓰고 채운다 — 변경 사항 체크, 상세 내용(무엇을 · 왜 · 어떻게 확인했는지), 체크리스트는 **실제로 한 것만** 체크, 화면을 바꿨으면 스크린샷을 붙이라고 안내
    - `gh` CLI가 로그인돼 있으면 `gh pr create --base dev --head <브랜치> --title "<제목>" --body-file <채운 본문 파일>`로 등록하고 PR 주소를 알려 준다
    - 없으면 `https://github.com/k-1026/jangbaguni/compare/dev...<브랜치>?expand=1` 링크를 주고, 채운 제목과 본문을 복사해 붙여 **Create pull request**를 누르라고 안내 (양식은 자동으로 뜸)
 6. **머지 안내** (PR 만든 사람이 끝까지)
@@ -51,7 +52,7 @@ hotfix/이슈명                     급한 버그
 
 ## 배포 (dev → main)
 
-- 실제 사이트에 올릴 때만, 배포 담당자가 `dev → main` PR을 만든다. 제목 예: `[INFRA : release] 11/5 시연 버전 배포`
+- 실제 사이트에 올릴 때만, 배포 담당자가 `dev → main` PR을 만든다. 제목 예: `[release] 11/5 시연 버전 배포`
 - 머지하면 Vercel이 실제 사이트를 다시 배포한다. 기능 브랜치 · dev에 push하면 미리보기 사이트만 생긴다
 
 ## 같은 파일 동시 수정 피하기

@@ -125,6 +125,39 @@ export function classifyImproved(events, ids, today, limits = LIMITS) {
   return result;
 }
 
+// 주 유형 + 보조 유형: 유형별로 기준에 얼마나 가까운지(1 이상이면 충족) 재서 순서를 정한다
+const atLeast = (v, limit) => (v === null ? 0 : Math.min(2, v / limit));
+const atMost = (v, limit) => (v === null ? 0 : Math.min(2, limit / Math.max(v, 0.01)));
+const NEAR = 0.8;   // 보조 유형으로 인정하는 최소 근접도 (결과를 보기 전에 정함)
+
+export function classifyBlend(events, ids, today, limits = TUNED) {
+  const base = classifyImproved(events, ids, today, limits);
+  const result = {};
+  for (const id of ids) {
+    const x = base[id].metrics;
+    if (base[id].label === "S5") {
+      result[id] = { primary: "S5", secondary: null, metrics: x };
+      continue;
+    }
+    const full = x.orders >= 6 && today >= 55;
+    const rate = (fit, n) => (full && n >= 5 ? fit : 0);
+    const fits = {
+      S4: Math.min(rate(atLeast(x.e, limits.e), x.eN), rate(atLeast(x.reportsPerWeek, limits.stockout), x.eN)),
+      S1: Math.min(rate(atLeast(x.p, limits.p), x.pN), rate(atLeast(x.f, limits.f), x.pN)),
+      S3: x.records >= 3 ? Math.min(atLeast(x.m, limits.m), atMost(x.f, 1), atLeast(x.v, limits.v)) : 0,
+      S2: Math.min(full ? atMost(x.c, limits.c) : 0, rate(atMost(x.a, limits.a), x.aN)),
+    };
+    const ranked = Object.entries(fits).sort((a, b) => b[1] - a[1]);
+    const [first, second] = ranked;
+    result[id] = {
+      primary: first[1] >= 1 ? first[0] : "판단 보류",
+      secondary: first[1] >= 1 ? (second[1] >= NEAR ? second[0] : null) : (first[1] >= NEAR ? first[0] : null),
+      metrics: x,
+    };
+  }
+  return result;
+}
+
 // 주 1회 재계산. 보완 기준은 2번 연속 같을 때만 바꾸되 S5는 바로 반영
 export function weeklyTimeline(events, ids, totalDays) {
   const ppt = Object.fromEntries(ids.map((id) => [id, []]));

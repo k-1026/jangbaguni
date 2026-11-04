@@ -1,35 +1,60 @@
 # 팀 작업 규칙 (Claude가 따를 것)
 
-자세한 설명은 [README.md](README.md)와 [git-convention.md](git-convention.md) 참고. 팀원 대부분이 비개발자이므로, 안내할 때는 개발 용어 대신 쉬운 말(작업 공간 · 저장 기록 · 합치기 · 할 일 카드)을 쓸 것.
+자세한 설명은 [git-convention.md](git-convention.md) 참고. 팀원 대부분이 비개발자이므로, 안내할 때는 개발 용어 대신 쉬운 말(작업 공간 · 저장 기록 · 올리기 · 합치기 요청 · 합치기)을 쓰고, 명령어는 그대로 복사해 쓸 수 있게 보여 줄 것.
 
-## 지금 이 저장소 — `main` 하나로 운영 (README 규칙)
-
-1. **작업 전 pull**: 작업을 시작하면 먼저 팀원 변경을 받아올 것 (오래된 상태로 작업하면 push 거부 · 충돌이 남).
-2. **작은 커밋 · 바로 push**: 커밋 1개 = 의미 있는 변경 1개(노트 1~2개). 하루치를 몰아 커밋하지 않음.
-3. **커밋 메시지**: `feat:`(새 파일·기능) / `fix:`(잘못된 내용 수정) / `docs:`(노트·문서)로 시작하는 "종류: 무엇을" 한 줄. 필요하면 둘째 줄부터 이유. 커밋 전에 바뀐 파일 목록을 먼저 보여 줄 것.
-   - 예: `docs: 서문시장 노트 추가`, `fix: 근대골목 출처 URL 수정`, `feat: keyword_map 산업 유형 추가`
-4. **같은 파일 동시 수정 피하기**: 각자 맡은 하위 폴더 · 파일에만 저장. 공용 파일(`keyword_map.md` · `CLAUDE.md`)은 팀에 알린 뒤 한 사람이 수정.
-
-## 브랜치를 쓰는 앱 저장소부터 (git-convention 규칙)
-
-**작업 공간(브랜치) 구조** — 아래에서 위로 합쳐짐. `main`에서 직접 작업 금지.
+## 브랜치 (작업 공간)
 
 ```
-main (완성본)
-└─ integration (모두의 작업을 합쳐 확인)
-   └─ 팀원 이름 작업대 (예: kim)
-      └─ 할 일 카드별 작업 공간 (예: kim/1-login, kim/2-search-bar)
+main  배포 — 실제 사이트(Vercel)에 바로 반영. 직접 push 금지
+dev   개발 통합 — 모든 기능 브랜치가 합쳐지는 곳. 직접 push 금지
+fe/feat/기능명 · fe/fix/이슈명   화면(salpi_agent/web/)
+be/feat/기능명 · be/fix/이슈명   서버 · 예측 · 챗봇(salpi_agent/*.py), 저장소(supabase/)
+docs/작업명                      research/ · brand/ · ppt/ · 문서(md)
+hotfix/이슈명                     급한 버그
 ```
 
-**커밋 메시지**: `종류: 할 일 카드 번호 + 무엇을(한글)`, 종류는 첫 글자만 대문자.
-- `Feat`(새로 만들기) — 예: `Feat: S14P11D103-27 로그인 기능 추가`
-- `Fix`(고치기) — 예: `Fix: S14P11D103-30 로그인 오류 수정`
-- `Refactor`(겉 동작은 같고 속 구조만 정리) — 예: `Refactor: S14P11D103-31 로그인 부분 구조 정리`
+- **작업은 기능 단위 브랜치에서만.** 기능 하나 = 브랜치 하나. 이름은 영어 소문자, 단어 사이 `-`
+- 기능 브랜치는 항상 최신 `dev`에서 만든다
 
-**작업 순서**
-1. 내 이름 작업대로 이동해 최신 내용 받기: `git checkout kim` → `git pull origin kim`
-2. 할 일 카드 하나당 작업 공간 하나 만들기: `git checkout -b kim/2-search-bar`
-3. 작업 후 위 규칙대로 커밋
-4. GitLab에 올리기: `git push origin kim/2-search-bar`
-5. GitLab에서 Merge Request 생성 (Base: `kim` ⬅️ Compare: `kim/2-search-bar`) → 팀원 확인 후 합치기
-6. 개인 작업대가 정리되면 `integration`에, 문제없으면 `main`에 반영
+## 작업을 시작할 때
+
+1. `git status`로 지금 브랜치와 안 올린 변경 확인
+2. `git checkout dev` → `git pull origin dev`
+3. 무슨 작업인지 듣고 브랜치 이름을 제안해 만든다: `git checkout -b fe/feat/기능명`
+4. 이미 기능 브랜치에서 이어서 하면 `git pull origin dev`로 팀원 변경부터 받는다
+
+## 커밋 규칙
+
+- 형식: `type : (위치/기능) 설명` — type은 소문자 영어, 설명은 한글 가능
+- type: `create` `add` `delete` `feat` `fix` `build` `chore` `docs` `style` `refactor` `test` `release` `rename` `comment`
+- 예: `feat : web/alert 시세 알림 설정 토글 추가`, `fix : demand/forecast 내일 날짜를 한국 시간 기준으로 수정`, `docs : research/place_tour 서문시장 노트 추가`
+- 커밋 1개 = 의미 있는 변경 1개. **커밋 전에 바뀐 파일 목록을 먼저 보여 줄 것**
+- `.env`(키 파일) · 키 값은 절대 커밋하지 않는다
+
+## "다 했어" · "커밋 푸시해줘"라고 하면 — PR 등록 · 머지 안내까지 끝까지 진행
+
+1. **브랜치 확인**: `main` · `dev`에 있으면 변경을 그대로 가지고 기능 브랜치로 옮긴다 (`git checkout -b fe/feat/기능명`). 이름은 작업 내용을 보고 정하고 사용자에게 알린다
+2. **커밋**: 바뀐 파일 목록을 보여 주고 위 규칙대로 커밋 (의미 단위로 나눠서)
+3. **최신 dev 합치기**: `git pull origin dev`. 충돌이 나면 어느 파일 어느 부분인지 알리고, 어느 쪽을 살릴지 확인한 뒤 해결 · 커밋
+4. **올리기**: `git push -u origin <브랜치>`
+5. **PR 등록** (보내는 곳 `dev`)
+   - 제목: `[파트 : 타입] 작업 내용` (파트 FE · BE · INFRA · DOCS, 예: `[FE : feat] 시세 알림 설정 토글 추가`)
+   - 본문: [.github/pull_request_template.md](.github/pull_request_template.md) 양식을 그대로 쓰고 채운다 — Part · 변경 사항 체크, 상세 내용(무엇을 · 왜 · 어떻게 확인했는지), 체크리스트는 **실제로 한 것만** 체크, 화면을 바꿨으면 스크린샷을 붙이라고 안내
+   - `gh` CLI가 로그인돼 있으면 `gh pr create --base dev --head <브랜치> --title "<제목>" --body-file <채운 본문 파일>`로 등록하고 PR 주소를 알려 준다
+   - 없으면 `https://github.com/k-1026/jangbaguni/compare/dev...<브랜치>?expand=1` 링크를 주고, 채운 제목과 본문을 복사해 붙여 **Create pull request**를 누르라고 안내 (양식은 자동으로 뜸)
+6. **머지 안내** (PR 만든 사람이 끝까지)
+   - PR 페이지 → **Files changed** 확인 → 팀원 1명 확인(Approve)
+   - **Merge pull request** → **Confirm merge** → **Delete branch**
+   - "This branch has conflicts"가 뜨면 머지하지 말고 "충돌 풀어줘"라고 말해 달라고 안내
+   - 머지된 PR은 Closed 목록에 보라색 **Merged**로 표시된다 (실패 아님)
+7. **머지 후 정리**: 사용자가 "머지했어"라고 하면 `git checkout dev` → `git pull origin dev` → `git branch -d <브랜치>` 실행
+
+## 배포 (dev → main)
+
+- 실제 사이트에 올릴 때만, 배포 담당자가 `dev → main` PR을 만든다. 제목 예: `[INFRA : release] 11/5 시연 버전 배포`
+- 머지하면 Vercel이 실제 사이트를 다시 배포한다. 기능 브랜치 · dev에 push하면 미리보기 사이트만 생긴다
+
+## 같은 파일 동시 수정 피하기
+
+- 각자 맡은 기능 · 폴더만 고친다. 같은 파일(예: `salpi_agent/web/app.js`)을 여러 명이 고치면 충돌이 나므로 미리 팀에 알린다
+- 공용 파일(`keyword_map.md` · `claude.md` · `git-convention.md`)은 팀에 알린 뒤 한 사람이 수정

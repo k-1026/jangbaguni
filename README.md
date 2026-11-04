@@ -1,33 +1,28 @@
 # 작업 규칙
 
-오늘은 `main` 하나로 — 팀 저장소는 브랜치 없이 아래 네 규칙으로 운영합니다.
+브랜치 · PR로 작업합니다. 자세한 규칙은 [git-convention.md](git-convention.md).
 
-> 브랜치 · PR · 리뷰를 쓰는 GitHub Flow는 11/16 앱 저장소 `<팀이름>-mvp`부터
+## 1. 기능 하나 = 브랜치 하나
+- `main`(실제 사이트) · `dev`(개발 통합)에는 직접 올리지 않음
+- 최신 `dev`에서 기능 브랜치를 만들어 작업: `fe/feat/기능명` · `be/feat/기능명` · `fe/fix/이슈명` · `docs/작업명`
 
-## 1. 작업 전 pull
-- Claude Code를 열면 첫 요청은 "팀원 변경 받아 줘"
-- 오래된 상태에서 작업하면 push 거부 · 충돌의 원인이 됨
+## 2. 작업 전 pull
+- Claude Code를 열면 첫 요청은 "dev 최신으로 받아 줘"
 
-## 2. 작은 커밋 · 바로 push
-- 커밋 1개 = 의미 있는 변경 1개 (노트 1~2개)
-- 하루치를 몰아 커밋하지 않음 — 되돌리기 · 원인 찾기가 쉬워짐
-
-## 3. 커밋 메시지 규칙
-- `feat:` 새 파일·기능 · `fix:` 잘못된 내용 수정 · `docs:` 노트·문서
-- "종류: 무엇을" 한 줄 요약, 필요하면 둘째 줄부터 이유
+## 3. 커밋 메시지
+- `type : (위치/기능) 설명` — type은 소문자 영어 (`feat` `fix` `docs` `add` `refactor` …)
 
 ```
-docs: 서문시장 노트 추가
-fix: 근대골목 출처 URL 수정
-feat: keyword_map 산업 유형 추가
+feat : web/alert 시세 알림 설정 토글 추가
+fix : demand/forecast 내일 날짜를 한국 시간 기준으로 수정
+docs : research/place_tour 서문시장 노트 추가
 ```
 
-## 4. 같은 파일 동시 수정 피하기
-- 각자 맡은 하위 폴더 · 파일에만 저장
-- 공용 파일(`keyword_map.md` · `CLAUDE.md`)은 팀에 알린 뒤 한 사람이 수정
+## 4. PR은 각자 만들고 머지까지
+- push한 사람이 `dev`로 가는 PR을 직접 만듦 — 제목 `[FE : feat] 작업 내용`, 본문 양식은 자동으로 뜸
+- 팀원 1명 확인 → **Merge pull request** → **Delete branch**
+- Claude Code에 **"다 했어, 커밋 푸시해줘"** 라고 하면 커밋 → push → PR 등록 → 머지 안내까지 진행해 줌
 
-## 5. 브랜치 작업 Git 컨벤션
-- 브랜치 · PR을 쓰는 앱 저장소부터는 [git-convention.md](git-convention.md)를 따름
-- 작업 공간 구조: `main`(완성본) → `integration`(합쳐 확인) → 각자 이름 작업대 → 1번 · 2번 작업 공간
-- 저장 메모: `Feat`(새로 만들기) · `Fix`(고치기) · `Refactor`(정리하기) + 할 일 카드 번호
-- 작업 순서: 최신 내용 받기 → 작업 공간 만들기 → 저장 → 올리기 → 합쳐 달라고 요청
+## 5. 같은 파일 동시 수정 피하기
+- 각자 맡은 기능 · 폴더만 고침. 같은 파일을 고칠 땐 미리 팀에 알림
+- 공용 파일(`keyword_map.md` · `claude.md` · `git-convention.md`)은 팀에 알린 뒤 한 사람이 수정

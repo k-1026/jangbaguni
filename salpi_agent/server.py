@@ -3,6 +3,8 @@
 실행: python server.py → http://localhost:8000
 """
 
+import os
+import base64
 import threading
 import time
 from contextlib import asynccontextmanager
@@ -18,6 +20,8 @@ from pydantic import BaseModel
 import analysis
 import demand
 import foodspring
+import receipts
+import supabase_db
 from agent import SalpiAgent
 from data_sources import ITEMS, ApiError, ApiKeyMissing, holidays, month_events
 
@@ -32,7 +36,6 @@ async def lifespan(_app):
     def warm():
         try:
             memo("overview", _overview)
-            memo("products", lambda: {"items": foodspring.all_products(4)})
         except Exception:
             pass   # 키가 없거나 API 장애면 화면에서 안내
     threading.Thread(target=warm, daemon=True).start()
@@ -41,6 +44,7 @@ async def lifespan(_app):
 
 app = FastAPI(title="살피", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=WEB), name="static")
+app.mount("/receipts_demo", StaticFiles(directory=ROOT / "receipts_demo"), name="receipts_demo")   # 시연용 가상 영수증
 
 # ---------------------------------------------------------------
 # 계산 결과 1시간 보관 (같은 화면을 여러 명이 열어도 다시 계산하지 않음)
@@ -79,6 +83,16 @@ def _guard(fn):
 @app.get("/")
 def index():
     return FileResponse(WEB / "index.html")
+
+
+# 키 확인용: 값은 절대 보내지 않고 "넣었는지"만 알려 줌 (Vercel 환경 변수 확인)
+KEY_NAMES = ["AT_SALE_API_KEY", "AT_PERDAY_API_KEY", "AT_REALTIME_API_KEY", "KMA_ASOS_API_KEY", "KASI_SPCDE_API_KEY",
+             "KTO_TOUR_API_KEY", "KAMIS_CERT_KEY", "KAMIS_CERT_ID", "GEMINI_API_KEY", "SUPABASE_URL", "SUPABASE_SECRET_KEY"]
+
+
+@app.get("/api/health")
+def health():
+    return {"keys": {k: bool(os.getenv(k, "").strip()) for k in KEY_NAMES}}
 
 
 @app.get("/api/overview")
@@ -123,7 +137,80 @@ def demand_forecast(target: str | None = None):
         day = date.fromisoformat(target) if target else None
     except ValueError:
         raise HTTPException(400, "날짜는 2026-11-05 형식으로 보내 주세요")
-    return _guard(lambda: memo(f"demand:{day}", lambda: demand.forecast(target=day, price_outlook=_price_outlook()), ttl=600))
+    # 대시보드 시세가 아직 준비 전이면 기다리지 않고 시세 없이 계산 (1분 뒤 다시 계산할 때 시세 반영)
+    outlook = _price_outlook()
+    key = f"demand:{day}:{'price' if outlook else 'noprice'}"
+    return _guard(lambda: memo(key, lambda: demand.forecast(target=day, price_outlook=outlook or {}), ttl=600 if outlook else 60))
+
+
+# ---------------------------------------------------------------
+# 영수증으로 원가율: 사진 읽기(Gemini) → 사장님 확인 · 수정 → 저장(Supabase) → 원가율 다시 계산
+# 사진은 화면에서 줄여서(긴 쪽 1600px) base64 로 보냄 (Vercel 요청 크기 4.5MB 제한)
+# ---------------------------------------------------------------
+MAX_IMAGE = 4_000_000
+
+
+def _image(b64, mime):
+    if not b64:
+        return None, None
+    data = base64.b64decode(b64.split(",")[-1])
+    if len(data) > MAX_IMAGE:
+        raise HTTPException(413, "사진이 너무 커요. 다시 찍어 주세요.")
+    if mime not in ("image/jpeg", "image/png", "image/webp"):
+        raise HTTPException(400, "사진 파일(jpg · png)만 올릴 수 있어요")
+    return data, mime
+
+
+class ReceiptIn(BaseModel):
+    image: str = ""
+    mime: str = "image/jpeg"
+
+
+class ReceiptSave(ReceiptIn):
+    date: str | None = None
+    supplier: str | None = None
+    items: list[dict] = []
+
+
+def _receipt_guard(fn):
+    try:
+        return _guard(fn)
+    except (ValueError, RuntimeError) as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/receipt/read")
+def receipt_read(body: ReceiptIn):
+    data, mime = _image(body.image, body.mime)
+    if not data:
+        raise HTTPException(400, "영수증 사진을 골라 주세요")
+    return _receipt_guard(lambda: receipts.read(data, mime))
+
+
+@app.post("/api/receipt/save")
+def receipt_save(body: ReceiptSave):
+    data, mime = _image(body.image, body.mime)
+    return _receipt_guard(lambda: receipts.save(supabase_db.DEMO_STORE, body.model_dump(), data, mime))
+
+
+@app.get("/api/costs")
+def costs():
+    return _receipt_guard(lambda: {**receipts.cost_report(supabase_db.DEMO_STORE), "receipts": receipts.recent(supabase_db.DEMO_STORE)})
+
+
+@app.get("/api/receipt/{purchase_id}")
+def receipt_detail(purchase_id: int):
+    return _receipt_guard(lambda: receipts.detail(supabase_db.DEMO_STORE, purchase_id))
+
+
+@app.get("/api/receipts")
+def receipt_list():
+    return _receipt_guard(lambda: {"receipts": receipts.recent(supabase_db.DEMO_STORE, limit=50)})
+
+
+@app.delete("/api/receipt/{purchase_id}")
+def receipt_delete(purchase_id: int):
+    return _receipt_guard(lambda: receipts.remove(supabase_db.DEMO_STORE, purchase_id))
 
 
 # ---------------------------------------------------------------

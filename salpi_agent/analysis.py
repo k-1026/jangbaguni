@@ -158,7 +158,7 @@ def forecast_item(item_name):
         slope = statistics.linear_regression(xs, ys).slope
         effect = _clip(slope * 7 / statistics.mean(ys) * 100 * 0.5, -10, 10)
         factors.append({"factor": "최근 2주 시세 흐름", "effect_pct": round(effect, 1),
-                        "detail": f"2주 동안 하루 평균 {slope:+.0f}원/kg 움직였어요"})
+                        "detail": f"2주 동안 하루 평균 {slope:+.0f}원/kg 움직임"})
 
     # 2) 반입량: 시장에 들어오는 양이 줄면 오르고, 늘면 내린다
     vols = [p["volume_kg"] for p in series]
@@ -187,18 +187,18 @@ def forecast_item(item_name):
                         f"비 {w['rain_total_mm']}mm, 최저 {w['min_temp']}도 · 최고 {w['max_temp']}도로 큰 영향 없음"})
 
     # 4) 다가오는 공휴일 (도매시장 휴장 전 수요가 몰림)
-    hol = holidays(10)
+    hol = holidays(7)
     if hol:
         big = any(n in h["name"] for h in hol for n in ("설", "추석"))
         factors.append({"factor": "다가오는 공휴일", "effect_pct": 4.0 if big else 2.0,
                         "detail": ", ".join(f"{h['date'][4:6]}/{h['date'][6:]} {h['name']}" for h in hol)})
     else:
-        factors.append({"factor": "다가오는 공휴일", "effect_pct": 0.0, "detail": "10일 안에 공휴일 없음"})
+        factors.append({"factor": "다가오는 공휴일", "effect_pct": 0.0, "detail": "7일 안에 공휴일 없음"})
 
     # 5) 대구 행사 (외식 수요 ↑ → 가격 영향은 작게)
     ev = daegu_events(7)
     factors.append({"factor": "대구 행사·축제(7일 안)", "effect_pct": 1.0 if len(ev) >= 5 else 0.0,
-                    "detail": f"{len(ev)}개 진행" + (" — 메뉴 판매에 더 큰 영향" if ev else "")})
+                    "detail": ", ".join(e["title"] for e in ev) if ev else "7일 안에 대구 행사 축제 없음"})
 
     total = sum(f["effect_pct"] for f in factors)
     daily = [_pct(b["kg_price"], a["kg_price"]) for a, b in zip(series, series[1:])]

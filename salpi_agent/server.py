@@ -3,6 +3,7 @@
 실행: python server.py → http://localhost:8000
 """
 
+import os
 import threading
 import time
 from contextlib import asynccontextmanager
@@ -79,6 +80,16 @@ def _guard(fn):
 @app.get("/")
 def index():
     return FileResponse(WEB / "index.html")
+
+
+# 키 확인용: 값은 절대 보내지 않고 "넣었는지"만 알려 줌 (Vercel 환경 변수 확인)
+KEY_NAMES = ["AT_SALE_API_KEY", "AT_PERDAY_API_KEY", "AT_REALTIME_API_KEY", "KMA_ASOS_API_KEY", "KASI_SPCDE_API_KEY",
+             "KTO_TOUR_API_KEY", "KAMIS_CERT_KEY", "KAMIS_CERT_ID", "GEMINI_API_KEY", "SUPABASE_URL", "SUPABASE_SECRET_KEY"]
+
+
+@app.get("/api/health")
+def health():
+    return {"keys": {k: bool(os.getenv(k, "").strip()) for k in KEY_NAMES}}
 
 
 @app.get("/api/overview")

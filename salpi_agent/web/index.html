@@ -7,7 +7,7 @@
   <link rel="icon" href="/static/img/salpi_face.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=20">
+  <link rel="stylesheet" href="/static/style.css?v=25">
 </head>
 <body>
 
@@ -15,18 +15,24 @@
   <div class="wrap topbar-inner">
     <a href="/" class="logo"><img src="/static/img/logo.png" alt="살피"></a>
     <nav class="nav">
-      <a href="#dashboard">시세 대시보드</a>
-      <a href="#store">내일 준비</a>
-      <a href="#products">오늘의 야채</a>
-      <a href="#context">날씨 · 행사</a>
+      <a href="/#dashboard">시세 대시보드</a>
+      <a href="/#store">내일 준비</a>
+      <a href="/#products">오늘의 야채</a>
+      <a href="/#context">날씨 · 행사</a>
     </nav>
+    <div class="search" role="search">
+      <input id="searchInput" type="search" role="combobox" autocomplete="off" placeholder="재료 · 상품 검색" aria-label="재료와 상품 검색"
+             aria-autocomplete="list" aria-expanded="false" aria-controls="searchList">
+      <div class="search-list" id="searchList" role="listbox" aria-label="검색 결과" hidden></div>
+    </div>
     <span class="basis" id="basis">시세 불러오는 중</span>
+    <button class="talk-open" id="talkOpen" aria-haspopup="dialog">알림톡</button>
   </div>
 </header>
 
 <main>
   <!-- 첫 화면: 왼쪽 살피 · 오른쪽 시세 대시보드(옆으로 넘기면 오를 재료 카드) -->
-  <section class="hero" id="dashboard">
+  <section class="hero home-only" id="dashboard">
     <div class="wrap hero-inner">
       <div class="hero-text">
         <p class="eyebrow">대구 북부도매시장(매천시장) 새벽 시세</p>
@@ -64,25 +70,22 @@
     </div>
   </section>
 
-  <!-- 고른 재료 자세히 -->
-  <section class="wrap section">
-    <div class="section-head">
-      <h2 id="detailTitle">날짜별 시세</h2>
-      <p class="muted">도매 kg당 · 그날 날씨와 행사 · 다음 7일 예측 이유</p>
-    </div>
-    <div class="detail">
-      <div class="card table-card">
-        <table class="price-table">
-          <thead><tr><th>날짜</th><th>가격</th><th>이전대비</th><th>날씨</th></tr></thead>
-          <tbody id="priceRows"></tbody>
-        </table>
-      </div>
+  <!-- 재료 전용 페이지 (/?item=토마토): 검색에서 들어옴 -->
+  <section class="wrap section item-page" id="itemPage" hidden>
+    <a class="item-back" href="/">← 메인으로</a>
+    <div class="item-head" id="itemHead"><p class="muted">시세를 불러오는 중이에요</p></div>
+    <div id="itemBody" hidden>
+      <div class="card board" id="priceBoard"></div>
       <div class="card forecast-card" id="forecastCard"></div>
+      <div id="itemGoodsWrap" hidden>
+        <div class="section-head item-goods-head"><h2>식봄 상품</h2><p class="muted">누르면 식봄 상품 페이지로 이동해요</p></div>
+        <div class="grid" id="itemGoods"></div>
+      </div>
     </div>
   </section>
 
   <!-- 우리 가게 내일 준비: 판매 기록(Supabase)으로 예상 그릇 수 · 재료 필요량 · 발주 추천 -->
-  <section class="wrap section" id="store">
+  <section class="wrap section home-only" id="store">
     <div class="section-head">
       <h2>우리 가게 내일 준비</h2>
       <p class="muted" id="storeBasis">판매 기록을 불러오는 중이에요</p>
@@ -94,7 +97,7 @@
   </section>
 
   <!-- 식봄 실제 상품 -->
-  <section class="wrap section" id="products">
+  <section class="wrap section home-only" id="products">
     <div class="section-head">
       <h2>오늘의 야채</h2>
       <p class="muted">식봄에서 지금 파는 상품과 가격이에요. 누르면 식봄 상품 페이지로 이동해요. 살피는 아무것도 팔지 않아요.</p>
@@ -105,7 +108,7 @@
   </section>
 
   <!-- 날씨 · 공휴일 · 행사 -->
-  <section class="wrap section" id="context">
+  <section class="wrap section home-only" id="context">
     <div class="section-head"><h2>시세에 영향을 주는 것들</h2></div>
     <div class="ctx-grid">
       <div class="card" id="weatherCard"><h3>대구 날씨 (지난 7일)</h3><p class="muted">불러오는 중</p></div>
@@ -145,7 +148,21 @@
   </form>
 </aside>
 
+<!-- 알림톡 시연: 실제 발송 없이 세그먼트별 메시지를 카톡 대화처럼 보여 줌 -->
+<div class="talk" id="talk" hidden>
+  <div class="talk-phone" role="dialog" aria-modal="true" aria-labelledby="talkTitle">
+    <div class="talk-head">
+      <img src="/static/img/salpi_face.png" alt="">
+      <div><strong id="talkTitle">살피 알림톡</strong><small>시연 화면이에요. 실제로 보내지 않아요</small></div>
+      <button class="talk-close" id="talkClose" aria-label="닫기">×</button>
+    </div>
+    <div class="talk-tabs" id="talkTabs" role="group" aria-label="사장님 유형"></div>
+    <p class="talk-policy" id="talkPolicy"></p>
+    <div class="talk-room" id="talkRoom" aria-live="polite"></div>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="/static/app.js?v=20"></script>
+<script src="/static/app.js?v=25"></script>
 </body>
 </html>

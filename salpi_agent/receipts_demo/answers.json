@@ -1,0 +1,167 @@
+{
+ "receipt_1012_statement": {
+  "date": "2026-10-12",
+  "items": [
+   {
+    "raw_name": "깐양파 15kg",
+    "qty": 1,
+    "amount": 19500
+   },
+   {
+    "raw_name": "돈앞다리 1kg",
+    "qty": 12,
+    "amount": 138000
+   },
+   {
+    "raw_name": "국산두부 1모",
+    "qty": 45,
+    "amount": 54000
+   },
+   {
+    "raw_name": "포기김치 10kg",
+    "qty": 2,
+    "amount": 76000
+   },
+   {
+    "raw_name": "대파 1kg",
+    "qty": 3,
+    "amount": 9000
+   },
+   {
+    "raw_name": "청양고추 1kg",
+    "qty": 1,
+    "amount": 9500
+   },
+   {
+    "raw_name": "애호박 1개",
+    "qty": 10,
+    "amount": 15000
+   },
+   {
+    "raw_name": "감자 10kg",
+    "qty": 1,
+    "amount": 26000
+   },
+   {
+    "raw_name": "재래된장 2kg",
+    "qty": 1,
+    "amount": 14000
+   },
+   {
+    "raw_name": "태양초고추장 3kg",
+    "qty": 1,
+    "amount": 21000
+   },
+   {
+    "raw_name": "고춧가루(중국) 1kg",
+    "qty": 1,
+    "amount": 14000
+   },
+   {
+    "raw_name": "깐마늘 1kg",
+    "qty": 1,
+    "amount": 11000
+   }
+  ],
+  "total": 407000
+ },
+ "receipt_1019_statement": {
+  "date": "2026-10-19",
+  "items": [
+   {
+    "raw_name": "깐양파 15kg",
+    "qty": 1,
+    "amount": 22500
+   },
+   {
+    "raw_name": "돈앞다리 1kg",
+    "qty": 12,
+    "amount": 144000
+   },
+   {
+    "raw_name": "국산두부 1모",
+    "qty": 45,
+    "amount": 54000
+   },
+   {
+    "raw_name": "대파 1kg",
+    "qty": 3,
+    "amount": 9600
+   }
+  ],
+  "total": 230100
+ },
+ "receipt_1026_mart": {
+  "date": "2026-10-26",
+  "items": [
+   {
+    "raw_name": "깐양파15K",
+    "qty": 1,
+    "amount": 25500
+   },
+   {
+    "raw_name": "돈앞다리(냉장)1K",
+    "qty": 12,
+    "amount": 150000
+   },
+   {
+    "raw_name": "국산두부300G",
+    "qty": 45,
+    "amount": 54000
+   },
+   {
+    "raw_name": "포기김치10K",
+    "qty": 2,
+    "amount": 76000
+   }
+  ],
+  "total": 305500
+ },
+ "receipt_1102_handwritten": {
+  "date": "2026-11-02",
+  "items": [
+   {
+    "raw_name": "양파 1망",
+    "qty": 1,
+    "amount": 28500
+   },
+   {
+    "raw_name": "돼지 앞다리",
+    "qty": 12,
+    "amount": 153600
+   },
+   {
+    "raw_name": "대파",
+    "qty": 3,
+    "amount": 10500
+   }
+  ],
+  "total": 192600
+ },
+ "receipt_1019_photo_tilted": {
+  "date": "2026-10-19",
+  "items": [
+   {
+    "raw_name": "깐양파 15kg",
+    "qty": 1,
+    "amount": 22500
+   },
+   {
+    "raw_name": "돈앞다리 1kg",
+    "qty": 12,
+    "amount": 144000
+   },
+   {
+    "raw_name": "국산두부 1모",
+    "qty": 45,
+    "amount": 54000
+   },
+   {
+    "raw_name": "대파 1kg",
+    "qty": 3,
+    "amount": 9600
+   }
+  ],
+  "total": 230100
+ }
+}

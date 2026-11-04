@@ -17,6 +17,8 @@ import requests
 import analysis
 import demand
 import menu_cost
+import receipts
+import supabase_db
 from data_sources import ITEMS, ApiKeyMissing, daegu_events, holidays
 
 ROOT = Path(__file__).resolve().parent
@@ -161,8 +163,21 @@ def forecast_store_demand() -> dict:
     return _safe(run)
 
 
+def get_store_cost_ratio() -> dict:
+    """시연용 가게('살피 시연 한식당') 메뉴별 원가율. 가게가 영수증으로 실제 산 가격(최근 영수증 단가) 기준.
+    menus 마다 cost_ratio_pct(원가율 %), margin(재료비 뺀 남는 돈), verdict, top_items(비싼 재료),
+    riser(영수증 기준 가장 많이 오른 재료), tips(규칙으로 계산한 판매가 조정 · 대체 재료 제안)가 있다."""
+    def run():
+        r = receipts.cost_report(supabase_db.DEMO_STORE)
+        return {"store": "살피 시연 한식당 (시연용)", "target_ratio_pct": r["target_ratio_pct"], "menus": [{
+            "menu": m["menu"], "price": m["price"], "cost_per_serving": m["cost_per_serving"], "cost_ratio_pct": m["cost_ratio_pct"],
+            "margin": m["margin"], "verdict": m["verdict"], "top_items": [t["item"] for t in m["top_items"]], "tips": m["tips"],
+        } for m in r["menus"]]}
+    return _safe(run)
+
+
 TOOLS = [list_supported_items, get_market_overview, get_item_price_trend, forecast_item_price,
-         recommend_buy_now, list_standard_menus, calc_menu_margin, forecast_store_demand,
+         recommend_buy_now, list_standard_menus, calc_menu_margin, forecast_store_demand, get_store_cost_ratio,
          get_weather_summary, get_daegu_events, get_upcoming_holidays]
 
 
@@ -187,6 +202,8 @@ def _brand_skill():
 SYSTEM_PROMPT = f"""너는 '살피'다. 대구 외식업 사장님의 식자재 시세 비서인 미어캣. 아무것도 팔지 않는다.
 
 판단 원칙 (반드시 지킬 것)
+0. 가격 · 원가율 · 판매량 · 발주량 같은 숫자가 들어가는 답은 반드시 알맞은 도구를 먼저 부르고 나서 답한다.
+   지난 대화에 비슷한 숫자가 있어도 다시 부른다.
 1. 숫자는 도구 결과만 인용한다. 도구에 없는 가격·비율을 지어내지 않는다.
 2. 가격을 말할 때는 기준(도매/소매, kg당), 날짜, 출처를 짧게 붙인다.
 3. 예측은 항상 범위와 함께 말하고, confidence가 '낮음'이면 "확실하지 않아요"를 먼저 말한다.
@@ -207,6 +224,10 @@ B. "이 가격에 팔아도 남아?"처럼 메뉴나 판매가 없이 마진을 
    참고 단가(시연용 가정값)를 쓴 재료가 있으면 "영수증 값을 알려 주시면 더 정확해져요"를 덧붙인다.
    재료 양을 지어내지 않는다. 사장님이 말한 양이나 표준 레시피만 쓴다.
 C. "지금 사면 이득인 야채" 질문 → recommend_buy_now 를 부르고, 미리 사면 좋은 것·지금 싼 것·기다릴 것 순서로 말한다.
+E. "우리 가게 원가율", "영수증 기준 원가", "원가율 올랐어?", 가격 조정 · 대체 재료 질문 → get_store_cost_ratio 를 부른다.
+   첫 줄에 "시연용 가게 영수증 기준"이라고 밝히고, 메뉴마다 원가율 · 남는 돈 · 판단을 한 줄씩 말한다.
+   tips 가 있으면 그대로 1~2개 전한다 (판매가 숫자는 tips 에 있는 값만). 대체 재료는 "검토해 보세요"로만 말한다.
+   일반 메뉴 계산(calc_menu_margin, 시장 시세 기준)과 섞지 않는다.
 D. "내일 얼마나 준비할까?", 판매량 · 몇 그릇 · 발주량 질문 → forecast_store_demand 를 부른다.
    첫 줄에 "시연용 가게(살피 시연 한식당) 판매 기록 기준"이라고 밝힌다.
    메뉴별 예상 그릇 수를 범위와 함께 말하고(예: 김치찌개 101그릇, 96~106), 영향이 큰 이유 1개를 쉬운 말로 붙인다.

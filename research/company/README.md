@@ -1,0 +1,3 @@
+- 용도: 11/05 기업 리서치 — 후보 기업 3곳 비교(candidates.md)와 선정 기업별 리서치 질문(기업명 폴더/questions.md)
+- 파일 예시: candidates.md, cj_freshway/questions.md
+- 파일명 규칙: 영문 소문자와 밑줄(_)만 사용 (예: hyundai_greenfood/questions.md)

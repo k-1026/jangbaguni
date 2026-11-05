@@ -13,6 +13,12 @@ if (ITEM) {
   document.body.classList.add("item-view");
   $("#itemPage").hidden = false;
 }
+// 나의 가게 페이지(/?page=store): 내일 준비 · 영수증 분석 · 메뉴별 원가율은 사장님 로그인 시에만
+// 로그인(카카오)은 아직 없어서 시연에서는 기본 계정으로 로그인한 것으로 봄
+const SIGNED_IN = true;
+const STORE_VIEW = !ITEM && SIGNED_IN && new URLSearchParams(location.search).get("page") === "store";
+if (STORE_VIEW) document.body.classList.add("store-view");
+$("#storeBtn").hidden = !SIGNED_IN;
 
 async function getJSON(url) {
   const r = await fetch(url);
@@ -59,55 +65,55 @@ async function loadOverview(attempt = 1) {
     down: [...down].sort((a, b) => week(a) - week(b)).map((r) => [r.item, week(r)]),
     rising: [...rising].sort((a, b) => expOf(b) - expOf(a)).map((r) => [r.item, expOf(r)]),
   };
-  const chip = (key, tone, count, label) => `<button class="chip ${tone}" type="button" data-list="${key}" aria-expanded="false" aria-controls="summaryList"><b>${count}개</b><small>${label}</small></button>`;
+  const chip = (key, tone, count, label) => `<button class="chip ${tone}" type="button" data-list="${key}" aria-expanded="false" aria-controls="summaryList-${key}"><b>${count}개</b><small>${label}</small></button>`;
   $("#summary").innerHTML = `
-    ${chip("up", "up", up.length, "지난주보다 오른 야채")}
-    ${chip("down", "down", down.length, "지난주보다 내린 야채")}
-    ${chip("rising", "warn", rising.length, "다음 주 오를 가능성")}
-    ${top ? `<button class="chip up" type="button" data-item="${esc(top.item)}"><b>${esc(top.item)} ${pct(top.wholesale_change_pct)}</b><small>가장 많이 오른 야채</small></button>` : ""}`;
+    ${chip("up", "up", up.length, "지난주보다 <em>오른</em> 야채")}
+    ${chip("down", "down", down.length, "지난주보다 <em>내린</em> 야채")}
+    ${chip("rising", "warn", rising.length, "다음 주 <em>오를 가능성</em>")}
+    ${top ? `<button class="chip up" type="button" data-item="${esc(top.item)}"><b>${esc(top.item)} ${pct(top.wholesale_change_pct)}</b><small>가장 <em>많이 오른</em> 야채</small></button>` : ""}`;
 
   renderSlides();
   onSlideChange();
   deliverAlerts();
-  reserveHeroSpace();
 }
 
 // 요약 칸을 누르면 해당 야채 목록을 펼침 · 다시 누르면 접음 · 야채를 누르면 그 대시보드에서 멈춤
 let summaryLists = {};
+// 다른 칸으로 바꿀 때는 지금 목록이 접히는 동시에 새 목록이 펼쳐짐 (목록마다 칸을 따로 만들고, 접힌 칸은 지움)
+function openSummaryList(key) {
+  const box = document.createElement("div");
+  box.className = `summary-list${key === "rising" ? " row2" : ""}`;
+  box.id = `summaryList-${key}`;
+  box.innerHTML = summaryHTML(summaryLists[key] || []);
+  $("#summary").appendChild(box);
+  box.offsetHeight;   // 접힌 상태를 먼저 그려야 펼쳐지는 움직임이 보임
+  box.classList.add("open");
+}
+function closeSummaryLists() {
+  $("#summary").querySelectorAll(".summary-list.open").forEach((box) => {
+    box.classList.remove("open");
+    box.inert = true;
+    box.setAttribute("aria-hidden", "true");
+    setTimeout(() => box.remove(), 500);   // style.css 접힘 시간(.45초)이 지난 뒤
+  });
+}
 $("#summary").onclick = (e) => {
+  const item = e.target.closest(".summary-list button[data-item]");
+  if (item) return showItem(item.dataset.item);
   const b = e.target.closest("button.chip");
   if (!b) return;
   if (b.dataset.item) return showItem(b.dataset.item);
   const open = b.getAttribute("aria-expanded") !== "true";
   $("#summary").querySelectorAll("[aria-expanded]").forEach((c) => c.setAttribute("aria-expanded", "false"));
   b.setAttribute("aria-expanded", open);
-  const box = $("#summaryList");
-  if (open) box.innerHTML = summaryHTML(summaryLists[b.dataset.list] || []);   // 접을 때는 내용을 두고 줄어들게
-  box.classList.toggle("open", open);
-  box.setAttribute("aria-hidden", String(!open));
-  box.inert = !open;
+  closeSummaryLists();
+  if (open) openSummaryList(b.dataset.list);
 };
-const summaryHTML = (list) => list.map(([item, v]) => `<button type="button" data-item="${esc(item)}"><b>${esc(item)}</b> <span class="${v > 0 ? "rise" : "fall"}">${pct(v)}</span></button>`).join("")
-  || "<p>해당하는 야채가 없어요</p>";
+// 두 겹으로 감쌈: 바깥은 높이 0 → 실제 높이로 움직이고(접히는 목록과 펼치는 목록 높이 합이 넘치지 않게), 안쪽은 버튼 그림자 여백
+const summaryHTML = (list) => `<div class="summary-clip"><div class="summary-inner">${list.map(([item, v]) =>
+  `<button type="button" data-item="${esc(item)}"><b>${esc(item)}</b> <span class="${v > 0 ? "rise" : "fall"}">${pct(v)}</span></button>`).join("")
+  || "<p>해당하는 야채가 없어요</p>"}</div></div>`;
 
-// 목록을 펼쳐도 초록 영역 높이가 바뀌지 않게, 가장 긴 목록을 펼친 높이만큼 미리 늘려 둠 (넓은 화면만)
-function reserveHeroSpace() {
-  const text = $(".hero-text"), box = $("#summaryList");
-  if (!text) return;
-  text.style.minHeight = "";
-  if (window.innerWidth <= 1200 || !Object.keys(summaryLists).length) return;
-  const keep = box.innerHTML;
-  box.innerHTML = summaryHTML(Object.values(summaryLists).reduce((a, b) => (b.length > a.length ? b : a), []));
-  const extra = box.classList.contains("open") ? 0 : box.scrollHeight + 26;   // 26 = 펼칠 때 위 여백 10 + 위아래 안쪽 여백 16
-  box.innerHTML = keep;
-  text.style.minHeight = `${text.offsetHeight + extra}px`;
-}
-let reserveTimer = null;
-window.addEventListener("resize", () => { clearTimeout(reserveTimer); reserveTimer = setTimeout(reserveHeroSpace, 150); });
-$("#summaryList").onclick = (e) => {
-  const b = e.target.closest("button[data-item]");
-  if (b) showItem(b.dataset.item);
-};
 
 // 고른 야채의 대시보드로 가서 자동 넘김을 멈춤
 function showItem(name) {
@@ -151,6 +157,17 @@ function renderSlides() {
 }
 
 // 재료 한 장: 메인 슬라이드와 재료 페이지가 함께 씀
+// 포즈별 치수 (원본 그림 높이 240px 기준, 화면에서는 좌우반전)
+// body: 머리 꼭대기~발끝 길이 (머리 위 시계 · 경광등은 뺌) → 화면에서 미어캣 키가 모두 같게 그림 크기를 맞춤
+// foot: 그림에서 가장 아래 닿는 곳 (쇼핑백 살피는 발보다 낮은 가방 밑을 맞춰 대시보드 밖으로 나가지 않게) · my: 입 높이 · side: 입 높이에서 몸이 가장 왼쪽으로 나온 곳
+// → 말풍선은 몸 바깥 왼쪽에 두고 꼬리만 입 쪽을 가리킴 (살피가 말풍선을 가리지 않게)
+const POSE_SIZE = {
+  alert_down: { body: 206, foot: 238, my: 65, side: 192 }, alert_flat1: { body: 182, foot: 238, my: 115, side: 150 },
+  alert_flat2: { body: 230, foot: 238, my: 98, side: 170 }, alert_rise1: { body: 178, foot: 238, my: 122, side: 168 },
+  alert_rise2: { body: 226, foot: 238, my: 82, side: 240 },
+};
+const poseVars = (p) => Object.entries(POSE_SIZE[p]).map(([k, v]) => `--${k}:${v}`).join(";");
+
 function itemSlide(r, idx) {
   const f = r.forecast || {};
   const v = verdict(f);
@@ -177,7 +194,7 @@ function itemSlide(r, idx) {
       <span class="verdict">${v.text}</span>
       <span class="range">예상 ${won(f.expected_kg_price_range?.[0])} ~ ${won(f.expected_kg_price_range?.[1])}/kg${why ? ` · ${why}` : ""}</span>
     </div>
-    <div class="advice"><span class="say">${say}</span><img class="pose" src="/static/img/${pose}.png" alt=""></div>
+    <div class="advice" style="${poseVars(pose)}"><span class="say">${say}</span><img class="pose" src="/static/img/${pose}.png" alt=""></div>
   </div>
 </article>`;
 }
@@ -250,6 +267,9 @@ function drawSlideChart(i) {
 
 function drawOverviewChart(canvas) {
   const rows = [...overview].filter((r) => r.wholesale_change_pct != null).sort((a, b) => b.wholesale_change_pct - a.wholesale_change_pct);
+  // 이웃한 야채 이름끼리 겹치지 않는 글자 크기: 막대 한 칸 너비 ÷ (가장 긴 이웃 두 이름의 평균 글자 수 + 띄움 0.5자)
+  const longestPair = Math.max(...rows.slice(1).map((r, i) => (r.item.length + rows[i].item.length) / 2));
+  const labelSize = (c) => Math.min(14, Math.floor((c.chart.width - 48) / rows.length / (longestPair + 0.5)));
   return new Chart(canvas.getContext("2d"), {
     type: "bar",
     data: {
@@ -262,7 +282,7 @@ function drawOverviewChart(canvas) {
       plugins: { legend: { display: false },
         tooltip: { callbacks: { label: (c) => ` 1주 ${pct(c.raw)} · ${won(rows[c.dataIndex].wholesale_kg)}/kg · ${verdict(rows[c.dataIndex].forecast).text}` } } },
       scales: {
-        x: { grid: { display: false }, ticks: { color: "#1F2622", font: { size: 14, weight: "700" }, autoSkip: false, maxRotation: 0 } },
+        x: { grid: { display: false }, ticks: { color: "#1F2622", font: (c) => ({ size: labelSize(c), weight: "700" }), autoSkip: false, maxRotation: 0 } },
         y: { grid: { color: "#F0EDE6" }, ticks: { color: "#8A918C", font: { size: 11 }, callback: (v) => `${v}%` } },
       },
       onClick: (_e, els) => { if (els.length) showItem(rows[els[0].index].item); },
@@ -858,7 +878,7 @@ async function saveReceipt() {
     const r = await sendJSON("/api/receipt/save", "POST", { image: receipt.image, mime: receipt.mime,
       date: $("#rcDate").value || null, supplier: $("#rcSupplier").value || null, items });
     resetReceipt();
-    $("#receiptResult").innerHTML = `<p class="ok">${mmdd(r.date)} 영수증 ${r.saved_items}줄을 저장했어요. 오른쪽 원가율이 새로 계산됐어요.</p>`;
+    $("#receiptResult").innerHTML = `<p class="ok">${mmdd(r.date)} 영수증 ${r.saved_items}줄을 저장했어요. 아래 메뉴별 원가율이 새로 계산됐어요.</p>`;
     renderCosts(r, true);
     loadCosts(false);
   } catch (e) {
@@ -872,7 +892,6 @@ const ratioCls = (v) => (v == null ? "" : v > 35 ? "up" : v > 30 ? "warnc" : "do
 function renderCosts(r, withChange) {
   const T = r.target_ratio_pct;
   $("#costCard").innerHTML = `
-    <div class="cost-head"><h3>메뉴별 원가율</h3><span class="badge">최근 영수증 단가로 계산</span></div>
     <p class="cost-guide">원가율은 <b>한 그릇 값에서 재료비가 차지하는 몫</b>이에요. 낮을수록 한 그릇 팔 때 남는 돈이 많아요.
       식당은 보통 <b>${T}% 아래</b>면 괜찮은 편이에요.</p>
     <div class="cost-cards">${r.menus.map((m) => {
@@ -1015,6 +1034,75 @@ function wxIcon(d) {
   const s = sky(d);
   return `<svg class="wx-icon" viewBox="0 0 32 32" role="img" aria-label="${s}"><title>${s}</title>${WX_ICONS[s] || ""}</svg>`;
 }
+
+// ---------------------------------------------------------------
+// 대형마트 판매가 (한국소비자원 참가격, 음식 재료만): 가장 싼 회사 · 보통 가격 · 2주 전 대비
+// ---------------------------------------------------------------
+const MART_FIRST = 12;   // 처음에 보여 줄 카드 수 (더보기마다 12개씩 더)
+let mart = null, martCat = "전체", martPage = 1;
+
+const martChange = (v) => (v == null ? "" : v > 0
+  ? `<span class="mart-chg mart-up">2주 전보다 ▲${v.toFixed(1)}%</span>`
+  : v < 0 ? `<span class="mart-chg mart-down">2주 전보다 ▼${Math.abs(v).toFixed(1)}%</span>`
+  : `<span class="mart-chg">2주 전과 같아요</span>`);
+
+function martCard(x) {
+  const one = x.chains.length === 1;   // 한 회사에서만 조사된 재료는 비교 없이
+  const sub = [one ? "" : `보통 ${won(x.typical)}`, x.daegu ? `대구 매장 ${won(x.daegu.price)}` : ""].filter(Boolean).join(" · ");
+  return `<article class="mart-item">
+    <p class="mart-cat">${esc(x.category)}</p>
+    <h3>${esc(x.name)}</h3>
+    <p class="mart-low"><small>${one ? "파는 곳" : "가장 싼 곳"} · ${esc(x.low_chain)}</small><b>${won(x.low)}</b></p>
+    <p class="mart-sub">${sub || "한 회사에서만 조사됐어요"}</p>
+    ${martChange(x.change_pct) || `<span class="mart-chg">2주 전 값 없음</span>`}
+    ${one ? `<p class="mart-chains-none">회사별 비교 없음</p>` : `<details class="mart-chains"><summary>회사별 가격 ${x.chains.length}곳</summary>
+      <ul>${x.chains.map((c) => `<li><span>${esc(c.chain)}<small>${esc(c.channel)}</small></span><b>${won(c.price)}</b>${
+        c.change_pct ? `<em class="${c.change_pct > 0 ? "mart-up" : "mart-down"}">${pct(c.change_pct)}</em>` : "<em></em>"}</li>`).join("")}</ul>
+    </details>`}
+  </article>`;
+}
+
+function renderMart() {
+  // 2주 새 오른 재료 → 내린 재료 → 그대로인 재료 순
+  const rank = (x) => (x.change_pct > 0 ? 0 : x.change_pct < 0 ? 1 : 2);
+  const list = mart.items.filter((x) => martCat === "전체" || x.category === martCat)
+    .sort((a, b) => rank(a) - rank(b) || Math.abs(b.change_pct ?? 0) - Math.abs(a.change_pct ?? 0) || a.name.localeCompare(b.name, "ko"));
+  $("#martFilter").innerHTML = ["전체", ...mart.categories].map((c) =>
+    `<button type="button" data-cat="${esc(c)}" class="${c === martCat ? "active" : ""}" aria-pressed="${c === martCat}">${esc(c)}</button>`).join("");
+  const pages = Math.ceil(list.length / MART_FIRST);
+  martPage = Math.min(martPage, pages || 1);
+  $("#martGrid").innerHTML = list.length ? list.slice(0, martPage * MART_FIRST).map(martCard).join("")
+    : `<p class="muted">이 종류는 이번 조사에 없어요</p>`;
+  // 12개씩 더 보기: "더보기 지금 몇 번째 | 모두 몇 번" (끝까지 보면 처음으로 접기)
+  const btn = $("#martAll");
+  btn.hidden = pages <= 1;
+  btn.innerHTML = martPage < pages ? `더보기 <b>${martPage}</b> | ${pages}` : "처음으로 접기";
+  btn.setAttribute("aria-label", martPage < pages ? `12개 더 보기 (${pages}번 중 ${martPage}번째, ${list.length}개 중 ${martPage * MART_FIRST}개 보는 중)` : "처음 12개만 보기");
+}
+
+async function loadMart() {
+  try { mart = await getJSON("/api/mart"); }
+  catch (e) { $("#martBasis").textContent = "대형마트 판매가를 불러오지 못했어요"; $("#martGrid").innerHTML = `<p class="muted">${esc(e.message)}</p>`; return; }
+  const up = mart.items.filter((x) => x.change_pct > 0).length;
+  $("#martBasis").textContent = `한국소비자원 참가격 · ${mmdd(mart.date)} 조사 (2주마다) · 음식 재료 ${mart.items.length}개 중 2주 새 오른 것 ${up}개`;
+  renderMart();
+}
+$("#martFilter").onclick = (e) => {
+  const b = e.target.closest("[data-cat]");
+  if (b) { martCat = b.dataset.cat; martPage = 1; renderMart(); }
+};
+// 회사별 가격은 한 번에 하나만 펼침 (다른 카드를 펼치면 앞에 펼친 것은 접힘 — 겹쳐서 가려지지 않게)
+$("#martGrid").addEventListener("toggle", (e) => {
+  if (!e.target.open) return;
+  $("#martGrid").querySelectorAll(".mart-chains[open]").forEach((d) => { if (d !== e.target) d.open = false; });
+}, true);
+$("#martAll").onclick = () => {
+  const pages = Math.ceil(mart.items.filter((x) => martCat === "전체" || x.category === martCat).length / MART_FIRST);
+  if (martPage < pages) { martPage += 1; renderMart(); return; }
+  martPage = 1;
+  renderMart();
+  $("#mart").scrollIntoView({ block: "start" });
+};
 
 async function loadContext() {
   let c;
@@ -1362,10 +1450,12 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#tal
 
 loadOverview();
 loadProducts();
-if (!ITEM) {
-  loadContext();
+if (STORE_VIEW) {
   loadDemand();
   loadCosts();
+} else if (!ITEM) {
+  loadContext();
+  loadMart();
 }
 if (location.hash === "#chat") openChat();   // 주소 끝에 #chat 을 붙이면 채팅창이 열린 채로 시작
 if (location.hash === "#talk") openTalk();   // 주소 끝에 #talk 을 붙이면 알림톡 시연이 열린 채로 시작
@@ -1403,6 +1493,7 @@ $("#receiptModal").onclick = (e) => { if (e.target.id === "receiptModal") closeR
 // 마이페이지 (시연: 로그인했다고 치고 시연용 가게 계정)
 // ---------------------------------------------------------------
 const ME = { name: "살피 사장님", store: "살피 한식당", place: "대구 달서구", type: "한식 · 40석", email: "demo@salpi.example" };
+if (STORE_VIEW) $("#storeName").textContent = `나의 가게 · ${ME.store}`;
 
 function openMypage(view = "home") {
   $("#mypage").classList.add("open");

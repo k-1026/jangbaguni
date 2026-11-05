@@ -7,7 +7,7 @@
   <link rel="icon" href="/static/img/salpi_face.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=32">
+  <link rel="stylesheet" href="/static/style.css?v=53">
 </head>
 <body>
 
@@ -16,8 +16,7 @@
     <a href="/" class="logo"><img src="/static/img/logo.png" alt="살피"></a>
     <nav class="nav">
       <a href="/#dashboard">시세 대시보드</a>
-      <a href="/#store">내일 준비</a>
-      <a href="/#receipt">영수증 원가율</a>
+      <a href="/#mart">대형마트 판매가</a>
       <a href="/#context">시세 영향 정보</a>
     </nav>
     <div class="search" role="search">
@@ -27,6 +26,8 @@
       <div class="search-list" id="searchList" role="listbox" aria-label="검색 결과" hidden></div>
     </div>
     <div class="top-actions">
+      <!-- 나의 가게: 사장님 로그인 시 내일 준비 · 영수증 분석 · 메뉴별 원가율 (시연: 로그인했다고 치고 기본 계정) -->
+      <a class="store-btn" id="storeBtn" href="/?page=store"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h16v10H4z"/><path d="M3 10l2-5h14l2 5"/><path d="M10 20v-5h4v5"/></svg><span>나의 가게</span></a>
       <button class="icon-btn" id="bellBtn" aria-label="알림 모아 보기" aria-expanded="false" title="알림"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2Z"/></svg><span class="count" id="bellCount" hidden></span></button>
       <div class="bell-panel" id="bellPanel" hidden>
         <div class="bell-head"><b>알림</b><button id="bellReadAll">모두 읽음</button></div>
@@ -53,7 +54,6 @@
         <div class="summary" id="summary">
           <div class="chip skeleton"></div><div class="chip skeleton"></div><div class="chip skeleton"></div>
         </div>
-        <div class="summary-list" id="summaryList" aria-hidden="true" inert></div>
         <!-- 식자재 구매는 식봄으로 연결만 (살피는 팔지 않음) -->
         <a class="buy-link" href="https://www.foodspring.co.kr" target="_blank" rel="noopener">
           <span><b>식자재 구매 바로가기</b><small>식봄에서 오늘 필요한 식자재를 사요</small></span>
@@ -98,8 +98,14 @@
     </div>
   </section>
 
+  <!-- 나의 가게 페이지 (/?page=store): 사장님 로그인 시에만 보이는 세 가지 -->
+  <section class="wrap section store-only store-head">
+    <h1 id="storeName">나의 가게</h1>
+    <p class="muted">우리 가게 판매 기록과 영수증으로 내일 준비 · 원가율을 살펴봐요</p>
+  </section>
+
   <!-- 우리 가게 내일 준비: 판매 기록(Supabase)으로 예상 그릇 수 · 재료 필요량 · 발주 추천 -->
-  <section class="wrap section home-only" id="store">
+  <section class="wrap section store-only" id="store">
     <div class="section-head">
       <h2>우리 가게 내일 준비</h2>
       <p class="muted" id="storeBasis">판매 기록을 불러오는 중이에요</p>
@@ -110,26 +116,45 @@
     </div>
   </section>
 
-  <!-- 영수증으로 원가율: 사진 읽기 → 확인 · 수정 → 저장 → 메뉴 원가율 다시 계산 -->
-  <section class="wrap section home-only" id="receipt">
+  <!-- 영수증 분석: 사진 읽기 → 확인 · 수정 → 저장 (저장하면 아래 메뉴별 원가율을 다시 계산) -->
+  <section class="wrap section store-only" id="receipt">
     <div class="section-head">
-      <h2>영수증으로 원가율</h2>
-      <p class="muted">영수증 사진을 올리면 살피가 품목 · 금액을 읽어요. 확인하고 저장하면 메뉴 원가율을 바로 다시 계산해요.</p>
+      <h2>영수증 분석</h2>
+      <p class="muted">영수증 사진을 올리면 살피가 품목 · 금액을 읽어요. 확인하고 저장하면 메뉴별 원가율을 바로 다시 계산해요.</p>
     </div>
-    <div class="store-grid">
-      <div class="card" id="receiptCard">
-        <div id="receiptStart">
-          <div class="upload-btns">
-            <button class="upload-btn" id="cameraBtn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>카메라로 찍기</button>
-            <label class="upload-btn"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-5-5-9 8"/></svg>사진첩에서 고르기<input type="file" id="receiptFile" accept="image/*" hidden></label>
-          </div>
-          <p class="muted small">사진이 없으면 아래 예시 영수증을 눌러 보세요</p>
-          <div class="demo-receipts" id="demoReceipts"></div>
+    <div class="card" id="receiptCard">
+      <div id="receiptStart">
+        <div class="upload-btns">
+          <button class="upload-btn" id="cameraBtn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>카메라로 찍기</button>
+          <label class="upload-btn"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-5-5-9 8"/></svg>사진첩에서 고르기<input type="file" id="receiptFile" accept="image/*" hidden></label>
         </div>
-        <div id="receiptResult"></div>
-        <div id="receiptList"></div>
+        <p class="muted small">사진이 없으면 아래 예시 영수증을 눌러 보세요</p>
+        <div class="demo-receipts" id="demoReceipts"></div>
       </div>
-      <div class="card" id="costCard"><p class="muted">원가율을 불러오는 중이에요</p></div>
+      <div id="receiptResult"></div>
+      <div id="receiptList"></div>
+    </div>
+  </section>
+
+  <!-- 메뉴별 원가율: 영수증 단가로 메뉴 한 그릇 재료비 · 원가율 · 남는 돈 -->
+  <section class="wrap section store-only" id="costs">
+    <div class="section-head">
+      <h2>메뉴별 원가율</h2>
+      <p class="muted">저장한 영수증 단가로 메뉴 한 그릇의 재료비와 남는 돈을 계산해요</p>
+    </div>
+    <div class="card" id="costCard"><p class="muted">원가율을 불러오는 중이에요</p></div>
+  </section>
+
+  <!-- 대형마트 판매가: 한국소비자원 참가격 중 음식 재료만 (회사별 가격 · 2주 전 대비) -->
+  <section class="wrap section home-only" id="mart">
+    <div class="section-head">
+      <h2>대형마트 판매가</h2>
+      <p class="muted" id="martBasis">대형마트 판매가를 불러오는 중이에요</p>
+    </div>
+    <div class="card mart-card">
+      <div class="filter mart-filter" id="martFilter" role="group" aria-label="재료 종류"></div>
+      <div class="mart-grid" id="martGrid"><p class="muted">불러오는 중</p></div>
+      <button class="order-all mart-all" id="martAll" type="button" hidden>모두 보기</button>
     </div>
   </section>
 
@@ -144,7 +169,7 @@
   </section>
 
   <footer class="wrap footer">
-    출처: aT 전국 공영도매시장 정산정보 · aT 일별 도·소매 가격정보(KAMIS) · 기상청 ASOS(대구 143) · 한국천문연구원 특일정보 · 한국관광공사 국문관광정보(대구) · 식봄 검색 결과<br>
+    출처: aT 전국 공영도매시장 정산정보 · aT 일별 도·소매 가격정보(KAMIS) · 기상청 ASOS(대구 143) · 한국천문연구원 특일정보 · 한국관광공사 국문관광정보(대구) · 한국소비자원 생필품 가격 정보(참가격) · 식봄 검색 결과<br>
     예측은 최근 시세 흐름 · 반입량 · 날씨 · 공휴일 · 행사를 더한 규칙 기반 추정이에요.
   </footer>
 </main>
@@ -229,6 +254,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="/static/app.js?v=32"></script>
+<script src="/static/app.js?v=53"></script>
 </body>
 </html>

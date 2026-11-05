@@ -1,0 +1,60 @@
+# 평일 저녁 배포: 한국 시간 월~금 17:40에 dev → main PR을 만들고 머지 → Vercel이 실제 사이트를 다시 배포
+# - dev에 새 작업이 없으면 아무것도 하지 않음
+# - 충돌로 머지가 안 되면 PR을 열어 둔 채 댓글로 알림 (배포 담당자가 확인)
+# - GitHub 예약 실행은 몰리는 시간에 몇 분~수십 분 늦을 수 있음
+# - 급할 때: Actions 탭 → "평일 저녁 배포" → Run workflow
+name: 평일 저녁 배포 (dev → main)
+
+on:
+  schedule:
+    - cron: "40 8 * * 1-5"   # GitHub 시간(UTC) 08:40 = 한국 시간 17:40, 월~금
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: daily-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: dev → main PR 만들고 머지
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          ahead=$(gh api "repos/$REPO/compare/main...dev" -q .ahead_by)
+          if [ "$ahead" -eq 0 ]; then
+            echo "dev에 새 작업이 없어서 배포하지 않아요"
+            exit 0
+          fi
+
+          day=$(TZ=Asia/Seoul date +%m/%d)
+          # 이번에 나가는 작업 목록 (dev에 합쳐진 PR 제목 · 저장 기록 첫 줄)
+          list=$(gh api "repos/$REPO/compare/main...dev" -q '.commits[].commit.message | split("\n")[0]' \
+                 | grep -v "^Merge branch" | sed 's/^/- /')
+          body=$(printf '%s\n' \
+            "<!-- 평일 저녁 자동 배포 (dev → main) -->" "" \
+            "## 🔍 변경 사항" "- [x] 기타 (정기 배포)" "" "---" "" \
+            "## 📝 상세 내용" "${day} 평일 저녁 정기 배포예요. dev에 합쳐진 작업 ${ahead}개를 실제 사이트(main)에 반영해요." "" \
+            "$list" "" "---" "" \
+            "## ✅ 체크리스트" "- [x] dev 미리보기 사이트에서 확인" "" "---" "" \
+            "## 📸 스크린샷 (UI 변경 시)" "각 기능 PR 참고")
+
+          num=$(gh pr list --repo "$REPO" --base main --head dev --state open --json number -q '.[0].number')
+          if [ -z "$num" ]; then
+            url=$(gh pr create --repo "$REPO" --base main --head dev --title "[release] ${day} 평일 저녁 배포" --body "$body")
+            num=${url##*/}
+          fi
+          echo "PR #$num"
+
+          if ! gh pr merge "$num" --repo "$REPO" --merge; then
+            gh pr comment "$num" --repo "$REPO" --body "자동 머지에 실패했어요 (충돌 또는 규칙). 배포 담당자가 PR 화면에서 확인해 주세요."
+            exit 1
+          fi
+          echo "PR #$num 머지 완료 → Vercel이 실제 사이트를 다시 배포해요"

@@ -148,8 +148,10 @@ git branch -d feat/기능명
 
 ## 7️⃣ 배포 (dev → main)
 
-- dev에 모인 작업을 실제 사이트에 올릴 때, 배포 담당자가 **dev → main PR**을 만든다
-- 제목 예: `[release] 11/5 시연 버전 배포`
+- **평일 저녁 17:40(한국 시간)에 자동 배포**: GitHub가 dev → main PR(`[release] 11/05 평일 저녁 배포`)을 만들고 머지한다 (`.github/workflows/daily-release.yml`)
+  - dev에 새 작업이 없으면 건너뛰고, 충돌로 머지가 안 되면 PR을 열어 둔 채 댓글로 알린다
+  - 배포 담당자: gkdud112837. 급하게 올릴 때는 Actions 탭 → "평일 저녁 배포" → **Run workflow**
+  - 그날 배포에 넣을 작업은 **17:40 전에 dev에 머지**해 둔다
 - 머지하면 Vercel이 실제 사이트(main)를 자동으로 다시 배포한다
 - dev나 기능 브랜치에 push하면 Vercel이 **미리보기 사이트**만 따로 만든다 (실제 사이트는 그대로)
 

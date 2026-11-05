@@ -65,19 +65,29 @@ button { font: inherit; cursor: pointer; }
 .hero-copy { min-width: 0; }
 .hero h1 { font-size: 32px; line-height: 1.3; margin: 0 0 12px; font-weight: 900; }
 .hero-sub { color: #C9D6D1; margin: 0; }
-.summary { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 6px; }
+.summary { display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; margin: 6px 0 -18px; }   /* 줄 간격은 칸 아래 여백으로 (접힌 목록이 간격을 더 만들지 않게) */
+.summary > .chip { margin-bottom: 18px; }
 /* 뉴모피즘 (바탕과 같은 색 + 밝은 그림자 · 어두운 그림자) */
 .chip { width: 100%; background: var(--deep); border: 0; border-radius: 20px; padding: 18px 20px; color: #fff; text-align: left;
   box-shadow: 7px 7px 14px #0a1b17, -7px -7px 14px #1a453c; transition: box-shadow .15s; }
 button.chip:active, .chip[aria-expanded="true"] { box-shadow: inset 5px 5px 10px #0a1b17, inset -5px -5px 10px #1a453c; }
 .chip:focus-visible, .summary-list button:focus-visible, .slider-nav button:focus-visible { outline: 2px solid var(--mint); outline-offset: 2px; }
-.chip b { display: block; font-size: 24px; }
-.chip small { color: #C9D6D1; font-size: 14px; }
-.chip.up b { color: #FF8A7A; } .chip.down b { color: var(--mint); } .chip.warn b { color: #FFC266; }
+.chip b { display: block; font-size: 28px; line-height: 1.25; }
+.chip small { display: block; margin-top: 2px; color: #E3ECE8; font-size: 16px; }
+.chip small em { font-style: normal; font-weight: 800; }
+.chip.up b, .chip.up em { color: #FF8A7A; } .chip.down b, .chip.down em { color: var(--mint); } .chip.warn b, .chip.warn em { color: #FFC266; }
+/* 목록은 누른 칸의 줄 바로 아래 (윗줄: 오른 · 내린 / 아랫줄: 오를 가능성) */
+.summary > .chip:nth-child(1), .summary > .chip:nth-child(2) { order: 1; }
+.summary > .chip:nth-child(3), .summary > .chip:nth-child(4) { order: 3; }
+.summary > .summary-list { order: 2; grid-column: 1 / -1; margin: 0 -8px; }
+.summary > .summary-list.row2 { order: 4; }
+.summary > .summary-list.open { margin: -8px -8px 18px; }   /* 칸과 목록 사이 10px, 목록과 다음 칸 사이 18px */
 /* 요약 칸을 누르면 펼쳐지는 야채 목록 */
-.summary-list { display: flex; flex-wrap: wrap; gap: 10px; max-height: 0; margin: 0 -8px; padding: 0 8px; opacity: 0; overflow: hidden;
-  transition: max-height .45s cubic-bezier(.2,.8,.2,1), opacity .3s ease, margin-top .45s ease, padding .45s ease; }
-.summary-list.open { max-height: 360px; margin-top: 10px; padding: 8px; opacity: 1; }
+.summary-list { display: grid; grid-template-rows: 0fr; margin: 0 -8px; opacity: 0;
+  transition: grid-template-rows .45s cubic-bezier(.2,.8,.2,1), opacity .3s ease, margin .45s cubic-bezier(.2,.8,.2,1); }
+.summary-list.open { grid-template-rows: 1fr; margin-top: 10px; opacity: 1; }
+.summary-clip { min-height: 0; overflow: hidden; }
+.summary-inner { display: flex; flex-wrap: wrap; gap: 10px; padding: 8px; }
 .summary-list button { border: 0; border-radius: 999px; padding: 6px 13px; background: var(--deep); color: #fff; font-size: 14px;
   box-shadow: 4px 4px 9px #0a1b17, -4px -4px 9px #1a453c; }
 .summary-list button:active { box-shadow: inset 3px 3px 7px #0a1b17, inset -3px -3px 7px #1a453c; }
@@ -141,21 +151,26 @@ button.chip:active, .chip[aria-expanded="true"] { box-shadow: inset 5px 5px 10px
 .chart-box { position: relative; flex: 1; min-height: 0; }
 
 /* 대시보드 아래 예측 문구 · 근거 */
-.fc-strip { position: relative; margin-top: 12px; border-radius: 16px; padding: 12px 400px 12px 18px; min-height: 68px; display: flex; align-items: center; }
+.fc-strip { position: relative; margin-top: 40px; border-radius: 16px; padding: 12px 400px 12px 18px; min-height: 68px; display: flex; align-items: center; }
 .fc-strip.up { background: #FFF1EE; } .fc-strip.down { background: #E9F7F2; } .fc-strip.flat { background: var(--paper); }
 .fc-strip .verdict { display: block; font-size: 16px; font-weight: 900; }
 .fc-strip.up .verdict { color: var(--up); } .fc-strip.down .verdict { color: var(--down); } .fc-strip.flat .verdict { color: #5A615C; }
 .fc-strip .range { display: block; font-size: 13px; color: #4C524E; }
-/* 살피 포즈(좌우반전) + 옆 제안 말풍선: 칸 안에 넣지 않고 칸 오른쪽 위에 서서 말함 (그래프 오른쪽 아래에 살짝 걸침) */
-.fc-strip .advice { position: absolute; right: 30px; bottom: -14px; z-index: 2; pointer-events: none; }
-.fc-strip .pose { display: block; height: 128px; transform: scaleX(-1); filter: drop-shadow(0 6px 10px rgba(0,0,0,.22)); }
-.fc-strip .say { right: calc(100% - 2px); bottom: 64px; }
+/* 살피 포즈(좌우반전) + 옆 제안 말풍선: 칸 안에 넣지 않고 칸 오른쪽 위에 서서 말함
+   칸 위 여백 40px: 살피 머리(경광등 포함)가 그래프 아래 숫자를 가리지 않게 */
+/* --kit: 화면에서 미어캣 키(머리~발). 그림 높이 --h 는 포즈마다 다름, 발끝을 같은 높이에 맞춤 */
+.fc-strip .advice { --kit: 118px; --h: calc(var(--kit) * 240 / var(--body)); position: absolute; right: 44px;
+  bottom: calc(-14px - (240 - var(--foot)) * var(--h) / 240); z-index: 2; pointer-events: none; }
+.fc-strip .pose { display: block; height: var(--h); transform: scaleX(-1); filter: drop-shadow(0 6px 10px rgba(0,0,0,.22)); }
+/* 말풍선: 오른쪽 끝은 얼굴 가장자리(--fr), 꼬리 끝은 입(--mx, --my). 값은 원본 그림(높이 240) 기준이라 --h / 240 을 곱함 */
+.fc-strip .say { right: calc(var(--side) * var(--h) / 240 + 16px); top: calc(var(--my) * var(--h) / 240 - 15px); }
 /* 3D 말풍선: 위는 밝고 아래로 갈수록 어두운 면 + 아래쪽 두께 + 그림자 */
 .fc-strip .say { position: absolute; color: var(--ink); border-radius: 12px; padding: 7px 12px;
   font-size: 13px; font-weight: 700; white-space: nowrap; background: linear-gradient(180deg, #ffffff 0%, #f3f1ec 100%);
   box-shadow: inset 0 2px 0 #ffffff, inset 0 -2px 0 rgba(0,0,0,.05), 0 4px 0 #d6d2c8, 0 10px 16px rgba(0,0,0,.2); }
-.fc-strip .say::before { content: ""; position: absolute; right: -6px; top: 8px; border: 6px solid transparent; border-left-color: #d6d2c8; border-right: 0; }
-.fc-strip .say::after { content: ""; position: absolute; right: -6px; top: 6px; border: 6px solid transparent; border-left-color: #f8f7f3; border-right: 0; }
+.fc-strip .say::before, .fc-strip .say::after { content: ""; position: absolute; right: -11px; border-style: solid; border-width: 6px 0 6px 12px; }
+.fc-strip .say::before { top: 12px; border-color: transparent transparent transparent #c9c3b6; }   /* 꼬리 아래 두께 */
+.fc-strip .say::after { top: 9px; border-color: transparent transparent transparent #ffffff; filter: drop-shadow(0 1px 1px rgba(0,0,0,.18)); }
 .overview-note { margin: 8px 0 0; font-size: 12.5px; color: #4C524E; background: var(--paper); border-radius: 10px; padding: 8px 12px; }
 
 /* 섹션 */
@@ -769,13 +784,13 @@ body.chat-open .fab-count { display: none; }
   .hero-title { gap: 10px; }
   .chip { padding: 12px 14px; }
   .chip b { font-size: 19px; }
-  .chip small { font-size: 12px; }
+  .chip small { font-size: 14px; }
   .fc-strip { padding-right: 104px; }
   .fc-strip .say { display: none; }
   .summary { max-width: none; }
   .slide { height: 500px; }
   .topbar .wrap { padding: 0 16px; }
-  .fc-strip .pose { height: 104px; }
+  .fc-strip .advice { --kit: 96px; }
   .ctx-grid { grid-template-columns: 1fr; }
   .mart-grid { grid-template-columns: minmax(0, 1fr); }
   .event-top { grid-template-columns: 1fr; padding: 16px 16px 0; }

@@ -59,55 +59,55 @@ async function loadOverview(attempt = 1) {
     down: [...down].sort((a, b) => week(a) - week(b)).map((r) => [r.item, week(r)]),
     rising: [...rising].sort((a, b) => expOf(b) - expOf(a)).map((r) => [r.item, expOf(r)]),
   };
-  const chip = (key, tone, count, label) => `<button class="chip ${tone}" type="button" data-list="${key}" aria-expanded="false" aria-controls="summaryList"><b>${count}개</b><small>${label}</small></button>`;
+  const chip = (key, tone, count, label) => `<button class="chip ${tone}" type="button" data-list="${key}" aria-expanded="false" aria-controls="summaryList-${key}"><b>${count}개</b><small>${label}</small></button>`;
   $("#summary").innerHTML = `
-    ${chip("up", "up", up.length, "지난주보다 오른 야채")}
-    ${chip("down", "down", down.length, "지난주보다 내린 야채")}
-    ${chip("rising", "warn", rising.length, "다음 주 오를 가능성")}
-    ${top ? `<button class="chip up" type="button" data-item="${esc(top.item)}"><b>${esc(top.item)} ${pct(top.wholesale_change_pct)}</b><small>가장 많이 오른 야채</small></button>` : ""}`;
+    ${chip("up", "up", up.length, "지난주보다 <em>오른</em> 야채")}
+    ${chip("down", "down", down.length, "지난주보다 <em>내린</em> 야채")}
+    ${chip("rising", "warn", rising.length, "다음 주 <em>오를 가능성</em>")}
+    ${top ? `<button class="chip up" type="button" data-item="${esc(top.item)}"><b>${esc(top.item)} ${pct(top.wholesale_change_pct)}</b><small>가장 <em>많이 오른</em> 야채</small></button>` : ""}`;
 
   renderSlides();
   onSlideChange();
   deliverAlerts();
-  reserveHeroSpace();
 }
 
 // 요약 칸을 누르면 해당 야채 목록을 펼침 · 다시 누르면 접음 · 야채를 누르면 그 대시보드에서 멈춤
 let summaryLists = {};
+// 다른 칸으로 바꿀 때는 지금 목록이 접히는 동시에 새 목록이 펼쳐짐 (목록마다 칸을 따로 만들고, 접힌 칸은 지움)
+function openSummaryList(key) {
+  const box = document.createElement("div");
+  box.className = `summary-list${key === "rising" ? " row2" : ""}`;
+  box.id = `summaryList-${key}`;
+  box.innerHTML = summaryHTML(summaryLists[key] || []);
+  $("#summary").appendChild(box);
+  box.offsetHeight;   // 접힌 상태를 먼저 그려야 펼쳐지는 움직임이 보임
+  box.classList.add("open");
+}
+function closeSummaryLists() {
+  $("#summary").querySelectorAll(".summary-list.open").forEach((box) => {
+    box.classList.remove("open");
+    box.inert = true;
+    box.setAttribute("aria-hidden", "true");
+    setTimeout(() => box.remove(), 500);   // style.css 접힘 시간(.45초)이 지난 뒤
+  });
+}
 $("#summary").onclick = (e) => {
+  const item = e.target.closest(".summary-list button[data-item]");
+  if (item) return showItem(item.dataset.item);
   const b = e.target.closest("button.chip");
   if (!b) return;
   if (b.dataset.item) return showItem(b.dataset.item);
   const open = b.getAttribute("aria-expanded") !== "true";
   $("#summary").querySelectorAll("[aria-expanded]").forEach((c) => c.setAttribute("aria-expanded", "false"));
   b.setAttribute("aria-expanded", open);
-  const box = $("#summaryList");
-  if (open) box.innerHTML = summaryHTML(summaryLists[b.dataset.list] || []);   // 접을 때는 내용을 두고 줄어들게
-  box.classList.toggle("open", open);
-  box.setAttribute("aria-hidden", String(!open));
-  box.inert = !open;
+  closeSummaryLists();
+  if (open) openSummaryList(b.dataset.list);
 };
-const summaryHTML = (list) => list.map(([item, v]) => `<button type="button" data-item="${esc(item)}"><b>${esc(item)}</b> <span class="${v > 0 ? "rise" : "fall"}">${pct(v)}</span></button>`).join("")
-  || "<p>해당하는 야채가 없어요</p>";
+// 두 겹으로 감쌈: 바깥은 높이 0 → 실제 높이로 움직이고(접히는 목록과 펼치는 목록 높이 합이 넘치지 않게), 안쪽은 버튼 그림자 여백
+const summaryHTML = (list) => `<div class="summary-clip"><div class="summary-inner">${list.map(([item, v]) =>
+  `<button type="button" data-item="${esc(item)}"><b>${esc(item)}</b> <span class="${v > 0 ? "rise" : "fall"}">${pct(v)}</span></button>`).join("")
+  || "<p>해당하는 야채가 없어요</p>"}</div></div>`;
 
-// 목록을 펼쳐도 초록 영역 높이가 바뀌지 않게, 가장 긴 목록을 펼친 높이만큼 미리 늘려 둠 (넓은 화면만)
-function reserveHeroSpace() {
-  const text = $(".hero-text"), box = $("#summaryList");
-  if (!text) return;
-  text.style.minHeight = "";
-  if (window.innerWidth <= 1200 || !Object.keys(summaryLists).length) return;
-  const keep = box.innerHTML;
-  box.innerHTML = summaryHTML(Object.values(summaryLists).reduce((a, b) => (b.length > a.length ? b : a), []));
-  const extra = box.classList.contains("open") ? 0 : box.scrollHeight + 26;   // 26 = 펼칠 때 위 여백 10 + 위아래 안쪽 여백 16
-  box.innerHTML = keep;
-  text.style.minHeight = `${text.offsetHeight + extra}px`;
-}
-let reserveTimer = null;
-window.addEventListener("resize", () => { clearTimeout(reserveTimer); reserveTimer = setTimeout(reserveHeroSpace, 150); });
-$("#summaryList").onclick = (e) => {
-  const b = e.target.closest("button[data-item]");
-  if (b) showItem(b.dataset.item);
-};
 
 // 고른 야채의 대시보드로 가서 자동 넘김을 멈춤
 function showItem(name) {
@@ -151,6 +151,17 @@ function renderSlides() {
 }
 
 // 재료 한 장: 메인 슬라이드와 재료 페이지가 함께 씀
+// 포즈별 치수 (원본 그림 높이 240px 기준, 화면에서는 좌우반전)
+// body: 머리 꼭대기~발끝 길이 (머리 위 시계 · 경광등은 뺌) → 화면에서 미어캣 키가 모두 같게 그림 크기를 맞춤
+// foot: 그림에서 가장 아래 닿는 곳 (쇼핑백 살피는 발보다 낮은 가방 밑을 맞춰 대시보드 밖으로 나가지 않게) · my: 입 높이 · side: 입 높이에서 몸이 가장 왼쪽으로 나온 곳
+// → 말풍선은 몸 바깥 왼쪽에 두고 꼬리만 입 쪽을 가리킴 (살피가 말풍선을 가리지 않게)
+const POSE_SIZE = {
+  alert_down: { body: 206, foot: 238, my: 65, side: 192 }, alert_flat1: { body: 182, foot: 238, my: 115, side: 150 },
+  alert_flat2: { body: 230, foot: 238, my: 98, side: 170 }, alert_rise1: { body: 178, foot: 238, my: 122, side: 168 },
+  alert_rise2: { body: 226, foot: 238, my: 82, side: 240 },
+};
+const poseVars = (p) => Object.entries(POSE_SIZE[p]).map(([k, v]) => `--${k}:${v}`).join(";");
+
 function itemSlide(r, idx) {
   const f = r.forecast || {};
   const v = verdict(f);
@@ -177,7 +188,7 @@ function itemSlide(r, idx) {
       <span class="verdict">${v.text}</span>
       <span class="range">예상 ${won(f.expected_kg_price_range?.[0])} ~ ${won(f.expected_kg_price_range?.[1])}/kg${why ? ` · ${why}` : ""}</span>
     </div>
-    <div class="advice"><span class="say">${say}</span><img class="pose" src="/static/img/${pose}.png" alt=""></div>
+    <div class="advice" style="${poseVars(pose)}"><span class="say">${say}</span><img class="pose" src="/static/img/${pose}.png" alt=""></div>
   </div>
 </article>`;
 }

@@ -268,6 +268,43 @@ def event_detail(content_id):
 
 
 # ---------------------------------------------------------------
+# 한국소비자원 생필품 가격 정보 (참가격) — 마트 · 슈퍼 · 백화점 · 편의점 판매가
+# 실시간이 아니라 달마다 파일(uddi:...)이 하나씩 올라옴 → 목록(Swagger)에서 가장 최근 파일을 찾음
+# ---------------------------------------------------------------
+KCA_DOCS = "https://infuser.odcloud.kr/oas/docs?namespace=15083256/v1"
+
+
+def kca_latest_file():
+    """가장 최근 파일 {uddi, date}. 목록은 하루 보관 (이름 끝 날짜: 20261023 · 09/24/2021 두 가지 모양)."""
+    import re
+
+    def fetch():
+        r = requests.get(KCA_DOCS, timeout=40)
+        r.raise_for_status()
+        files = []
+        for path, ops in r.json()["paths"].items():
+            title = ops.get("get", {}).get("summary", "")
+            m = re.search(r"(\d{4})(\d{2})(\d{2})$", title) or re.search(r"(\d{2})/(\d{2})/(\d{4})$", title)
+            if m:
+                y, mo, d = m.groups() if len(m.group(1)) == 4 else (m.group(3), m.group(1), m.group(2))
+                files.append({"uddi": path.rsplit("/", 1)[-1], "date": f"{y}-{mo}-{d}"})
+        return max(files, key=lambda f: f["date"])
+
+    return _cached("kca_files", 24, fetch)
+
+
+def kca_rows(uddi):
+    """파일 하나 전부 (약 24만 줄, 1만 줄씩 나눠 받음)."""
+    url = os.getenv("KCA_PRICE_ENDPOINT", "https://api.odcloud.kr/api/15083256/v1") + "/" + uddi
+    page = lambda p: _get_json(url, {"page": p, "perPage": 10000}, "KCA_PRICE_API_KEY")
+    first = page(1)
+    pages = -(-first["totalCount"] // 10000)
+    with ThreadPoolExecutor(3) as pool:
+        rest = list(pool.map(page, range(2, pages + 1)))
+    return [r for body in [first, *rest] for r in body["data"]]
+
+
+# ---------------------------------------------------------------
 # 한국천문연구원 특일 정보 (공휴일)
 # ---------------------------------------------------------------
 

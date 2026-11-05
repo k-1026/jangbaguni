@@ -20,6 +20,7 @@ from pydantic import BaseModel
 import analysis
 import demand
 import foodspring
+import mart_price
 import receipts
 import supabase_db
 from agent import SalpiAgent
@@ -87,7 +88,8 @@ def index():
 
 # 키 확인용: 값은 절대 보내지 않고 "넣었는지"만 알려 줌 (Vercel 환경 변수 확인)
 KEY_NAMES = ["AT_SALE_API_KEY", "AT_PERDAY_API_KEY", "AT_REALTIME_API_KEY", "KMA_ASOS_API_KEY", "KASI_SPCDE_API_KEY",
-             "KTO_TOUR_API_KEY", "KAMIS_CERT_KEY", "KAMIS_CERT_ID", "GEMINI_API_KEY", "SUPABASE_URL", "SUPABASE_SECRET_KEY"]
+             "KTO_TOUR_API_KEY", "KAMIS_CERT_KEY", "KAMIS_CERT_ID", "GEMINI_API_KEY", "SUPABASE_URL", "SUPABASE_SECRET_KEY",
+             "KCA_PRICE_API_KEY"]
 
 
 @app.get("/api/health")
@@ -119,6 +121,12 @@ def event(content_id: str):
     if not content_id.isdigit():
         raise HTTPException(400, "행사 번호가 올바르지 않아요")
     return _guard(lambda: memo(f"event:{content_id}", lambda: event_detail(content_id), ttl=6 * 3600))
+
+
+@app.get("/api/mart")
+def mart():
+    """대형마트 판매가 (한국소비자원 참가격, 음식 재료만). 2주마다 조사돼서 6시간 보관."""
+    return _guard(lambda: memo("mart", mart_price.mart_prices, ttl=6 * 3600))
 
 
 @app.get("/api/context")

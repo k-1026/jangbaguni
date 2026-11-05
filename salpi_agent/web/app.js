@@ -250,6 +250,9 @@ function drawSlideChart(i) {
 
 function drawOverviewChart(canvas) {
   const rows = [...overview].filter((r) => r.wholesale_change_pct != null).sort((a, b) => b.wholesale_change_pct - a.wholesale_change_pct);
+  // 이웃한 야채 이름끼리 겹치지 않는 글자 크기: 막대 한 칸 너비 ÷ (가장 긴 이웃 두 이름의 평균 글자 수 + 띄움 0.5자)
+  const longestPair = Math.max(...rows.slice(1).map((r, i) => (r.item.length + rows[i].item.length) / 2));
+  const labelSize = (c) => Math.min(14, Math.floor((c.chart.width - 48) / rows.length / (longestPair + 0.5)));
   return new Chart(canvas.getContext("2d"), {
     type: "bar",
     data: {
@@ -262,7 +265,7 @@ function drawOverviewChart(canvas) {
       plugins: { legend: { display: false },
         tooltip: { callbacks: { label: (c) => ` 1주 ${pct(c.raw)} · ${won(rows[c.dataIndex].wholesale_kg)}/kg · ${verdict(rows[c.dataIndex].forecast).text}` } } },
       scales: {
-        x: { grid: { display: false }, ticks: { color: "#1F2622", font: { size: 14, weight: "700" }, autoSkip: false, maxRotation: 0 } },
+        x: { grid: { display: false }, ticks: { color: "#1F2622", font: (c) => ({ size: labelSize(c), weight: "700" }), autoSkip: false, maxRotation: 0 } },
         y: { grid: { color: "#F0EDE6" }, ticks: { color: "#8A918C", font: { size: 11 }, callback: (v) => `${v}%` } },
       },
       onClick: (_e, els) => { if (els.length) showItem(rows[els[0].index].item); },

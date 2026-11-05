@@ -3,6 +3,8 @@
 # - 충돌로 머지가 안 되면 PR을 열어 둔 채 댓글로 알림 (배포 담당자가 확인)
 # - GitHub 예약 실행은 몰리는 시간에 몇 분~수십 분 늦을 수 있음
 # - 급할 때: Actions 탭 → "평일 저녁 배포" → Run workflow
+# - 저장소 Secrets에 RELEASE_TOKEN(배포 담당자 개인 토큰)이 있으면 그걸로, 없으면 GitHub 기본 토큰으로 PR을 만들고 머지
+#   (조직 설정에서 'Actions가 PR 만들기'가 막혀 있으면 RELEASE_TOKEN이 필요)
 name: 평일 저녁 배포 (dev → main)
 
 on:
@@ -24,7 +26,7 @@ jobs:
     steps:
       - name: dev → main PR 만들고 머지
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail

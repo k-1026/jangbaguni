@@ -221,9 +221,10 @@ def _events_raw():
             "eventStartDate": (today - timedelta(60)).strftime("%Y%m%d"), "lDongRegnCd": DAEGU_LDONG,
         }, "KTO_TOUR_API_KEY")["response"]["body"]
         return [{"title": r.get("title"), "start": r.get("eventstartdate"), "end": r.get("eventenddate"),
-                 "addr": r.get("addr1")} for r in _items(body)]
+                 "addr": r.get("addr1"), "content_id": r.get("contentid"), "image": r.get("firstimage2") or r.get("firstimage")}
+                for r in _items(body)]
 
-    return _cached(f"events_{today.isoformat()}", 12, fetch)
+    return _cached(f"events2_{today.isoformat()}", 12, fetch)
 
 
 def events_between(start, end):
@@ -241,6 +242,29 @@ def month_events():
     today = date.today()
     month_end = (today.replace(day=28) + timedelta(4)).replace(day=1) - timedelta(1)
     return events_between(today, month_end)
+
+
+def event_detail(content_id):
+    """행사 하나 자세히: 소개 · 장소 · 시간 · 요금 · 홈페이지 (관광공사 공통정보 + 소개정보, 하루 보관)."""
+    import re
+    url = os.getenv("KTO_TOUR_ENDPOINT", "https://apis.data.go.kr/B551011/KorService2")
+    base = {"MobileOS": "ETC", "MobileApp": "salpi", "_type": "json", "contentId": content_id}
+
+    def fetch():
+        common = _items(_get_json(url + "/detailCommon2", base, "KTO_TOUR_API_KEY")["response"]["body"])
+        intro = _items(_get_json(url + "/detailIntro2", {**base, "contentTypeId": 15}, "KTO_TOUR_API_KEY")["response"]["body"])
+        c, i = (common or [{}])[0], (intro or [{}])[0]
+        clean = lambda t: re.sub(r"<br\s*/?>", "\n", re.sub(r"<(?!br)[^>]+>", "", str(t or ""))).strip()
+        return {
+            "content_id": content_id, "title": c.get("title"), "image": c.get("firstimage") or c.get("firstimage2"),
+            "overview": clean(c.get("overview")), "addr": c.get("addr1"), "tel": c.get("tel") or i.get("sponsor1tel"),
+            "homepages": list(dict.fromkeys(re.findall(r"https?://[^\s\"'<>]+", str(c.get("homepage") or "")))),
+            "start": i.get("eventstartdate"), "end": i.get("eventenddate"), "place": clean(i.get("eventplace")),
+            "playtime": clean(i.get("playtime")), "fee": clean(i.get("usetimefestival")), "program": clean(i.get("program")),
+            "sponsor": clean(i.get("sponsor1")),
+        }
+
+    return _cached(f"event_{content_id}", 24, fetch)
 
 
 # ---------------------------------------------------------------

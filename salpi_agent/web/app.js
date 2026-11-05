@@ -69,6 +69,7 @@ async function loadOverview(attempt = 1) {
   renderSlides();
   onSlideChange();
   deliverAlerts();
+  reserveHeroSpace();
 }
 
 // 요약 칸을 누르면 해당 야채 목록을 펼침 · 다시 누르면 접음 · 야채를 누르면 그 대시보드에서 멈춤
@@ -80,11 +81,29 @@ $("#summary").onclick = (e) => {
   const open = b.getAttribute("aria-expanded") !== "true";
   $("#summary").querySelectorAll("[aria-expanded]").forEach((c) => c.setAttribute("aria-expanded", "false"));
   b.setAttribute("aria-expanded", open);
-  const list = summaryLists[b.dataset.list] || [];
-  $("#summaryList").hidden = !open;
-  $("#summaryList").innerHTML = list.map(([item, v]) => `<button type="button" data-item="${esc(item)}"><b>${esc(item)}</b> <span class="${v > 0 ? "rise" : "fall"}">${pct(v)}</span></button>`).join("")
-    || "<p>해당하는 야채가 없어요</p>";
+  const box = $("#summaryList");
+  if (open) box.innerHTML = summaryHTML(summaryLists[b.dataset.list] || []);   // 접을 때는 내용을 두고 줄어들게
+  box.classList.toggle("open", open);
+  box.setAttribute("aria-hidden", String(!open));
+  box.inert = !open;
 };
+const summaryHTML = (list) => list.map(([item, v]) => `<button type="button" data-item="${esc(item)}"><b>${esc(item)}</b> <span class="${v > 0 ? "rise" : "fall"}">${pct(v)}</span></button>`).join("")
+  || "<p>해당하는 야채가 없어요</p>";
+
+// 목록을 펼쳐도 초록 영역 높이가 바뀌지 않게, 가장 긴 목록을 펼친 높이만큼 미리 늘려 둠 (넓은 화면만)
+function reserveHeroSpace() {
+  const text = $(".hero-text"), box = $("#summaryList");
+  if (!text) return;
+  text.style.minHeight = "";
+  if (window.innerWidth <= 1200 || !Object.keys(summaryLists).length) return;
+  const keep = box.innerHTML;
+  box.innerHTML = summaryHTML(Object.values(summaryLists).reduce((a, b) => (b.length > a.length ? b : a), []));
+  const extra = box.classList.contains("open") ? 0 : box.scrollHeight + 26;   // 26 = 펼칠 때 위 여백 10 + 위아래 안쪽 여백 16
+  box.innerHTML = keep;
+  text.style.minHeight = `${text.offsetHeight + extra}px`;
+}
+let reserveTimer = null;
+window.addEventListener("resize", () => { clearTimeout(reserveTimer); reserveTimer = setTimeout(reserveHeroSpace, 150); });
 $("#summaryList").onclick = (e) => {
   const b = e.target.closest("button[data-item]");
   if (b) showItem(b.dataset.item);
@@ -140,7 +159,7 @@ function itemSlide(r, idx) {
   const pose = v.kind === "down" ? "alert_down" : `alert_${v.kind === "up" ? "rise" : "flat"}${(idx % 2) + 1}`;
   const say = { up: "미리 사두는 게 좋을 것 같아요.", flat: "평소대로 구매하셔도 좋아요", down: "급하지 않으면 나중에 사셔도 좋아요" }[v.kind];
   return `
-<article class="slide card" data-item="${esc(r.item)}" data-title="${esc(r.item)} 시세">
+<article class="slide card" data-item="${esc(r.item)}">
   <div class="chart-head">
     <div>
       <h3>${esc(r.item)} 시세</h3>
@@ -180,7 +199,6 @@ let lastSlide = -1;
 function onSlideChange(target) {
   const s = slides(), i = target ?? Math.min(slideIndex(), s.length - 1);
   $("#dots").textContent = s.length > 1 ? `${i + 1} / ${s.length}` : "";
-  $("#slideTitle").textContent = s[i]?.dataset.title || "야채 시세";
   if (i === lastSlide || !overview.length) return;
   lastSlide = i;
   drawSlideChart(i);
@@ -361,7 +379,7 @@ function renderItemPage() {
   const v = verdict(r.forecast);
   $("#itemHead").innerHTML = `
     <div><h1>${esc(r.item)}</h1><p class="${v.kind === "flat" ? "" : v.kind}">${esc(v.text)}</p></div>
-    <a class="item-shop" href="${esc(r.foodspring_url || "https://www.foodspring.co.kr")}" target="_blank" rel="noopener">${esc(r.item)} 구매 바로가기 →</a>`;
+    <a class="item-shop" href="${esc(r.foodspring_url || "https://www.foodspring.co.kr")}" target="_blank" rel="noopener" title="식봄에서 ${esc(r.item)} 사기">식자재 바로가기 →</a>`;
   $("#itemBody").hidden = false;
   $("#itemDash").innerHTML = itemSlide(r, 0);
   drawItemChart($("#itemDash canvas"), r);
@@ -382,7 +400,7 @@ function renderDetail(name) {
   if (!d) return;
   boardItem = d;
   renderBoard();
-  renderForecast(d.forecast);
+  renderForecast(d.forecast, d.history);
 }
 
 // 시세판: 최근 10거래일의 직전 거래일 대비 증감 (등락액 원 / 등락률 %)
@@ -441,10 +459,10 @@ function renderBoard() {
         <p class="board-now"><b>${number(last.kg_price)}<small>원</small></b>
           ${change == null ? "" : `<span><strong class="${cls(change)}">${arrow(change)} ${boardSigned(change)}</strong> 직전 거래일${prev ? `(${mmdd(prev.date)})` : ""} 대비</span>`}</p>
       </div>
-      <div class="board-toggle" role="group" aria-label="증감 표시 단위">
-        <button data-mode="won" aria-pressed="${boardMode === "won"}">등락액 원</button>
-        <button data-mode="pct" aria-pressed="${boardMode === "pct"}">등락률 %</button>
-      </div>
+      <button class="board-toggle" type="button" aria-label="증감 표시 단위 바꾸기 (지금 ${boardMode === "won" ? "등락액 원" : "등락률 %"})">
+        <span class="${boardMode === "won" ? "on" : ""}">등락액 원</span>
+        <span class="${boardMode === "pct" ? "on" : ""}">등락률 %</span>
+      </button>
     </div>
     <div class="board-stats">
       <div class="board-stat"><small>상승한 날</small><b>${ups.length}일</b><span>${totalName} ${ups.length ? boardSigned(total(ups)) : "-"}</span></div>
@@ -464,28 +482,90 @@ function renderBoard() {
   const scroll = $(".board-scroll");
   scroll.scrollLeft = scroll.scrollWidth;   // 좁은 화면은 최근 날짜부터 보이게
 }
+// 토글 아무 곳이나 누르면 원 ↔ % 전환
 $("#priceBoard").addEventListener("click", (e) => {
-  const b = e.target.closest("button[data-mode]");
-  if (!b) return;
-  boardMode = b.dataset.mode;
+  if (!e.target.closest(".board-toggle")) return;
+  boardMode = boardMode === "won" ? "pct" : "won";
   renderBoard();
 });
 
-function renderForecast(f) {
+function renderForecast(f, history = []) {
   if (!f || f.error) { $("#forecastCard").innerHTML = ""; return; }
-  const maxAbs = Math.max(4, ...f.factors.map((x) => Math.abs(x.effect_pct)));
   const v = verdict(f);
+  const big = (x) => Math.abs(x.effect_pct) >= 0.1;
+  const moved = f.factors.filter(big).sort((a, b) => Math.abs(b.effect_pct) - Math.abs(a.effect_pct));
+  const still = f.factors.filter((x) => !big(x));
+  const [lo, hi] = f.expected_kg_price_range || [];
+  $("#forecastCard").className = `card forecast-card fc-${v.kind}`;   // up · down 이름은 전체 글자색 규칙과 겹쳐서 fc- 를 붙임
   $("#forecastCard").innerHTML = `
-    <p class="dir ${cls(f.expected_change_pct, 2)}">${esc(v.text)}</p>
-    <p class="tip">${esc(f.suggestion)}</p>
-    <p class="muted range">예상 ${won(f.expected_kg_price_range?.[0])} ~ ${won(f.expected_kg_price_range?.[1])} /kg</p>
-    ${f.factors.map((x) => {
-      const w = (Math.abs(x.effect_pct) / maxAbs) * 50;
-      const style = x.effect_pct >= 0 ? `left:50%;width:${w}%;background:var(--up)` : `right:50%;width:${w}%;background:var(--down)`;
-      return `<div class="factor"><span>${esc(factorName(x.factor))}</span><span class="bar"><i style="${style}"></i></span>
-        <b class="${cls(x.effect_pct)}">${pct(x.effect_pct)}</b><span class="detail-text">${esc(x.detail)}</span></div>`;
-    }).join("")}
-    <p class="muted" style="margin-top:8px;font-size:12px">${esc(f.method)}</p>`;
+    <div class="fc-summary">
+      <span class="fc-label">다음 7일 예측</span>
+      <p class="dir">${esc(v.text)}</p>
+      <p class="tip">${esc(f.suggestion)}</p>
+      ${fcSpark(history, lo, hi)}
+      <div class="fc-range">
+        <div><small>지금 (kg당)</small><b>${won(f.base_kg_price)}</b></div>
+        <i aria-hidden="true">→</i>
+        <div><small>7일 뒤 예상</small><b>${won(lo)} ~ ${won(hi)}</b></div>
+      </div>
+    </div>
+    <div class="fc-reasons">
+      <h4>이렇게 본 이유</h4>
+      <div class="reason-grid">${moved.map((x) => `<div class="reason ${x.effect_pct > 0 ? "r-up" : "r-down"}">
+        <span class="reason-icon" aria-hidden="true">${x.effect_pct > 0 ? "▲" : "▼"}</span>
+        <div><b>${esc(factorName(x.factor))}</b><small>${esc(x.detail)}</small></div>
+        <strong>${pct(x.effect_pct)}</strong>
+      </div>`).join("") || `<p class="muted">뚜렷하게 오르거나 내릴 이유가 없어요</p>`}</div>
+      ${still.length ? `<p class="reason-still"><span>영향 없음</span>${still.map((x) => `<em title="${esc(x.detail)}">${esc(factorName(x.factor))}</em>`).join("")}</p>` : ""}
+      ${monthRange(history, f.base_kg_price)}
+    </div>`;
+}
+
+// 최근 2주(거래일) 시세 선 + 오늘에서 7일 뒤 예상 범위(부채꼴)
+function fcSpark(history, lo, hi) {
+  const rows = history.slice(-14).filter((r) => r.kg_price > 0);
+  if (rows.length < 4 || lo == null || hi == null) return "";
+  const vals = [...rows.map((r) => r.kg_price), lo, hi];
+  const min = Math.min(...vals), max = Math.max(...vals), pad = (max - min) * 0.12 || 1;
+  const W = 300, H = 100, PAST = 200;   // 앞 200칸은 지난 2주, 뒤 100칸은 다음 7일
+  const y = (v) => (H - ((v - (min - pad)) / (max - min + 2 * pad)) * H).toFixed(1);
+  const x = (i) => ((i / (rows.length - 1)) * PAST).toFixed(1);
+  const line = rows.map((r, i) => `${x(i)},${y(r.kg_price)}`).join(" ");
+  const last = rows.at(-1).kg_price, mid = (lo + hi) / 2;
+  return `<div class="fc-spark">
+      <p class="fc-spark-title">최근 2주 흐름과 7일 뒤 예상</p>
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="최근 2주 ${won(rows[0].kg_price)}에서 오늘 ${won(last)}, 7일 뒤 ${won(lo)} ~ ${won(hi)} 예상">
+        <polygon class="band" points="${PAST},${y(last)} ${W},${y(hi)} ${W},${y(lo)}"/>
+        <line class="today" x1="${PAST}" x2="${PAST}" y1="0" y2="${H}"/>
+        <polyline class="past" points="${line}"/>
+        <line class="next" x1="${PAST}" y1="${y(last)}" x2="${W}" y2="${y(mid)}"/>
+      </svg>
+      <p class="fc-spark-axis"><span>${mmdd(rows[0].date)}</span><span class="t">오늘</span><span>7일 뒤</span></p>
+    </div>`;
+}
+
+// 최근 한 달(거래일) 최저 · 평균 · 최고와 지금 가격이 그 사이 어디쯤인지
+function monthRange(history, now) {
+  const prices = history.slice(-22).map((r) => r.kg_price).filter((v) => v > 0);
+  if (prices.length < 5 || !now) return "";
+  const lo = Math.min(...prices), hi = Math.max(...prices), avg = prices.reduce((a, v) => a + v, 0) / prices.length;
+  const at = hi === lo ? 50 : ((now - lo) / (hi - lo)) * 100;
+  const where = at >= 70 ? "비싼 편" : at <= 30 ? "싼 편" : "보통";
+  const vsAvg = ((now - avg) / avg) * 100;
+  const avgAt = hi === lo ? 50 : Math.max(28, Math.min(72, ((avg - lo) / (hi - lo)) * 100));   // 양끝 글자와 겹치지 않게
+  return `<div class="month-range">
+      <h4>최근 한 달 시세 위치 <small>최근 ${prices.length}거래일</small></h4>
+      <p class="month-say">지금 가격은 한 달 중 <b class="m-${at >= 70 ? "high" : at <= 30 ? "low" : "mid"}">${where}</b>이에요 · 평균보다 ${pct(vsAvg)}</p>
+      <div class="month-bar" role="img" aria-label="한 달 최저 ${won(lo)}, 최고 ${won(hi)} 사이에서 지금 ${won(now)}">
+        <b class="avg-tick" style="left:${avgAt}%"></b>
+        <i style="left:${Math.max(0, Math.min(100, at))}%"><em style="transform:translateX(-${Math.round(Math.max(0, Math.min(100, at)))}%)">지금 ${won(now)}</em></i>
+      </div>
+      <div class="month-scale">
+        <span class="lo"><small>한 달 최저</small>${won(lo)}</span>
+        <span class="avg" style="left:${avgAt}%"><small>평균</small>${won(Math.round(avg))}</span>
+        <span class="hi"><small>한 달 최고</small>${won(hi)}</span>
+      </div>
+    </div>`;
 }
 
 // ---------------------------------------------------------------
@@ -527,12 +607,15 @@ async function loadDemand() {
   const day = `${mmdd(d.target_date)}(${d.target_weekday})`;
   // 메뉴끼리 그릇 수를 막대 높이로 비교할 수 있게 같은 눈금을 씀 (위 여백은 숫자 자리)
   const max = Math.max(...d.menus.flatMap((m) => [m.predicted, ...m.recent.map((x) => x.qty)]), 1) * 1.2;
-  $("#storeBasis").textContent = `${d.store.is_demo ? "시연용 가게 · " : ""}판매 기록 ${mmdd(d.last_sales_date)}까지`;
+  $("#storeBasis").textContent = `판매 기록 ${mmdd(d.last_sales_date)}까지`;
   $("#storeBasis").title = d.method;
   $("#menuForecast").innerHTML = `
-    <span class="badge">내일 ${day}${d.is_holiday ? " · 공휴일" : ""} 예상 판매</span>
-    <p class="demand-total">${d.is_open ? `모두 <b>${d.total_predicted}그릇</b> 팔릴 것 같아요` : "내일은 가게 쉬는 날이에요"}</p>
-    ${d.menus.map((m) => {
+    <div class="demand-top">
+      <span class="badge">내일 ${day}${d.is_holiday ? " · 공휴일" : ""} 예상 판매</span>
+      <p class="demand-total">${d.is_open ? `모두 <b>${d.total_predicted}그릇</b> 팔릴 것 같아요` : "내일은 가게 쉬는 날이에요"}</p>
+      <button class="order-all demand-all" type="button">모두 보기</button>
+    </div>
+    <div class="demand-grid">${d.menus.map((m) => {
       const pct = (v) => (v / max) * 100;
       const usual = Math.round(m.recent.reduce((s, x) => s + x.qty, 0) / (m.recent.length || 1));
       const bars = m.recent.map((x) => {
@@ -561,7 +644,7 @@ async function loadDemand() {
           <p>${esc(demandReason(m.factors))} · 예상 ${m.range[0]} ~ ${m.range[1]}그릇</p>
         </div>
       </div>`;
-    }).join("")}`;
+    }).join("")}</div>`;
   const until = d.next_delivery_date ? `${mmdd(d.next_delivery_date)} 입고까지` : "다음 입고까지";
   $("#orderCard").innerHTML = `
     <div class="order-head">
@@ -610,9 +693,16 @@ function orderItem(i, key, until) {
 const setOpen = (b, open) => { b.setAttribute("aria-expanded", open); b.nextElementSibling.hidden = !open; };
 
 // 메뉴를 누르면 지난 판매 그래프를 펼침
+// 맨 위 버튼은 메뉴 전체를 펴고 접음
 $("#menuForecast").onclick = (e) => {
+  const rows = [...$("#menuForecast").querySelectorAll(".order-row")];
   const row = e.target.closest(".order-row");
   if (row) setOpen(row, row.getAttribute("aria-expanded") !== "true");
+  else if (e.target.closest(".demand-all")) {
+    const open = rows.some((b) => b.getAttribute("aria-expanded") !== "true");
+    rows.forEach((b) => setOpen(b, open));
+  } else return;
+  $(".demand-all").textContent = rows.every((b) => b.getAttribute("aria-expanded") === "true") ? "모두 접기" : "모두 보기";
 };
 
 // 재료를 누르면 계산 근거를 펼침 · 맨 위 버튼은 전체를 펴고 접음
@@ -667,7 +757,8 @@ const DEMO_RECEIPTS = [
   ["receipt_1104_mart_up", "11/4 값 오른 마트 영수증"], ["receipt_1012_statement", "10/12 도매상 명세서"], ["receipt_1019_photo_tilted", "10/19 기울어진 사진"],
   ["receipt_1026_mart", "10/26 마트 영수증"], ["receipt_1102_handwritten", "11/2 손글씨 영수증"],
 ];
-let receipt = null;   // { image, mime, data(읽은 결과) }
+let receipt = null;
+const supplierName = (s) => (s || "판매처 모름").replace(/\s*\(시연용\)/g, "");   // { image, mime, data(읽은 결과) }
 
 async function sendJSON(url, method, body) {
   const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: body && JSON.stringify(body) });
@@ -729,7 +820,7 @@ function renderReceiptEdit() {
         <span class="badge">살피가 읽은 내용 · 틀린 곳은 고쳐 주세요</span>
         <div class="receipt-meta">
           <label>날짜 <input type="date" id="rcDate" value="${esc(d.date || "")}"></label>
-          <label>판매처 <input id="rcSupplier" value="${esc(d.supplier || "")}"></label>
+          <label>판매처 <input id="rcSupplier" value="${esc(d.supplier ? supplierName(d.supplier) : "")}"></label>
         </div>
         ${d.total_matches ? "" : `<p class="rc-warn">줄 금액을 더하면 ${won(d.line_sum)}인데 합계는 ${won(d.total)}이에요. 빠진 줄이 없는지 봐 주세요.</p>`}
       </div>
@@ -779,34 +870,51 @@ async function saveReceipt() {
 const ratioCls = (v) => (v == null ? "" : v > 35 ? "up" : v > 30 ? "warnc" : "down");
 
 function renderCosts(r, withChange) {
-  const rows = r.menus.map((m) => {
-    const ch = withChange && m.change_pt ? ` <small class="${m.change_pt > 0 ? "up" : "down"}">(${m.change_pt > 0 ? "+" : ""}${m.change_pt}%p)</small>` : "";
-    return `<tr><td>${esc(m.menu)}</td><td>${won(m.price)}</td><td>${won(m.cost_per_serving)}</td>
-      <td class="price ${ratioCls(m.cost_ratio_pct)}">${m.cost_ratio_pct ?? "-"}%${ch}</td><td>${won(m.margin)}</td></tr>
-      ${m.tips.length ? `<tr class="tips"><td colspan="5">${m.tips.map((t) => `<span>${esc(t)}</span>`).join("")}</td></tr>` : ""}`;
-  }).join("");
-  const keep = $("#receiptList")?.innerHTML || "";
+  const T = r.target_ratio_pct;
   $("#costCard").innerHTML = `
-    <span class="badge">시연용 가게 · 최근 영수증 단가 기준 · 목표 원가율 ${r.target_ratio_pct}%</span>
-    <table class="price-table cost-table">
-      <thead><tr><th>메뉴</th><th>판매가</th><th>1인분 재료비</th><th>원가율</th><th>남는 돈</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-    <p class="muted small">${esc(r.method)}. 시연용 레시피는 주재료만 들어 있어 실제보다 원가율이 낮게 나와요.</p>
-    <div id="receiptList">${r.receipts ? receiptList(r.receipts) : keep}</div>`;
+    <div class="cost-head"><h3>메뉴별 원가율</h3><span class="badge">최근 영수증 단가로 계산</span></div>
+    <p class="cost-guide">원가율은 <b>한 그릇 값에서 재료비가 차지하는 몫</b>이에요. 낮을수록 한 그릇 팔 때 남는 돈이 많아요.
+      식당은 보통 <b>${T}% 아래</b>면 괜찮은 편이에요.</p>
+    <div class="cost-cards">${r.menus.map((m) => {
+      const v = m.cost_ratio_pct;
+      const ch = withChange && m.change_pt
+        ? `<small class="${m.change_pt > 0 ? "up" : "down"}">${m.change_pt > 0 ? "▲" : "▼"} ${Math.abs(m.change_pt)}%p</small>` : "";
+      const tone = { up: "high", warnc: "tight", down: "ok" }[ratioCls(v)] || "";   // 높음 · 빠듯 · 충분
+      return `<article class="cost-card ${tone}">
+        <div class="cost-left">
+          <b>${esc(m.menu)}</b>
+          <strong>${v ?? "-"}<em>%</em></strong>
+          <span class="cost-verdict">${esc(m.verdict)}</span>${ch}
+        </div>
+        <div class="cost-right">
+          ${v == null ? "" : `<p class="ratio-label"><span><i class="k-cost"></i>재료비</span><span><i class="k-keep"></i>남는 돈</span><small>판매가 ${won(m.price)}을 100으로 볼 때</small></p>
+          <div class="split-bar" role="img" aria-label="판매가 ${won(m.price)} 중 재료비 ${v}%, 남는 돈 ${+(100 - v).toFixed(1)}%">
+            <i class="part-cost" style="width:${Math.max(4, Math.min(100, v))}%">${v}%</i>
+            <i class="part-keep">남는 돈 ${+(100 - v).toFixed(1)}%</i>
+          </div>`}
+          <dl class="cost-nums">
+            <div><dt>판매가</dt><dd>${won(m.price)}</dd></div>
+            <div><dt>1인분 재료비</dt><dd>${won(m.cost_per_serving)}</dd></div>
+            <div><dt>남는 돈</dt><dd>${won(m.margin)}</dd></div>
+          </dl>
+          ${m.tips.length ? `<ul class="cost-tips">${m.tips.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}
+        </div>
+      </article>`;
+    }).join("")}</div>
+    <p class="muted small">${esc(r.method)}. 레시피에 주재료만 들어 있어 실제보다 원가율이 조금 낮게 나와요.</p>`;
 }
 
 function receiptList(list) {
   return `<h3 class="sub-h">최근 영수증</h3><ul class="ctx-list receipt-list">${list.map((p) => `<li>
-    <button class="rc-open" data-rid="${p.id}" title="사진과 품목 보기">${mmdd(p.purchased_on)} · ${esc(p.supplier || "판매처 모름")} · ${p.items}줄 · ${won(p.total_amount)} <i>보기 ›</i></button>
-    ${p.source === "ocr" ? `<button class="rc-remove" data-id="${p.id}">지우기</button>` : `<small>시연 기본 데이터</small>`}</li>`).join("")}</ul>`;
+    <button class="rc-open" data-rid="${p.id}" title="사진과 품목 보기">${mmdd(p.purchased_on)} · ${esc(supplierName(p.supplier))} · ${p.items}줄 · ${won(p.total_amount)} <i>보기 ›</i></button>
+    ${p.source === "ocr" ? `<button class="rc-remove" data-id="${p.id}">지우기</button>` : `<small>기본 데이터</small>`}</li>`).join("")}</ul>`;
 }
 
 async function loadCosts(full = true) {
   try {
     const r = await getJSON("/api/costs");
     if (full) renderCosts(r, false);
-    else $("#receiptList").innerHTML = receiptList(r.receipts);
+    $("#receiptList").innerHTML = receiptList(r.receipts);
   } catch (e) {
     if (full) $("#costCard").innerHTML = `<p class="muted">원가율을 불러오지 못했어요. ${esc(e.message)}</p>`;
   }
@@ -820,7 +928,59 @@ $("#demoReceipts").onclick = async (e) => {
   readReceipt(await (await fetch(`/receipts_demo/${b.dataset.f}.png`)).blob());
 };
 $("#receiptFile").onchange = (e) => { if (e.target.files[0]) readReceipt(e.target.files[0]); };
-$("#costCard").onclick = async (e) => {
+
+// 카메라로 찍기: 처음 한 번 브라우저가 카메라 권한을 물어봄 → 찍은 사진을 그대로 영수증 읽기로
+// (폰은 뒤 카메라, 노트북은 앞 카메라. https 또는 내 컴퓨터 주소에서만 열림)
+let camStream = null;
+const CAM_GUIDE = `<ol class="cam-guide">
+    <li><b>컴퓨터(크롬 · 엣지)</b>: 주소창 왼쪽 <b>자물쇠 · 설정 아이콘</b> → <b>카메라</b> → <b>허용</b> → 새로고침</li>
+    <li><b>아이폰</b>: 설정 → Safari(또는 쓰는 브라우저) → <b>카메라</b> → <b>허용</b></li>
+    <li><b>안드로이드</b>: 주소창 옆 <b>⋮</b> → 설정 → 사이트 설정 → <b>카메라</b> → 이 사이트 허용</li>
+  </ol>`;
+function camFail(msg, denied) {
+  $("#cameraBody").innerHTML = `<p class="rc-warn">${msg}</p>
+    ${denied ? `<p class="small">카메라를 쓰려면 권한을 켜 주세요.</p>${CAM_GUIDE}` : ""}
+    <div class="camera-actions">
+      <button class="btn" id="camRetry" type="button">다시 시도</button>
+      <label class="btn primary" for="receiptFile" id="camGallery">사진첩에서 고르기</label>
+    </div>`;
+  $("#camRetry").onclick = openCamera;
+  $("#camGallery").onclick = () => closeCamera();
+}
+async function askCamera() {
+  return navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+}
+async function openCamera() {
+  $("#cameraModal").hidden = false;
+  if (!navigator.mediaDevices?.getUserMedia) return camFail("이 브라우저에서는 카메라를 열 수 없어요. 사진첩에서 골라 주세요.");
+  $("#cameraBody").innerHTML = `<div class="reading"><div class="spinner"></div><b>카메라를 여는 중이에요</b>
+    <p class="muted small">'카메라 사용 허용' 창이 뜨면 <b>허용</b>을 눌러 주세요</p></div>`;
+  try { camStream = await askCamera(); }
+  catch (e) {
+    const denied = e.name === "NotAllowedError" || e.name === "SecurityError";
+    return camFail(denied ? "카메라 권한이 꺼져 있어요." : e.name === "NotFoundError" ? "연결된 카메라가 없어요." : "카메라를 열지 못했어요. 다른 앱이 카메라를 쓰고 있는지 확인해 주세요.", denied);
+  }
+  if ($("#cameraModal").hidden) return stopCamera();   // 여는 사이에 닫았으면
+  $("#cameraBody").innerHTML = `<div class="cam-view"><video id="camVideo" autoplay playsinline muted></video><i class="cam-frame" aria-hidden="true"></i></div>
+    <p class="muted small">영수증이 네모 안에 꽉 차게 맞추고 찍어 주세요</p>
+    <div class="camera-actions"><button class="upload-btn" id="camShot" type="button">찍기</button></div>`;
+  $("#camVideo").srcObject = camStream;
+  $("#camShot").onclick = shootCamera;
+}
+function shootCamera() {
+  const v = $("#camVideo");
+  if (!v.videoWidth) return;
+  const c = document.createElement("canvas");
+  c.width = v.videoWidth; c.height = v.videoHeight;
+  c.getContext("2d").drawImage(v, 0, 0);
+  c.toBlob((b) => { closeCamera(); if (b) readReceipt(b); }, "image/jpeg", 0.92);
+}
+function stopCamera() { camStream?.getTracks().forEach((t) => t.stop()); camStream = null; }
+function closeCamera() { stopCamera(); $("#cameraModal").hidden = true; }
+$("#cameraBtn").onclick = openCamera;
+$("#cameraClose").onclick = closeCamera;
+$("#cameraModal").onclick = (e) => { if (e.target.id === "cameraModal") closeCamera(); };
+$("#receiptList").onclick = async (e) => {
   const o = e.target.closest(".rc-open");
   if (o) return openReceipt(o.dataset.rid);
   const b = e.target.closest(".rc-remove");
@@ -868,7 +1028,10 @@ async function loadContext() {
     ? `<ul class="ctx-list">${c.holidays.map((x) => `<li>${fmt(x.date)} ${esc(x.name)}<small>도매시장 휴장 전 수요가 몰릴 수 있어요</small></li>`).join("")}</ul>`
     : `<p class="muted">30일 안에 공휴일이 없어요</p>`);
   $("#eventCard").innerHTML = `<h3>이달의 대구 행사 (${c.events.length}개)</h3>` + (c.events.length
-    ? `<ul class="ctx-list">${c.events.slice(0, 8).map((x) => `<li>${esc(x.title)}<small>${fmt(x.start)} ~ ${fmt(x.end)} · ${esc((x.addr || "").replace("대구광역시 ", ""))}</small></li>`).join("")}</ul>`
+    ? `<ul class="ctx-list event-list">${c.events.slice(0, 8).map((x) => {
+        const inner = `<b>${esc(x.title)}</b><small>${fmt(x.start)} ~ ${fmt(x.end)} · ${esc((x.addr || "").replace("대구광역시 ", ""))}</small>`;
+        return `<li>${x.content_id ? `<button type="button" class="event-link" data-event="${esc(x.content_id)}">${inner}<i aria-hidden="true">›</i></button>` : inner}</li>`;
+      }).join("")}</ul>`
     : `<p class="muted">이달에 남은 행사가 없어요</p>`);
 }
 
@@ -1220,8 +1383,8 @@ async function openReceipt(id) {
   catch (e) { $("#receiptModalBody").innerHTML = `<p class="rc-warn">${esc(e.message)}</p>`; return; }
   const qtyTxt = (x) => (x.unit ? qty(x.qty_base, x.unit) : "-");
   $("#receiptModalBody").innerHTML = `
-    <h3>${mmdd(d.purchased_on)} · ${esc(d.supplier || "판매처 모름")}</h3>
-    <p class="muted small">${d.source === "ocr" ? "영수증 읽기로 저장" : "시연 기본 데이터 (같은 내용의 시연용 영수증 그림)"} · 합계 ${won(d.total_amount)}</p>
+    <h3>${mmdd(d.purchased_on)} · ${esc(supplierName(d.supplier))}</h3>
+    <p class="muted small">${d.source === "ocr" ? "영수증 읽기로 저장" : "기본 데이터"} · 합계 ${won(d.total_amount)}</p>
     <div class="receipt-view">
       ${d.image_url ? `<a href="${esc(d.image_url)}" target="_blank" rel="noopener" title="크게 보기"><img src="${esc(d.image_url)}" alt="영수증 사진"></a>`
                     : `<div class="no-photo">사진이 없어요</div>`}
@@ -1239,7 +1402,7 @@ $("#receiptModal").onclick = (e) => { if (e.target.id === "receiptModal") closeR
 // ---------------------------------------------------------------
 // 마이페이지 (시연: 로그인했다고 치고 시연용 가게 계정)
 // ---------------------------------------------------------------
-const ME = { name: "살피 사장님", store: "살피 시연 한식당", place: "대구 달서구", type: "한식 · 40석", email: "demo@salpi.example" };
+const ME = { name: "살피 사장님", store: "살피 한식당", place: "대구 달서구", type: "한식 · 40석", email: "demo@salpi.example" };
 
 function openMypage(view = "home") {
   $("#mypage").classList.add("open");
@@ -1262,8 +1425,8 @@ async function renderMypage(view) {
     try {
       const { receipts } = await getJSON("/api/receipts");
       box.innerHTML = receipts.length ? `<ul class="my-receipts">${receipts.map((p) => `<li><button data-rid="${p.id}">
-        <b>${mmdd(p.purchased_on)} · ${esc(p.supplier || "판매처 모름")}</b>
-        <span>${p.items}줄 · ${won(p.total_amount)}${p.source === "ocr" ? " · 영수증 읽기" : " · 시연 기본"}</span><i>›</i></button></li>`).join("")}</ul>`
+        <b>${mmdd(p.purchased_on)} · ${esc(supplierName(p.supplier))}</b>
+        <span>${p.items}줄 · ${won(p.total_amount)}${p.source === "ocr" ? " · 영수증 읽기" : " · 기본 데이터"}</span><i>›</i></button></li>`).join("")}</ul>`
         : `<p class="muted">아직 저장한 영수증이 없어요.</p>`;
     } catch (e) { box.innerHTML = `<p class="rc-warn">${esc(e.message)}</p>`; }
     return;
@@ -1272,7 +1435,7 @@ async function renderMypage(view) {
   box.innerHTML = `
     <section class="my-card profile">
       <img src="/static/img/salpi_face.png" alt="">
-      <div><b>${esc(ME.name)}</b><small>${esc(ME.email)} · 시연용 계정</small></div>
+      <div><b>${esc(ME.name)}</b><small>${esc(ME.email)}</small></div>
     </section>
     <section class="my-card">
       <h4>내 정보</h4>
@@ -1285,7 +1448,33 @@ async function renderMypage(view) {
       ${ALERT_TYPES.map(([k, title, desc]) => `<label class="toggle-row">
         <span><b>${title}</b><small>${desc}</small></span>
         <input type="checkbox" class="switch" data-pref="${k}" ${prefs[k] ? "checked" : ""}></label>`).join("")}
+    </section>
+    <section class="my-card" id="permCard">
+      <h4>권한 설정</h4>
+      <p class="muted small">영수증을 카메라로 찍으려면 카메라 권한이 필요해요.</p>
+      <div class="toggle-row"><span><b>카메라</b><small id="camState">확인하는 중</small></span><span id="camAct"></span></div>
     </section>`;
+  showCameraPerm();
+}
+
+// 카메라 권한 상태: 허용됨 · 꺼짐 · 아직 안 물어봄 (브라우저가 알려 주지 않으면 '허용하기'로 직접 물어봄)
+async function cameraPerm() {
+  try { return (await navigator.permissions.query({ name: "camera" })).state; } catch (e) { return "prompt"; }
+}
+async function showCameraPerm() {
+  const state = navigator.mediaDevices?.getUserMedia ? await cameraPerm() : "none";
+  if (!$("#camState")) return;
+  $("#camState").textContent = { granted: "허용됨 · 영수증을 바로 찍을 수 있어요", denied: "꺼져 있어요 · 아래 방법으로 켜 주세요",
+    prompt: "아직 허용하지 않았어요", none: "이 브라우저는 카메라를 쓸 수 없어요" }[state];
+  $("#camAct").innerHTML = state === "granted" ? `<span class="perm-on">허용됨</span>`
+    : state === "prompt" ? `<button class="btn primary" id="camAllow" type="button">허용하기</button>` : "";
+  $("#permCard .cam-guide")?.remove();
+  if (state === "denied") $("#permCard").insertAdjacentHTML("beforeend", CAM_GUIDE);
+  const b = $("#camAllow");
+  if (b) b.onclick = async () => {
+    try { (await askCamera()).getTracks().forEach((t) => t.stop()); } catch (e) {}
+    showCameraPerm();
+  };
 }
 
 $("#meBtn").onclick = () => openMypage();
@@ -1306,7 +1495,7 @@ $("#mypageBody").onchange = (e) => {
   store(ALERT_PREFS_KEY, prefs);
   deliverAlerts();
 };
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeReceipt(); closeMypage(); } });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeReceipt(); closeMypage(); closeEvent(); closeCamera(); } });
 
 // ---------------------------------------------------------------
 // 시세 알림: 켜 둔 종류만 살피 말투로 챗봇 창에 보냄 (규칙으로 만든 문장, 숫자는 대시보드 시세 그대로)
@@ -1451,3 +1640,45 @@ body.addEventListener("click", (e) => {
   const m = e.target.closest(".msg.alert");
   if (m) goToAlert(m.dataset.alertId);
 });
+
+// ---------------------------------------------------------------
+// 행사 정보 창: '시세 영향 정보'의 행사를 누르면 한국관광공사 행사 정보를 보여 줌
+// ---------------------------------------------------------------
+async function openEvent(id) {
+  const box = $("#eventModalBody");
+  box.innerHTML = `<div class="reading"><div class="spinner"></div><b>행사 정보를 불러오는 중이에요</b></div>`;
+  $("#eventModal").hidden = false;
+  let d;
+  try { d = await getJSON(`/api/event/${encodeURIComponent(id)}`); }
+  catch (e) { box.innerHTML = `<p class="rc-warn">${esc(e.message)}</p>`; return; }
+  const day = (s) => (s ? `${s.slice(0, 4)}.${s.slice(4, 6)}.${s.slice(6, 8)}` : "");
+  const row = (k, v) => (v ? `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>` : "");
+  const map = `https://map.kakao.com/link/search/${encodeURIComponent(d.addr || d.title)}`;
+  box.innerHTML = `
+    <div class="event-top ${d.image ? "" : "no-img"}">
+      ${d.image ? `<a class="event-poster" href="${esc(d.image)}" target="_blank" rel="noopener" title="포스터 크게 보기">
+        <img src="${esc(d.image)}" alt="${esc(d.title)} 포스터"></a>` : ""}
+      <div class="event-head">
+        <h3>${esc(d.title)}</h3>
+        <dl class="event-info">
+          ${row("기간", d.start ? `${day(d.start)} ~ ${day(d.end)}` : "")}${row("장소", d.place || d.addr)}${row("주소", d.place ? d.addr : "")}
+          ${row("시간", d.playtime)}${row("요금", d.fee)}${row("문의", d.tel)}${row("주최", d.sponsor)}
+        </dl>
+      </div>
+    </div>
+    <div class="event-body">
+      ${d.overview ? `<p class="event-overview">${esc(d.overview)}</p>` : ""}
+      <div class="event-links">
+        ${(d.homepages || []).map((u, i) => `<a href="${esc(u)}" target="_blank" rel="noopener">${i ? "관련 사이트" : "공식 홈페이지"} →</a>`).join("")}
+        <a href="${map}" target="_blank" rel="noopener">지도에서 보기 →</a>
+      </div>
+      <p class="muted small">출처: 한국관광공사 국문 관광정보</p>
+    </div>`;
+}
+function closeEvent() { $("#eventModal").hidden = true; }
+$("#eventModalClose").onclick = closeEvent;
+$("#eventModal").onclick = (e) => { if (e.target.id === "eventModal") closeEvent(); };
+$("#eventCard").onclick = (e) => {
+  const b = e.target.closest("[data-event]");
+  if (b) openEvent(b.dataset.event);
+};

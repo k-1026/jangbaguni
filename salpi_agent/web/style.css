@@ -179,7 +179,16 @@ button.chip:active, .chip[aria-expanded="true"] { box-shadow: inset 5px 5px 10px
 .section-head h2 { margin: 0; font-size: 22px; }
 
 /* 날짜별 표 + 예측 이유 */
-body.item-view .home-only { display: none; }
+body.item-view .home-only, body.store-view .home-only { display: none; }
+/* 나의 가게 페이지에서만 보이는 칸 (내일 준비 · 영수증 분석 · 메뉴별 원가율) */
+.store-only { display: none; }
+body.store-view .store-only { display: block; }
+.store-head h1 { margin: 6px 0 4px; font-size: 28px; }
+.store-btn { display: flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 999px; background: var(--neu); box-shadow: var(--raise-sm);
+  color: var(--ink); font-size: 14px; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.store-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
+.store-btn:active { box-shadow: var(--press); }
+body.store-view .store-btn { color: #fff; background: var(--accent); box-shadow: inset 3px 3px 6px #B4481B, inset -3px -3px 6px #F08A55; }
 .forecast-card { margin-bottom: 8px; }
 .item-dash { margin-bottom: 24px; }
 .item-dash .slide.card { height: clamp(460px, calc(100vh - 150px), 640px); box-shadow: var(--raise); }
@@ -552,8 +561,6 @@ body.fab-hidden .fab-count { top: -9px; right: -9px; min-width: 16px; height: 16
 .rc-warn { background: #FFF3CC; color: #6b5200; border-radius: 8px; padding: 8px 10px; font-size: 13px; }
 .ok { background: #DDF3EA; color: #0f5e47; border-radius: 8px; padding: 8px 10px; font-size: 14px; font-weight: 700; }
 /* 메뉴별 원가율 카드: 왼쪽 원가율 숫자 · 오른쪽 막대(목표선) · 판매가 · 재료비 · 남는 돈 · 제안 */
-.cost-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-.cost-head h3 { margin: 0; font-size: 18px; }
 .cost-guide { margin: -4px 0 14px; font-size: 13px; line-height: 1.6; color: #4C524E; }
 .cost-guide b { color: var(--ink); }
 .ratio-label { display: flex; align-items: center; gap: 12px; margin: 0 0 6px; font-size: 12px; color: #4C524E; }
@@ -775,7 +782,8 @@ body.chat-open .fab-count { display: none; }
   .search { flex: 1; margin-left: 0; }
   .search-list { position: fixed; top: 60px; left: 16px; right: 16px; width: auto; }
   .top-actions { margin-left: auto; }
-  .me-btn span { display: none; }
+  .me-btn span, .store-btn span { display: none; }
+  .store-btn { padding: 8px; }
   .me-btn { padding: 3px; }
   .logo img { height: 38px; }
   .hero h1 { font-size: 24px; }

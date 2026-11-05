@@ -52,7 +52,8 @@ docs/문서명   research/ · brand/ · ppt/ · 문서(md)
 
 ## 배포 (dev → main)
 
-- 실제 사이트에 올릴 때만, 배포 담당자가 `dev → main` PR을 만든다. 제목 예: `[release] 11/5 시연 버전 배포`
+- 평일 저녁 17:40(한국 시간)에 GitHub가 자동으로 `dev → main` PR을 만들고 머지한다 (`.github/workflows/daily-release.yml`, 배포 담당자 gkdud112837)
+- 사용자가 "오늘 배포에 넣어 줘"라고 하면 17:40 전에 dev까지 머지되도록 안내. 급한 배포는 Actions 탭 → "평일 저녁 배포" → Run workflow
 - 머지하면 Vercel이 실제 사이트를 다시 배포한다. 기능 브랜치 · dev에 push하면 미리보기 사이트만 생긴다
 
 ## 같은 파일 동시 수정 피하기

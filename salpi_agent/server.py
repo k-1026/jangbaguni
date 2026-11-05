@@ -23,7 +23,7 @@ import foodspring
 import receipts
 import supabase_db
 from agent import SalpiAgent
-from data_sources import ITEMS, ApiError, ApiKeyMissing, holidays, month_events
+from data_sources import ITEMS, ApiError, ApiKeyMissing, event_detail, holidays, month_events
 
 ROOT = Path(__file__).resolve().parent
 WEB = ROOT / "web"
@@ -111,6 +111,14 @@ def item(name: str):
 def products():
     """식봄 실제 상품 · 가격 (재료마다 4개). 살피 시세 정보는 화면에서 /api/overview 와 합침."""
     return memo("products", lambda: {"items": foodspring.all_products(4)})
+
+
+@app.get("/api/event/{content_id}")
+def event(content_id: str):
+    """행사 하나 자세히 (관광공사). 번호는 숫자만 받음."""
+    if not content_id.isdigit():
+        raise HTTPException(400, "행사 번호가 올바르지 않아요")
+    return _guard(lambda: memo(f"event:{content_id}", lambda: event_detail(content_id), ttl=6 * 3600))
 
 
 @app.get("/api/context")

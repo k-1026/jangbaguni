@@ -138,7 +138,7 @@ def calc_menu_margin(menu: str, sale_price: int, ingredients: str = "") -> dict:
 
 
 def forecast_store_demand() -> dict:
-    """시연용 가게('살피 시연 한식당')의 판매 기록으로 내일 메뉴별 예상 그릇 수(범위 포함)와
+    """우리 가게 판매 기록으로 내일 메뉴별 예상 그릇 수(범위 포함)와
     다음 입고일 전까지 모자란 재료의 발주량 · 판단(지금 사기 · 나눠 사기)을 돌려준다.
     menus 와 orders 에 있는 숫자 · 재료만 그대로 말한다."""
     def run():
@@ -151,7 +151,7 @@ def forecast_store_demand() -> dict:
             reason[m["menu"]] = ("평소와 비슷" if abs(v) < 0.02 else
                                  f"{name} 영향 {v * 100:+.0f}%")
         return {
-            "store": r["store"]["name"] + (" (시연용)" if r["store"]["is_demo"] else ""),
+            "store": "우리 가게",
             "target_date": f"{r['target_date']}({r['target_weekday']})", "last_sales_date": r["last_sales_date"],
             "next_delivery_date": r["next_delivery_date"], "total_bowls": r["total_predicted"],
             "menus": [{"menu": m["menu"], "bowls": m["predicted"], "range": f"{m['range'][0]}~{m['range'][1]}",
@@ -164,12 +164,12 @@ def forecast_store_demand() -> dict:
 
 
 def get_store_cost_ratio() -> dict:
-    """시연용 가게('살피 시연 한식당') 메뉴별 원가율. 가게가 영수증으로 실제 산 가격(최근 영수증 단가) 기준.
+    """우리 가게 메뉴별 원가율. 가게가 영수증으로 실제 산 가격(최근 영수증 단가) 기준.
     menus 마다 cost_ratio_pct(원가율 %), margin(재료비 뺀 남는 돈), verdict, top_items(비싼 재료),
     riser(영수증 기준 가장 많이 오른 재료), tips(규칙으로 계산한 판매가 조정 · 대체 재료 제안)가 있다."""
     def run():
         r = receipts.cost_report(supabase_db.DEMO_STORE)
-        return {"store": "살피 시연 한식당 (시연용)", "target_ratio_pct": r["target_ratio_pct"], "menus": [{
+        return {"store": "우리 가게", "target_ratio_pct": r["target_ratio_pct"], "menus": [{
             "menu": m["menu"], "price": m["price"], "cost_per_serving": m["cost_per_serving"], "cost_ratio_pct": m["cost_ratio_pct"],
             "margin": m["margin"], "verdict": m["verdict"], "top_items": [t["item"] for t in m["top_items"]], "tips": m["tips"],
         } for m in r["menus"]]}
@@ -221,15 +221,15 @@ B. "이 가격에 팔아도 남아?"처럼 메뉴나 판매가 없이 마진을 
    목록에 없는 메뉴도 1인분 재료와 양을 알려 주면 계산할 수 있다고 덧붙인다.
    메뉴와 판매가를 들으면 calc_menu_margin 을 부른다. need_ingredients 가 오면 재료와 양을 물어본다.
    답에는 재료비, 원가율, 재료비 뺀 남는 돈, 가장 비싼 재료 1~2개, 시세가 오르는 재료가 있으면 그 영향을 말한다.
-   참고 단가(시연용 가정값)를 쓴 재료가 있으면 "영수증 값을 알려 주시면 더 정확해져요"를 덧붙인다.
+   참고 단가(가정값)를 쓴 재료가 있으면 "영수증 값을 알려 주시면 더 정확해져요"를 덧붙인다.
    재료 양을 지어내지 않는다. 사장님이 말한 양이나 표준 레시피만 쓴다.
 C. "지금 사면 이득인 야채" 질문 → recommend_buy_now 를 부르고, 미리 사면 좋은 것·지금 싼 것·기다릴 것 순서로 말한다.
 E. "우리 가게 원가율", "영수증 기준 원가", "원가율 올랐어?", 가격 조정 · 대체 재료 질문 → get_store_cost_ratio 를 부른다.
-   첫 줄에 "시연용 가게 영수증 기준"이라고 밝히고, 메뉴마다 원가율 · 남는 돈 · 판단을 한 줄씩 말한다.
+   첫 줄에 "우리 가게 영수증 기준"이라고 밝히고, 메뉴마다 원가율 · 남는 돈 · 판단을 한 줄씩 말한다.
    tips 가 있으면 그대로 1~2개 전한다 (판매가 숫자는 tips 에 있는 값만). 대체 재료는 "검토해 보세요"로만 말한다.
    일반 메뉴 계산(calc_menu_margin, 시장 시세 기준)과 섞지 않는다.
 D. "내일 얼마나 준비할까?", 판매량 · 몇 그릇 · 발주량 질문 → forecast_store_demand 를 부른다.
-   첫 줄에 "시연용 가게(살피 시연 한식당) 판매 기록 기준"이라고 밝힌다.
+   첫 줄에 "우리 가게 판매 기록 기준"이라고 밝힌다.
    메뉴별 예상 그릇 수를 범위와 함께 말하고(예: 김치찌개 101그릇, 96~106), 영향이 큰 이유 1개를 쉬운 말로 붙인다.
    그다음 orders 의 앞에서 3개를 "재료 · 발주량 · 판단(지금 사기/나눠 사기)" 한 줄씩 그대로 말하고,
    (orders 에 없는 재료 · 숫자를 말하지 않는다. 메뉴는 menus 에 있는 것만 전부 말한다)

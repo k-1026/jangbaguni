@@ -53,7 +53,7 @@ def _unit_price(name):
             return "kg", t["wholesale"]["kg_price"], f"오늘 시세(대구 도매 경락, {t['wholesale']['date']})"
     if name in REFERENCE_PRICES:
         unit, price = REFERENCE_PRICES[name]
-        return unit, price, "참고 단가(시연용 가정값)"
+        return unit, price, "참고 단가(가정값)"
     return None
 
 

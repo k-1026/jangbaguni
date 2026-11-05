@@ -1019,6 +1019,75 @@ function wxIcon(d) {
   return `<svg class="wx-icon" viewBox="0 0 32 32" role="img" aria-label="${s}"><title>${s}</title>${WX_ICONS[s] || ""}</svg>`;
 }
 
+// ---------------------------------------------------------------
+// 대형마트 판매가 (한국소비자원 참가격, 음식 재료만): 가장 싼 회사 · 보통 가격 · 2주 전 대비
+// ---------------------------------------------------------------
+const MART_FIRST = 12;   // 처음에 보여 줄 카드 수 (더보기마다 12개씩 더)
+let mart = null, martCat = "전체", martPage = 1;
+
+const martChange = (v) => (v == null ? "" : v > 0
+  ? `<span class="mart-chg mart-up">2주 전보다 ▲${v.toFixed(1)}%</span>`
+  : v < 0 ? `<span class="mart-chg mart-down">2주 전보다 ▼${Math.abs(v).toFixed(1)}%</span>`
+  : `<span class="mart-chg">2주 전과 같아요</span>`);
+
+function martCard(x) {
+  const one = x.chains.length === 1;   // 한 회사에서만 조사된 재료는 비교 없이
+  const sub = [one ? "" : `보통 ${won(x.typical)}`, x.daegu ? `대구 매장 ${won(x.daegu.price)}` : ""].filter(Boolean).join(" · ");
+  return `<article class="mart-item">
+    <p class="mart-cat">${esc(x.category)}</p>
+    <h3>${esc(x.name)}</h3>
+    <p class="mart-low"><small>${one ? "파는 곳" : "가장 싼 곳"} · ${esc(x.low_chain)}</small><b>${won(x.low)}</b></p>
+    <p class="mart-sub">${sub || "한 회사에서만 조사됐어요"}</p>
+    ${martChange(x.change_pct) || `<span class="mart-chg">2주 전 값 없음</span>`}
+    ${one ? `<p class="mart-chains-none">회사별 비교 없음</p>` : `<details class="mart-chains"><summary>회사별 가격 ${x.chains.length}곳</summary>
+      <ul>${x.chains.map((c) => `<li><span>${esc(c.chain)}<small>${esc(c.channel)}</small></span><b>${won(c.price)}</b>${
+        c.change_pct ? `<em class="${c.change_pct > 0 ? "mart-up" : "mart-down"}">${pct(c.change_pct)}</em>` : "<em></em>"}</li>`).join("")}</ul>
+    </details>`}
+  </article>`;
+}
+
+function renderMart() {
+  // 2주 새 오른 재료 → 내린 재료 → 그대로인 재료 순
+  const rank = (x) => (x.change_pct > 0 ? 0 : x.change_pct < 0 ? 1 : 2);
+  const list = mart.items.filter((x) => martCat === "전체" || x.category === martCat)
+    .sort((a, b) => rank(a) - rank(b) || Math.abs(b.change_pct ?? 0) - Math.abs(a.change_pct ?? 0) || a.name.localeCompare(b.name, "ko"));
+  $("#martFilter").innerHTML = ["전체", ...mart.categories].map((c) =>
+    `<button type="button" data-cat="${esc(c)}" class="${c === martCat ? "active" : ""}" aria-pressed="${c === martCat}">${esc(c)}</button>`).join("");
+  const pages = Math.ceil(list.length / MART_FIRST);
+  martPage = Math.min(martPage, pages || 1);
+  $("#martGrid").innerHTML = list.length ? list.slice(0, martPage * MART_FIRST).map(martCard).join("")
+    : `<p class="muted">이 종류는 이번 조사에 없어요</p>`;
+  // 12개씩 더 보기: "더보기 지금 몇 번째 | 모두 몇 번" (끝까지 보면 처음으로 접기)
+  const btn = $("#martAll");
+  btn.hidden = pages <= 1;
+  btn.innerHTML = martPage < pages ? `더보기 <b>${martPage}</b> | ${pages}` : "처음으로 접기";
+  btn.setAttribute("aria-label", martPage < pages ? `12개 더 보기 (${pages}번 중 ${martPage}번째, ${list.length}개 중 ${martPage * MART_FIRST}개 보는 중)` : "처음 12개만 보기");
+}
+
+async function loadMart() {
+  try { mart = await getJSON("/api/mart"); }
+  catch (e) { $("#martBasis").textContent = "대형마트 판매가를 불러오지 못했어요"; $("#martGrid").innerHTML = `<p class="muted">${esc(e.message)}</p>`; return; }
+  const up = mart.items.filter((x) => x.change_pct > 0).length;
+  $("#martBasis").textContent = `한국소비자원 참가격 · ${mmdd(mart.date)} 조사 (2주마다) · 음식 재료 ${mart.items.length}개 중 2주 새 오른 것 ${up}개`;
+  renderMart();
+}
+$("#martFilter").onclick = (e) => {
+  const b = e.target.closest("[data-cat]");
+  if (b) { martCat = b.dataset.cat; martPage = 1; renderMart(); }
+};
+// 회사별 가격은 한 번에 하나만 펼침 (다른 카드를 펼치면 앞에 펼친 것은 접힘 — 겹쳐서 가려지지 않게)
+$("#martGrid").addEventListener("toggle", (e) => {
+  if (!e.target.open) return;
+  $("#martGrid").querySelectorAll(".mart-chains[open]").forEach((d) => { if (d !== e.target) d.open = false; });
+}, true);
+$("#martAll").onclick = () => {
+  const pages = Math.ceil(mart.items.filter((x) => martCat === "전체" || x.category === martCat).length / MART_FIRST);
+  if (martPage < pages) { martPage += 1; renderMart(); return; }
+  martPage = 1;
+  renderMart();
+  $("#mart").scrollIntoView({ block: "start" });
+};
+
 async function loadContext() {
   let c;
   try { c = await getJSON("/api/context"); } catch (e) { return; }
@@ -1369,6 +1438,7 @@ if (!ITEM) {
   loadContext();
   loadDemand();
   loadCosts();
+  loadMart();
 }
 if (location.hash === "#chat") openChat();   // 주소 끝에 #chat 을 붙이면 채팅창이 열린 채로 시작
 if (location.hash === "#talk") openTalk();   // 주소 끝에 #talk 을 붙이면 알림톡 시연이 열린 채로 시작

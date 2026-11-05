@@ -11,6 +11,18 @@
 
 ---
 
+# 🗓 한눈에 보는 운영 방식
+
+| 언제 | 누가 | 무엇을 |
+| --- | --- | --- |
+| 평소 | 각자 | 기능 브랜치 → **dev**로 PR → 머지. 실제 사이트는 안 바뀌고, **dev 미리보기 사이트**(https://jangbaguni-git-dev-usagi14.vercel.app)에서 확인 |
+| 하루 한 번 | 배포 담당자 (gkdud112837) | **dev → main** PR을 만들어 머지하면 실제 사이트(https://jangbaguni-ten.vercel.app)에 반영 |
+| 평일 저녁 5시 40분 | 자동 | dev를 main에 올려서 **자동 배포** (dev에 새 작업이 있을 때만). 그날 배포에 넣을 작업은 17:40 전에 dev에 머지 |
+
+> ⚠️ **PR 만들 때 보내는 곳(base)이 `dev`인지 꼭 확인!** main은 배포 담당자의 dev → main PR만 받는다.
+
+---
+
 # 🌿 Branch Strategy
 
 본 프로젝트는 **기능 단위 브랜치**에서 작업하고, 하나의 개발 브랜치(dev)에서 통합하는 방식을 사용한다.
@@ -148,8 +160,10 @@ git branch -d feat/기능명
 
 ## 7️⃣ 배포 (dev → main)
 
-- dev에 모인 작업을 실제 사이트에 올릴 때, 배포 담당자가 **dev → main PR**을 만든다
-- 제목 예: `[release] 11/5 시연 버전 배포`
+- **평일 저녁 17:40(한국 시간)에 자동 배포**: GitHub가 dev → main PR(`[release] 11/05 평일 저녁 배포`)을 만들고 머지한다 (`.github/workflows/daily-release.yml`)
+  - dev에 새 작업이 없으면 건너뛰고, 충돌로 머지가 안 되면 PR을 열어 둔 채 댓글로 알린다
+  - 배포 담당자: gkdud112837. 급하게 올릴 때는 Actions 탭 → "평일 저녁 배포" → **Run workflow**
+  - 그날 배포에 넣을 작업은 **17:40 전에 dev에 머지**해 둔다
 - 머지하면 Vercel이 실제 사이트(main)를 자동으로 다시 배포한다
 - dev나 기능 브랜치에 push하면 Vercel이 **미리보기 사이트**만 따로 만든다 (실제 사이트는 그대로)
 

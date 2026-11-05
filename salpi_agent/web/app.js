@@ -13,6 +13,12 @@ if (ITEM) {
   document.body.classList.add("item-view");
   $("#itemPage").hidden = false;
 }
+// 나의 가게 페이지(/?page=store): 내일 준비 · 영수증 분석 · 메뉴별 원가율은 사장님 로그인 시에만
+// 로그인(카카오)은 아직 없어서 시연에서는 기본 계정으로 로그인한 것으로 봄
+const SIGNED_IN = true;
+const STORE_VIEW = !ITEM && SIGNED_IN && new URLSearchParams(location.search).get("page") === "store";
+if (STORE_VIEW) document.body.classList.add("store-view");
+$("#storeBtn").hidden = !SIGNED_IN;
 
 async function getJSON(url) {
   const r = await fetch(url);
@@ -872,7 +878,7 @@ async function saveReceipt() {
     const r = await sendJSON("/api/receipt/save", "POST", { image: receipt.image, mime: receipt.mime,
       date: $("#rcDate").value || null, supplier: $("#rcSupplier").value || null, items });
     resetReceipt();
-    $("#receiptResult").innerHTML = `<p class="ok">${mmdd(r.date)} 영수증 ${r.saved_items}줄을 저장했어요. 오른쪽 원가율이 새로 계산됐어요.</p>`;
+    $("#receiptResult").innerHTML = `<p class="ok">${mmdd(r.date)} 영수증 ${r.saved_items}줄을 저장했어요. 아래 메뉴별 원가율이 새로 계산됐어요.</p>`;
     renderCosts(r, true);
     loadCosts(false);
   } catch (e) {
@@ -886,7 +892,6 @@ const ratioCls = (v) => (v == null ? "" : v > 35 ? "up" : v > 30 ? "warnc" : "do
 function renderCosts(r, withChange) {
   const T = r.target_ratio_pct;
   $("#costCard").innerHTML = `
-    <div class="cost-head"><h3>메뉴별 원가율</h3><span class="badge">최근 영수증 단가로 계산</span></div>
     <p class="cost-guide">원가율은 <b>한 그릇 값에서 재료비가 차지하는 몫</b>이에요. 낮을수록 한 그릇 팔 때 남는 돈이 많아요.
       식당은 보통 <b>${T}% 아래</b>면 괜찮은 편이에요.</p>
     <div class="cost-cards">${r.menus.map((m) => {
@@ -1445,10 +1450,11 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#tal
 
 loadOverview();
 loadProducts();
-if (!ITEM) {
-  loadContext();
+if (STORE_VIEW) {
   loadDemand();
   loadCosts();
+} else if (!ITEM) {
+  loadContext();
   loadMart();
 }
 if (location.hash === "#chat") openChat();   // 주소 끝에 #chat 을 붙이면 채팅창이 열린 채로 시작
@@ -1487,6 +1493,7 @@ $("#receiptModal").onclick = (e) => { if (e.target.id === "receiptModal") closeR
 // 마이페이지 (시연: 로그인했다고 치고 시연용 가게 계정)
 // ---------------------------------------------------------------
 const ME = { name: "살피 사장님", store: "살피 한식당", place: "대구 달서구", type: "한식 · 40석", email: "demo@salpi.example" };
+if (STORE_VIEW) $("#storeName").textContent = `나의 가게 · ${ME.store}`;
 
 function openMypage(view = "home") {
   $("#mypage").classList.add("open");

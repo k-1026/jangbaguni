@@ -7,6 +7,19 @@
 
 ---
 
+# 폴더 안내
+
+| 폴더 | 내용 |
+|---|---|
+| [salpi_agent/](salpi_agent/) | 살피 웹사이트 · 챗봇 코드 (Vercel 배포) |
+| [plan/](plan/) | 기획서 · 제안서 · 발표 자료 |
+| [research/](research/) | 조사 노트 · 기업 리서치 · 키워드 맵 |
+| [data/](data/) | 데이터 원본(CSV · JSON) · 시뮬레이션 분석 |
+| [brand/](brand/) | 살피 그림 · 로고 · 영상, 챗봇 말투 규칙(`SKILL.md`) |
+| [supabase/](supabase/) | DB 설계 · 시작 데이터 |
+
+---
+
 # 작업 규칙
 
 브랜치 · PR로 작업합니다. 자세한 규칙은 [git-convention.md](git-convention.md).

@@ -1,6 +1,6 @@
 # 주제 발표 정리 (10/28)
 
-근거 · 출처 URL: `industry_food/1028_wholesale_price_forecast_note.md`
+근거 · 출처 URL: `research/industry_food/1028_wholesale_price_forecast_note.md`
 
 ---
 

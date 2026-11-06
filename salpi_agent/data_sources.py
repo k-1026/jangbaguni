@@ -28,7 +28,7 @@ DAEGU_LDONG = os.getenv("KTO_TOUR_LDONG_REGN_CD", "27") # 관광공사 대구 �
 
 # 품목 목록: perDay(KAMIS 코드)와 정산정보(품목 이름)를 함께 적어 둠
 # sale_sub: 정산정보 소분류 이름에 이 글자가 들어간 것만 사용 (다른 상품·수입산 섞임 방지)
-# 코드 근거: research/industry_food/1028_data_collection_detail.json + perDay 응답으로 품목명 확인 (2026-11-03)
+# 코드 근거: data/raw/1028_data_collection_detail.json + perDay 응답으로 품목명 확인 (2026-11-03)
 ITEMS = {
     "양파":     {"ctgry": "200", "item": "245", "vrty": None, "sale_name": "양파",   "sale_sub": None},
     "대파":     {"ctgry": "200", "item": "246", "vrty": None, "sale_name": "대파",   "sale_sub": None},

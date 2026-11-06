@@ -317,16 +317,19 @@ body.store-view .store-btn { color: #fff; background: var(--accent); box-shadow:
 .modal-box.event-box { width: min(820px, 100%); padding: 0; overflow: auto; }
 .event-box .modal-close { top: 12px; right: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.25); z-index: 1; width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,.9); }
 .modal-box.event-box { width: min(900px, 100%); }
-.event-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; padding: 24px 24px 0; }
+.event-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: stretch; padding: 24px 24px 0; }
 .event-top.no-img { grid-template-columns: 1fr; }
-.event-poster { display: block; border-radius: 14px; overflow: hidden; cursor: zoom-in; box-shadow: 0 6px 18px rgba(0,0,0,.15); }
+.event-poster { display: block; align-self: start; border-radius: 14px; overflow: hidden; cursor: zoom-in; box-shadow: 0 6px 18px rgba(0,0,0,.15); }
 .event-poster img { display: block; width: 100%; height: auto; }
+/* 오른쪽 칸은 포스터 높이만큼: 설명 카드가 남은 공간을 채움 */
+.event-head { display: flex; flex-direction: column; }
+.event-head .event-overview { flex: 1; }
 .event-head h3 { margin: 6px 40px 16px 0; font-size: 22px; line-height: 1.35; }
 .event-head .event-info { grid-template-columns: 48px minmax(0, 1fr); gap: 10px 12px; margin: 0; }
 .event-body { padding: 20px 24px 22px; }
 .event-info { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 6px 12px; margin: 0 0 14px; font-size: 14px; }
 .event-info div { display: contents; } .event-info dt { color: var(--muted); } .event-info dd { margin: 0; white-space: pre-line; }
-.event-overview { margin: 0 0 16px; padding: 14px 16px; border-radius: 14px; background: var(--paper); font-size: 14px; line-height: 1.7; white-space: pre-line; }
+.event-overview { margin: 18px 0 0; padding: 14px 16px; border-radius: 14px; background: var(--paper); font-size: 14px; line-height: 1.7; white-space: pre-line; }
 .event-links { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
 .event-links a { padding: 8px 14px; border-radius: 999px; background: var(--deep); color: #fff; font-size: 13px; font-weight: 700; text-decoration: none; }
 .wx { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 12px; }

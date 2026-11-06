@@ -1790,10 +1790,10 @@ async function openEvent(id) {
           ${row("기간", d.start ? `${day(d.start)} ~ ${day(d.end)}` : "")}${row("장소", d.place || d.addr)}${row("주소", d.place ? d.addr : "")}
           ${row("시간", d.playtime)}${row("요금", d.fee)}${row("문의", d.tel)}${row("주최", d.sponsor)}
         </dl>
+        ${d.overview ? `<p class="event-overview">${esc(d.overview)}</p>` : ""}
       </div>
     </div>
     <div class="event-body">
-      ${d.overview ? `<p class="event-overview">${esc(d.overview)}</p>` : ""}
       <div class="event-links">
         ${(d.homepages || []).map((u, i) => `<a href="${esc(u)}" target="_blank" rel="noopener">${i ? "관련 사이트" : "공식 홈페이지"} →</a>`).join("")}
         <a href="${map}" target="_blank" rel="noopener">지도에서 보기 →</a>

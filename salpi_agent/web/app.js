@@ -1492,7 +1492,7 @@ $("#receiptModal").onclick = (e) => { if (e.target.id === "receiptModal") closeR
 // ---------------------------------------------------------------
 // 마이페이지 (시연: 로그인했다고 치고 시연용 가게 계정)
 // ---------------------------------------------------------------
-const ME = { name: "살피 사장님", store: "살피 한식당", place: "대구 달서구", type: "한식 · 40석", email: "demo@salpi.example" };
+const ME = { name: "달서구 한식당 사장님", store: "살피 한식당", place: "대구 달서구", type: "한식 · 40석", email: "demo@salpi.example" };
 if (STORE_VIEW) $("#storeName").textContent = `나의 가게 · ${ME.store}`;
 
 function openMypage(view = "home") {
@@ -1525,12 +1525,13 @@ async function renderMypage(view) {
   const prefs = alertPrefs();
   box.innerHTML = `
     <section class="my-card profile">
-      <img src="/static/img/salpi_face.png" alt="">
+      <img src="/static/img/owner_face.png" alt="">
       <div><b>${esc(ME.name)}</b><small>${esc(ME.email)}</small></div>
     </section>
     <section class="my-card">
       <h4>내 정보</h4>
-      <dl><dt>가게</dt><dd>${esc(ME.store)}</dd><dt>지역</dt><dd>${esc(ME.place)}</dd><dt>업종</dt><dd>${esc(ME.type)}</dd></dl>
+      <dl><dt>지역</dt><dd>${esc(ME.place)}</dd><dt>업종</dt><dd>${esc(ME.type)}</dd></dl>
+      <a class="my-link" href="/?page=store"><span>나의 가게</span><i>›</i></a>
       <button class="my-link" data-view="receipts"><span>나의 영수증</span><i>›</i></button>
     </section>
     <section class="my-card">
@@ -1542,10 +1543,29 @@ async function renderMypage(view) {
     </section>
     <section class="my-card" id="permCard">
       <h4>권한 설정</h4>
-      <p class="muted small">영수증을 카메라로 찍으려면 카메라 권한이 필요해요.</p>
+      <p class="muted small">영수증을 카메라로 찍거나, 창을 닫아 둬도 시세 알림을 받으려면 권한이 필요해요.</p>
       <div class="toggle-row"><span><b>카메라</b><small id="camState">확인하는 중</small></span><span id="camAct"></span></div>
+      <div class="toggle-row"><span><b>브라우저 알림</b><small id="notiState">확인하는 중</small></span><span id="notiAct"></span></div>
+    </section>
+    <section class="my-card my-account">
+      <button class="my-link" type="button" data-account="logout"><span>로그아웃</span><i>›</i></button>
+      <button class="my-link danger" type="button" data-account="leave"><span>회원탈퇴</span><i>›</i></button>
+      <p class="muted small" id="accountNote" hidden>로그인 · 회원가입 기능이 생기면 쓸 수 있어요.</p>
     </section>`;
   showCameraPerm();
+  showNotiPerm();
+}
+
+// 브라우저 알림 권한: 허용하면 새 시세 알림을 화면 밖(작업 표시줄 · 휴대폰 알림)으로도 띄움
+function showNotiPerm() {
+  if (!$("#notiState")) return;
+  const state = "Notification" in window ? Notification.permission : "none";   // granted · denied · default
+  $("#notiState").textContent = { granted: "허용됨 · 새 시세 알림을 바로 띄워 드려요", denied: "꺼져 있어요 · 브라우저 주소창 왼쪽 자물쇠에서 켜 주세요",
+    default: "아직 허용하지 않았어요", none: "이 브라우저는 알림을 쓸 수 없어요" }[state];
+  $("#notiAct").innerHTML = state === "granted" ? `<span class="perm-on">허용됨</span>`
+    : state === "default" ? `<button class="btn primary" id="notiAllow" type="button">허용하기</button>` : "";
+  const b = $("#notiAllow");
+  if (b) b.onclick = async () => { await Notification.requestPermission(); showNotiPerm(); notifyAlerts(); };
 }
 
 // 카메라 권한 상태: 허용됨 · 꺼짐 · 아직 안 물어봄 (브라우저가 알려 주지 않으면 '허용하기'로 직접 물어봄)
@@ -1573,6 +1593,7 @@ $("#mypageClose").onclick = closeMypage;
 $("#mypageBack").onclick = () => renderMypage("home");
 $("#backdrop").onclick = closeMypage;
 $("#mypageBody").onclick = (e) => {
+  if (e.target.closest("[data-account]")) { $("#accountNote").hidden = false; return; }   // 로그인 기능이 생기면 연결
   const v = e.target.closest("[data-view]");
   if (v) return renderMypage(v.dataset.view);
   const r = e.target.closest("[data-rid]");
@@ -1672,6 +1693,20 @@ function deliverAlerts() {
   if (chatEl.classList.contains("open")) markAlertsRead();
   updateBadges();
   renderBell();
+  notifyAlerts();
+}
+
+// 브라우저 알림을 허용했으면 아직 읽지 않은 새 알림을 한 번씩 띄움 (최대 3개)
+const ALERT_NOTIFIED_KEY = "salpi_alert_notified";
+function notifyAlerts() {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  const read = new Set(load(ALERT_READ_KEY, [])), shown = new Set(load(ALERT_NOTIFIED_KEY, []));
+  const fresh = delivered.filter((a) => !read.has(a.id) && !shown.has(a.id)).slice(0, 3);
+  for (const a of fresh) {
+    try { new Notification("살피 시세 알림", { body: a.text.split("\n")[0], icon: "/static/img/salpi_face.png", tag: a.id }); } catch (e) {}
+    shown.add(a.id);
+  }
+  if (fresh.length) store(ALERT_NOTIFIED_KEY, [...shown].slice(-200));
 }
 
 function unreadCount() {

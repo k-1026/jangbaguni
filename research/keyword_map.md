@@ -35,5 +35,5 @@
 
 ## 작성 방법
 
-- 키워드 하나에 한 행, 관련 노트는 `history_culture/1027_local_history_note.md`처럼 research/ 기준 경로로 적기
+- 키워드 하나에 한 행, 관련 노트는 `industry_food/1027_project_ideas_note.md`처럼 research/ 기준 경로로 적기
 - 유형이 없으면 위 목록에 먼저 추가한 뒤 사용

@@ -1,3 +1,0 @@
-- 용도: 발표 자료 보관
-- 시연 사이트: https://jangbaguni-ten.vercel.app
-- 살피.pptx · 살피.pdf: 최신 발표 자료

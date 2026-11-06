@@ -7,7 +7,7 @@ export const START = "2026-05-04";   // 월요일
 export const WEEKS = 26;
 const DAYS = WEEKS * 7;
 
-// 채소 5종: research/industry_food/1103_daegu_bukbu_wholesale_202501.csv 의 kg당 가중 평균
+// 채소 5종: data/raw/1103_daegu_bukbu_wholesale_202501.csv 의 kg당 가중 평균
 // 나머지: salpi_agent/menu_cost.py 의 시연용 참고 단가
 const CATALOG = [
   ["양파", 1261], ["대파", 1682], ["배추", 920], ["무", 1139], ["양배추", 1064],

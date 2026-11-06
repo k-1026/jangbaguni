@@ -366,7 +366,8 @@ body.fab-hidden .salpi-fab { left: auto !important; top: auto !important; right:
 body.fab-hidden .salpi-fab img { width: 44px; }
 body.fab-hidden .bubbles { display: none; }
 /* 작은 살피: 알림 숫자도 작게, 얼굴을 가리지 않게 머리 오른쪽 위 바깥에 */
-body.fab-hidden .fab-count { top: -9px; right: -9px; min-width: 16px; height: 16px; padding: 0 4px; line-height: 16px; font-size: 10px; box-shadow: 0 0 0 2px #fff; }
+/* 작아졌을 때는 숫자 없이 빨간 점만 (같은 자리, 숫자는 화면 읽기용으로만 남음) */
+body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; height: 12px; padding: 0; font-size: 0; color: transparent; box-shadow: 0 0 0 2px #fff; }
 
 /* 채팅창 뉴모피즘: 바탕 --cneu, 밝은 그림자 #fff · 어두운 그림자 --cneu-dark (튀어나옴 = 바깥 그림자, 눌림 = 안쪽 그림자) */
 .chat {

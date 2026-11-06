@@ -5,4 +5,4 @@
 |---|---|
 | `brand_kit/` | 살피 브랜드키트 기획서 (md · pdf) |
 | `proposal/` | 서비스 제안서 "식자재 가격 분석 AI 알림 스마트 발주 지원 플랫폼" (pptx · pdf), 10/28 주제 발표 정리(`1028_topic_pitch.md`) |
-| `presentation/` | 최신 발표 자료 `살피.pptx` · `살피.pdf` |
+| `presentation/` | 11/4 발표 자료 `살피.pptx` · `살피.pdf`, 다음 발표 준비 `1106_presentation_flow.md` · 초안 `살피_1106_초안.pptx` |

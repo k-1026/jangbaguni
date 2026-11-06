@@ -1,3 +1,22 @@
+## 📌 팀원별 실습 결과물 안내 (강사님 참고)
+
+본 Repository는 **장바구니 팀의 공통 프로젝트 및 통합 작업 공간**입니다.
+
+11/5~11/6 기업 리서치 및 밸류체인 분석 실습은 팀원별로 개별 진행하였으며, **각 팀원의 세부 실습 과정 및 결과물은 개인 GitHub Repository를 참고해 주시면 감사하겠습니다.**
+
+### 팀원별 GitHub Repository
+
+| 구분 | GitHub Repository | 주요 내용 |
+|---|---|---|
+| 팀 공통 | [jangbaguni](https://github.com/k-1026/jangbaguni) | 공통 프로젝트 및 통합 작업 |
+| 윤가언 | https://github.com/yoonkaeon-netizen/monchichi.git | 개인 실습 결과물 |
+| 이소정 | https://github.com/so-jung0729/cj_ax.git | 개인 실습 결과물 |
+| 이성이 | [Repository 주소 입력](URL 입력) | 개인 실습 결과물 |
+| 이하영 | [jangbaguni](https://github.com/k-1026/jangbaguni) | 개인 실습 결과물 |
+
+각 Repository에는 기업 리서치, 출처 검증, 밸류체인 분석 등 개인별 실습 내용과 산출물이 정리되어 있습니다.
+
+
 # 진행 상황
 11/5 과제: onepager.md(8칸 · 충돌 표 · 트랙 과제), verify.md(핵심 사실 5개 원문 대조 + DART 공시 대조 3건), 출처 42~48 추가
 11/6 실습: valuechain/ — 활동 후보 → 이해관계자 → 신호 · 마커 → Mermaid v0 → 원페이지 대조 → v1, 발표용 valuechain_v1.html, analysis.md

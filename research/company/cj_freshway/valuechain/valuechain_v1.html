@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CJ프레시웨이 밸류체인 맵 v1</title>
+<style>
+  :root {
+    --ink: #1F2622; --muted: #5F6963; --line: #D3D8D1; --bg: #FFFFFF;
+    --teal: #0E8A80; --teal-bg: #D7F0EC;
+    --money: #E08A00; --money-bg: #FFF4E0;
+    --data: #2F6FD8; --data-bg: #EAF1FC;
+    --bottleneck: #E89B00; --bottleneck-bg: #FEF3DC;
+    --cost: #E8603C; --cost-bg: #FCEBE5;
+    --opp: #7DB83A; --opp-bg: #EEF7E2;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #E9ECE8; font-family: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; color: var(--ink); }
+  .page { width: 1280px; height: 720px; margin: 0 auto; padding: 22px 28px 16px; background: var(--bg); display: flex; flex-direction: column; }
+  header { margin-bottom: 14px; }
+  h1 { margin: 0 0 4px; font-size: 22px; }
+  header p { margin: 0; font-size: 12.5px; color: var(--muted); }
+  .grid { display: grid; grid-template-columns: 96px repeat(5, minmax(0, 1fr)); column-gap: 12px; row-gap: 12px; }
+  .label { display: flex; align-items: center; font-size: 12.5px; font-weight: 700; color: var(--muted); }
+  .label.money { color: var(--money); } .label.data { color: var(--data); }
+  /* ① 활동 */
+  .stage { position: relative; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 12px; background: #F6F8F5; min-height: 78px; }
+  .stage b { display: block; font-size: 16px; }
+  .stage span { display: block; margin-top: 4px; font-size: 12.5px; color: #4C524E; line-height: 1.35; }
+  .stage.asset { background: var(--teal-bg); border-color: var(--teal); }
+  .stage:not(:last-child)::after { content: "▶"; position: absolute; right: -11px; top: 50%; transform: translateY(-50%); font-size: 10px; color: #8A938D; }
+  /* ② 이해관계자 */
+  .who { padding: 8px 10px; font-size: 12.5px; line-height: 1.5; border-radius: 10px; background: #F6F8F5; }
+  .who b { font-weight: 700; } .who i { font-style: normal; color: var(--muted); }
+  .who.asset { background: var(--teal-bg); }
+  /* ③ 돈 */
+  .band { grid-column: 2 / -1; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); column-gap: 12px; padding: 9px 0; border-radius: 10px; }
+  .band.money { background: var(--money-bg); }
+  .band.data { background: var(--data-bg); }
+  .m { position: relative; text-align: center; font-size: 12.5px; color: #8A5300; line-height: 1.35; }
+  .m b { color: var(--money); }
+  .m.arrow::before { content: "◀━━"; position: absolute; left: -16px; top: 50%; transform: translateY(-50%); color: var(--money); font-size: 11px; letter-spacing: -2px; }
+  /* ④ 데이터 */
+  .d { position: relative; padding: 4px 10px; font-size: 12px; line-height: 1.5; color: #1D3F7A; }
+  .d b { display: block; font-size: 13px; color: var(--data); }
+  .d em { font-style: normal; color: var(--muted); }
+  .d.cut { outline: 2px dashed var(--cost); outline-offset: 1px; border-radius: 8px; background: #FFF7F4; }
+  .d.signal::after { content: attr(data-signal); display: block; width: fit-content; margin-top: 4px; padding: 0 6px; border-radius: 999px; background: #fff; border: 1px solid var(--data); font-size: 10.5px; color: var(--data); }
+  .feedback { grid-column: 2 / -1; position: relative; height: 30px; margin-top: -6px; }
+  .feedback svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .feedback span { position: absolute; left: 50%; top: 6px; transform: translateX(-50%); font-size: 12px; color: var(--data); background: #fff; padding: 0 6px; }
+  /* 마커 */
+  .marks { display: flex; flex-direction: column; gap: 6px; }
+  .mk { padding: 6px 9px; border-radius: 8px; font-size: 12px; line-height: 1.35; border: 1.5px solid transparent; }
+  .mk.b { background: #fff; border-color: var(--bottleneck); }
+  .mk.c { background: #fff; border-color: var(--cost); }
+  .mk.o { background: var(--opp-bg); border-color: var(--opp); }
+  .mk.top { box-shadow: 0 0 0 2px var(--opp); font-weight: 700; }
+  footer { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-top: auto; padding-top: 8px; }
+  footer p { margin: 0; font-size: 10.5px; color: var(--muted); line-height: 1.5; max-width: 760px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 12px; justify-content: flex-end; font-size: 11px; max-width: 440px; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .legend i { display: inline-block; width: 16px; height: 11px; border-radius: 3px; }
+</style>
+</head>
+<body>
+<main class="page">
+  <header>
+    <h1>CJ프레시웨이 밸류체인 맵 v1 — 대시보드 데이터 흐름도</h1>
+    <p>데이터 · 서비스 트랙 · 블루 화살표(도매시장 출하 → 식자재 유통 → 식당 배송) · 근거: onepager.md · sources.md · 숫자는 출처 있는 것만</p>
+  </header>
+
+  <section class="grid" aria-label="밸류체인 네 층">
+    <!-- ① 활동 -->
+    <div class="label">① 활동</div>
+    <div class="stage asset"><b>1 산지 · 도매시장</b><span>중도매인에게서 도매시장 농산물 매입 · 경북 판로 협약</span></div>
+    <div class="stage"><b>2 매입 · 소싱</b><span>PB 프레시원 약 900종 · 해외 소싱 · 직수입</span></div>
+    <div class="stage"><b>3 유통 채널 · 플랫폼</b><span>식봄 오픈마켓 주문 · AI 가격비교</span></div>
+    <div class="stage asset"><b>4 주문 · 구매</b><span>식당 발주 · 결제 (살피가 판단을 도움)</span></div>
+    <div class="stage"><b>5 물류 · 배송</b><span>대구센터 · 양산센터 등 15곳 · 통합배송</span></div>
+
+    <!-- ② 이해관계자 -->
+    <div class="label">② 이해관계자</div>
+    <div class="who asset"><b>농가 · 대구 북부도매시장 중도매인</b><br><i>(대구농수산물유통관리공사 · aT)</i></div>
+    <div class="who"><b>CJ프레시웨이 구매</b><br><i>(해외 법인 3곳 · CJ 계열)</i></div>
+    <div class="who"><b>식품대리점 · 직거래 · 식봄(CJ 55%)</b><br><i>(입점 판매자 · 공정위)</i></div>
+    <div class="who asset"><b>달서구 한식당 사장님</b> · 프랜차이즈 · 급식장<br><i>(살피 · 결제사)</i></div>
+    <div class="who"><b>CJ 물류센터 — 대구센터 · 양산센터</b><br><i>(CJ대한통운)</i></div>
+
+    <!-- ③ 돈 -->
+    <div class="label money">③ 돈 ◀</div>
+    <div class="band money">
+      <div class="m"><b>끝점</b> 농가 정산<br>위탁수수료 차감</div>
+      <div class="m arrow">매입 대금 · 유통 마진<br>국내 90.3% · 수입 9.7%</div>
+      <div class="m arrow">외상 15~45일 회수<br>· 플랫폼 수수료</div>
+      <div class="m arrow"><b>시작점</b> 식당 결제<br>(쿠폰 · 특가 별도)</div>
+      <div class="m">배송비<br>별도 여부 [U]</div>
+    </div>
+
+    <!-- ④ 데이터 -->
+    <div class="label data">④ 데이터 ⇢<br>이름 · 생성 · 보유</div>
+    <div class="band data">
+      <div class="d signal" data-signal="공급 · 가격 신호"><b>경락가 · 반입량</b>경매 (대구 북부도매시장)<br><em>보유: aT · 도매시장 — 공개 API</em></div>
+      <div class="d signal" data-signal="조달 신호"><b>품목별 매입액 · 국내/수입</b>CJ 구매 (연 1회 공시)<br><em>보유: CJ — 공시분만 공개</em></div>
+      <div class="d signal" data-signal="가격 신호"><b>판매자별 가격 · 주문 이력</b>식봄 앱<br><em>보유: 마켓보로 · CJ</em></div>
+      <div class="d cut signal" data-signal="수요 신호"><b>판매 기록 · 발주 판단</b>식당 POS · 사장님<br><em>보유: 사장님만 — 단절</em></div>
+      <div class="d cut signal" data-signal="물류 · 원가 신호"><b>배송 · 거래명세서</b>물류센터 · 배송 시<br><em>보유: CJ · 사장님 종이 — 단절</em></div>
+    </div>
+    <div></div>
+    <div class="feedback" aria-label="피드백 화살표">
+      <svg viewBox="0 0 1000 26" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M 900 2 C 900 22, 620 22, 620 6" fill="none" stroke="#2F6FD8" stroke-width="1.6" stroke-dasharray="5 4" vector-effect="non-scaling-stroke"/>
+        <path d="M 100 2 C 100 24, 620 24, 620 6" fill="none" stroke="#2F6FD8" stroke-width="1.6" stroke-dasharray="5 4" vector-effect="non-scaling-stroke"/>
+      </svg>
+      <span>피드백: 공개 시세 · 판매 기록 · 영수증 → 살피 → "언제 · 얼마나 살지" → 4 주문</span>
+    </div>
+
+    <!-- 마커 -->
+    <div class="label">마커</div>
+    <div class="marks"><div class="mk b">병목 B1 · 시세 급등락으로 매입 단가가 기다림</div><div class="mk o top">기회 O1 (우선) · 도매 시세 7일 예측 · 구매 시점 알림</div></div>
+    <div class="marks"><div class="mk c">비용 C2 · 원자재 변동이 낮은 마진을 깎음</div></div>
+    <div class="marks"><div class="mk c">비용 C1 · 중도매인 · 유통 마진 · 플랫폼 수수료 중첩</div></div>
+    <div class="marks"><div class="mk b">병목 B2 · 발주량을 한 사람 경험으로</div><div class="mk o">기회 O2 · 판매 기록 → 발주량 추천</div></div>
+    <div class="marks"><div class="mk o">기회 O3 · 영수증 → 메뉴별 원가율</div></div>
+  </section>
+
+  <footer>
+    <p>근거: 2024 사업보고서(DART)[48] · 도매시장 매입[31] · 판로 협약[41] · 식봄 지분 55%[14] · 통합배송 구조[10] · 양산 동부 물류센터[4] · 공개 경락 API[46] · 시세 급등락 +67.7%[43] · 공공 시세 참고 6.8% · "수량은 경험에만 의존"[45] · 식재료비 40.7%[44] · 낮은 마진[18].
+      수수료율 · 금액은 출처가 없어 적지 않음. 우선 기회 O1: 영향 9 · 실현 가능성 9 (analysis.md).</p>
+    <div class="legend" aria-label="범례">
+      <span><i style="background:var(--teal-bg);border:1.5px solid var(--teal)"></i>팀 자산</span>
+      <span><i style="background:#fff;border:1.5px solid var(--bottleneck)"></i>병목</span>
+      <span><i style="background:#fff;border:1.5px solid var(--cost)"></i>비용</span>
+      <span><i style="background:var(--opp-bg);border:1.5px solid var(--opp)"></i>기회</span>
+      <span><i style="background:#FFF7F4;border:1.5px dashed var(--cost)"></i>데이터 단절</span>
+      <span><i style="background:var(--money-bg)"></i>돈 ◀ 소비자 → 원천</span>
+      <span><i style="background:var(--data-bg)"></i>데이터 ⇢</span>
+    </div>
+  </footer>
+</main>
+</body>
+</html>

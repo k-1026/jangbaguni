@@ -5,6 +5,27 @@
 - 윤가언 : 11/5~6 실습 각자 레포 생성해서 각자 관심 주제로 기업 고르고 서브에이전트 분할
 - 이성이 : 11/5~6 실습 각자 레포 생성해서 각자 관심 주제로 기업 고르고 서브에이전트 분할
 
+## 11/5~6 실습 결과 (jangbaguni · CJ프레시웨이)
+
+> 트랙: 데이터 · 서비스(푸드) · 기업: CJ프레시웨이 · 경쟁사: 현대그린푸드 · 파일 위치: [research/company/cj_freshway/](research/company/cj_freshway/)
+
+**11/5 기업 리서치 (Day 9)**
+- 후보 3곳 비교 → CJ프레시웨이 선정 ([candidates.md](research/company/candidates.md)), 리서치 질문 10개 ([questions.md](research/company/cj_freshway/questions.md))
+- 원문 14건 + 웹 출처를 모아 출처 48건 ([sources.md](research/company/cj_freshway/sources.md)) — **DART 2024 사업보고서(II 사업의 내용 · IX 종속회사) 원문 확보**, 2025 사업연도 보고서 · IR 원문은 아직
+- 서브에이전트 4분할(A 사업 모델 · B 재무 · C 보도 · D 산업 · 대구) → 점검표 → D만 재실행 ([parts/](research/company/cj_freshway/parts/))
+- 원페이지 8칸 취합 + 트랙 과제(이슈 3개 · 단계별 지표 후보) ([onepager.md](research/company/cj_freshway/onepager.md))
+- 핵심 사실 5개 원문 대조 — 5개 모두 일치, DART 공시 대조 3건 추가(대구센터 보유 확인 등) ([verify.md](research/company/cj_freshway/verify.md))
+
+**11/6 밸류체인 맵 (Day 10)** — [valuechain/](research/company/cj_freshway/valuechain/)
+- 활동 후보 → 단계 5개 · 이해관계자 → 신호 근거 · 마커(병목 2 · 비용 2 · 기회 3) → Mermaid 초안 v0 → 원페이지 대조(불일치 9건) → v1
+- 단계: 산지 · 도매시장 → 매입 · 소싱 → 유통 채널 · 플랫폼 → 주문 · 구매 → 물류 · 배송 (팀 자산: 대구 북부도매시장 · 달서구 한식당 사장님)
+- **우선 기회: 대구 도매 시세 7일 예측 · 구매 시점 알림** (영향 9 · 실현 가능성 9)
+- 발표용 한 장: [valuechain_v1.html](research/company/cj_freshway/valuechain/valuechain_v1.html) · 근거와 검증: [analysis.md](research/company/cj_freshway/valuechain/analysis.md)
+
+**확인 끝난 것**: Mermaid 그림(v0 · v1) 브라우저에서 오류 없이 그려짐 · DART 2024 사업보고서로 1차 상품 비중 · 수입 비중 · 해외 법인 역할 · 대구센터 · 외상 판매 조건 확인
+
+**남은 일 (팀)**: FigJam에서 불일치 항목 팀 확정 · DART에서 **2025 사업연도** 사업보고서(2026년 3월 제출) 열어 저장 → 부문별 영업이익 · 마켓보로 종속 여부 확인
+
 ---
 
 # 폴더 안내

@@ -9,7 +9,7 @@
 | 구분 | GitHub Repository | 주요 내용 |
 |---|---|---|
 | 팀 공통 | [jangbaguni](https://github.com/k-1026/jangbaguni) | 공통 프로젝트 및 통합 작업 |
-| 윤가언 | https://github.com/yoonkaeon-netizen/monchichi.git | 개인 실습 결과물 |
+| 윤가언 | https://github.com/yoonkaeon-netizen/monchichi.git | 개인 실습 결과물(research/company/ibk기업은행 부분만 보시면 됩니다) | 
 | 이소정 | https://github.com/so-jung0729/cj_ax.git | 개인 실습 결과물 |
 | 이성이 | [Repository 주소 입력](URL 입력) | 개인 실습 결과물 |
 | 이하영 | [jangbaguni](https://github.com/k-1026/jangbaguni) | 개인 실습 결과물 |

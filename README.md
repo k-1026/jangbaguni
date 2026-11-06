@@ -1,3 +1,25 @@
+# 진행 상황
+
+- 이하영 : 11/5~6 실습 jangbaguni 레포에서 [1105_company_research_summary.md](research/company/1105_company_research_summary.md) 내용 진행
+- 이소정 : 11/5~6 실습 각자 레포 생성해서 각자 관심 주제로 기업 고르고 서브에이전트 분할, 원페이지 진행
+- 윤가언 : 11/5~6 실습 각자 레포 생성해서 각자 관심 주제로 기업 고르고 서브에이전트 분할
+- 이성이 : 11/5~6 실습 각자 레포 생성해서 각자 관심 주제로 기업 고르고 서브에이전트 분할
+
+---
+
+# 폴더 안내
+
+| 폴더 | 내용 |
+|---|---|
+| [salpi_agent/](salpi_agent/) | 살피 웹사이트 · 챗봇 코드 (Vercel 배포) |
+| [plan/](plan/) | 기획서 · 제안서 · 발표 자료 |
+| [research/](research/) | 조사 노트 · 기업 리서치 · 키워드 맵 |
+| [data/](data/) | 데이터 원본(CSV · JSON) · 시뮬레이션 분석 |
+| [brand/](brand/) | 살피 그림 · 로고 · 영상, 챗봇 말투 규칙(`SKILL.md`) |
+| [supabase/](supabase/) | DB 설계 · 시작 데이터 |
+
+---
+
 # 작업 규칙
 
 브랜치 · PR로 작업합니다. 자세한 규칙은 [git-convention.md](git-convention.md).

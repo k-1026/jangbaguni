@@ -1,4 +1,4 @@
-// 실행: node simulation/blend.mjs
+// 실행: node data/simulation/blend.mjs
 // 한 유형만 고르는 방식과 주 유형 + 보조 유형 방식을 어떤 조정에도 쓰지 않은 201~300번 판으로 비교한다.
 
 import { writeFileSync } from "node:fs";

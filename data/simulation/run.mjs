@@ -1,5 +1,5 @@
-// 실행: node simulation/run.mjs
-// 1번 판의 기록과 분류 결과를 simulation/output/ 에 저장하고, 100판 평균 정답률을 report.md 로 남긴다.
+// 실행: node data/simulation/run.mjs
+// 1번 판의 기록과 분류 결과를 data/simulation/output/ 에 저장하고, 100판 평균 정답률을 report.md 로 남긴다.
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";

@@ -1,5 +1,5 @@
 - 용도: 실제 발주 기록이 없는 동안, 가상 사장님 10명(S1~S5 각 2명)의 6개월 행동을 만들어 세그먼트 기준을 시험
-- 실행: 저장소 맨 위에서 `node simulation/run.mjs` (Node만 있으면 됨, Supabase에는 쓰지 않음)
+- 실행: 저장소 맨 위에서 `node data/simulation/run.mjs` (Node만 있으면 됨, Supabase에는 쓰지 않음)
 - 결과: `output/report.md` (분류 결과 · 정답률 · 주별 세그먼트), `output/event_logs.csv` (행동 기록, 1번 판)
 
 | 파일 | 하는 일 |
@@ -8,7 +8,7 @@
 | `simulate.mjs` | 하루씩 돌려 접속 · 알림 · 발주 · 소진 · 폐기 기록 생성 |
 | `classify.mjs` | 기록만 보고 세그먼트 판정 (정답을 읽지 않음). 발표 기준 · 보완 기준 |
 | `run.mjs` | 여러 판 반복, 정답률 계산, 결과 저장 |
-| `blend.mjs` | 한 유형 방식과 주 유형 + 보조 유형 방식 비교 (`node simulation/blend.mjs`, 결과 `output/blend_report.md`) |
+| `blend.mjs` | 한 유형 방식과 주 유형 + 보조 유형 방식 비교 (`node data/simulation/blend.mjs`, 결과 `output/blend_report.md`) |
 
 ## 알아 둘 점
 - 분류 규칙이 제대로 작동하는지 보는 시험이고, 실제 사장님이 이렇게 행동한다는 증거나 서비스 효과의 증거가 아닙니다

@@ -10,7 +10,7 @@ dev   개발 통합 — 모든 기능 브랜치가 합쳐지는 곳. 직접 push
 feat/기능명   새 기능
 fix/이슈명    버그 수정
 hotfix/이슈명 급한 버그
-docs/문서명   research/ · brand/ · ppt/ · 문서(md)
+docs/문서명   plan/ · research/ · data/ · brand/ · 문서(md)
 ```
 
 - **작업은 기능 단위 브랜치에서만.** 기능 하나 = 브랜치 하나 = PR 하나. 이름은 영어 소문자, 단어 사이 `-`, 이름만 보고 어떤 기능인지 알 수 있게

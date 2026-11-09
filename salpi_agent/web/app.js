@@ -1046,6 +1046,11 @@ const martChange = (v) => (v == null ? "" : v > 0
   : v < 0 ? `<span class="mart-chg mart-down">2주 전보다 ▼${Math.abs(v).toFixed(1)}%</span>`
   : `<span class="mart-chg">2주 전과 같아요</span>`);
 
+// 최저가 회사의 온라인몰 검색 결과로 가는 바로가기 (그 회사에 몰이 없으면 몰 있는 회사 중 가장 싼 곳)
+const martShop = (s) => (!s ? "" : `<a class="mart-shop" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer"
+    title="${esc(s.chain)} 매장가 기준이에요. 온라인몰 가격은 다를 수 있어요">
+    ${s.lowest ? "" : `<small>온라인몰 있는 곳 중 가장 싼 ${esc(s.chain)} ${won(s.price)}</small>`}${esc(s.mall)}에서 보기 →</a>`);
+
 function martCard(x) {
   const one = x.chains.length === 1;   // 한 회사에서만 조사된 재료는 비교 없이
   const sub = [one ? "" : `보통 ${won(x.typical)}`, x.daegu ? `대구 매장 ${won(x.daegu.price)}` : ""].filter(Boolean).join(" · ");
@@ -1054,6 +1059,7 @@ function martCard(x) {
     <h3>${esc(x.name)}</h3>
     <p class="mart-low"><small>${one ? "파는 곳" : "가장 싼 곳"} · ${esc(x.low_chain)}</small><b>${won(x.low)}</b></p>
     <p class="mart-sub">${sub || "한 회사에서만 조사됐어요"}</p>
+    ${martShop(x.shop)}
     ${martChange(x.change_pct) || `<span class="mart-chg">2주 전 값 없음</span>`}
     ${one ? `<p class="mart-chains-none">회사별 비교 없음</p>` : `<details class="mart-chains"><summary>회사별 가격 ${x.chains.length}곳</summary>
       <ul>${x.chains.map((c) => `<li><span>${esc(c.chain)}<small>${esc(c.channel)}</small></span><b>${won(c.price)}</b>${
@@ -1084,7 +1090,7 @@ async function loadMart() {
   try { mart = await getJSON("/api/mart"); }
   catch (e) { $("#martBasis").textContent = "대형마트 판매가를 불러오지 못했어요"; $("#martGrid").innerHTML = `<p class="muted">${esc(e.message)}</p>`; return; }
   const up = mart.items.filter((x) => x.change_pct > 0).length;
-  $("#martBasis").textContent = `한국소비자원 참가격 · ${mmdd(mart.date)} 조사 (2주마다) · 음식 재료 ${mart.items.length}개 중 2주 새 오른 것 ${up}개`;
+  $("#martBasis").textContent = `한국소비자원 참가격 · ${mmdd(mart.date)} 조사 (2주마다) · 음식 재료 ${mart.items.length}개 중 2주 새 오른 것 ${up}개 · 바로가기는 그 마트 온라인몰 검색 결과(온라인 가격은 매장가와 다를 수 있어요)`;
   renderMart();
 }
 $("#martFilter").onclick = (e) => {

@@ -8,4 +8,5 @@
 | `raw/1103_at_wholesale_auction_by_origin_202504.csv` | aT 공영도매시장 산지별 경락 2025-04 |
 | `raw/1103_daegu_festival_data.csv` | 대구 축제 · 행사 |
 | `raw/1103_kbo_schedule_2026.csv` | 2026 KBO 경기 일정 (삼성라이온즈파크 수요 참고) |
+| `raw/1109_5y/` | 예측 학습용 5년 치 (2021-01 ~ 2026-11, 대구). `1109_price_daily_*.csv` 품목별 일별 도·소매가(aT perDay, 16품목) · `1109_wholesale_qty_daily.csv` 북부도매시장 품목별 하루 거래량(kg)·금액(aT 정산정보) · `1109_wholesale_closed_days.txt` 거래 없는 날 · `1109_weather_daegu_daily.csv` 기상청 ASOS 대구 일자료. 다시 받기: `scripts/` (node, .env 키 사용) |
 | `simulation/` | 가상 사장님 10명 6개월 시뮬레이션 · 세그먼트 분류 (자세한 내용은 `simulation/README.md`) |

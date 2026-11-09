@@ -558,6 +558,16 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .edit-table .qty-cell { display: flex; align-items: center; gap: 4px; } .edit-table .qty-cell input { width: 70px; }
 .edit-table .rc-item { min-width: 130px; } .edit-table .rc-name { min-width: 110px; }
 .rc-del { border: 0; background: none; color: var(--muted); font-size: 18px; }
+.receipt-edit.no-thumb { grid-template-columns: 1fr; }
+.receipt-thumb.no-photo { height: 150px; font-size: 12px; }
+.table-scroll { overflow-x: auto; }
+.rc-add { border: 1px dashed var(--border); background: #fff; border-radius: 8px; padding: 5px 12px; margin: 6px 0 4px; font-size: 13px; color: var(--ink); }
+.rc-add:hover { border-color: var(--accent); color: var(--accent); }
+/* 팝업에서 고치기: 사진은 스크롤해도 옆에 붙어 있게 */
+.rc-edit-view { grid-template-columns: 280px minmax(0, 1fr); }
+.rc-edit-view > a, .rc-edit-view > .no-photo { position: sticky; top: 0; }
+.rc-edit-view > a img { max-height: calc(100vh - 140px); object-fit: contain; background: #F3F1EC; }
+.no-photo small { color: var(--muted); }
 .receipt-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
 .btn { border: 1px solid var(--border); background: #fff; border-radius: 10px; padding: 8px 16px; font-weight: 700; }
 .btn.primary { background: var(--deep); color: #fff; border-color: var(--deep); }
@@ -598,6 +608,9 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .sub-h { font-size: 15px; margin: 16px 0 6px; }
 .receipt-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; }
 .rc-remove { border: 1px solid var(--border); background: #fff; border-radius: 8px; padding: 2px 8px; font-size: 12px; color: var(--up); }
+.rc-btns { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.rc-edit { border: 1px solid var(--accent); background: #fff; border-radius: 8px; padding: 2px 8px; font-size: 12px; font-weight: 700; color: var(--accent); }
+.rc-edit:hover { background: var(--accent); color: #fff; }
 
 /* 식봄 상품 카드 (재료 페이지 · 검색에서 씀) */
 .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px 14px; }
@@ -720,7 +733,7 @@ a.my-link { color: inherit; text-decoration: none; }
 .receipt-view { display: grid; grid-template-columns: 300px 1fr; gap: 18px; align-items: start; margin-top: 10px; }
 .receipt-view img { width: 100%; border-radius: 10px; border: 1px solid var(--border); display: block; }
 .receipt-view td { color: var(--ink); }
-.no-photo { height: 200px; display: flex; align-items: center; justify-content: center; background: #F3F1EC; border-radius: 10px; color: var(--muted); }
+.no-photo { height: 200px; display: flex; flex-direction: column; gap: 4px; align-items: center; justify-content: center; text-align: center; background: #F3F1EC; border-radius: 10px; color: var(--muted); }
 .rc-open { border: 0; background: none; padding: 0; text-align: left; font: inherit; color: var(--ink); cursor: pointer; }
 .rc-open i { font-style: normal; color: var(--accent); font-size: 12px; margin-left: 4px; }
 .rc-open:hover { color: var(--accent); }
@@ -768,7 +781,9 @@ a.my-link { color: inherit; text-decoration: none; }
   .store-grid { grid-template-columns: 1fr; }
   .detail, .store-grid, #store .store-grid { grid-template-columns: 1fr; }
   .demo-receipts { grid-template-columns: repeat(3, 1fr); }
-  .receipt-view { grid-template-columns: 1fr; }
+  .receipt-view, .rc-edit-view { grid-template-columns: 1fr; }
+  .rc-edit-view > a, .rc-edit-view > .no-photo { position: static; }
+  .rc-edit-view > a img { max-height: 260px; }
   .demand-grid, #store .order-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .forecast-card { grid-template-columns: 1fr; }
   .mart-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }

@@ -59,6 +59,18 @@ def insert(table, rows):
         raise ApiError(f"Supabase {table} 저장 실패 ({code})") from None
 
 
+def update(table, values, **params):
+    """조건(params)에 맞는 줄의 값을 바꿈. 예: update("purchases", {"supplier": "마트"}, id="eq.3")"""
+    base, headers = _base()
+    try:
+        r = requests.patch(base + table, params=params, json=values, timeout=20, headers={**headers, "Prefer": "return=representation"})
+        r.raise_for_status()
+        return r.json()
+    except requests.RequestException as e:
+        code = getattr(getattr(e, "response", None), "status_code", None) or type(e).__name__
+        raise ApiError(f"Supabase {table} 수정 실패 ({code})") from None
+
+
 def delete(table, **params):
     base, headers = _base()
     try:

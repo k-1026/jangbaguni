@@ -828,63 +828,77 @@ function resetReceipt() {
   $("#receiptFile").value = "";
 }
 
-function renderReceiptEdit() {
-  const d = receipt.data;
+// 확인 · 수정 표: 새로 읽은 영수증(아래 화면)과 저장한 영수증 고치기(팝업)가 같이 씀
+// d = { date, supplier, items[{raw_name, item_id, base_unit, qty_base, amount, qty}], items_list, total_matches, ... }
+function receiptEditor(box, d, { image, thumb = true, badge, saveLabel = "확인했어요, 저장", onSave, onCancel }) {
   const opts = (sel) => `<option value="">재료 아님</option>` + d.items_list.map((i) =>
     `<option value="${i.id}" ${i.id === sel ? "selected" : ""}>${esc(i.name)}</option>`).join("");
   const unitOf = (id) => d.items_list.find((i) => i.id === +id)?.base_unit || "";
-  $("#receiptResult").innerHTML = `
-    <div class="receipt-edit">
-      <img class="receipt-thumb" src="${receipt.image}" alt="올린 영수증">
+  const row = (x, i) => `<tr data-i="${i}">
+        <td><input class="rc-name" value="${esc(x.raw_name || "")}" aria-label="영수증 품목"></td>
+        <td><select class="rc-item" aria-label="재료">${opts(x.item_id)}</select></td>
+        <td class="qty-cell"><input class="rc-qty" type="number" step="0.1" min="0" value="${x.qty_base ?? ""}" aria-label="양"><span class="rc-unit">${esc(x.base_unit || "")}</span></td>
+        <td><input class="rc-amount" type="number" min="0" value="${x.amount ?? ""}" aria-label="금액"></td>
+        <td><button class="rc-del" type="button" title="이 줄 빼기">×</button></td></tr>`;
+  box.innerHTML = `
+    <div class="receipt-edit ${thumb ? "" : "no-thumb"}">
+      ${thumb ? (image ? `<img class="receipt-thumb" src="${esc(image)}" alt="올린 영수증">` : `<div class="receipt-thumb no-photo">사진 없음</div>`) : ""}
       <div>
-        <span class="badge">살피가 읽은 내용 · 틀린 곳은 고쳐 주세요</span>
+        <span class="badge">${badge || "살피가 읽은 내용 · 틀린 곳은 고쳐 주세요"}</span>
         <div class="receipt-meta">
-          <label>날짜 <input type="date" id="rcDate" value="${esc(d.date || "")}"></label>
-          <label>판매처 <input id="rcSupplier" value="${esc(d.supplier ? supplierName(d.supplier) : "")}"></label>
+          <label>날짜 <input type="date" class="rc-date" value="${esc(d.date || "")}"></label>
+          <label>판매처 <input class="rc-supplier" value="${esc(d.supplier ? supplierName(d.supplier) : "")}"></label>
         </div>
-        ${d.total_matches ? "" : `<p class="rc-warn">줄 금액을 더하면 ${won(d.line_sum)}인데 합계는 ${won(d.total)}이에요. 빠진 줄이 없는지 봐 주세요.</p>`}
+        ${d.total_matches === false ? `<p class="rc-warn">줄 금액을 더하면 ${won(d.line_sum)}인데 합계는 ${won(d.total)}이에요. 빠진 줄이 없는지 봐 주세요.</p>` : ""}
+        ${d.skipped_pages ? `<p class="rc-warn">PDF가 길어서 앞 ${PDF_PAGES}쪽만 읽었어요 (${d.skipped_pages}쪽 빠짐). 나머지 줄은 아래 '줄 더하기'로 넣어 주세요.</p>` : ""}
       </div>
     </div>
-    <table class="price-table edit-table">
+    <div class="table-scroll"><table class="price-table edit-table">
       <thead><tr><th>영수증 품목</th><th>재료</th><th>양</th><th>금액(원)</th><th></th></tr></thead>
-      <tbody>${d.items.map((x, i) => `<tr data-i="${i}">
-        <td><input class="rc-name" value="${esc(x.raw_name)}"></td>
-        <td><select class="rc-item">${opts(x.item_id)}</select></td>
-        <td class="qty-cell"><input class="rc-qty" type="number" step="0.1" min="0" value="${x.qty_base ?? ""}"><span class="rc-unit">${esc(x.base_unit || "")}</span></td>
-        <td><input class="rc-amount" type="number" min="0" value="${x.amount ?? ""}"></td>
-        <td><button class="rc-del" title="이 줄 빼기">×</button></td></tr>`).join("")}</tbody>
-    </table>
+      <tbody>${d.items.map(row).join("")}</tbody>
+    </table></div>
+    <button class="rc-add" type="button">+ 줄 더하기</button>
     <p class="muted small">양은 재료 기준 단위(kg · 모)로 바꾼 전체 양이에요. 예: 깐양파 15kg 1망 → 15</p>
-    <div class="receipt-actions"><button class="btn" id="rcCancel">취소</button><button class="btn primary" id="rcSave">확인했어요, 저장</button></div>`;
-  const tb = $("#receiptResult tbody");
+    <div class="receipt-actions"><button class="btn rc-cancel" type="button">취소</button><button class="btn primary rc-save" type="button">${saveLabel}</button></div>`;
+  const tb = box.querySelector("tbody");
   tb.onchange = (e) => {
     if (e.target.classList.contains("rc-item")) e.target.closest("tr").querySelector(".rc-unit").textContent = unitOf(e.target.value);
   };
   tb.onclick = (e) => { if (e.target.classList.contains("rc-del")) e.target.closest("tr").remove(); };
-  $("#rcCancel").onclick = resetReceipt;
-  $("#rcSave").onclick = saveReceipt;
+  box.querySelector(".rc-add").onclick = () => {
+    tb.insertAdjacentHTML("beforeend", row({}, -1));
+    tb.lastElementChild.querySelector(".rc-name").focus();
+  };
+  box.querySelector(".rc-cancel").onclick = onCancel;
+  const btn = box.querySelector(".rc-save");
+  btn.onclick = async () => {
+    const items = [...tb.querySelectorAll("tr")].map((tr) => {
+      const orig = d.items[+tr.dataset.i] || {};
+      const itemId = tr.querySelector(".rc-item").value;
+      return { raw_name: tr.querySelector(".rc-name").value.trim(), qty: orig.qty ?? null, item_id: itemId ? +itemId : null,
+               qty_base: parseFloat(tr.querySelector(".rc-qty").value) || null, amount: parseFloat(tr.querySelector(".rc-amount").value) || null };
+    });
+    btn.disabled = true; btn.textContent = "저장하는 중";
+    try {
+      await onSave({ date: box.querySelector(".rc-date").value || null, supplier: box.querySelector(".rc-supplier").value || null, items });
+    } catch (e) {
+      btn.disabled = false; btn.textContent = saveLabel;
+      alert(e.message);
+    }
+  };
 }
 
-async function saveReceipt() {
-  const btn = $("#rcSave");
-  const items = [...document.querySelectorAll("#receiptResult tbody tr")].map((tr) => {
-    const orig = receipt.data.items[+tr.dataset.i];
-    const itemId = tr.querySelector(".rc-item").value;
-    return { raw_name: tr.querySelector(".rc-name").value.trim(), qty: orig.qty, item_id: itemId ? +itemId : null,
-             qty_base: parseFloat(tr.querySelector(".rc-qty").value) || null, amount: parseFloat(tr.querySelector(".rc-amount").value) || null };
+function renderReceiptEdit() {
+  receiptEditor($("#receiptResult"), receipt.data, {
+    image: receipt.image, onCancel: resetReceipt,
+    onSave: async (v) => {
+      const r = await sendJSON("/api/receipt/save", "POST", { image: receipt.image, mime: receipt.mime, ...v });
+      resetReceipt();
+      $("#receiptResult").innerHTML = `<p class="ok">${mmdd(r.date)} 영수증 ${r.saved_items}줄을 저장했어요. 위 메뉴별 원가율이 새로 계산됐어요.</p>`;
+      renderCosts(r, true);
+      loadCosts(false);
+    },
   });
-  btn.disabled = true; btn.textContent = "저장하는 중";
-  try {
-    const r = await sendJSON("/api/receipt/save", "POST", { image: receipt.image, mime: receipt.mime,
-      date: $("#rcDate").value || null, supplier: $("#rcSupplier").value || null, items });
-    resetReceipt();
-    $("#receiptResult").innerHTML = `<p class="ok">${mmdd(r.date)} 영수증 ${r.saved_items}줄을 저장했어요. 아래 메뉴별 원가율이 새로 계산됐어요.</p>`;
-    renderCosts(r, true);
-    loadCosts(false);
-  } catch (e) {
-    btn.disabled = false; btn.textContent = "확인했어요, 저장";
-    alert(e.message);
-  }
 }
 
 const ratioCls = (v) => (v == null ? "" : v > 35 ? "up" : v > 30 ? "warnc" : "down");
@@ -926,7 +940,8 @@ function renderCosts(r, withChange) {
 function receiptList(list) {
   return `<h3 class="sub-h">최근 영수증</h3><ul class="ctx-list receipt-list">${list.map((p) => `<li>
     <button class="rc-open" data-rid="${p.id}" title="사진과 품목 보기">${mmdd(p.purchased_on)} · ${esc(supplierName(p.supplier))} · ${p.items}줄 · ${won(p.total_amount)} <i>보기 ›</i></button>
-    ${p.source === "ocr" ? `<button class="rc-remove" data-id="${p.id}">지우기</button>` : `<small>기본 데이터</small>`}</li>`).join("")}</ul>`;
+    <span class="rc-btns"><button class="rc-edit" data-eid="${p.id}" type="button">수정하기</button>
+    ${p.source === "ocr" ? `<button class="rc-remove" data-id="${p.id}" type="button">지우기</button>` : `<small>기본 데이터</small>`}</span></li>`).join("")}</ul>`;
 }
 
 async function loadCosts(full = true) {
@@ -1002,6 +1017,8 @@ $("#cameraModal").onclick = (e) => { if (e.target.id === "cameraModal") closeCam
 $("#receiptList").onclick = async (e) => {
   const o = e.target.closest(".rc-open");
   if (o) return openReceipt(o.dataset.rid);
+  const ed = e.target.closest(".rc-edit");
+  if (ed) return openReceipt(ed.dataset.eid, true);
   const b = e.target.closest(".rc-remove");
   if (!b || !confirm("이 영수증을 지울까요? 원가율이 다시 계산돼요.")) return;
   try { renderCosts(await sendJSON(`/api/receipt/${b.dataset.id}`, "DELETE"), false); loadCosts(false); }
@@ -1470,26 +1487,59 @@ if (location.hash === "#rise") setTimeout(() => goSlide(1, "instant"), 4000);   
 // ---------------------------------------------------------------
 // 영수증 한 장 자세히 (사진 + 품목) — '최근 영수증' 목록 · 마이페이지 '나의 영수증'에서 엶
 // ---------------------------------------------------------------
-async function openReceipt(id) {
-  const modal = $("#receiptModal");
-  $("#receiptModalBody").innerHTML = `<div class="reading"><div class="spinner"></div><b>영수증을 불러오는 중이에요</b></div>`;
+async function openReceipt(id, editing = false) {
+  const modal = $("#receiptModal"), box = $("#receiptModalBody");
+  box.innerHTML = `<div class="reading"><div class="spinner"></div><b>영수증을 불러오는 중이에요</b></div>`;
   modal.hidden = false;
   let d;
   try { d = await getJSON(`/api/receipt/${id}`); }
-  catch (e) { $("#receiptModalBody").innerHTML = `<p class="rc-warn">${esc(e.message)}</p>`; return; }
+  catch (e) { box.innerHTML = `<p class="rc-warn">${esc(e.message)}</p>`; return; }
+  (editing ? editReceiptView : showReceiptView)(id, d);
+}
+
+const receiptPhoto = (d) => (d.image_url
+  ? `<a href="${esc(d.image_url)}" target="_blank" rel="noopener" title="크게 보기"><img src="${esc(d.image_url)}" alt="영수증 사진"></a>`
+  : `<div class="no-photo">사진이 없어요<br><small>품목만 고쳐도 돼요</small></div>`);
+
+function showReceiptView(id, d) {
   const qtyTxt = (x) => (x.unit ? qty(x.qty_base, x.unit) : "-");
   $("#receiptModalBody").innerHTML = `
     <h3>${mmdd(d.purchased_on)} · ${esc(supplierName(d.supplier))}</h3>
     <p class="muted small">${d.source === "ocr" ? "영수증 읽기로 저장" : "기본 데이터"} · 합계 ${won(d.total_amount)}</p>
     <div class="receipt-view">
-      ${d.image_url ? `<a href="${esc(d.image_url)}" target="_blank" rel="noopener" title="크게 보기"><img src="${esc(d.image_url)}" alt="영수증 사진"></a>`
-                    : `<div class="no-photo">사진이 없어요</div>`}
-      <table class="price-table">
-        <thead><tr><th>영수증 품목</th><th>재료</th><th>양</th><th>금액</th><th>kg·모당</th></tr></thead>
-        <tbody>${d.items.map((x) => `<tr><td>${esc(x.raw_name)}</td><td>${esc(x.item || "재료 아님")}</td><td>${qtyTxt(x)}</td>
-          <td class="price">${won(x.amount)}</td><td>${x.unit_price ? won(x.unit_price) : "-"}</td></tr>`).join("")}</tbody>
-      </table>
+      ${receiptPhoto(d)}
+      <div>
+        <table class="price-table">
+          <thead><tr><th>영수증 품목</th><th>재료</th><th>양</th><th>금액</th><th>kg·모당</th></tr></thead>
+          <tbody>${d.items.map((x) => `<tr><td>${esc(x.raw_name)}</td><td>${esc(x.item || "재료 아님")}</td><td>${qtyTxt(x)}</td>
+            <td class="price">${won(x.amount)}</td><td>${x.unit_price ? won(x.unit_price) : "-"}</td></tr>`).join("")}</tbody>
+        </table>
+        <div class="receipt-actions"><button class="btn primary" id="rcViewEdit" type="button">수정하기</button></div>
+      </div>
     </div>`;
+  $("#rcViewEdit").onclick = () => editReceiptView(id, d);
+}
+
+// 저장한 영수증 고치기: 왼쪽에 사진(있으면)을 띄워 두고 오른쪽 표에서 바로 고침
+function editReceiptView(id, d) {
+  $("#receiptModalBody").innerHTML = `<h3>영수증 고치기</h3>
+    <p class="muted small">${d.source === "ocr" ? "영수증 읽기로 저장" : "기본 데이터"} · 사진과 비교하면서 틀린 곳을 고쳐 주세요</p>
+    <div class="receipt-view rc-edit-view">${receiptPhoto(d)}<div id="rcModalEditor"></div></div>`;
+  const data = {
+    date: d.purchased_on, supplier: d.supplier, items_list: d.items_list,
+    items: d.items.map((x) => ({ raw_name: x.raw_name, item_id: x.item_id, base_unit: x.unit, qty_base: x.qty_base, amount: x.amount })),
+  };
+  receiptEditor($("#rcModalEditor"), data, {
+    thumb: false, badge: "저장한 내용 · 고치고 저장하면 원가율을 다시 계산해요", saveLabel: "고친 내용 저장",
+    onCancel: () => showReceiptView(id, d),
+    onSave: async (v) => {
+      const r = await sendJSON(`/api/receipt/${id}`, "PUT", v);
+      closeReceipt();
+      $("#receiptResult").innerHTML = `<p class="ok">영수증을 고쳤어요 (${r.saved_items}줄). 위 메뉴별 원가율이 새로 계산됐어요.</p>`;
+      renderCosts(r, true);
+      loadCosts(false);
+    },
+  });
 }
 const closeReceipt = () => { $("#receiptModal").hidden = true; };
 $("#receiptModalClose").onclick = closeReceipt;

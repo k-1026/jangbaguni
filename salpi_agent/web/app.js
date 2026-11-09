@@ -967,6 +967,12 @@ function renderCosts(r, withChange) {
           <span class="cost-verdict">${esc(m.verdict)}</span>${ch}
         </div>
         <div class="cost-right">
+          ${m.swap ? `<div class="cost-swap" role="note">
+            <span class="swap-label">바꿔 볼 재료</span>
+            <p class="swap-pair"><b class="swap-from">${esc(m.swap.from)}</b><i aria-hidden="true">→</i><b class="swap-to">${esc(m.swap.to)}</b></p>
+            <p class="swap-text">${esc(m.swap.text)}</p>
+            <p class="swap-reason"><span aria-hidden="true">💡</span>${esc(m.swap.reason)}</p>
+          </div>` : ""}
           ${v == null ? "" : `<p class="ratio-label"><span><i class="k-cost"></i>재료비</span><span><i class="k-keep"></i>남는 돈</span><small>판매가 ${won(m.price)}을 100으로 볼 때</small></p>
           <div class="split-bar" role="img" aria-label="판매가 ${won(m.price)} 중 재료비 ${v}%, 남는 돈 ${+(100 - v).toFixed(1)}%">
             <i class="part-cost" style="width:${Math.max(4, Math.min(100, v))}%">${v}%</i>
@@ -977,7 +983,8 @@ function renderCosts(r, withChange) {
             <div><dt>1인분 재료비</dt><dd>${won(m.cost_per_serving)}</dd></div>
             <div><dt>남는 돈</dt><dd>${won(m.margin)}</dd></div>
           </dl>
-          ${m.tips.length ? `<ul class="cost-tips">${m.tips.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}
+          ${(() => { const rest = m.tips.filter((t) => t !== m.swap?.text && t !== m.swap?.reason);
+            return rest.length ? `<ul class="cost-tips">${rest.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : ""; })()}
         </div>
       </article>`;
     }).join("")}</div>

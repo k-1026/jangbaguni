@@ -610,6 +610,17 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .cost-tips { margin: 10px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
 .cost-tips li { position: relative; padding-left: 16px; font-size: 13px; color: #4C524E; line-height: 1.5; }
 .cost-tips li::before { content: "💡"; position: absolute; left: 0; top: 0; font-size: 11px; }
+/* 대체 재료 제안: '앞다리 → 뒷다리'를 크게 */
+.cost-swap { margin: 0 0 12px; padding: 12px 14px; border-radius: 12px; background: #FFF4EC; border: 1px solid #F6C9A9; }
+.swap-label { font-size: 12px; font-weight: 700; color: var(--accent); }
+.swap-pair { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 4px 0 4px; font-size: 19px; line-height: 1.3; }
+.swap-pair b { font-weight: 800; }
+.swap-from { color: #6B716D; text-decoration: line-through; text-decoration-color: rgba(0, 0, 0, .25); }
+.swap-to { color: var(--deep, var(--ink)); padding: 0 6px; border-radius: 6px; background: #fff; box-shadow: 0 0 0 2px var(--accent) inset; }
+.swap-pair i { font-style: normal; font-size: 22px; color: var(--accent); }
+.swap-text { margin: 2px 0 0; font-size: 14px; font-weight: 700; color: var(--ink); line-height: 1.45; }
+.swap-reason { display: flex; gap: 5px; margin: 6px 0 0; font-size: 13px; color: #4C524E; line-height: 1.5; }
+.swap-reason span { flex-shrink: 0; font-size: 11px; line-height: 1.9; }
 #receiptList { margin-top: 18px; }
 .sub-h { font-size: 15px; margin: 16px 0 6px; }
 .receipt-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; }

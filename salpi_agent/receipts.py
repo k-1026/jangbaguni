@@ -238,17 +238,21 @@ def cost_report(store_id=db.DEMO_STORE):
             verdict = "빠듯해요"
         else:
             verdict = "높아요"
-        tips = []
+        tips, swap = [], None
         if ratio is not None and ratio > TARGET_RATIO:
             tips.append(f"판매가를 {math.ceil(cost / (TARGET_RATIO / 100) / 500) * 500:,}원으로 올리면 원가율 {TARGET_RATIO}% 안쪽이에요")
         if riser:
-            tips.append(f"{_josa(riser['item'], '이', '가')} {riser['since'][5:].replace('-', '/')} 이후 {riser['change_pct']:+.0f}% 올라 "
-                        f"1인분 재료비가 {riser['cost_up']:,}원 늘었어요")
+            reason = (f"{_josa(riser['item'], '이', '가')} {riser['since'][5:].replace('-', '/')} 이후 {riser['change_pct']:+.0f}% 올라 "
+                      f"1인분 재료비가 {riser['cost_up']:,}원 늘었어요")
+            tips.append(reason)
             if riser["item"] in SUBSTITUTES and ((ratio or 0) > TARGET_RATIO or (riser["change_pct"] or 0) >= 20):
-                tips.append(f"{riser['item']} 일부를 {_josa(SUBSTITUTES[riser['item']], '으로', '로')} 바꾸는 걸 검토해 보세요")
+                text = f"{riser['item']} 일부를 {_josa(SUBSTITUTES[riser['item']], '으로', '로')} 바꾸는 걸 검토해 보세요"
+                tips.append(text)
+                # 화면에서 카드 맨 위에 크게: 제안 문장 + 근거(오른 재료 · 1인분 재료비 증가)
+                swap = {"from": riser["item"], "to": SUBSTITUTES[riser["item"]], "text": text, "reason": reason}
         out.append({"menu_id": m["menu_id"], "menu": m["menu_name"], "price": m["price"], "cost_per_serving": round(cost),
                     "cost_ratio_pct": ratio, "margin": round(m["price"] - cost), "verdict": verdict,
-                    "items_without_price": m["items_without_price"], "top_items": parts[:3], "riser": riser, "tips": tips})
+                    "items_without_price": m["items_without_price"], "top_items": parts[:3], "riser": riser, "tips": tips, "swap": swap})
     return {"target_ratio_pct": TARGET_RATIO, "menus": out,
             "method": "재료마다 가장 최근 영수증 단가 × 1인분 양(손질 손실 포함). 판매가 제안은 500원 단위 올림"}
 

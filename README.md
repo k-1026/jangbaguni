@@ -1,3 +1,5 @@
+PPT : https://www.canva.com/design/DAHaCOrOpjk/eOPsCvl-UyQMCbCMmQMd2Q/edit
+
 ## 📌 팀원별 실습 결과물 안내 (강사님 참고)
 
 본 Repository는 **장바구니 팀의 공통 프로젝트 및 통합 작업 공간**입니다.

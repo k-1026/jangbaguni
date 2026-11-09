@@ -1303,9 +1303,7 @@ $("#chatForm").addEventListener("submit", (e) => { e.preventDefault(); const t =
 // ---------------------------------------------------------------
 // 검색: 글자가 이름 어디에 들어 있든 찾음 ("토" → 토마토, 방울토마토 상품). 띄어쓰기와 대소문자는 무시
 // ---------------------------------------------------------------
-const searchInput = $("#searchInput"), searchList = $("#searchList");
 const squash = (s) => String(s ?? "").toLowerCase().replace(/\s/g, "");
-let searchHits = [], searchActive = -1;
 
 function markHit(text, word) {
   const at = String(text).toLowerCase().indexOf(word.toLowerCase());
@@ -1327,56 +1325,77 @@ function findAll(word) {
   return { items, goods };
 }
 
-function closeSearch() {
-  searchList.hidden = true;
-  searchActive = -1;
-  searchInput.setAttribute("aria-expanded", "false");
-  searchInput.removeAttribute("aria-activedescendant");
-}
+// 검색창 하나를 연결: 위쪽 메뉴 검색창과 첫 화면 검색창이 같은 결과를 보여 줌
+function setupSearch(searchInput, searchList, idp) {
+  const box = searchInput.closest(".search");
+  let searchHits = [], searchActive = -1;
 
-function renderSearch() {
-  const word = searchInput.value.trim();
-  if (!squash(word)) { closeSearch(); return; }
-  const { items, goods } = findAll(word);
-  searchHits = [...items, ...goods];
-  searchActive = -1;
-  searchInput.removeAttribute("aria-activedescendant");
-  const hit = (h, i) => `<a class="search-hit" id="hit${i}" role="option" aria-selected="false" href="${h.url ? esc(h.url) : `/?item=${encodeURIComponent(h.name)}`}"
-    ${h.url ? 'target="_blank" rel="noopener"' : ""}><span>${markHit(h.name, word)}</span><small>${esc(h.note)}</small></a>`;
-  searchList.innerHTML = searchHits.length
-    ? (items.length ? `<p class="search-group">야채 시세 ${items.length}개</p>${items.map((h, i) => hit(h, i)).join("")}` : "")
-      + (goods.length ? `<p class="search-group">식봄 상품 ${goods.length}개</p>${goods.map((h, i) => hit(h, items.length + i)).join("")}` : "")
-    : `<p class="search-empty">${overview.length ? `'${esc(word)}'이(가) 들어간 재료나 상품이 없어요` : "시세를 불러오는 중이에요"}</p>`;
-  searchList.hidden = false;
-  searchInput.setAttribute("aria-expanded", "true");
-}
-
-function moveSearch(step) {
-  if (!searchHits.length) return;
-  $(`#hit${searchActive}`)?.classList.remove("active");
-  $(`#hit${searchActive}`)?.setAttribute("aria-selected", "false");
-  searchActive = (searchActive + step + searchHits.length) % searchHits.length;
-  const el = $(`#hit${searchActive}`);
-  el.classList.add("active");
-  el.setAttribute("aria-selected", "true");
-  el.scrollIntoView({ block: "nearest" });
-  searchInput.setAttribute("aria-activedescendant", el.id);
-}
-
-searchInput.addEventListener("input", renderSearch);
-searchInput.addEventListener("focus", renderSearch);
-searchInput.addEventListener("keydown", (e) => {
-  if (e.isComposing) return;   // 한글 조합 중에는 키 동작 없음
-  if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); moveSearch(e.key === "ArrowDown" ? 1 : -1); }
-  if (e.key === "Escape") closeSearch();
-  if (e.key === "Enter" && searchHits.length && !searchList.hidden) {
-    e.preventDefault();
-    $(`#hit${Math.max(searchActive, 0)}`).click();
+  function closeSearch() {
+    searchList.hidden = true;
+    searchActive = -1;
+    searchInput.setAttribute("aria-expanded", "false");
+    searchInput.removeAttribute("aria-activedescendant");
   }
-});
-searchList.addEventListener("click", (e) => { if (e.target.closest(".search-hit")) closeSearch(); });
-document.addEventListener("click", (e) => { if (!e.target.closest(".search")) closeSearch(); });
-document.addEventListener("focusin", (e) => { if (!e.target.closest(".search")) closeSearch(); });
+
+  function renderSearch() {
+    const word = searchInput.value.trim();
+    if (!squash(word)) { closeSearch(); return; }
+    const { items, goods } = findAll(word);
+    searchHits = [...items, ...goods];
+    searchActive = -1;
+    searchInput.removeAttribute("aria-activedescendant");
+    const hit = (h, i) => `<a class="search-hit" id="${idp}${i}" role="option" aria-selected="false" href="${h.url ? esc(h.url) : `/?item=${encodeURIComponent(h.name)}`}"
+      ${h.url ? 'target="_blank" rel="noopener"' : ""}><span>${markHit(h.name, word)}</span><small>${esc(h.note)}</small></a>`;
+    searchList.innerHTML = searchHits.length
+      ? (items.length ? `<p class="search-group">야채 시세 ${items.length}개</p>${items.map((h, i) => hit(h, i)).join("")}` : "")
+        + (goods.length ? `<p class="search-group">식봄 상품 ${goods.length}개</p>${goods.map((h, i) => hit(h, items.length + i)).join("")}` : "")
+      : `<p class="search-empty">${overview.length ? `'${esc(word)}'이(가) 들어간 재료나 상품이 없어요` : "시세를 불러오는 중이에요"}</p>`;
+    searchList.hidden = false;
+    searchInput.setAttribute("aria-expanded", "true");
+  }
+
+  function moveSearch(step) {
+    if (!searchHits.length) return;
+    $(`#${idp}${searchActive}`)?.classList.remove("active");
+    $(`#${idp}${searchActive}`)?.setAttribute("aria-selected", "false");
+    searchActive = (searchActive + step + searchHits.length) % searchHits.length;
+    const el = $(`#${idp}${searchActive}`);
+    el.classList.add("active");
+    el.setAttribute("aria-selected", "true");
+    el.scrollIntoView({ block: "nearest" });
+    searchInput.setAttribute("aria-activedescendant", el.id);
+  }
+
+  // 검색 버튼: 고른(없으면 첫 번째) 결과로 이동. 결과가 없으면 목록 · 안내만 보여 줌
+  function goFirst() {
+    const keep = searchActive;
+    renderSearch();
+    if (searchHits.length) $(`#${idp}${Math.max(keep, 0)}`)?.click();
+    else searchInput.focus();
+  }
+
+  searchInput.addEventListener("input", renderSearch);
+  searchInput.addEventListener("focus", renderSearch);
+  searchInput.addEventListener("keydown", (e) => {
+    if (e.isComposing) return;   // 한글 조합 중에는 키 동작 없음
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); moveSearch(e.key === "ArrowDown" ? 1 : -1); }
+    if (e.key === "Escape") closeSearch();
+    if (e.key === "Enter" && searchHits.length && !searchList.hidden) {
+      e.preventDefault();
+      $(`#${idp}${Math.max(searchActive, 0)}`).click();
+    }
+  });
+  searchList.addEventListener("click", (e) => { if (e.target.closest(".search-hit")) closeSearch(); });
+  document.addEventListener("click", (e) => { if (!box.contains(e.target)) closeSearch(); });
+  document.addEventListener("focusin", (e) => { if (!box.contains(e.target)) closeSearch(); });
+  return { goFirst };
+}
+
+setupSearch($("#searchInput"), $("#searchList"), "hit");
+if ($("#heroSearchInput")) {
+  const heroSearch = setupSearch($("#heroSearchInput"), $("#heroSearchList"), "heroHit");
+  $("#heroSearchBtn").addEventListener("click", heroSearch.goFirst);
+}
 
 // ---------------------------------------------------------------
 // 알림톡 시연: 세그먼트별 메시지 (실제 발송 없음). 시세 문장은 오늘 값, 나머지는 예시 문장

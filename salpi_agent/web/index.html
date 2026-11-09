@@ -120,13 +120,13 @@
   <section class="wrap section store-only" id="receipt">
     <div class="section-head">
       <h2>영수증 분석</h2>
-      <p class="muted">영수증 사진을 올리면 살피가 품목 · 금액을 읽어요. 확인하고 저장하면 메뉴별 원가율을 바로 다시 계산해요.</p>
+      <p class="muted">영수증 사진이나 PDF(거래명세서 등)를 올리면 살피가 품목 · 금액을 읽어요. 확인하고 저장하면 메뉴별 원가율을 바로 다시 계산해요.</p>
     </div>
     <div class="card" id="receiptCard">
       <div id="receiptStart">
         <div class="upload-btns">
           <button class="upload-btn" id="cameraBtn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>카메라로 찍기</button>
-          <label class="upload-btn"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-5-5-9 8"/></svg>사진첩에서 고르기<input type="file" id="receiptFile" accept="image/*" hidden></label>
+          <label class="upload-btn"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-5-5-9 8"/></svg>사진 · PDF 고르기<input type="file" id="receiptFile" accept="image/*,application/pdf,.pdf" hidden></label>
         </div>
         <p class="muted small">사진이 없으면 아래 예시 영수증을 눌러 보세요</p>
         <div class="demo-receipts" id="demoReceipts"></div>

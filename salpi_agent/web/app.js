@@ -806,14 +806,61 @@ function shrink(blob) {
   });
 }
 
+// PDF 영수증 · 명세서: 앞 3쪽까지 그림으로 그려 위아래로 이어 붙임 (pdf.js는 PDF를 고를 때만 불러옴)
+const PDF_PAGES = 3;
+let pdfLib = null;
+function loadPdfLib() {
+  if (pdfLib) return pdfLib;
+  pdfLib = new Promise((resolve, reject) => {
+    const sc = document.createElement("script");
+    sc.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+    sc.onload = () => {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      resolve(window.pdfjsLib);
+    };
+    sc.onerror = () => { pdfLib = null; reject(new Error("PDF를 여는 도구를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.")); };
+    document.head.appendChild(sc);
+  });
+  return pdfLib;
+}
+const isPdf = (blob) => blob.type === "application/pdf" || /\.pdf$/i.test(blob.name || "");
+async function pdfToImage(blob) {
+  const lib = await loadPdfLib();
+  let doc;
+  try { doc = await lib.getDocument({ data: await blob.arrayBuffer() }).promise; }
+  catch (e) { throw new Error(e.name === "PasswordException" ? "비밀번호가 걸린 PDF는 열 수 없어요" : "PDF를 열지 못했어요"); }
+  const pages = [];
+  for (let n = 1; n <= Math.min(doc.numPages, PDF_PAGES); n++) {
+    const page = await doc.getPage(n);
+    const base = page.getViewport({ scale: 1 });
+    const vp = page.getViewport({ scale: Math.min(3, 1200 / base.width) });   // 한 쪽 너비 1200px
+    const c = document.createElement("canvas");
+    c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+    const g = c.getContext("2d");
+    g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height);
+    await page.render({ canvasContext: g, viewport: vp }).promise;
+    pages.push(c);
+  }
+  const out = document.createElement("canvas");
+  out.width = Math.max(...pages.map((c) => c.width));
+  out.height = pages.reduce((h, c) => h + c.height, 0);
+  const g = out.getContext("2d");
+  g.fillStyle = "#fff"; g.fillRect(0, 0, out.width, out.height);
+  pages.reduce((y, c) => (g.drawImage(c, 0, y), y + c.height), 0);
+  return { image: out.toDataURL("image/jpeg", 0.85), skipped: Math.max(0, doc.numPages - PDF_PAGES) };
+}
+
 async function readReceipt(blob) {
   const box = $("#receiptResult");
   $("#receiptStart").hidden = true;
   box.innerHTML = `<div class="reading"><div class="spinner"></div><b>살피가 영수증을 읽는 중이에요</b><p class="muted">10~30초쯤 걸려요</p></div>`;
   try {
-    const image = await shrink(blob);
+    let image, skipped = 0;
+    if (isPdf(blob)) ({ image, skipped } = await pdfToImage(blob));
+    else image = await shrink(blob);
     receipt = { image, mime: "image/jpeg" };
     receipt.data = await sendJSON("/api/receipt/read", "POST", { image, mime: "image/jpeg" });
+    receipt.data.skipped_pages = skipped;
     renderReceiptEdit();
   } catch (e) {
     box.innerHTML = `<p class="rc-warn">${esc(e.message)}</p><button class="btn" id="receiptAgain">다시 하기</button>`;

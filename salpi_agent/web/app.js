@@ -57,20 +57,15 @@ async function loadOverview(attempt = 1) {
 
   const up = overview.filter((r) => (r.wholesale_change_pct ?? 0) >= 3);
   const down = overview.filter((r) => (r.wholesale_change_pct ?? 0) <= -3);
-  const rising = overview.filter((r) => expOf(r) >= 2);
-  const top = [...overview].sort((a, b) => (b.wholesale_change_pct ?? -999) - (a.wholesale_change_pct ?? -999))[0];
   const week = (r) => r.wholesale_change_pct;
   summaryLists = {
     up: [...up].sort((a, b) => week(b) - week(a)).map((r) => [r.item, week(r)]),
     down: [...down].sort((a, b) => week(a) - week(b)).map((r) => [r.item, week(r)]),
-    rising: [...rising].sort((a, b) => expOf(b) - expOf(a)).map((r) => [r.item, expOf(r)]),
   };
   const chip = (key, tone, count, label) => `<button class="chip ${tone}" type="button" data-list="${key}" aria-expanded="false" aria-controls="summaryList-${key}"><b>${count}개</b><small>${label}</small></button>`;
   $("#summary").innerHTML = `
     ${chip("up", "up", up.length, "지난주보다 <em>오른</em> 야채")}
-    ${chip("down", "down", down.length, "지난주보다 <em>내린</em> 야채")}
-    ${chip("rising", "warn", rising.length, "다음 주 <em>오를 가능성</em>")}
-    ${top ? `<button class="chip up" type="button" data-item="${esc(top.item)}"><b>${esc(top.item)} ${pct(top.wholesale_change_pct)}</b><small>가장 <em>많이 오른</em> 야채</small></button>` : ""}`;
+    ${chip("down", "down", down.length, "지난주보다 <em>내린</em> 야채")}`;
 
   renderSlides();
   onSlideChange();
@@ -82,7 +77,7 @@ let summaryLists = {};
 // 다른 칸으로 바꿀 때는 지금 목록이 접히는 동시에 새 목록이 펼쳐짐 (목록마다 칸을 따로 만들고, 접힌 칸은 지움)
 function openSummaryList(key) {
   const box = document.createElement("div");
-  box.className = `summary-list${key === "rising" ? " row2" : ""}`;
+  box.className = "summary-list";
   box.id = `summaryList-${key}`;
   box.innerHTML = summaryHTML(summaryLists[key] || []);
   $("#summary").appendChild(box);

@@ -76,11 +76,9 @@ button.chip:active, .chip[aria-expanded="true"] { box-shadow: inset 5px 5px 10px
 .chip small { display: block; margin-top: 2px; color: #E3ECE8; font-size: 16px; }
 .chip small em { font-style: normal; font-weight: 800; }
 .chip.up b, .chip.up em { color: #FF8A7A; } .chip.down b, .chip.down em { color: var(--mint); } .chip.warn b, .chip.warn em { color: #FFC266; }
-/* 목록은 누른 칸의 줄 바로 아래 (윗줄: 오른 · 내린 / 아랫줄: 오를 가능성) */
-.summary > .chip:nth-child(1), .summary > .chip:nth-child(2) { order: 1; }
-.summary > .chip:nth-child(3), .summary > .chip:nth-child(4) { order: 3; }
+/* 목록은 칸(오른 · 내린) 줄 바로 아래 */
+.summary > .chip { order: 1; }
 .summary > .summary-list { order: 2; grid-column: 1 / -1; margin: 0 -8px; }
-.summary > .summary-list.row2 { order: 4; }
 .summary > .summary-list.open { margin: -8px -8px 18px; }   /* 칸과 목록 사이 10px, 목록과 다음 칸 사이 18px */
 /* 요약 칸을 누르면 펼쳐지는 야채 목록 */
 .summary-list { display: grid; grid-template-rows: 0fr; margin: 0 -8px; opacity: 0;

@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>살피 통합 고객 여정 지도</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --orange:#E86A2E; --green:#12302A; --cream:#F5F3EE;
+    --ink:#1d2b27; --muted:#5f6b67; --line:#ddd7cb; --card:#ffffff;
+    --s1:#E86A2E; --s2:#2A8C7E; --s3:#3D6FB6; --s4:#B8860B; --s5:#7B5EA7;
+    --hot:#fde8e1;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:#2b2f2d}
+  body{font-family:"Noto Sans KR",system-ui,sans-serif;color:var(--ink);display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .viewport{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center}
+  .slide{width:1280px;height:720px;background:var(--cream);position:relative;flex:none;transform-origin:center center;
+    padding:20px 28px 14px;display:flex;flex-direction:column;gap:8px;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+
+  /* header */
+  .hd{display:flex;align-items:flex-end;justify-content:space-between;height:46px}
+  .hd h1{font-size:25px;font-weight:900;color:var(--green);letter-spacing:-.5px}
+  .hd h1 span{color:var(--orange)}
+  .hd p{font-size:12.5px;color:var(--muted);margin-top:3px}
+  .tag{font-size:11px;font-weight:700;color:var(--green);border:1.5px solid var(--green);border-radius:999px;padding:3px 10px;white-space:nowrap}
+
+  /* grid */
+  .map{display:grid;grid-template-columns:200px repeat(5,1fr);gap:6px;flex:1}
+  .corner{display:flex;flex-direction:column;justify-content:center;font-size:11px;color:var(--muted);line-height:1.45;padding-left:2px}
+  .corner b{color:var(--green);font-size:13px}
+
+  .stage{position:relative;background:var(--green);color:#fff;height:66px;padding:7px 10px 7px 22px;
+    clip-path:polygon(0 0,calc(100% - 14px) 0,100% 50%,calc(100% - 14px) 100%,0 100%,14px 50%)}
+  .stage:first-of-type{clip-path:polygon(0 0,calc(100% - 14px) 0,100% 50%,calc(100% - 14px) 100%,0 100%)}
+  .stage .no{display:inline-flex;width:18px;height:18px;border-radius:50%;background:var(--orange);font-size:11px;font-weight:900;align-items:center;justify-content:center;margin-right:5px;vertical-align:1px}
+  .stage .nm{font-size:15px;font-weight:900}
+  .stage .tm{font-size:10.5px;opacity:.75;margin-left:4px}
+  .stage .sc{font-size:10.5px;margin-top:5px;color:#ffd9c6;line-height:1.35}
+
+  .lane{height:80px;background:var(--card);border-left:5px solid var(--c);border-radius:6px;padding:6px 9px;display:flex;flex-direction:column;gap:2px}
+  .lane .seg{font-size:13px;font-weight:900;color:var(--c)}
+  .lane .who{font-size:10.5px;color:var(--ink);line-height:1.4}
+  .lane .act{margin-top:auto;font-size:10px;color:var(--muted);line-height:1.3}
+  .lane .act b{color:var(--green)}
+
+  .cell{height:80px;background:var(--card);border-radius:6px;padding:7px 9px;font-size:11.3px;line-height:1.42;position:relative;border-top:3px solid var(--c)}
+  .cell .q{display:block;font-size:10.5px;color:var(--muted);margin-top:2px}
+  .cell.hot{background:var(--hot)}
+  .cell.hot::after{content:"고비";position:absolute;right:6px;bottom:5px;font-size:9.5px;font-weight:700;color:#fff;background:#c0392b;border-radius:3px;padding:1px 5px}
+  .cell.win::after{content:"전환점";position:absolute;right:6px;bottom:5px;font-size:9.5px;font-weight:700;color:#fff;background:var(--s2);border-radius:3px;padding:1px 5px}
+
+  .emo-label{display:flex;flex-direction:column;justify-content:center;gap:3px;padding-left:2px}
+  .emo-label b{font-size:13px;color:var(--green)}
+  .legend{display:grid;grid-template-columns:1fr 1fr;gap:1px 8px;font-size:10px;color:var(--ink)}
+  .legend i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:4px;vertical-align:3px}
+  .emo{grid-column:2 / span 5;background:var(--card);border-radius:6px;height:92px}
+  .emo svg{display:block;width:100%;height:100%}
+
+  .ft{display:flex;justify-content:space-between;font-size:10px;color:var(--muted)}
+  .ft b{color:var(--orange)}
+
+  @media print{
+    @page{size:1280px 720px;margin:0}
+    html,body{background:none;overflow:visible}
+    .viewport{width:auto;height:auto}
+    .slide{transform:none!important;box-shadow:none}
+  }
+</style>
+</head>
+<body>
+<div class="viewport">
+<section class="slide" id="slide">
+
+  <div class="hd">
+    <div>
+      <h1>살피 사장님 <span>통합 고객 여정 지도</span></h1>
+      <p>같은 5단계 흐름, 세그먼트마다 다른 고비 — 대구 외식업 사장님 10명(한식 · 중식 · 일식 · 양식 · 반찬가게, 30~60대)</p>
+    </div>
+    <span class="tag">가상 페르소나 · 팀 가정</span>
+  </div>
+
+  <div class="map">
+    <!-- 단계 헤더 -->
+    <div class="corner"><b>사장님의 하루</b>세그먼트 · 페르소나 2명<br>· 살피 대응(살피2 발표 자료)</div>
+    <div class="stage"><span class="no">1</span><span class="nm">아침 시세</span><span class="tm">06–08시</span><div class="sc">대시보드 · 오른 재료 확인</div></div>
+    <div class="stage"><span class="no">2</span><span class="nm">재료 알림</span><span class="tm">오전</span><div class="sc">알림 → 재료 상세 페이지<br>등락액 · 등락률 · 7일 예측</div></div>
+    <div class="stage"><span class="no">3</span><span class="nm">마트 가격</span><span class="tm">장보기 전</span><div class="sc">고추장 · 식용유 등 가공품<br>대형마트 판매가 비교</div></div>
+    <div class="stage"><span class="no">4</span><span class="nm">원가율</span><span class="tm">구매 후</span><div class="sc">영수증 촬영 → 메뉴별<br>원가율 다시 계산</div></div>
+    <div class="stage"><span class="no">5</span><span class="nm">내일 준비</span><span class="tm">마감 후</span><div class="sc">예상 판매량 · 주문 목록<br>챗봇에 원가 질문</div></div>
+
+    <!-- S1 -->
+    <div class="lane" style="--c:var(--s1)"><span class="seg">S1 시세 민감</span>
+      <span class="who">① 김정숙(54) 수성구 백반집<br>⑥ 박동훈(57) 수성못 횟집 · 초밥</span>
+      <span class="act"><b>대응</b> 가격 알림 우선, 기다리기 허용</span></div>
+    <div class="cell" style="--c:var(--s1)">알림 전에 먼저 대시보드를 열어 오른 재료부터 확인<span class="q">"양파 또 올랐네"</span></div>
+    <div class="cell" style="--c:var(--s1)">알림을 바로 눌러 7일 예측과 오른 이유를 보고 '기다리기' 선택</div>
+    <div class="cell" style="--c:var(--s1)">마트별 가격을 비교해 가장 싼 곳을 골라 삼</div>
+    <div class="cell win" style="--c:var(--s1)">영수증으로 구매 단가와 도매 시세 차이를 확인<span class="q">"이번 주는 잘 샀네"</span></div>
+    <div class="cell" style="--c:var(--s1)">"다음 주가 쌀 가능성이 높아요"를 보고 살 날짜를 정함</div>
+
+    <!-- S2 -->
+    <div class="lane" style="--c:var(--s2)"><span class="seg">S2 루틴 고정</span>
+      <span class="who">② 이준혁(38) 서구 돼지국밥<br>⑤ 최유진(36) 달서구 돈카츠</span>
+      <span class="act"><b>대응</b> 평소와 다를 때만 알림</span></div>
+    <div class="cell" style="--c:var(--s2)">대시보드를 잠깐 훑고 닫음. 정해진 요일 발주는 그대로</div>
+    <div class="cell" style="--c:var(--s2)">시세 알림은 넘기고 "돼지고기 3kg 더 필요해요" 같은 수량 알림만 확인</div>
+    <div class="cell" style="--c:var(--s2)">늘 쓰던 거래처를 그대로 이용하고 마트 비교는 거의 하지 않음</div>
+    <div class="cell hot" style="--c:var(--s2)">가끔 올린 영수증에서 원가율이 오른 메뉴를 보고 놀람<span class="q">"돈카츠가 이렇게 남았나"</span></div>
+    <div class="cell" style="--c:var(--s2)">주문 목록을 평소 발주표와 맞춰 보고 다른 부분만 고침</div>
+
+    <!-- S3 -->
+    <div class="lane" style="--c:var(--s3)"><span class="seg">S3 대량 계획</span>
+      <span class="who">⑨ 정말순(63) 서문시장 반찬가게<br>⑩ 한지영(42) 북구 아파트상가 반찬가게</span>
+      <span class="act"><b>대응</b> 주 1회 요약 리포트</span></div>
+    <div class="cell" style="--c:var(--s3)">매일 보기보다 주 1회 리포트로 다음 주 품목을 한 번에 확인</div>
+    <div class="cell hot" style="--c:var(--s3)">품목이 많아 매일 오는 알림이 부담스러움. "위험 품목 2개"처럼 묶어 주길 원함</div>
+    <div class="cell" style="--c:var(--s3)">참기름 · 간장 · 물엿 등 많이 쓰는 가공품의 단가를 비교</div>
+    <div class="cell hot" style="--c:var(--s3)">반찬 20여 가지의 원가 입력이 부담됨<span class="q">63세 사장님은 자녀가 대신 입력</span></div>
+    <div class="cell" style="--c:var(--s3)">다음 주 반찬 구성을 정한 뒤 단가가 얼마나 바뀌는지 확인</div>
+
+    <!-- S4 -->
+    <div class="lane" style="--c:var(--s4)"><span class="seg">S4 급발주 위험</span>
+      <span class="who">④ 송민재(33) 동성로 마라탕<br>⑦ 윤서아(31) 중구 파스타 비스트로</span>
+      <span class="act"><b>대응</b> 전날 오후 미리 알림</span></div>
+    <div class="cell" style="--c:var(--s4)">영업 준비에 바빠 아침 시세를 놓침</div>
+    <div class="cell hot" style="--c:var(--s4)">재료가 떨어진 뒤에야 알림을 보고 급히 근처 마트로 감<span class="q">"숙주가 벌써 없어?"</span></div>
+    <div class="cell" style="--c:var(--s4)">가격을 비교할 시간 없이 보이는 곳에서 바로 삼</div>
+    <div class="cell hot" style="--c:var(--s4)">급하게 산 탓에 오른 원가율을 확인함</div>
+    <div class="cell win" style="--c:var(--s4)">"금요일 비 예보, 재료 오늘 미리" 같은 전날 알림으로 결품을 막음</div>
+
+    <!-- S5 -->
+    <div class="lane" style="--c:var(--s5)"><span class="seg">S5 이탈 위험</span>
+      <span class="who">③ 장태식(61) 북구 동네 중국집<br>⑧ 임재원(45) 동구 수제버거 · 브런치</span>
+      <span class="act"><b>대응</b> 성과 요약 1회, 과한 알림 중단</span></div>
+    <div class="cell" style="--c:var(--s5)">처음 2주는 매일 열었지만 점점 들어오는 날이 줄어듦</div>
+    <div class="cell hot" style="--c:var(--s5)">알림이 많다고 느껴 알림을 꺼 버림</div>
+    <div class="cell" style="--c:var(--s5)">마트 가격 화면은 거의 열지 않음</div>
+    <div class="cell hot" style="--c:var(--s5)">영수증 촬영이 귀찮아 기록을 멈춤 → 원가율이 비게 됨</div>
+    <div class="cell win" style="--c:var(--s5)">"지난주 예측이 이만큼 맞았어요" 요약을 받고 다시 들어옴</div>
+
+    <!-- 감정 곡선 -->
+    <div class="emo-label"><b>감정 곡선</b>
+      <div class="legend">
+        <span><i style="background:var(--s1)"></i>S1</span><span><i style="background:var(--s2)"></i>S2</span>
+        <span><i style="background:var(--s3)"></i>S3</span><span><i style="background:var(--s4)"></i>S4</span>
+        <span><i style="background:var(--s5)"></i>S5</span><span style="color:var(--muted)">+2 만족 / −2 불만</span>
+      </div>
+    </div>
+    <div class="emo"><svg id="emo" viewBox="0 0 1018 92" aria-label="세그먼트별 단계 감정 곡선"></svg></div>
+  </div>
+
+  <div class="ft">
+    <span>흐름(5단계)과 세그먼트별 대응은 <b>살피2 발표 자료</b> 기준 · 페르소나 · 행동 · 감정 점수는 인터뷰 검증 전 팀 가정</span>
+    <span>team 장바구니</span>
+  </div>
+</section>
+</div>
+
+<script>
+  // 감정 점수(-2~+2): 단계 ①~⑤ — 팀 가정
+  const EMO = {
+    s1:[-1, 1, 1, 2, 1],
+    s2:[ 0, 0, 0,-1, 1],
+    s3:[ 1,-1, 1,-1, 1],
+    s4:[-1,-2,-1,-2, 2],
+    s5:[ 0,-2,-1,-2, 1],
+  };
+  const svg = document.getElementById('emo');
+  const W = 1018, H = 92, col = (W - 4*6)/5;
+  const xs = [0,1,2,3,4].map(i => col/2 + i*(col+6));
+  const y = v => 46 - v*18;            // +2 → 10, -2 → 82
+  const NS = 'http://www.w3.org/2000/svg';
+  const el = (t,a) => { const e=document.createElementNS(NS,t); for(const k in a) e.setAttribute(k,a[k]); svg.appendChild(e); return e; };
+  // 기준선
+  el('line',{x1:0,x2:W,y1:y(0),y2:y(0),stroke:'#cfc8ba','stroke-dasharray':'4 4'});
+  el('text',{x:6,y:y(0)-4,'font-size':10,fill:'#8a948f'}).textContent='보통';
+  // 세로 구분선
+  xs.slice(0,4).forEach((x,i)=> el('line',{x1:x+col/2+3,x2:x+col/2+3,y1:6,y2:H-6,stroke:'#eee8dc'}));
+  // 선: 같은 점에 겹치지 않도록 세그먼트마다 살짝 위아래로 띄움
+  const off = {s1:-4,s2:-2,s3:0,s4:2,s5:4};
+  Object.entries(EMO).forEach(([k,vals])=>{
+    const c = getComputedStyle(document.documentElement).getPropertyValue('--'+k).trim();
+    const pts = vals.map((v,i)=>[xs[i], y(v)+off[k]]);
+    el('polyline',{points:pts.map(p=>p.join(',')).join(' '),fill:'none',stroke:c,'stroke-width':2.5,'stroke-linejoin':'round','stroke-linecap':'round'});
+    pts.forEach(p=> el('circle',{cx:p[0],cy:p[1],r:4,fill:'#fff',stroke:c,'stroke-width':2.2}));
+  });
+
+  // 화면 크기에 맞게 슬라이드 확대 · 축소 (16:9 유지)
+  function fit(){
+    const s = Math.min(window.innerWidth/1280, window.innerHeight/720);
+    document.getElementById('slide').style.transform = 'scale('+s+')';
+  }
+  window.addEventListener('resize', fit); fit();
+</script>
+</body>
+</html>

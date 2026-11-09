@@ -916,7 +916,15 @@ function renderCosts(r, withChange) {
             <div><dt>1인분 재료비</dt><dd>${won(m.cost_per_serving)}</dd></div>
             <div><dt>남는 돈</dt><dd>${won(m.margin)}</dd></div>
           </dl>
-          ${m.tips.length ? `<ul class="cost-tips">${m.tips.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}
+          ${m.swap ? `<div class="cost-swap">
+            <p class="swap-title">🔄 대체 재료 추천</p>
+            <p class="swap-pair"><span class="swap-from">${esc(m.swap.from)}</span><i aria-label="에서">→</i><span class="swap-to">${esc(m.swap.to)}</span></p>
+            <p class="swap-reason">${esc(m.swap.reason)}</p>
+          </div>` : ""}
+          ${(() => {   // 대체 재료 상자에 들어간 문장은 빼고 나머지(오른 재료 · 판매가 제안)만 💡로
+            const rest = m.swap ? m.tips.filter((t) => t !== m.swap.reason && !t.startsWith(`${m.swap.from} 일부를`)) : m.tips;
+            return rest.length ? `<ul class="cost-tips">${rest.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : "";
+          })()}
         </div>
       </article>`;
     }).join("")}</div>

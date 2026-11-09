@@ -1528,6 +1528,7 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#tal
 
 loadOverview();
 loadProducts();
+loadMyItems();
 if (STORE_VIEW) {
   const toReceipt = location.hash === "#receipt";
   Promise.allSettled([loadDemand(), loadCosts()]).then(() => {
@@ -1650,6 +1651,11 @@ async function renderMypage(view) {
     <section class="my-card">
       <h4>알림 설정</h4>
       <p class="muted small">켜 둔 알림은 살피가 챗봇 창으로 보내 드려요.</p>
+      <label class="toggle-row">
+        <span><b>내 메뉴 재료만</b><small>${myItems
+          ? `내 메뉴에 들어가는 ${esc(overview.filter((r) => myItems.has(r.item)).map((r) => r.item).join(" · ") || "재료")}만 알려 드려요`
+          : "메뉴를 불러오지 못해 모든 야채를 알려 드려요"}</small></span>
+        <input type="checkbox" class="switch" data-pref="mine" ${prefs.mine ? "checked" : ""}></label>
       ${ALERT_TYPES.map(([k, title, desc]) => `<label class="toggle-row">
         <span><b>${title}</b><small>${desc}</small></span>
         <input type="checkbox" class="switch" data-pref="${k}" ${prefs[k] ? "checked" : ""}></label>`).join("")}
@@ -1734,7 +1740,21 @@ const ALERT_TYPES = [
   ["unusual", "평소랑 다를 때만", "하루 사이에 평소보다 크게 움직인 야채"],
   ["weekly", "주 1회 대시보드 리포트", "한 주 시세를 한 번에 정리해 드려요"],
 ];
-const DEFAULT_PREFS = { all: false, up: true, down: false, unusual: true, weekly: true };
+const DEFAULT_PREFS = { mine: true, all: false, up: true, down: false, unusual: true, weekly: true };
+// 내 메뉴 재료: { 재료: [메뉴, ...] } — 못 불러오면 null (그때는 '내 메뉴 재료만'을 켜도 모든 야채로 알림)
+let myItems = null, myMenus = [];
+async function loadMyItems() {
+  if (!SIGNED_IN) return;
+  try {
+    const r = await getJSON("/api/my-items");
+    myItems = new Map(Object.entries(r.items));
+    myMenus = r.menus;
+  } catch (e) { myItems = null; }
+  if (overview.length) deliverAlerts();
+}
+const menusOf = (item) => myItems?.get(item) || [];
+// 알림 문장 뒤에 붙임: (김치찌개 · 된장찌개에 들어가요)
+const inMenus = (item) => { const m = menusOf(item); return m.length ? ` (${m.join(" · ")}에 들어가요)` : ""; };
 const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } };
 function store(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
 const alertPrefs = () => ({ ...DEFAULT_PREFS, ...load(ALERT_PREFS_KEY, {}) });
@@ -1745,6 +1765,9 @@ function buildAlerts() {
   if (!overview.length) return [];
   const prefs = alertPrefs();
   const day = overview.map((r) => r.wholesale_date).filter(Boolean).sort().at(-1) || "";
+  // '내 메뉴 재료만'을 켜면 우리 가게 메뉴에 들어가는 야채만 알림
+  const mine = prefs.mine && myItems;
+  const pool = mine ? overview.filter((r) => myItems.has(r.item)) : overview;
   const tag = mmdd(day);
   const out = [], seen = new Set();
   const push = (id, text, title, item) => { if (!seen.has(id)) { seen.add(id); out.push({ id: `${day}|${id}`, text, title, item, day }); } };
@@ -1752,18 +1775,18 @@ function buildAlerts() {
   const ch = (r) => r.wholesale_change_pct ?? 0;
   const move = (r) => {
     const f = expOf(r);
-    if (ch(r) > 0) return `사장님, **${josa(r.item, "이", "가")} 지난주보다 ${pct(ch(r))} 올랐어요** (${tag} 도매 kg당 ${won(r.wholesale_kg)}).\n`
+    if (ch(r) > 0) return `사장님, **${josa(r.item, "이", "가")} 지난주보다 ${pct(ch(r))} 올랐어요** (${tag} 도매 kg당 ${won(r.wholesale_kg)})${inMenus(r.item)}.\n`
       + (f >= 2 ? "다음 주에도 오를 수 있어요. 필요한 만큼은 미리 사 두세요." : f <= -2 ? "다음 주엔 내릴 수 있어요. 급하지 않으면 조금 기다려 보세요." : "다음 주엔 비슷할 것 같아요. 필요한 만큼만 사 두세요.");
-    return `사장님, **${josa(r.item, "이", "가")} 지난주보다 ${pct(ch(r))} 내렸어요** (${tag} 도매 kg당 ${won(r.wholesale_kg)}).\n`
+    return `사장님, **${josa(r.item, "이", "가")} 지난주보다 ${pct(ch(r))} 내렸어요** (${tag} 도매 kg당 ${won(r.wholesale_kg)})${inMenus(r.item)}.\n`
       + (f >= 2 ? "다음 주엔 다시 오를 수 있어요. 지금 사 두면 좋아요." : "지금 사기 좋은 때예요.");
   };
   const byAbs = (a, b) => Math.abs(ch(b)) - Math.abs(ch(a));
   const pushMove = (r) => push(`move|${r.item}`, move(r), moveTitle(r), r.item);
-  if (prefs.all) overview.filter((r) => Math.abs(ch(r)) >= 3).sort(byAbs).slice(0, 6).forEach(pushMove);
-  if (prefs.up) overview.filter((r) => ch(r) >= 10).sort(byAbs).slice(0, 3).forEach(pushMove);
-  if (prefs.down) overview.filter((r) => ch(r) <= -10).sort(byAbs).slice(0, 3).forEach(pushMove);
+  if (prefs.all) pool.filter((r) => Math.abs(ch(r)) >= 3).sort(byAbs).slice(0, 6).forEach(pushMove);
+  if (prefs.up) pool.filter((r) => ch(r) >= 10).sort(byAbs).slice(0, 3).forEach(pushMove);
+  if (prefs.down) pool.filter((r) => ch(r) <= -10).sort(byAbs).slice(0, 3).forEach(pushMove);
   if (prefs.unusual) {
-    overview.map((r) => {
+    pool.map((r) => {
       const h = (r.history || []).map((x) => x.kg_price).filter((v) => v > 0);
       const d = h.slice(1).map((v, i) => (v / h[i] - 1) * 100);
       if (d.length < 6) return null;
@@ -1771,7 +1794,7 @@ function buildAlerts() {
       return Math.abs(last) >= Math.max(10, usual * 2.5) ? { r, last, usual } : null;
     }).filter(Boolean).sort((a, b) => Math.abs(b.last) - Math.abs(a.last)).slice(0, 3).forEach(({ r, last, usual }) =>
       push(`unusual|${r.item}`, `사장님, **${josa(r.item, "이", "가")} 평소와 달라요.** 직전 거래일보다 ${pct(last)} ${last > 0 ? "올랐는데" : "내렸는데"}, `
-        + `보통은 하루 ${usual.toFixed(0)}% 안팎으로 움직여요.\n${last > 0 ? "주문 전에 가격을 한 번 더 확인해 보세요." : "필요하면 지금 사 두는 것도 좋아요."}`,
+        + `보통은 하루 ${usual.toFixed(0)}% 안팎으로 움직여요${inMenus(r.item)}.\n${last > 0 ? "주문 전에 가격을 한 번 더 확인해 보세요." : "필요하면 지금 사 두는 것도 좋아요."}`,
         `${josa(r.item, "이", "가")} 평소와 달라요 (하루 ${pct(last)})`, r.item));
   }
   if (prefs.weekly && day) {
@@ -1784,6 +1807,7 @@ function buildAlerts() {
       + `- 가장 많이 오른 야채: ${top[0].item} ${pct(ch(top[0]))}\n`
       + `- 가장 많이 내린 야채: ${top.at(-1).item} ${pct(ch(top.at(-1)))}\n`
       + `- 다음 주 오를 가능성: ${rise.length}개${rise.length ? ` (${rise.sort((a, b) => expOf(b) - expOf(a)).slice(0, 3).map((r) => r.item).join(", ")} 등)` : ""}\n`
+      + (mine && pool.length ? `- 내 메뉴 재료: ${pool.map((r) => `${r.item} ${pct(ch(r))}`).join(", ")}\n` : "")
       + "자세한 건 위의 시세 대시보드에서 보세요." });
   }
   return out;

@@ -257,6 +257,16 @@ def cost_report(store_id=db.DEMO_STORE):
             "method": "재료마다 가장 최근 영수증 단가 × 1인분 양(손질 손실 포함). 판매가 제안은 500원 단위 올림"}
 
 
+def my_ingredients(store_id):
+    """우리 가게 메뉴(판매 중)에 들어가는 재료 → 그 재료가 들어가는 메뉴들. 알림을 '내 메뉴 재료만'으로 거를 때 씀."""
+    menus = db.select("menus", store_id=f"eq.{store_id}", is_active="eq.true", select="id,name", order="id")
+    names = {m["id"]: m["name"] for m in menus}
+    out = {}
+    for r in db.select("recipe_items", menu_id=f"in.({','.join(map(str, names)) or 0})", select="menu_id,items(name)"):
+        out.setdefault(r["items"]["name"], []).append(names[r["menu_id"]])
+    return {"menus": list(names.values()), "items": out}
+
+
 # ---------------------------------------------------------------
 # 4) 최근 영수증 목록 · 지우기 (시연에서 영수증 읽기로 넣은 것만 지울 수 있음)
 # ---------------------------------------------------------------

@@ -13,12 +13,13 @@ if (ITEM) {
   document.body.classList.add("item-view");
   $("#itemPage").hidden = false;
 }
-// 나의 가게 페이지(/?page=store): 내일 준비 · 영수증 분석 · 메뉴별 원가율은 사장님 로그인 시에만
+// 마이페이지(가게, /?page=store): 내일 준비 · 메뉴별 원가율 · 영수증 분석은 사장님 로그인 시에만
 // 로그인(카카오)은 아직 없어서 시연에서는 기본 계정으로 로그인한 것으로 봄
 const SIGNED_IN = true;
 const STORE_VIEW = !ITEM && SIGNED_IN && new URLSearchParams(location.search).get("page") === "store";
 if (STORE_VIEW) document.body.classList.add("store-view");
 $("#storeBtn").hidden = !SIGNED_IN;
+$("#navReceipt").hidden = !SIGNED_IN;
 
 async function getJSON(url) {
   const r = await fetch(url);
@@ -1528,8 +1529,10 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#tal
 loadOverview();
 loadProducts();
 if (STORE_VIEW) {
-  loadDemand();
-  loadCosts();
+  const toReceipt = location.hash === "#receipt";
+  Promise.allSettled([loadDemand(), loadCosts()]).then(() => {
+    if (toReceipt) $("#receipt").scrollIntoView({ block: "start" });
+  });
 } else if (!ITEM) {
   loadContext();
   loadMart();
@@ -1603,7 +1606,7 @@ $("#receiptModal").onclick = (e) => { if (e.target.id === "receiptModal") closeR
 // 마이페이지 (시연: 로그인했다고 치고 시연용 가게 계정)
 // ---------------------------------------------------------------
 const ME = { name: "달서구 한식당 사장님", store: "살피 한식당", place: "대구 달서구", type: "한식 · 40석", email: "demo@salpi.example" };
-if (STORE_VIEW) $("#storeName").textContent = `나의 가게 · ${ME.store}`;
+if (STORE_VIEW) $("#storeName").textContent = `마이페이지 · ${ME.store}`;
 
 function openMypage(view = "home") {
   $("#mypage").classList.add("open");
@@ -1620,7 +1623,7 @@ function closeMypage() {
 async function renderMypage(view) {
   const box = $("#mypageBody");
   $("#mypageBack").hidden = view === "home";
-  $("#mypageTitle").textContent = view === "home" ? "마이페이지" : "나의 영수증";
+  $("#mypageTitle").textContent = view === "home" ? "설정" : "나의 영수증";
   if (view === "receipts") {
     box.innerHTML = `<p class="muted">불러오는 중이에요</p>`;
     try {
@@ -1641,7 +1644,7 @@ async function renderMypage(view) {
     <section class="my-card">
       <h4>내 정보</h4>
       <dl><dt>지역</dt><dd>${esc(ME.place)}</dd><dt>업종</dt><dd>${esc(ME.type)}</dd></dl>
-      <a class="my-link" href="/?page=store"><span>나의 가게</span><i>›</i></a>
+      <a class="my-link" href="/?page=store"><span>마이페이지 (우리 가게)</span><i>›</i></a>
       <button class="my-link" data-view="receipts"><span>나의 영수증</span><i>›</i></button>
     </section>
     <section class="my-card">
@@ -1842,7 +1845,7 @@ function renderBell() {
   const read = new Set(load(ALERT_READ_KEY, []));
   $("#bellList").innerHTML = delivered.length ? delivered.map((a) => `<li><button data-aid="${esc(a.id)}" class="${read.has(a.id) ? "" : "unread"}">
       <img src="/static/img/salpi_face.png" alt=""><span><b>${esc(a.title)}</b><small>${mmdd(a.day)} 시세 · ${a.item ? "누르면 재료 페이지" : "누르면 대시보드"}</small></span></button></li>`).join("")
-    : `<li class="empty">새 알림이 없어요.<br><button data-open-settings>마이페이지에서 알림 종류 켜기 ›</button></li>`;
+    : `<li class="empty">새 알림이 없어요.<br><button data-open-settings>설정에서 알림 종류 켜기 ›</button></li>`;
 }
 function toggleBell(open = $("#bellPanel").hidden) {
   $("#bellPanel").hidden = !open;

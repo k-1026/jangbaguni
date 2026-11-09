@@ -878,7 +878,7 @@ async function saveReceipt() {
     const r = await sendJSON("/api/receipt/save", "POST", { image: receipt.image, mime: receipt.mime,
       date: $("#rcDate").value || null, supplier: $("#rcSupplier").value || null, items });
     resetReceipt();
-    $("#receiptResult").innerHTML = `<p class="ok">${mmdd(r.date)} 영수증 ${r.saved_items}줄을 저장했어요. 아래 메뉴별 원가율이 새로 계산됐어요.</p>`;
+    $("#receiptResult").innerHTML = `<p class="ok">${mmdd(r.date)} 영수증 ${r.saved_items}줄을 저장했어요. 위 메뉴별 원가율이 새로 계산됐어요.</p>`;
     renderCosts(r, true);
     loadCosts(false);
   } catch (e) {

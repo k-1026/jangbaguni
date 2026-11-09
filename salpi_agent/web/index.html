@@ -7,7 +7,7 @@
   <link rel="icon" href="/static/img/salpi_face.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=59">
+  <link rel="stylesheet" href="/static/style.css?v=64">
 </head>
 <body>
 
@@ -116,7 +116,16 @@
     </div>
   </section>
 
-  <!-- 영수증 분석: 사진 읽기 → 확인 · 수정 → 저장 (저장하면 아래 메뉴별 원가율을 다시 계산) -->
+  <!-- 메뉴별 원가율: 영수증 단가로 메뉴 한 그릇 재료비 · 원가율 · 남는 돈 -->
+  <section class="wrap section store-only" id="costs">
+    <div class="section-head">
+      <h2>메뉴별 원가율</h2>
+      <p class="muted">저장한 영수증 단가로 메뉴 한 그릇의 재료비와 남는 돈을 계산해요</p>
+    </div>
+    <div class="card" id="costCard"><p class="muted">원가율을 불러오는 중이에요</p></div>
+  </section>
+
+  <!-- 영수증 분석: 사진 읽기 → 확인 · 수정 → 저장 (저장하면 위 메뉴별 원가율을 다시 계산) -->
   <section class="wrap section store-only" id="receipt">
     <div class="section-head">
       <h2>영수증 분석</h2>
@@ -134,15 +143,6 @@
       <div id="receiptResult"></div>
       <div id="receiptList"></div>
     </div>
-  </section>
-
-  <!-- 메뉴별 원가율: 영수증 단가로 메뉴 한 그릇 재료비 · 원가율 · 남는 돈 -->
-  <section class="wrap section store-only" id="costs">
-    <div class="section-head">
-      <h2>메뉴별 원가율</h2>
-      <p class="muted">저장한 영수증 단가로 메뉴 한 그릇의 재료비와 남는 돈을 계산해요</p>
-    </div>
-    <div class="card" id="costCard"><p class="muted">원가율을 불러오는 중이에요</p></div>
   </section>
 
   <!-- 대형마트 판매가: 한국소비자원 참가격 중 음식 재료만 (회사별 가격 · 2주 전 대비) -->
@@ -254,6 +254,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="/static/app.js?v=59"></script>
+<script src="/static/app.js?v=64"></script>
 </body>
 </html>

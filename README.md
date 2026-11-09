@@ -13,7 +13,7 @@ PPT : https://www.canva.com/design/DAHaCOrOpjk/eOPsCvl-UyQMCbCMmQMd2Q/edit
 | 팀 공통 | [jangbaguni](https://github.com/k-1026/jangbaguni) | 공통 프로젝트 및 통합 작업 |
 | 윤가언 | https://github.com/yoonkaeon-netizen/monchichi.git | 개인 실습 결과물(research/company/ibk기업은행 부분만 보시면 됩니다) | 
 | 이소정 | https://github.com/so-jung0729/cj_ax.git | 개인 실습 결과물 |
-| 이성이 | [Repository 주소 입력](URL 입력) | 개인 실습 결과물 |
+| 이성이 | https://github.com/dkddkd1/cj-ax.git | 개인 실습 결과물 |
 | 이하영 | [jangbaguni](https://github.com/k-1026/jangbaguni) | 개인 실습 결과물(research/company/cj_freshway/valuechain)|
 
 각 Repository에는 기업 리서치, 출처 검증, 밸류체인 분석 등 개인별 실습 내용과 산출물이 정리되어 있습니다.

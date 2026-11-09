@@ -545,6 +545,12 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .cam-guide { margin: 6px 0 0; padding-left: 20px; font-size: 13px; line-height: 1.7; color: #4C524E; }
 .perm-on { font-size: 13px; font-weight: 700; color: var(--down); }
 .demo-receipts { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 8px; }
+.demo-fold { margin-top: 12px; }
+.demo-fold summary { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); cursor: pointer; list-style: none; }
+.demo-fold summary::-webkit-details-marker { display: none; }
+.demo-fold summary::after { content: "›"; font-size: 15px; transition: transform .15s; }
+.demo-fold[open] summary::after { transform: rotate(90deg); }
+.demo-fold summary:hover { color: var(--accent); }
 .demo-receipts button { border: 1px solid var(--border); background: #fff; border-radius: 10px; padding: 6px; font-size: 12px; color: var(--ink); }
 .demo-receipts button:hover { border-color: var(--accent); }
 .demo-receipts img { display: block; width: 100%; height: 110px; object-fit: cover; object-position: top; border-radius: 6px; margin-bottom: 4px; }

@@ -116,7 +116,16 @@
     </div>
   </section>
 
-  <!-- 영수증 분석: 사진 읽기 → 확인 · 수정 → 저장 (저장하면 아래 메뉴별 원가율을 다시 계산) -->
+  <!-- 메뉴별 원가율: 영수증 단가로 메뉴 한 그릇 재료비 · 원가율 · 남는 돈 -->
+  <section class="wrap section store-only" id="costs">
+    <div class="section-head">
+      <h2>메뉴별 원가율</h2>
+      <p class="muted">저장한 영수증 단가로 메뉴 한 그릇의 재료비와 남는 돈을 계산해요</p>
+    </div>
+    <div class="card" id="costCard"><p class="muted">원가율을 불러오는 중이에요</p></div>
+  </section>
+
+  <!-- 영수증 분석: 사진 읽기 → 확인 · 수정 → 저장 (저장하면 위 메뉴별 원가율을 다시 계산) -->
   <section class="wrap section store-only" id="receipt">
     <div class="section-head">
       <h2>영수증 분석</h2>
@@ -128,21 +137,15 @@
           <button class="upload-btn" id="cameraBtn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>카메라로 찍기</button>
           <label class="upload-btn"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-5-5-9 8"/></svg>사진 · PDF 고르기<input type="file" id="receiptFile" accept="image/*,application/pdf,.pdf" hidden></label>
         </div>
-        <p class="muted small">사진이 없으면 아래 예시 영수증을 눌러 보세요</p>
-        <div class="demo-receipts" id="demoReceipts"></div>
+        <!-- 예시 영수증: 시연용이라 평소엔 접어 둠 -->
+        <details class="demo-fold">
+          <summary>영수증이 없나요? 예시 영수증으로 해 보기</summary>
+          <div class="demo-receipts" id="demoReceipts"></div>
+        </details>
       </div>
       <div id="receiptResult"></div>
       <div id="receiptList"></div>
     </div>
-  </section>
-
-  <!-- 메뉴별 원가율: 영수증 단가로 메뉴 한 그릇 재료비 · 원가율 · 남는 돈 -->
-  <section class="wrap section store-only" id="costs">
-    <div class="section-head">
-      <h2>메뉴별 원가율</h2>
-      <p class="muted">저장한 영수증 단가로 메뉴 한 그릇의 재료비와 남는 돈을 계산해요</p>
-    </div>
-    <div class="card" id="costCard"><p class="muted">원가율을 불러오는 중이에요</p></div>
   </section>
 
   <!-- 대형마트 판매가: 한국소비자원 참가격 중 음식 재료만 (회사별 가격 · 2주 전 대비) -->

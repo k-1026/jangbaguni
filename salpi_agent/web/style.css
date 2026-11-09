@@ -183,6 +183,7 @@ body.item-view .home-only, body.store-view .home-only { display: none; }
 /* 나의 가게 페이지에서만 보이는 칸 (내일 준비 · 영수증 분석 · 메뉴별 원가율) */
 .store-only { display: none; }
 body.store-view .store-only { display: block; }
+.store-only { scroll-margin-top: 64px; }   /* 위쪽 메뉴에서 바로 갈 때 고정 메뉴줄에 제목이 가리지 않게 */
 .store-head h1 { margin: 6px 0 4px; font-size: 28px; }
 .store-btn { display: flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 999px; background: var(--neu); box-shadow: var(--raise-sm);
   color: var(--ink); font-size: 14px; font-weight: 700; text-decoration: none; white-space: nowrap; }

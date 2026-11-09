@@ -1451,8 +1451,19 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#tal
 loadOverview();
 loadProducts();
 if (STORE_VIEW) {
-  loadDemand();
-  loadCosts();
+  const storeReady = Promise.allSettled([loadDemand(), loadCosts()]);
+  // 위쪽 메뉴 '영수증 분석'(/?page=store#receipt): 열자마자 영수증 분석 칸으로 이동하고,
+  // 위 칸(내일 준비 · 원가율)이 늦게 채워져 길어지는 동안에도 그 자리에 머무름 (사용자가 직접 스크롤하면 멈춤)
+  if (location.hash === "#receipt") {
+    const toReceipt = () => $("#receipt").scrollIntoView({ block: "start" });
+    let follow = true;
+    const stop = () => { follow = false; };
+    ["wheel", "touchstart", "keydown"].forEach((t) => addEventListener(t, stop, { once: true, passive: true }));
+    toReceipt();
+    const keep = new ResizeObserver(() => { if (follow) toReceipt(); });
+    keep.observe($("#store")); keep.observe($("#costs"));
+    storeReady.then(() => setTimeout(() => { if (follow) toReceipt(); keep.disconnect(); }, 300));
+  }
 } else if (!ITEM) {
   loadContext();
   loadMart();

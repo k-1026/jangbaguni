@@ -14,7 +14,7 @@ PPT : https://www.canva.com/design/DAHaCOrOpjk/eOPsCvl-UyQMCbCMmQMd2Q/edit
 | 윤가언 | https://github.com/yoonkaeon-netizen/monchichi.git | 개인 실습 결과물(research/company/ibk기업은행 부분만 보시면 됩니다) | 
 | 이소정 | https://github.com/so-jung0729/cj_ax.git | 개인 실습 결과물 |
 | 이성이 | [Repository 주소 입력](URL 입력) | 개인 실습 결과물 |
-| 이하영 | [jangbaguni](https://github.com/k-1026/jangbaguni) | 개인 실습 결과물 |
+| 이하영 | [jangbaguni](https://github.com/k-1026/jangbaguni) | 개인 실습 결과물(research/company/cj_freshway/valuechain)|
 
 각 Repository에는 기업 리서치, 출처 검증, 밸류체인 분석 등 개인별 실습 내용과 산출물이 정리되어 있습니다.
 
@@ -39,8 +39,12 @@ DART 2024 사업보고서로 대구센터 보유 · 1차 상품 비중 · 수입
 **11/6 밸류체인 맵 (Day 10)** — [valuechain/](research/company/cj_freshway/valuechain/)
 - 활동 후보 → 단계 5개 · 이해관계자 → 신호 근거 · 마커(병목 2 · 비용 2 · 기회 3) → Mermaid 초안 v0 → 원페이지 대조(불일치 9건) → v1
 - 단계: 산지 · 도매시장 → 매입 · 소싱 → 유통 채널 · 플랫폼 → 주문 · 구매 → 물류 · 배송 (팀 자산: 대구 북부도매시장 · 달서구 한식당 사장님)
-- **우선 기회: 대구 도매 시세 7일 예측 · 구매 시점 알림** (영향 9 · 실현 가능성 9)
+- **우선 기회: 대구 도매 시세 7일 예측 · 구매 시점 알림** (영향 9 · 실현 가능성 9) - [analysis.md]
+  O1 대구 도매 시세 7일 예측과 구매 시점 알림: 영향 9점, 실현 가능성 9점으로 가장 먼저 하기로 함
+  O2 발주량 추천: 영향 7점, 실현 가능성 7점
+  O3 영수증으로 메뉴별 원가율 계산: 영향 6점, 실현 가능성 7점
 - 발표용 한 장: [valuechain_v1.html](research/company/cj_freshway/valuechain/valuechain_v1.html) · 근거와 검증: [analysis.md](research/company/cj_freshway/valuechain/analysis.md)
+- 추가정보: onepager.md(기업 한 장 요약), sources.md(출처 목록, 42~47번이 밸류체인용으로 추가한 출처), verify.md(출처 검증)
 
 **확인 끝난 것**: Mermaid 그림(v0 · v1) 브라우저에서 오류 없이 그려짐 · DART 2024 사업보고서로 1차 상품 비중 · 수입 비중 · 해외 법인 역할 · 대구센터 · 외상 판매 조건 확인
 

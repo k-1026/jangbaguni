@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>살피 고객 여정 지도</title>
+<style>
+  :root {
+    --orange: #E86A2E; --orange-bg: #FDEEE6;
+    --green: #12302A; --green-soft: #2E5A4F;
+    --cream: #F5F3EE; --card: #FFFFFF;
+    --ink: #1F2622; --muted: #5F6963; --line: #DAD6CC;
+    --pain: #D9483B; --pain-bg: #FCEAE7;
+    --opp: #4E8A2E; --opp-bg: #EAF4E2;
+    --evid: #2F6FD8;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--cream); color: var(--ink);
+    font-family: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; line-height: 1.5; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 28px 16px 40px; }
+  header { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 20px; }
+  header .title { flex: 1 1 420px; }
+  h1 { margin: 0 0 6px; font-size: 26px; color: var(--green); }
+  h2 { margin: 32px 0 12px; font-size: 20px; color: var(--green); }
+  .lead { margin: 0; color: var(--muted); font-size: 14px; }
+  .lead b { color: var(--ink); }
+  .tag { display: inline-block; padding: 0 7px; border-radius: 999px; font-size: 11px; font-weight: 700; vertical-align: 1px; }
+  .tag.src { background: #EAF1FC; color: var(--evid); }
+  .tag.i { background: #EEEAE0; color: var(--muted); }
+
+  /* 페르소나 카드 */
+  .persona { flex: 1 1 360px; display: flex; gap: 14px; padding: 14px 16px; background: var(--card);
+    border: 1px solid var(--line); border-radius: 14px; }
+  .persona img { width: 72px; height: 72px; border-radius: 50%; background: var(--orange-bg); object-fit: cover; flex: none; }
+  .persona h3 { margin: 0 0 4px; font-size: 16px; }
+  .persona ul { margin: 0; padding-left: 16px; font-size: 13px; color: #3B423E; }
+  .persona q { display: block; margin-top: 6px; font-size: 13.5px; font-weight: 700; color: var(--orange); quotes: "“" "”"; }
+
+  /* 여정 표 */
+  .scroll { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+  .map { display: grid; grid-template-columns: 112px repeat(6, minmax(160px, 1fr)); min-width: 1100px; }
+  .map > div { padding: 10px 12px; border-bottom: 1px solid #ECE9E2; font-size: 13px; }
+  .map .rh { font-weight: 700; color: var(--green); background: #FAF8F4; font-size: 12.5px; display: flex; align-items: center; }
+  .map .stage { background: var(--green); color: #fff; border-bottom: 0; }
+  .map .stage small { display: block; font-size: 11.5px; opacity: .75; }
+  .map .stage b { font-size: 15px; }
+  .map .corner { background: var(--green); border-bottom: 0; }
+  .think { font-style: italic; color: #3B423E; }
+  .pain { background: var(--pain-bg); border-left: 3px solid var(--pain); }
+  .pain b { color: var(--pain); }
+  .opp { background: var(--opp-bg); border-left: 3px solid var(--opp); }
+  .opp b { color: var(--opp); }
+  .emo-label { flex-direction: column; align-items: flex-start !important; justify-content: center; gap: 4px; }
+  .legend { font-weight: 400; font-size: 11px; color: var(--muted); }
+  .legend i { display: inline-block; width: 18px; border-top: 2.5px solid var(--orange); vertical-align: middle; margin-right: 4px; }
+  .legend i.tobe { border-top: 2.5px dashed var(--opp); }
+  .emo { grid-column: 2 / -1; padding: 0 !important; }
+  .emo svg { display: block; width: 100%; height: 150px; }
+  .top-mark { display: inline-block; margin-left: 4px; padding: 0 6px; border-radius: 999px; background: var(--pain); color: #fff; font-size: 11px; font-style: normal; font-weight: 700; }
+
+  /* Top 3 */
+  .top3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+  .card .no { font-size: 12px; font-weight: 700; color: var(--pain); }
+  .card h3 { margin: 0; font-size: 17px; }
+  .card p { margin: 0; font-size: 13.5px; }
+  .card .ev { padding: 8px 10px; border-radius: 8px; background: #F6F8FC; font-size: 12.5px; color: #24406E; }
+  .card .fix { margin-top: auto; padding: 8px 10px; border-radius: 8px; background: var(--opp-bg); font-size: 13px; }
+  .card .fix b { color: var(--opp); }
+
+  table { width: 100%; border-collapse: collapse; background: var(--card); font-size: 13px; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid #ECE9E2; text-align: left; vertical-align: top; }
+  th { background: #FAF8F4; color: var(--green); }
+  td.n { text-align: center; white-space: nowrap; }
+  tr.sel td { background: #FFF8F3; font-weight: 700; }
+  .tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; }
+
+  footer { margin-top: 28px; font-size: 12px; color: var(--muted); }
+  footer ol { padding-left: 18px; margin: 6px 0 0; }
+  @media print { body { background: #fff; } .scroll { overflow: visible; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="title">
+    <h1>고객 여정 지도 · 페인포인트 Top 3</h1>
+    <p class="lead">대구 한식당 사장님이 <b>내일 장사 준비부터 마감 정산까지</b> 식재료를 사는 과정입니다.
+      각 단계에서 무엇을 하고 어떤 기분인지, 어디서 막히는지, 살피가 어디서 돕는지를 한 장에 담았습니다.</p>
+    <p class="lead" style="margin-top:6px">
+      <span class="tag src">출처 n</span> = <code>research/company/cj_freshway/sources.md</code> 번호 ·
+      <span class="tag i">I</span> = 근거 없이 팀이 해석한 내용 · 2026-11-09 · 로드맵 3번</p>
+  </div>
+  <div class="persona">
+    <img src="../../salpi_agent/web/img/owner_face.png" alt="사장님 얼굴 그림">
+    <div>
+      <h3>박정숙 사장님 (가상 인물, 54세)</h3>
+      <ul>
+        <li>달서구 30석 한식당 · 김치찌개 · 제육볶음 · 된장찌개 · 배달 병행</li>
+        <li>개인 도매상 · 식자재마트에서 주 1~2회 구매</li>
+        <li>카카오톡 · 배달앱은 익숙하고, 엑셀 · 대시보드는 부담스러움</li>
+      </ul>
+      <q>그래서 내일 몇 kg 사면 되는데?</q>
+    </div>
+  </div>
+</header>
+
+<h2>1. 여정 지도: 목요일 저녁부터 금요일 마감까지</h2>
+<div class="scroll">
+  <div class="map">
+    <div class="corner"></div>
+    <div class="stage"><small>① 목요일 저녁</small><b>내일 장사 가늠</b></div>
+    <div class="stage"><small>② 목요일 밤</small><b>가격 확인</b></div>
+    <div class="stage"><small>③ 목요일 밤</small><b>수량 정하기</b></div>
+    <div class="stage"><small>④ 금요일 아침</small><b>주문 · 구매</b></div>
+    <div class="stage"><small>⑤ 금요일 장사</small><b>재료 소진</b></div>
+    <div class="stage"><small>⑥ 금요일 마감</small><b>정산 · 남은 재료</b></div>
+
+    <div class="rh">하는 일</div>
+    <div>요일 · 날씨를 보고 내일 손님 수를 짐작한다</div>
+    <div>거래처(도매상)에 전화해 부르는 값을 듣는다</div>
+    <div>재료마다 살 양을 머릿속으로 정한다</div>
+    <div>도매상 전화 주문 · 식자재마트 방문 · 가끔 식봄 앱</div>
+    <div>점심 · 저녁 장사, 모자라는 재료는 급히 근처 마트에서 산다</div>
+    <div>영수증을 서랍에 넣고, 남은 재료를 정리하거나 버린다</div>
+
+    <div class="rh">접점</div>
+    <div>달력 · 날씨 앱 · 기억</div>
+    <div>전화 · 카카오톡</div>
+    <div>기억 · 수첩</div>
+    <div>전화 · 매장 · 식봄</div>
+    <div>주방 · 근처 마트</div>
+    <div>종이 영수증 · 거래명세서</div>
+
+    <div class="rh">속마음</div>
+    <div class="think">"금요일이니까 지난주만큼 오겠지. 근데 비 온다던데…" <span class="tag i">I</span></div>
+    <div class="think">"또 올랐다고? 다른 데도 다 그렇겠지." <span class="tag i">I</span></div>
+    <div class="think">"가격은 거래처에서 알려 주는 대로, 수량은 경험에만 의존" <span class="tag src">출처 45</span></div>
+    <div class="think">"어디가 싼지 비교할 시간이 없어." <span class="tag i">I</span></div>
+    <div class="think">"비 오니까 제육만 나가네. 돼지고기가 모자라!" <span class="tag i">I</span></div>
+    <div class="think">"이번 달 남긴 남은 건가? 양파는 또 버리네." <span class="tag i">I</span></div>
+
+    <div class="rh emo-label">감정
+      <span class="legend"><i></i>지금</span>
+      <span class="legend"><i class="tobe"></i>살피를 쓸 때</span>
+    </div>
+    <div class="emo">
+      <!-- 6칸 각 중앙: x = 1/12, 3/12 … 11/12 (viewBox 1200 기준 100, 300, … 1100) · y: 20 좋음 ~ 130 나쁨 -->
+      <svg viewBox="0 0 1200 150" preserveAspectRatio="none" role="img" aria-label="단계별 감정 곡선. 지금은 재료 소진 단계에서 가장 낮고, 살피를 쓰면 전 단계가 보통 이상으로 올라감">
+        <line x1="0" y1="75" x2="1200" y2="75" stroke="#DAD6CC" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/>
+        <polyline points="100,40 300,60 500,55 700,50 900,45 1100,40" fill="none" stroke="#4E8A2E" stroke-width="2.5" stroke-dasharray="7 5" vector-effect="non-scaling-stroke"/>
+        <polyline points="100,70 300,105 500,95 700,90 900,128 1100,110" fill="none" stroke="#E86A2E" stroke-width="3" vector-effect="non-scaling-stroke"/>
+        <g fill="#E86A2E">
+          <circle cx="100" cy="70" r="5"/><circle cx="300" cy="105" r="5"/><circle cx="500" cy="95" r="5"/>
+          <circle cx="700" cy="90" r="5"/><circle cx="900" cy="128" r="6"/><circle cx="1100" cy="110" r="5"/>
+        </g>
+      </svg>
+    </div>
+
+    <div class="rh">불편<br>(페인포인트)</div>
+    <div class="pain"><b>변수를 계산할 방법이 없음</b><br>비 · 공휴일 · 대구 행사가 손님 수를 바꾸지만 감으로만 반영 <span class="tag i">I</span></div>
+    <div class="pain"><b>오를지 내릴지 모름</b> <em class="top-mark">Top 1</em><br>양배추 포기당 1,276원 → 2,140원(+67.7%) <span class="tag src">출처 43</span> · 공공 시세를 참고하는 외식업체 6.8% <span class="tag src">출처 45</span></div>
+    <div class="pain"><b>양이 감에 달림</b> <em class="top-mark">Top 2</em><br>사장님 한 사람의 경험에 몰림 <span class="tag src">출처 45</span></div>
+    <div class="pain"><b>지금 가격만 비교됨</b><br>식봄 가격비교는 판매자별 지금 가격만, 시세 예측 · 알림은 보도에서 못 찾음 <span class="tag src">출처 26</span></div>
+    <div class="pain"><b>결품 = 판매 손실</b><br>모자라면 비싸게 급히 사고, 남으면 버림 <span class="tag i">I</span></div>
+    <div class="pain"><b>원가율을 모름</b> <em class="top-mark">Top 3</em><br>식재료비가 매출의 40.7%, 영업이익률 8.7% <span class="tag src">출처 44</span> · 영수증은 쌓이기만 함</div>
+
+    <div class="rh">살피가<br>돕는 곳</div>
+    <div class="opp"><b>내일 준비</b><br>판매 기록 + 날씨 · 공휴일 · 행사로 내일 그릇 수 예측</div>
+    <div class="opp"><b>재료 페이지 · 알림톡</b><br>대구 도매 시세 7일 예측과 "지금 사기 / 기다리기"</div>
+    <div class="opp"><b>발주 추천</b><br>먼저 사기 · 평소대로 · 나눠 사기 · 안 사도 됨</div>
+    <div class="opp"><b>오늘의 야채</b><br>식봄 실제 상품 · kg당 가격 · 대형마트 판매가로 바로 연결</div>
+    <div class="opp"><b>전날 오후 미리 알림</b><br>"금요일 비 예보, 제육볶음 재료 오늘 미리"</div>
+    <div class="opp"><b>영수증 분석 · 메뉴별 원가율</b><br>영수증 사진 → 실제 구매가 → 메뉴 1인분 원가율</div>
+  </div>
+</div>
+
+<h2>2. 페인포인트 Top 3</h2>
+<div class="top3">
+  <div class="card">
+    <span class="no">Top 1 · ② 가격 확인</span>
+    <h3>언제 사야 할지 모른다</h3>
+    <p>시세는 몇 주 만에 수십 % 오르내리는데, 사장님은 거래처가 부르는 값을 그대로 받습니다. 시세는 공개돼 있지만 "지금 살지, 기다릴지"라는 판단으로 바뀌어 있지 않습니다.</p>
+    <div class="ev">양배추 3주 만에 +67.7% <span class="tag src">출처 43</span> · 공공 시세 참고 6.8% <span class="tag src">출처 45</span> · 경락가는 공공 API로 매일 공개 <span class="tag src">출처 46</span></div>
+    <div class="fix"><b>살피</b> · 대구 도매 시세 7일 예측 + 구매 시점 알림 (밸류체인 기회 O1, 우선 과제)</div>
+  </div>
+  <div class="card">
+    <span class="no">Top 2 · ③ 수량 정하기 → ⑤ 재료 소진</span>
+    <h3>얼마나 살지 감으로 정한다</h3>
+    <p>"지난주 금요일만큼" 사기 때문에 비 오는 날이나 행사 날에는 모자라고, 한가한 날에는 남아서 버립니다.</p>
+    <div class="ev">"수량은 경험에만 의존" <span class="tag src">출처 45</span> · 결품 · 폐기 장면은 페르소나 설정 <span class="tag i">I</span></div>
+    <div class="fix"><b>살피</b> · 판매 기록 → 내일 판매량 → 발주량 추천 (기회 O2)</div>
+  </div>
+  <div class="card">
+    <span class="no">Top 3 · ⑥ 정산</span>
+    <h3>메뉴마다 얼마 남는지 모른다</h3>
+    <p>매출의 40%가 재료비인데 영수증은 서랍에 쌓이기만 합니다. 어느 메뉴의 원가율이 올랐는지 알 수 없어 가격 조정도 늦어집니다.</p>
+    <div class="ev">식재료비 비중 40.7% · 영업이익률 8.7% <span class="tag src">출처 44</span> · 식재료비 상승이 부담된다는 응답 91.4% <span class="tag src">출처 45</span></div>
+    <div class="fix"><b>살피</b> · 영수증 사진 → 메뉴별 원가율 (기회 O3)</div>
+  </div>
+</div>
+
+<h2>3. Top 3를 고른 기준</h2>
+<p class="lead" style="margin-bottom:10px">불편 6개를 세 기준으로 1~3점씩 매겼습니다. 점수는 팀 판단입니다 <span class="tag i">I</span>.
+  <b>근거</b> = 출처 있는 숫자 · 인용이 있는가 · <b>손실</b> = 돈이 바로 새는가 · <b>살피</b> = 지금 사이트로 풀 수 있는가</p>
+<div class="tbl">
+<table>
+  <thead><tr><th>불편</th><th>단계</th><th>근거</th><th>손실</th><th>살피</th><th>합계</th></tr></thead>
+  <tbody>
+    <tr class="sel"><td>오를지 내릴지 모름</td><td>② 가격 확인</td><td class="n">3</td><td class="n">3</td><td class="n">3</td><td class="n">9</td></tr>
+    <tr class="sel"><td>원가율을 모름</td><td>⑥ 정산</td><td class="n">3</td><td class="n">3</td><td class="n">2</td><td class="n">8</td></tr>
+    <tr class="sel"><td>양이 감에 달림</td><td>③ 수량 정하기</td><td class="n">2</td><td class="n">2</td><td class="n">3</td><td class="n">7</td></tr>
+    <tr><td>결품 = 판매 손실</td><td>⑤ 재료 소진</td><td class="n">1</td><td class="n">3</td><td class="n">2</td><td class="n">6</td></tr>
+    <tr><td>지금 가격만 비교됨</td><td>④ 주문 · 구매</td><td class="n">2</td><td class="n">1</td><td class="n">2</td><td class="n">5</td></tr>
+    <tr><td>변수를 계산할 방법이 없음</td><td>① 내일 장사 가늠</td><td class="n">1</td><td class="n">1</td><td class="n">3</td><td class="n">5</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="lead" style="margin-top:8px">'결품 = 판매 손실'은 Top 2(양이 감에 달림)의 결과라서 Top 2에 묶었습니다.
+  '변수 계산'도 내일 준비 예측이 같이 풀어 주므로 Top 2에서 함께 다룹니다.</p>
+
+<footer>
+  <b>근거 출처</b> (번호는 <code>research/company/cj_freshway/sources.md</code>)
+  <ol>
+    <li value="26">식봄 가격비교 기능 보도 (판매자별 지금 가격) · 11/06 신호 근거표 <code>research/company/cj_freshway/valuechain/signals.md</code></li>
+    <li value="43">뉴데일리 2026-07-13 · 양배추 포기당 1,276원 → 2,140원(+67.7%)</li>
+    <li value="44">경북매일 2026-09-14 (농식품부 · KREI 외식업체 경영실태조사) · 식재료비 비중 40.7%, 영업이익률 8.7%</li>
+    <li value="45">11/4 발표 자료 3~5장 (KREI 조사 인용) · 공공 시세 참고 6.8%, 식재료비 상승 부담 91.4%, "가격은 거래처에서 알려주는 대로, 수량은 경험에만 의존"</li>
+    <li value="46">aT 전국 공영도매시장 실시간 경매정보 · 정산정보 API</li>
+  </ol>
+  <p>페르소나: <code>plan/brand_kit/살피_브랜드키트_기획서.md</code> 2장 P1 · 살피 화면: <code>salpi_agent/README.md</code> · 기회 O1~O3: <code>research/company/cj_freshway/valuechain/analysis.md</code></p>
+</footer>
+
+</div>
+</body>
+</html>

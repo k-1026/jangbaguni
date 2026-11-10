@@ -1114,21 +1114,21 @@ const martChange = (v) => (v == null ? "" : v > 0
   : `<span class="mart-chg">2주 전과 같아요</span>`);
 
 // 최저가 회사의 온라인몰 검색 결과로 가는 바로가기 (그 회사에 몰이 없으면 몰 있는 회사 중 가장 싼 곳)
-const martShop = (s) => (!s ? "" : `<a class="mart-shop" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer"
-    title="${esc(s.chain)} 매장가 기준이에요. 온라인몰 가격은 다를 수 있어요">
-    ${s.lowest ? "" : `<small>온라인몰 있는 곳 중 가장 싼 ${esc(s.chain)} ${won(s.price)}</small>`}${esc(s.mall)}에서 보기 →</a>`);
+// 온라인몰 바로가기 버튼 (새 창)
+const EXT_ICON = '<svg class="ext" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>';
+const martShop = (s) => (!s ? "" : `${s.lowest ? "" : `<small class="mart-note">온라인몰 있는 곳 중 가장 싼 ${esc(s.chain)} ${won(s.price)}</small>`}
+    <div class="mart-shop-row"><a class="mart-shop" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer"
+    title="${esc(s.chain)} 매장가 기준이에요. 온라인몰 가격은 다를 수 있어요"><span class="mart-go">${esc(s.mall)}에서 보기${EXT_ICON}</span></a></div>`);
 
 function martCard(x) {
   const one = x.chains.length === 1;   // 한 회사에서만 조사된 재료는 비교 없이
-  const sub = [one ? "" : `보통 ${won(x.typical)}`, x.daegu ? `대구 매장 ${won(x.daegu.price)}` : ""].filter(Boolean).join(" · ");
+  const sub = x.daegu ? `대구 매장 ${won(x.daegu.price)}` : "";
   return `<article class="mart-item">
-    <p class="mart-cat">${esc(x.category)}</p>
     <h3>${esc(x.name)}</h3>
-    <p class="mart-low"><small>${one ? "파는 곳" : "가장 싼 곳"} · ${esc(x.low_chain)}</small><b>${won(x.low)}</b></p>
-    <p class="mart-sub">${sub || "한 회사에서만 조사됐어요"}</p>
+    <p class="mart-low"><b>${won(x.low)}</b></p>
+    ${sub ? `<p class="mart-sub">${sub}</p>` : ""}
     ${martShop(x.shop)}
-    ${martChange(x.change_pct) || `<span class="mart-chg">2주 전 값 없음</span>`}
-    ${one ? `<p class="mart-chains-none">회사별 비교 없음</p>` : `<details class="mart-chains"><summary>회사별 가격 ${x.chains.length}곳</summary>
+    ${one ? "" : `<details class="mart-chains"><summary>회사별 가격 ${x.chains.length}곳</summary>
       <ul>${x.chains.map((c) => `<li><span>${esc(c.chain)}<small>${esc(c.channel)}</small></span><b>${won(c.price)}</b>${
         c.change_pct ? `<em class="${c.change_pct > 0 ? "mart-up" : "mart-down"}">${pct(c.change_pct)}</em>` : "<em></em>"}</li>`).join("")}</ul>
     </details>`}

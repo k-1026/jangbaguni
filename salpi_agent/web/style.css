@@ -792,9 +792,13 @@ a.my-link { color: inherit; text-decoration: none; }
 .mart-low small { font-size: 12px; color: var(--muted); }
 .mart-low b { font-size: 22px; }
 .mart-sub { margin: 0; font-size: 13px; color: #4C524E; }
-.mart-shop { display: flex; flex-direction: column; align-self: flex-start; font-size: 13px; font-weight: 700; color: var(--deep); text-decoration: none; }
-.mart-shop:hover, .mart-shop:focus-visible { text-decoration: underline; }
-.mart-shop small { font-size: 11px; font-weight: 400; color: var(--muted); }
+.mart-note { font-size: 11px; color: var(--muted); }
+.mart-shop-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
+.mart-shop { font-size: 13px; font-weight: 700; color: var(--deep); text-decoration: none; }
+/* 온라인몰 바로가기: 새 창으로 열리는 링크 버튼 (밖으로 나가는 화살표 아이콘) */
+.mart-go { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 999px; border: 1.5px solid var(--deep); color: var(--deep); transition: background .15s, color .15s; }
+.mart-shop:hover .mart-go, .mart-shop:focus-visible .mart-go { background: var(--deep); color: #fff; }
+.mart-go .ext { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 .mart-chg { align-self: flex-start; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #5A615C; box-shadow: var(--press); }
 .mart-chg.mart-up, .mart-chains em.mart-up { color: var(--up); }
 .mart-chg.mart-down, .mart-chains em.mart-down { color: var(--down); }

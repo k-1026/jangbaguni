@@ -1484,7 +1484,7 @@ if (STORE_VIEW) {
     toReceipt();
     const keep = new ResizeObserver(() => { if (follow) toReceipt(); });
     keep.observe($("#store")); keep.observe($("#costs"));
-    storeReady.then(() => setTimeout(() => { if (follow) toReceipt(); keep.disconnect(); }, 300));
+    storeReady.then(() => setTimeout(() => { follow = false; keep.disconnect(); }, 5000));   // 다 그려진 뒤 5초 동안 늦게 바뀌는 칸 크기도 따라감
   }
 } else if (!ITEM) {
   loadContext();

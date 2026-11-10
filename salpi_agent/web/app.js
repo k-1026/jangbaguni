@@ -19,7 +19,6 @@ const SIGNED_IN = true;
 const STORE_VIEW = !ITEM && SIGNED_IN && new URLSearchParams(location.search).get("page") === "store";
 if (STORE_VIEW) document.body.classList.add("store-view");
 $("#storeBtn").hidden = !SIGNED_IN;
-$("#navReceipt").hidden = !SIGNED_IN;
 
 async function getJSON(url) {
   const r = await fetch(url);
@@ -58,20 +57,15 @@ async function loadOverview(attempt = 1) {
 
   const up = overview.filter((r) => (r.wholesale_change_pct ?? 0) >= 3);
   const down = overview.filter((r) => (r.wholesale_change_pct ?? 0) <= -3);
-  const rising = overview.filter((r) => expOf(r) >= 2);
-  const top = [...overview].sort((a, b) => (b.wholesale_change_pct ?? -999) - (a.wholesale_change_pct ?? -999))[0];
   const week = (r) => r.wholesale_change_pct;
   summaryLists = {
     up: [...up].sort((a, b) => week(b) - week(a)).map((r) => [r.item, week(r)]),
     down: [...down].sort((a, b) => week(a) - week(b)).map((r) => [r.item, week(r)]),
-    rising: [...rising].sort((a, b) => expOf(b) - expOf(a)).map((r) => [r.item, expOf(r)]),
   };
-  const chip = (key, tone, count, label) => `<button class="chip ${tone}" type="button" data-list="${key}" aria-expanded="false" aria-controls="summaryList-${key}"><b>${count}개</b><small>${label}</small></button>`;
+  const chip = (key, tone, count, label) => `<button class="chip ${tone}" type="button" data-list="${key}" aria-expanded="false" aria-controls="summaryList-${key}"><b>${count}개</b><small>${label}</small><i class="chip-caret" aria-hidden="true"><svg viewBox="0 0 12 12"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></i></button>`;
   $("#summary").innerHTML = `
     ${chip("up", "up", up.length, "지난주보다 <em>오른</em> 야채")}
-    ${chip("down", "down", down.length, "지난주보다 <em>내린</em> 야채")}
-    ${chip("rising", "warn", rising.length, "다음 주 <em>오를 가능성</em>")}
-    ${top ? `<button class="chip up" type="button" data-item="${esc(top.item)}"><b>${esc(top.item)} ${pct(top.wholesale_change_pct)}</b><small>가장 <em>많이 오른</em> 야채</small></button>` : ""}`;
+    ${chip("down", "down", down.length, "지난주보다 <em>내린</em> 야채")}`;
 
   renderSlides();
   onSlideChange();
@@ -83,7 +77,7 @@ let summaryLists = {};
 // 다른 칸으로 바꿀 때는 지금 목록이 접히는 동시에 새 목록이 펼쳐짐 (목록마다 칸을 따로 만들고, 접힌 칸은 지움)
 function openSummaryList(key) {
   const box = document.createElement("div");
-  box.className = `summary-list${key === "rising" ? " row2" : ""}`;
+  box.className = "summary-list";
   box.id = `summaryList-${key}`;
   box.innerHTML = summaryHTML(summaryLists[key] || []);
   $("#summary").appendChild(box);
@@ -968,12 +962,6 @@ function renderCosts(r, withChange) {
           <span class="cost-verdict">${esc(m.verdict)}</span>${ch}
         </div>
         <div class="cost-right">
-          ${m.swap ? `<div class="cost-swap" role="note">
-            <span class="swap-label">바꿔 볼 재료</span>
-            <p class="swap-pair"><b class="swap-from">${esc(m.swap.from)}</b><i aria-hidden="true">→</i><b class="swap-to">${esc(m.swap.to)}</b></p>
-            <p class="swap-text">${esc(m.swap.text)}</p>
-            <p class="swap-reason"><span aria-hidden="true">💡</span>${esc(m.swap.reason)}</p>
-          </div>` : ""}
           ${v == null ? "" : `<p class="ratio-label"><span><i class="k-cost"></i>재료비</span><span><i class="k-keep"></i>남는 돈</span><small>판매가 ${won(m.price)}을 100으로 볼 때</small></p>
           <div class="split-bar" role="img" aria-label="판매가 ${won(m.price)} 중 재료비 ${v}%, 남는 돈 ${+(100 - v).toFixed(1)}%">
             <i class="part-cost" style="width:${Math.max(4, Math.min(100, v))}%">${v}%</i>
@@ -984,8 +972,15 @@ function renderCosts(r, withChange) {
             <div><dt>1인분 재료비</dt><dd>${won(m.cost_per_serving)}</dd></div>
             <div><dt>남는 돈</dt><dd>${won(m.margin)}</dd></div>
           </dl>
-          ${(() => { const rest = m.tips.filter((t) => t !== m.swap?.text && t !== m.swap?.reason);
-            return rest.length ? `<ul class="cost-tips">${rest.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : ""; })()}
+          ${m.swap ? `<div class="cost-swap">
+            <p class="swap-title">🔄 대체 재료 추천</p>
+            <p class="swap-pair"><span class="swap-from">${esc(m.swap.from)}</span><i aria-label="에서">→</i><span class="swap-to">${esc(m.swap.to)}</span></p>
+            <p class="swap-reason">${esc(m.swap.reason)}</p>
+          </div>` : ""}
+          ${(() => {   // 대체 재료 상자에 들어간 문장은 빼고 나머지(오른 재료 · 판매가 제안)만 💡로
+            const rest = m.swap ? m.tips.filter((t) => t !== m.swap.reason && !t.startsWith(`${m.swap.from} 일부를`)) : m.tips;
+            return rest.length ? `<ul class="cost-tips">${rest.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : "";
+          })()}
         </div>
       </article>`;
     }).join("")}</div>
@@ -1386,9 +1381,7 @@ $("#chatForm").addEventListener("submit", (e) => { e.preventDefault(); const t =
 // ---------------------------------------------------------------
 // 검색: 글자가 이름 어디에 들어 있든 찾음 ("토" → 토마토, 방울토마토 상품). 띄어쓰기와 대소문자는 무시
 // ---------------------------------------------------------------
-const searchInput = $("#searchInput"), searchList = $("#searchList");
 const squash = (s) => String(s ?? "").toLowerCase().replace(/\s/g, "");
-let searchHits = [], searchActive = -1;
 
 function markHit(text, word) {
   const at = String(text).toLowerCase().indexOf(word.toLowerCase());
@@ -1410,56 +1403,77 @@ function findAll(word) {
   return { items, goods };
 }
 
-function closeSearch() {
-  searchList.hidden = true;
-  searchActive = -1;
-  searchInput.setAttribute("aria-expanded", "false");
-  searchInput.removeAttribute("aria-activedescendant");
-}
+// 검색창 하나를 연결: 위쪽 메뉴 검색창과 첫 화면 검색창이 같은 결과를 보여 줌
+function setupSearch(searchInput, searchList, idp) {
+  const box = searchInput.closest(".search");
+  let searchHits = [], searchActive = -1;
 
-function renderSearch() {
-  const word = searchInput.value.trim();
-  if (!squash(word)) { closeSearch(); return; }
-  const { items, goods } = findAll(word);
-  searchHits = [...items, ...goods];
-  searchActive = -1;
-  searchInput.removeAttribute("aria-activedescendant");
-  const hit = (h, i) => `<a class="search-hit" id="hit${i}" role="option" aria-selected="false" href="${h.url ? esc(h.url) : `/?item=${encodeURIComponent(h.name)}`}"
-    ${h.url ? 'target="_blank" rel="noopener"' : ""}><span>${markHit(h.name, word)}</span><small>${esc(h.note)}</small></a>`;
-  searchList.innerHTML = searchHits.length
-    ? (items.length ? `<p class="search-group">야채 시세 ${items.length}개</p>${items.map((h, i) => hit(h, i)).join("")}` : "")
-      + (goods.length ? `<p class="search-group">식봄 상품 ${goods.length}개</p>${goods.map((h, i) => hit(h, items.length + i)).join("")}` : "")
-    : `<p class="search-empty">${overview.length ? `'${esc(word)}'이(가) 들어간 재료나 상품이 없어요` : "시세를 불러오는 중이에요"}</p>`;
-  searchList.hidden = false;
-  searchInput.setAttribute("aria-expanded", "true");
-}
-
-function moveSearch(step) {
-  if (!searchHits.length) return;
-  $(`#hit${searchActive}`)?.classList.remove("active");
-  $(`#hit${searchActive}`)?.setAttribute("aria-selected", "false");
-  searchActive = (searchActive + step + searchHits.length) % searchHits.length;
-  const el = $(`#hit${searchActive}`);
-  el.classList.add("active");
-  el.setAttribute("aria-selected", "true");
-  el.scrollIntoView({ block: "nearest" });
-  searchInput.setAttribute("aria-activedescendant", el.id);
-}
-
-searchInput.addEventListener("input", renderSearch);
-searchInput.addEventListener("focus", renderSearch);
-searchInput.addEventListener("keydown", (e) => {
-  if (e.isComposing) return;   // 한글 조합 중에는 키 동작 없음
-  if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); moveSearch(e.key === "ArrowDown" ? 1 : -1); }
-  if (e.key === "Escape") closeSearch();
-  if (e.key === "Enter" && searchHits.length && !searchList.hidden) {
-    e.preventDefault();
-    $(`#hit${Math.max(searchActive, 0)}`).click();
+  function closeSearch() {
+    searchList.hidden = true;
+    searchActive = -1;
+    searchInput.setAttribute("aria-expanded", "false");
+    searchInput.removeAttribute("aria-activedescendant");
   }
-});
-searchList.addEventListener("click", (e) => { if (e.target.closest(".search-hit")) closeSearch(); });
-document.addEventListener("click", (e) => { if (!e.target.closest(".search")) closeSearch(); });
-document.addEventListener("focusin", (e) => { if (!e.target.closest(".search")) closeSearch(); });
+
+  function renderSearch() {
+    const word = searchInput.value.trim();
+    if (!squash(word)) { closeSearch(); return; }
+    const { items, goods } = findAll(word);
+    searchHits = [...items, ...goods];
+    searchActive = -1;
+    searchInput.removeAttribute("aria-activedescendant");
+    const hit = (h, i) => `<a class="search-hit" id="${idp}${i}" role="option" aria-selected="false" href="${h.url ? esc(h.url) : `/?item=${encodeURIComponent(h.name)}`}"
+      ${h.url ? 'target="_blank" rel="noopener"' : ""}><span>${markHit(h.name, word)}</span><small>${esc(h.note)}</small></a>`;
+    searchList.innerHTML = searchHits.length
+      ? (items.length ? `<p class="search-group">야채 시세 ${items.length}개</p>${items.map((h, i) => hit(h, i)).join("")}` : "")
+        + (goods.length ? `<p class="search-group">식봄 상품 ${goods.length}개</p>${goods.map((h, i) => hit(h, items.length + i)).join("")}` : "")
+      : `<p class="search-empty">${overview.length ? `'${esc(word)}'이(가) 들어간 재료나 상품이 없어요` : "시세를 불러오는 중이에요"}</p>`;
+    searchList.hidden = false;
+    searchInput.setAttribute("aria-expanded", "true");
+  }
+
+  function moveSearch(step) {
+    if (!searchHits.length) return;
+    $(`#${idp}${searchActive}`)?.classList.remove("active");
+    $(`#${idp}${searchActive}`)?.setAttribute("aria-selected", "false");
+    searchActive = (searchActive + step + searchHits.length) % searchHits.length;
+    const el = $(`#${idp}${searchActive}`);
+    el.classList.add("active");
+    el.setAttribute("aria-selected", "true");
+    el.scrollIntoView({ block: "nearest" });
+    searchInput.setAttribute("aria-activedescendant", el.id);
+  }
+
+  // 검색 버튼: 고른(없으면 첫 번째) 결과로 이동. 결과가 없으면 목록 · 안내만 보여 줌
+  function goFirst() {
+    const keep = searchActive;
+    renderSearch();
+    if (searchHits.length) $(`#${idp}${Math.max(keep, 0)}`)?.click();
+    else searchInput.focus();
+  }
+
+  searchInput.addEventListener("input", renderSearch);
+  searchInput.addEventListener("focus", renderSearch);
+  searchInput.addEventListener("keydown", (e) => {
+    if (e.isComposing) return;   // 한글 조합 중에는 키 동작 없음
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); moveSearch(e.key === "ArrowDown" ? 1 : -1); }
+    if (e.key === "Escape") closeSearch();
+    if (e.key === "Enter" && searchHits.length && !searchList.hidden) {
+      e.preventDefault();
+      $(`#${idp}${Math.max(searchActive, 0)}`).click();
+    }
+  });
+  searchList.addEventListener("click", (e) => { if (e.target.closest(".search-hit")) closeSearch(); });
+  document.addEventListener("click", (e) => { if (!box.contains(e.target)) closeSearch(); });
+  document.addEventListener("focusin", (e) => { if (!box.contains(e.target)) closeSearch(); });
+  return { goFirst };
+}
+
+setupSearch($("#searchInput"), $("#searchList"), "hit");
+if ($("#heroSearchInput")) {
+  const heroSearch = setupSearch($("#heroSearchInput"), $("#heroSearchList"), "heroHit");
+  $("#heroSearchBtn").addEventListener("click", heroSearch.goFirst);
+}
 
 // ---------------------------------------------------------------
 // 알림톡 시연: 세그먼트별 메시지 (실제 발송 없음). 시세 문장은 오늘 값, 나머지는 예시 문장
@@ -1530,10 +1544,19 @@ loadOverview();
 loadProducts();
 loadMyItems();
 if (STORE_VIEW) {
-  const toReceipt = location.hash === "#receipt";
-  Promise.allSettled([loadDemand(), loadCosts()]).then(() => {
-    if (toReceipt) $("#receipt").scrollIntoView({ block: "start" });
-  });
+  const storeReady = Promise.allSettled([loadDemand(), loadCosts()]);
+  // 위쪽 메뉴 '영수증 분석'(/?page=store#receipt): 열자마자 영수증 분석 칸으로 이동하고,
+  // 위 칸(내일 준비 · 원가율)이 늦게 채워져 길어지는 동안에도 그 자리에 머무름 (사용자가 직접 스크롤하면 멈춤)
+  if (location.hash === "#receipt") {
+    const toReceipt = () => $("#receipt").scrollIntoView({ block: "start" });
+    let follow = true;
+    const stop = () => { follow = false; };
+    ["wheel", "touchstart", "keydown"].forEach((t) => addEventListener(t, stop, { once: true, passive: true }));
+    toReceipt();
+    const keep = new ResizeObserver(() => { if (follow) toReceipt(); });
+    keep.observe($("#store")); keep.observe($("#costs"));
+    storeReady.then(() => setTimeout(() => { follow = false; keep.disconnect(); }, 5000));   // 다 그려진 뒤 5초 동안 늦게 바뀌는 칸 크기도 따라감
+  }
 } else if (!ITEM) {
   loadContext();
   loadMart();

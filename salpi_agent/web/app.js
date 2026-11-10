@@ -1118,7 +1118,7 @@ const martChange = (v) => (v == null ? "" : v > 0
 const EXT_ICON = '<svg class="ext" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>';
 const martShop = (s) => (!s ? "" : `${s.lowest ? "" : `<small class="mart-note">온라인몰 있는 곳 중 가장 싼 ${esc(s.chain)} ${won(s.price)}</small>`}
     <div class="mart-shop-row"><a class="mart-shop" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer"
-    title="${esc(s.chain)} 매장가 기준이에요. 온라인몰 가격은 다를 수 있어요"><span class="mart-go">${esc(s.mall)}에서 보기${EXT_ICON}</span></a></div>`);
+    title="${esc(s.mall)}로 가요 · ${esc(s.chain)} 매장가 기준이라 온라인몰 가격은 다를 수 있어요"><span class="mart-go">최저가 바로가기${EXT_ICON}</span></a></div>`);
 
 function martCard(x) {
   const one = x.chains.length === 1;   // 한 회사에서만 조사된 재료는 비교 없이

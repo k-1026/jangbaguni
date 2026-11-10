@@ -6,7 +6,9 @@
 같은 회사 매장은 값이 거의 같아서(롯데슈퍼 160곳이 한 값) 매장 평균 대신 회사별 가격으로 봄.
 """
 
+import re
 from statistics import median
+from urllib.parse import quote
 
 from data_sources import kca_latest_file, kca_rows, _cached
 
@@ -38,6 +40,31 @@ CHAINS = {"롯데슈퍼": "롯데슈퍼", "GS더프레시": "GS더프레시", "G
 DAEGU_STORES = {"이마트만촌점", "이마트반야월점", "이마트성서점", "이마트월배점", "이마트칠성점", "롯데슈퍼대구고산점",
                 "롯데슈퍼대구대실점", "롯데슈퍼복현점", "롯데슈퍼수성점", "롯데슈퍼프리미엄황금점", "현대백화점대구점",
                 "GS더프레시죽곡점", "GS더프레시본리점"}
+
+
+# 회사 → 그 회사 온라인 장보기몰의 검색 결과 주소 (2026-11 실제로 열어 확인)
+# 현대백화점 · GS더프레시 · 편의점은 맞는 온라인 장보기몰이 없어 뺌 → 몰이 있는 회사 중 가장 싼 곳으로 연결
+SHOPS = {
+    "이마트": ("이마트몰", "https://emart.ssg.com/search.ssg?query={q}"),
+    "신세계백화점": ("SSG.COM", "https://www.ssg.com/search.ssg?query={q}"),
+    "농협하나로마트": ("농협몰", "https://www.nonghyupmall.com/BC1F010M/srchTotalList.nh?searchTerm_main={q}&CHAN_C=1101&chanC=1101"),
+    "롯데슈퍼": ("롯데마트 제타", "https://lottemartzetta.com/products/search?q={q}"),
+}
+
+
+def _search_word(name):
+    """참가격 상품명 → 쇼핑몰 검색어. '곰표 밀가루 중력다목적용(1kg)' → '곰표 밀가루 중력다목적용 1kg'."""
+    return " ".join(re.sub(r"[()\[\],]", " ", name).split())
+
+
+def shop_link(item):
+    """가장 싼 회사의 온라인몰 검색 결과로 가는 바로가기. 그 회사에 몰이 없으면 몰이 있는 회사 중 가장 싼 곳."""
+    for c in item["chains"]:   # 이미 가격 낮은 순
+        if c["chain"] in SHOPS:
+            mall, url = SHOPS[c["chain"]]
+            return {"chain": c["chain"], "mall": mall, "price": c["price"], "lowest": c["chain"] == item["low_chain"],
+                    "url": url.format(q=quote(_search_word(item["name"])))}
+    return None
 
 
 def category(name):
@@ -107,4 +134,5 @@ def mart_prices():
     """가장 최근 파일의 음식 재료 판매가 (파일마다 한 번만 계산해 보관)."""
     f = kca_latest_file()
     data = _cached(f"kca_{f['uddi']}", None, lambda: _summary(kca_rows(f["uddi"])))
-    return {**data, "file_date": f["date"], "source": "한국소비자원 생필품 가격 정보(참가격)"}
+    items = [{**x, "shop": shop_link(x)} for x in data["items"]]   # 링크는 보관한 계산 결과 위에 매번 붙임 (주소를 바꿔도 바로 반영)
+    return {**data, "items": items, "file_date": f["date"], "source": "한국소비자원 생필품 가격 정보(참가격)"}

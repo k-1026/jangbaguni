@@ -121,13 +121,34 @@ def _num(v):
 # 2) 저장: 사장님이 확인 · 수정한 내용 → Supabase, 저장 전후 원가율 비교
 # ---------------------------------------------------------------
 
-def save(store_id, data, image=None, mime=None):
+def _checked_rows(data):
+    """금액 있는 줄만, 재료를 고른 줄은 양이 있어야 함."""
     rows = [r for r in data.get("items") or [] if r.get("raw_name") and r.get("amount")]
     if not rows:
         raise ValueError("저장할 품목이 없어요")
     for r in rows:
         if r.get("item_id") and not r.get("qty_base"):
             raise ValueError(f"'{r['raw_name']}'의 양(기준 단위)을 적어 주세요")
+    return rows
+
+
+def _item_rows(purchase_id, rows):
+    return [{"purchase_id": purchase_id, "item_id": r.get("item_id"), "raw_name": r["raw_name"],
+             "qty_base": float(r.get("qty_base") or r.get("qty") or 1), "amount": int(float(r["amount"]))} for r in rows]
+
+
+def _with_change(store_id, before):
+    """저장 뒤 원가율 + 저장 전과 비교한 변화(%p)."""
+    after = cost_report(store_id)
+    for m in after["menus"]:
+        b = before.get(m["menu_id"])
+        m["before_ratio_pct"] = b["cost_ratio_pct"] if b else None
+        m["change_pt"] = round(m["cost_ratio_pct"] - b["cost_ratio_pct"], 1) if b and m["cost_ratio_pct"] is not None and b["cost_ratio_pct"] is not None else None
+    return after
+
+
+def save(store_id, data, image=None, mime=None):
+    rows = _checked_rows(data)
     day = data.get("date") or str(datetime.now(KST).date())
     before = {m["menu_id"]: m for m in cost_report(store_id)["menus"]}
 
@@ -137,9 +158,7 @@ def save(store_id, data, image=None, mime=None):
         path = db.upload("receipts", f"{store_id}/{day}_{uuid.uuid4().hex[:8]}.{ext}", image, mime or "image/jpeg")
     p = db.insert("purchases", [{"store_id": store_id, "purchased_on": day, "supplier": data.get("supplier"),
                                  "total_amount": int(sum(float(r["amount"]) for r in rows)), "source": "ocr", "image_path": path}])[0]
-    db.insert("purchase_items", [{"purchase_id": p["id"], "item_id": r.get("item_id"), "raw_name": r["raw_name"],
-                                  "qty_base": float(r.get("qty_base") or r.get("qty") or 1), "amount": int(float(r["amount"]))}
-                                 for r in rows])
+    db.insert("purchase_items", _item_rows(p["id"], rows))
     # 다음부터 같은 이름은 바로 맞추도록 짝 저장 (이미 있으면 사장님이 고친 값으로 바꿈)
     pairs = {}
     for r in rows:
@@ -148,12 +167,30 @@ def save(store_id, data, image=None, mime=None):
                                     "base_qty_per_unit": round(float(r["qty_base"]) / float(r["qty"]), 3)}
     db.upsert("item_aliases", list(pairs.values()), "alias")
 
-    after = cost_report(store_id)
-    for m in after["menus"]:
-        b = before.get(m["menu_id"])
-        m["before_ratio_pct"] = b["cost_ratio_pct"] if b else None
-        m["change_pt"] = round(m["cost_ratio_pct"] - b["cost_ratio_pct"], 1) if b and m["cost_ratio_pct"] is not None and b["cost_ratio_pct"] is not None else None
+    after = _with_change(store_id, before)
     return {"purchase_id": p["id"], "date": day, "saved_items": len(rows), "image_saved": bool(path), **after}
+
+
+def edit(store_id, purchase_id, data):
+    """저장한 영수증 고치기: 날짜 · 판매처 · 품목 줄을 사장님이 고친 내용으로 바꿈 (사진은 그대로)."""
+    rows = _checked_rows(data)
+    before = {m["menu_id"]: m for m in cost_report(store_id)["menus"]}
+    fields = {"supplier": data.get("supplier"), "total_amount": int(sum(float(r["amount"]) for r in rows))}
+    if data.get("date"):
+        fields["purchased_on"] = data["date"]
+    if not db.update("purchases", fields, id=f"eq.{purchase_id}", store_id=f"eq.{store_id}"):
+        raise ValueError("영수증을 찾지 못했어요")
+    # 줄은 통째로 바꿈 (빠진 줄 · 더한 줄 모두 반영). 새 줄을 먼저 넣고 예전 줄을 지워서, 중간에 실패해도 줄이 사라지지 않게
+    old = [r["id"] for r in db.select("purchase_items", purchase_id=f"eq.{purchase_id}", select="id")]
+    db.insert("purchase_items", _item_rows(purchase_id, rows))
+    if old:
+        db.delete("purchase_items", id=f"in.({','.join(map(str, old))})")
+    # 이름 → 재료 짝도 고친 값으로 (원래 수량을 모르면 1개 기준으로 보지 않고 건너뜀)
+    db.upsert("item_aliases", [{"alias": r["raw_name"], "item_id": r["item_id"],
+                                "base_qty_per_unit": round(float(r["qty_base"]) / float(r["qty"]), 3)}
+                               for r in rows if r.get("item_id") and r.get("qty") and r.get("qty_base")], "alias")
+    after = _with_change(store_id, before)
+    return {"purchase_id": purchase_id, "date": fields.get("purchased_on"), "saved_items": len(rows), **after}
 
 
 # ---------------------------------------------------------------
@@ -219,6 +256,16 @@ def cost_report(store_id=db.DEMO_STORE):
             "method": "재료마다 가장 최근 영수증 단가 × 1인분 양(손질 손실 포함). 판매가 제안은 500원 단위 올림"}
 
 
+def my_ingredients(store_id):
+    """우리 가게 메뉴(판매 중)에 들어가는 재료 → 그 재료가 들어가는 메뉴들. 알림을 '내 메뉴 재료만'으로 거를 때 씀."""
+    menus = db.select("menus", store_id=f"eq.{store_id}", is_active="eq.true", select="id,name", order="id")
+    names = {m["id"]: m["name"] for m in menus}
+    out = {}
+    for r in db.select("recipe_items", menu_id=f"in.({','.join(map(str, names)) or 0})", select="menu_id,items(name)"):
+        out.setdefault(r["items"]["name"], []).append(names[r["menu_id"]])
+    return {"menus": list(names.values()), "items": out}
+
+
 # ---------------------------------------------------------------
 # 4) 최근 영수증 목록 · 지우기 (시연에서 영수증 읽기로 넣은 것만 지울 수 있음)
 # ---------------------------------------------------------------
@@ -245,7 +292,7 @@ def detail(store_id, purchase_id):
         raise ValueError("영수증을 찾지 못했어요")
     p = ps[0]
     rows = db.select("purchase_items", purchase_id=f"eq.{purchase_id}", order="id",
-                     select="raw_name,qty_base,amount,unit_price_base,items(name,base_unit)")
+                     select="raw_name,item_id,qty_base,amount,unit_price_base,items(name,base_unit)")
     if p["image_path"]:
         image = db.signed_url(p["image_path"])
     elif p["source"] == "demo" and p["purchased_on"] in DEMO_IMAGES:
@@ -253,7 +300,8 @@ def detail(store_id, purchase_id):
     else:
         image = None
     return {**p, "image_url": image, "image_path": None,
-            "items": [{"raw_name": r["raw_name"], "item": (r["items"] or {}).get("name"), "unit": (r["items"] or {}).get("base_unit"),
+            "items_list": [{"id": i["id"], "name": i["name"], "base_unit": i["base_unit"]} for i in _items()],
+            "items": [{"raw_name": r["raw_name"], "item_id": r["item_id"], "item": (r["items"] or {}).get("name"), "unit": (r["items"] or {}).get("base_unit"),
                        "qty_base": float(r["qty_base"]), "amount": r["amount"],
                        "unit_price": round(float(r["unit_price_base"])) if r["unit_price_base"] else None} for r in rows]}
 

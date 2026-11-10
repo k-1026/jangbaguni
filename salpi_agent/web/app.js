@@ -873,7 +873,7 @@ async function saveReceipt() {
     const r = await sendJSON("/api/receipt/save", "POST", { image: receipt.image, mime: receipt.mime,
       date: $("#rcDate").value || null, supplier: $("#rcSupplier").value || null, items });
     resetReceipt();
-    $("#receiptResult").innerHTML = `<p class="ok">${mmdd(r.date)} 영수증 ${r.saved_items}줄을 저장했어요. 아래 메뉴별 원가율이 새로 계산됐어요.</p>`;
+    $("#receiptResult").innerHTML = `<p class="ok">${mmdd(r.date)} 영수증 ${r.saved_items}줄을 저장했어요. 위 메뉴별 원가율이 새로 계산됐어요.</p>`;
     renderCosts(r, true);
     loadCosts(false);
   } catch (e) {
@@ -911,7 +911,15 @@ function renderCosts(r, withChange) {
             <div><dt>1인분 재료비</dt><dd>${won(m.cost_per_serving)}</dd></div>
             <div><dt>남는 돈</dt><dd>${won(m.margin)}</dd></div>
           </dl>
-          ${m.tips.length ? `<ul class="cost-tips">${m.tips.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}
+          ${m.swap ? `<div class="cost-swap">
+            <p class="swap-title">🔄 대체 재료 추천</p>
+            <p class="swap-pair"><span class="swap-from">${esc(m.swap.from)}</span><i aria-label="에서">→</i><span class="swap-to">${esc(m.swap.to)}</span></p>
+            <p class="swap-reason">${esc(m.swap.reason)}</p>
+          </div>` : ""}
+          ${(() => {   // 대체 재료 상자에 들어간 문장은 빼고 나머지(오른 재료 · 판매가 제안)만 💡로
+            const rest = m.swap ? m.tips.filter((t) => t !== m.swap.reason && !t.startsWith(`${m.swap.from} 일부를`)) : m.tips;
+            return rest.length ? `<ul class="cost-tips">${rest.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : "";
+          })()}
         </div>
       </article>`;
     }).join("")}</div>
@@ -1465,8 +1473,19 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#tal
 loadOverview();
 loadProducts();
 if (STORE_VIEW) {
-  loadDemand();
-  loadCosts();
+  const storeReady = Promise.allSettled([loadDemand(), loadCosts()]);
+  // 위쪽 메뉴 '영수증 분석'(/?page=store#receipt): 열자마자 영수증 분석 칸으로 이동하고,
+  // 위 칸(내일 준비 · 원가율)이 늦게 채워져 길어지는 동안에도 그 자리에 머무름 (사용자가 직접 스크롤하면 멈춤)
+  if (location.hash === "#receipt") {
+    const toReceipt = () => $("#receipt").scrollIntoView({ block: "start" });
+    let follow = true;
+    const stop = () => { follow = false; };
+    ["wheel", "touchstart", "keydown"].forEach((t) => addEventListener(t, stop, { once: true, passive: true }));
+    toReceipt();
+    const keep = new ResizeObserver(() => { if (follow) toReceipt(); });
+    keep.observe($("#store")); keep.observe($("#costs"));
+    storeReady.then(() => setTimeout(() => { if (follow) toReceipt(); keep.disconnect(); }, 300));
+  }
 } else if (!ITEM) {
   loadContext();
   loadMart();

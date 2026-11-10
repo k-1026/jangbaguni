@@ -188,6 +188,7 @@ body.item-view .home-only, body.store-view .home-only { display: none; }
 /* 나의 가게 페이지에서만 보이는 칸 (내일 준비 · 영수증 분석 · 메뉴별 원가율) */
 .store-only { display: none; }
 body.store-view .store-only { display: block; }
+.store-only { scroll-margin-top: 64px; }   /* 위쪽 메뉴에서 바로 갈 때 고정 메뉴줄에 제목이 가리지 않게 */
 .store-head h1 { margin: 6px 0 4px; font-size: 28px; }
 .store-btn { display: flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 999px; background: var(--neu); box-shadow: var(--raise-sm);
   color: var(--ink); font-size: 14px; font-weight: 700; text-decoration: none; white-space: nowrap; }
@@ -599,6 +600,15 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .cost-tips { margin: 10px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
 .cost-tips li { position: relative; padding-left: 16px; font-size: 13px; color: #4C524E; line-height: 1.5; }
 .cost-tips li::before { content: "💡"; position: absolute; left: 0; top: 0; font-size: 11px; }
+/* 대체 재료 추천: 오른 재료(빨강) → 바꿀 재료(초록) */
+.cost-swap { margin-top: 12px; padding: 12px 16px; border-radius: 14px; background: #F3F8F5; border: 1px solid #DCEBE3; }
+.swap-title { margin: 0 0 6px; font-size: 13px; font-weight: 800; color: #3E4A44; }
+.swap-pair { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.swap-pair span { padding: 5px 12px; border-radius: 999px; font-size: 15px; font-weight: 800; }
+.swap-from { color: #D64535; background: #FDECEA; }
+.swap-to { color: #1A8F6A; background: #E2F5EC; }
+.swap-pair i { font-style: normal; font-size: 18px; font-weight: 800; color: #7A8A84; }
+.swap-reason { margin: 8px 0 0; font-size: 12px; color: #6B746F; }
 #receiptList { margin-top: 18px; }
 .sub-h { font-size: 15px; margin: 16px 0 6px; }
 .receipt-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; }

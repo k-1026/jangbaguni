@@ -219,6 +219,24 @@ def receipt_detail(purchase_id: int):
     return _receipt_guard(lambda: receipts.detail(supabase_db.DEMO_STORE, purchase_id))
 
 
+class ReceiptEdit(BaseModel):
+    date: str | None = None
+    supplier: str | None = None
+    items: list[dict] = []
+
+
+@app.put("/api/receipt/{purchase_id}")
+def receipt_edit(purchase_id: int, body: ReceiptEdit):
+    """저장한 영수증 고치기 (최근 영수증 → 수정하기 팝업)."""
+    return _receipt_guard(lambda: receipts.edit(supabase_db.DEMO_STORE, purchase_id, body.model_dump()))
+
+
+@app.get("/api/my-items")
+def my_items():
+    """우리 가게 메뉴에 들어가는 재료 (알림 '내 메뉴 재료만'). 메뉴가 자주 바뀌지 않아 10분 보관."""
+    return _receipt_guard(lambda: memo("my_items", lambda: receipts.my_ingredients(supabase_db.DEMO_STORE), ttl=600))
+
+
 @app.get("/api/receipts")
 def receipt_list():
     return _receipt_guard(lambda: {"receipts": receipts.recent(supabase_db.DEMO_STORE, limit=50)})

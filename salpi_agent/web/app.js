@@ -13,7 +13,7 @@ if (ITEM) {
   document.body.classList.add("item-view");
   $("#itemPage").hidden = false;
 }
-// 나의 가게 페이지(/?page=store): 내일 준비 · 영수증 분석 · 메뉴별 원가율은 사장님 로그인 시에만
+// 마이페이지(가게, /?page=store): 내일 준비 · 메뉴별 원가율 · 영수증 분석은 사장님 로그인 시에만
 // 로그인(카카오)은 아직 없어서 시연에서는 기본 계정으로 로그인한 것으로 봄
 const SIGNED_IN = true;
 const STORE_VIEW = !ITEM && SIGNED_IN && new URLSearchParams(location.search).get("page") === "store";
@@ -57,20 +57,15 @@ async function loadOverview(attempt = 1) {
 
   const up = overview.filter((r) => (r.wholesale_change_pct ?? 0) >= 3);
   const down = overview.filter((r) => (r.wholesale_change_pct ?? 0) <= -3);
-  const rising = overview.filter((r) => expOf(r) >= 2);
-  const top = [...overview].sort((a, b) => (b.wholesale_change_pct ?? -999) - (a.wholesale_change_pct ?? -999))[0];
   const week = (r) => r.wholesale_change_pct;
   summaryLists = {
     up: [...up].sort((a, b) => week(b) - week(a)).map((r) => [r.item, week(r)]),
     down: [...down].sort((a, b) => week(a) - week(b)).map((r) => [r.item, week(r)]),
-    rising: [...rising].sort((a, b) => expOf(b) - expOf(a)).map((r) => [r.item, expOf(r)]),
   };
-  const chip = (key, tone, count, label) => `<button class="chip ${tone}" type="button" data-list="${key}" aria-expanded="false" aria-controls="summaryList-${key}"><b>${count}개</b><small>${label}</small></button>`;
+  const chip = (key, tone, count, label) => `<button class="chip ${tone}" type="button" data-list="${key}" aria-expanded="false" aria-controls="summaryList-${key}"><b>${count}개</b><small>${label}</small><i class="chip-caret" aria-hidden="true"><svg viewBox="0 0 12 12"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></i></button>`;
   $("#summary").innerHTML = `
     ${chip("up", "up", up.length, "지난주보다 <em>오른</em> 야채")}
-    ${chip("down", "down", down.length, "지난주보다 <em>내린</em> 야채")}
-    ${chip("rising", "warn", rising.length, "다음 주 <em>오를 가능성</em>")}
-    ${top ? `<button class="chip up" type="button" data-item="${esc(top.item)}"><b>${esc(top.item)} ${pct(top.wholesale_change_pct)}</b><small>가장 <em>많이 오른</em> 야채</small></button>` : ""}`;
+    ${chip("down", "down", down.length, "지난주보다 <em>내린</em> 야채")}`;
 
   renderSlides();
   onSlideChange();
@@ -82,7 +77,7 @@ let summaryLists = {};
 // 다른 칸으로 바꿀 때는 지금 목록이 접히는 동시에 새 목록이 펼쳐짐 (목록마다 칸을 따로 만들고, 접힌 칸은 지움)
 function openSummaryList(key) {
   const box = document.createElement("div");
-  box.className = `summary-list${key === "rising" ? " row2" : ""}`;
+  box.className = "summary-list";
   box.id = `summaryList-${key}`;
   box.innerHTML = summaryHTML(summaryLists[key] || []);
   $("#summary").appendChild(box);
@@ -806,14 +801,61 @@ function shrink(blob) {
   });
 }
 
+// PDF 영수증 · 명세서: 앞 3쪽까지 그림으로 그려 위아래로 이어 붙임 (pdf.js는 PDF를 고를 때만 불러옴)
+const PDF_PAGES = 3;
+let pdfLib = null;
+function loadPdfLib() {
+  if (pdfLib) return pdfLib;
+  pdfLib = new Promise((resolve, reject) => {
+    const sc = document.createElement("script");
+    sc.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+    sc.onload = () => {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      resolve(window.pdfjsLib);
+    };
+    sc.onerror = () => { pdfLib = null; reject(new Error("PDF를 여는 도구를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.")); };
+    document.head.appendChild(sc);
+  });
+  return pdfLib;
+}
+const isPdf = (blob) => blob.type === "application/pdf" || /\.pdf$/i.test(blob.name || "");
+async function pdfToImage(blob) {
+  const lib = await loadPdfLib();
+  let doc;
+  try { doc = await lib.getDocument({ data: await blob.arrayBuffer() }).promise; }
+  catch (e) { throw new Error(e.name === "PasswordException" ? "비밀번호가 걸린 PDF는 열 수 없어요" : "PDF를 열지 못했어요"); }
+  const pages = [];
+  for (let n = 1; n <= Math.min(doc.numPages, PDF_PAGES); n++) {
+    const page = await doc.getPage(n);
+    const base = page.getViewport({ scale: 1 });
+    const vp = page.getViewport({ scale: Math.min(3, 1200 / base.width) });   // 한 쪽 너비 1200px
+    const c = document.createElement("canvas");
+    c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+    const g = c.getContext("2d");
+    g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height);
+    await page.render({ canvasContext: g, viewport: vp }).promise;
+    pages.push(c);
+  }
+  const out = document.createElement("canvas");
+  out.width = Math.max(...pages.map((c) => c.width));
+  out.height = pages.reduce((h, c) => h + c.height, 0);
+  const g = out.getContext("2d");
+  g.fillStyle = "#fff"; g.fillRect(0, 0, out.width, out.height);
+  pages.reduce((y, c) => (g.drawImage(c, 0, y), y + c.height), 0);
+  return { image: out.toDataURL("image/jpeg", 0.85), skipped: Math.max(0, doc.numPages - PDF_PAGES) };
+}
+
 async function readReceipt(blob) {
   const box = $("#receiptResult");
   $("#receiptStart").hidden = true;
   box.innerHTML = `<div class="reading"><div class="spinner"></div><b>살피가 영수증을 읽는 중이에요</b><p class="muted">10~30초쯤 걸려요</p></div>`;
   try {
-    const image = await shrink(blob);
+    let image, skipped = 0;
+    if (isPdf(blob)) ({ image, skipped } = await pdfToImage(blob));
+    else image = await shrink(blob);
     receipt = { image, mime: "image/jpeg" };
     receipt.data = await sendJSON("/api/receipt/read", "POST", { image, mime: "image/jpeg" });
+    receipt.data.skipped_pages = skipped;
     renderReceiptEdit();
   } catch (e) {
     box.innerHTML = `<p class="rc-warn">${esc(e.message)}</p><button class="btn" id="receiptAgain">다시 하기</button>`;
@@ -828,63 +870,77 @@ function resetReceipt() {
   $("#receiptFile").value = "";
 }
 
-function renderReceiptEdit() {
-  const d = receipt.data;
+// 확인 · 수정 표: 새로 읽은 영수증(아래 화면)과 저장한 영수증 고치기(팝업)가 같이 씀
+// d = { date, supplier, items[{raw_name, item_id, base_unit, qty_base, amount, qty}], items_list, total_matches, ... }
+function receiptEditor(box, d, { image, thumb = true, badge, saveLabel = "확인했어요, 저장", onSave, onCancel }) {
   const opts = (sel) => `<option value="">재료 아님</option>` + d.items_list.map((i) =>
     `<option value="${i.id}" ${i.id === sel ? "selected" : ""}>${esc(i.name)}</option>`).join("");
   const unitOf = (id) => d.items_list.find((i) => i.id === +id)?.base_unit || "";
-  $("#receiptResult").innerHTML = `
-    <div class="receipt-edit">
-      <img class="receipt-thumb" src="${receipt.image}" alt="올린 영수증">
+  const row = (x, i) => `<tr data-i="${i}">
+        <td><input class="rc-name" value="${esc(x.raw_name || "")}" aria-label="영수증 품목"></td>
+        <td><select class="rc-item" aria-label="재료">${opts(x.item_id)}</select></td>
+        <td class="qty-cell"><input class="rc-qty" type="number" step="0.1" min="0" value="${x.qty_base ?? ""}" aria-label="양"><span class="rc-unit">${esc(x.base_unit || "")}</span></td>
+        <td><input class="rc-amount" type="number" min="0" value="${x.amount ?? ""}" aria-label="금액"></td>
+        <td><button class="rc-del" type="button" title="이 줄 빼기">×</button></td></tr>`;
+  box.innerHTML = `
+    <div class="receipt-edit ${thumb ? "" : "no-thumb"}">
+      ${thumb ? (image ? `<img class="receipt-thumb" src="${esc(image)}" alt="올린 영수증">` : `<div class="receipt-thumb no-photo">사진 없음</div>`) : ""}
       <div>
-        <span class="badge">살피가 읽은 내용 · 틀린 곳은 고쳐 주세요</span>
+        <span class="badge">${badge || "살피가 읽은 내용 · 틀린 곳은 고쳐 주세요"}</span>
         <div class="receipt-meta">
-          <label>날짜 <input type="date" id="rcDate" value="${esc(d.date || "")}"></label>
-          <label>판매처 <input id="rcSupplier" value="${esc(d.supplier ? supplierName(d.supplier) : "")}"></label>
+          <label>날짜 <input type="date" class="rc-date" value="${esc(d.date || "")}"></label>
+          <label>판매처 <input class="rc-supplier" value="${esc(d.supplier ? supplierName(d.supplier) : "")}"></label>
         </div>
-        ${d.total_matches ? "" : `<p class="rc-warn">줄 금액을 더하면 ${won(d.line_sum)}인데 합계는 ${won(d.total)}이에요. 빠진 줄이 없는지 봐 주세요.</p>`}
+        ${d.total_matches === false ? `<p class="rc-warn">줄 금액을 더하면 ${won(d.line_sum)}인데 합계는 ${won(d.total)}이에요. 빠진 줄이 없는지 봐 주세요.</p>` : ""}
+        ${d.skipped_pages ? `<p class="rc-warn">PDF가 길어서 앞 ${PDF_PAGES}쪽만 읽었어요 (${d.skipped_pages}쪽 빠짐). 나머지 줄은 아래 '줄 더하기'로 넣어 주세요.</p>` : ""}
       </div>
     </div>
-    <table class="price-table edit-table">
+    <div class="table-scroll"><table class="price-table edit-table">
       <thead><tr><th>영수증 품목</th><th>재료</th><th>양</th><th>금액(원)</th><th></th></tr></thead>
-      <tbody>${d.items.map((x, i) => `<tr data-i="${i}">
-        <td><input class="rc-name" value="${esc(x.raw_name)}"></td>
-        <td><select class="rc-item">${opts(x.item_id)}</select></td>
-        <td class="qty-cell"><input class="rc-qty" type="number" step="0.1" min="0" value="${x.qty_base ?? ""}"><span class="rc-unit">${esc(x.base_unit || "")}</span></td>
-        <td><input class="rc-amount" type="number" min="0" value="${x.amount ?? ""}"></td>
-        <td><button class="rc-del" title="이 줄 빼기">×</button></td></tr>`).join("")}</tbody>
-    </table>
+      <tbody>${d.items.map(row).join("")}</tbody>
+    </table></div>
+    <button class="rc-add" type="button">+ 줄 더하기</button>
     <p class="muted small">양은 재료 기준 단위(kg · 모)로 바꾼 전체 양이에요. 예: 깐양파 15kg 1망 → 15</p>
-    <div class="receipt-actions"><button class="btn" id="rcCancel">취소</button><button class="btn primary" id="rcSave">확인했어요, 저장</button></div>`;
-  const tb = $("#receiptResult tbody");
+    <div class="receipt-actions"><button class="btn rc-cancel" type="button">취소</button><button class="btn primary rc-save" type="button">${saveLabel}</button></div>`;
+  const tb = box.querySelector("tbody");
   tb.onchange = (e) => {
     if (e.target.classList.contains("rc-item")) e.target.closest("tr").querySelector(".rc-unit").textContent = unitOf(e.target.value);
   };
   tb.onclick = (e) => { if (e.target.classList.contains("rc-del")) e.target.closest("tr").remove(); };
-  $("#rcCancel").onclick = resetReceipt;
-  $("#rcSave").onclick = saveReceipt;
+  box.querySelector(".rc-add").onclick = () => {
+    tb.insertAdjacentHTML("beforeend", row({}, -1));
+    tb.lastElementChild.querySelector(".rc-name").focus();
+  };
+  box.querySelector(".rc-cancel").onclick = onCancel;
+  const btn = box.querySelector(".rc-save");
+  btn.onclick = async () => {
+    const items = [...tb.querySelectorAll("tr")].map((tr) => {
+      const orig = d.items[+tr.dataset.i] || {};
+      const itemId = tr.querySelector(".rc-item").value;
+      return { raw_name: tr.querySelector(".rc-name").value.trim(), qty: orig.qty ?? null, item_id: itemId ? +itemId : null,
+               qty_base: parseFloat(tr.querySelector(".rc-qty").value) || null, amount: parseFloat(tr.querySelector(".rc-amount").value) || null };
+    });
+    btn.disabled = true; btn.textContent = "저장하는 중";
+    try {
+      await onSave({ date: box.querySelector(".rc-date").value || null, supplier: box.querySelector(".rc-supplier").value || null, items });
+    } catch (e) {
+      btn.disabled = false; btn.textContent = saveLabel;
+      alert(e.message);
+    }
+  };
 }
 
-async function saveReceipt() {
-  const btn = $("#rcSave");
-  const items = [...document.querySelectorAll("#receiptResult tbody tr")].map((tr) => {
-    const orig = receipt.data.items[+tr.dataset.i];
-    const itemId = tr.querySelector(".rc-item").value;
-    return { raw_name: tr.querySelector(".rc-name").value.trim(), qty: orig.qty, item_id: itemId ? +itemId : null,
-             qty_base: parseFloat(tr.querySelector(".rc-qty").value) || null, amount: parseFloat(tr.querySelector(".rc-amount").value) || null };
+function renderReceiptEdit() {
+  receiptEditor($("#receiptResult"), receipt.data, {
+    image: receipt.image, onCancel: resetReceipt,
+    onSave: async (v) => {
+      const r = await sendJSON("/api/receipt/save", "POST", { image: receipt.image, mime: receipt.mime, ...v });
+      resetReceipt();
+      $("#receiptResult").innerHTML = `<p class="ok">${mmdd(r.date)} 영수증 ${r.saved_items}줄을 저장했어요. 위 메뉴별 원가율이 새로 계산됐어요.</p>`;
+      renderCosts(r, true);
+      loadCosts(false);
+    },
   });
-  btn.disabled = true; btn.textContent = "저장하는 중";
-  try {
-    const r = await sendJSON("/api/receipt/save", "POST", { image: receipt.image, mime: receipt.mime,
-      date: $("#rcDate").value || null, supplier: $("#rcSupplier").value || null, items });
-    resetReceipt();
-    $("#receiptResult").innerHTML = `<p class="ok">${mmdd(r.date)} 영수증 ${r.saved_items}줄을 저장했어요. 아래 메뉴별 원가율이 새로 계산됐어요.</p>`;
-    renderCosts(r, true);
-    loadCosts(false);
-  } catch (e) {
-    btn.disabled = false; btn.textContent = "확인했어요, 저장";
-    alert(e.message);
-  }
 }
 
 const ratioCls = (v) => (v == null ? "" : v > 35 ? "up" : v > 30 ? "warnc" : "down");
@@ -916,7 +972,15 @@ function renderCosts(r, withChange) {
             <div><dt>1인분 재료비</dt><dd>${won(m.cost_per_serving)}</dd></div>
             <div><dt>남는 돈</dt><dd>${won(m.margin)}</dd></div>
           </dl>
-          ${m.tips.length ? `<ul class="cost-tips">${m.tips.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}
+          ${m.swap ? `<div class="cost-swap">
+            <p class="swap-title">🔄 대체 재료 추천</p>
+            <p class="swap-pair"><span class="swap-from">${esc(m.swap.from)}</span><i aria-label="에서">→</i><span class="swap-to">${esc(m.swap.to)}</span></p>
+            <p class="swap-reason">${esc(m.swap.reason)}</p>
+          </div>` : ""}
+          ${(() => {   // 대체 재료 상자에 들어간 문장은 빼고 나머지(오른 재료 · 판매가 제안)만 💡로
+            const rest = m.swap ? m.tips.filter((t) => t !== m.swap.reason && !t.startsWith(`${m.swap.from} 일부를`)) : m.tips;
+            return rest.length ? `<ul class="cost-tips">${rest.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : "";
+          })()}
         </div>
       </article>`;
     }).join("")}</div>
@@ -926,7 +990,8 @@ function renderCosts(r, withChange) {
 function receiptList(list) {
   return `<h3 class="sub-h">최근 영수증</h3><ul class="ctx-list receipt-list">${list.map((p) => `<li>
     <button class="rc-open" data-rid="${p.id}" title="사진과 품목 보기">${mmdd(p.purchased_on)} · ${esc(supplierName(p.supplier))} · ${p.items}줄 · ${won(p.total_amount)} <i>보기 ›</i></button>
-    ${p.source === "ocr" ? `<button class="rc-remove" data-id="${p.id}">지우기</button>` : `<small>기본 데이터</small>`}</li>`).join("")}</ul>`;
+    <span class="rc-btns"><button class="rc-edit" data-eid="${p.id}" type="button">수정하기</button>
+    ${p.source === "ocr" ? `<button class="rc-remove" data-id="${p.id}" type="button">지우기</button>` : `<small>기본 데이터</small>`}</span></li>`).join("")}</ul>`;
 }
 
 async function loadCosts(full = true) {
@@ -1002,6 +1067,8 @@ $("#cameraModal").onclick = (e) => { if (e.target.id === "cameraModal") closeCam
 $("#receiptList").onclick = async (e) => {
   const o = e.target.closest(".rc-open");
   if (o) return openReceipt(o.dataset.rid);
+  const ed = e.target.closest(".rc-edit");
+  if (ed) return openReceipt(ed.dataset.eid, true);
   const b = e.target.closest(".rc-remove");
   if (!b || !confirm("이 영수증을 지울까요? 원가율이 다시 계산돼요.")) return;
   try { renderCosts(await sendJSON(`/api/receipt/${b.dataset.id}`, "DELETE"), false); loadCosts(false); }
@@ -1046,6 +1113,11 @@ const martChange = (v) => (v == null ? "" : v > 0
   : v < 0 ? `<span class="mart-chg mart-down">2주 전보다 ▼${Math.abs(v).toFixed(1)}%</span>`
   : `<span class="mart-chg">2주 전과 같아요</span>`);
 
+// 최저가 회사의 온라인몰 검색 결과로 가는 바로가기 (그 회사에 몰이 없으면 몰 있는 회사 중 가장 싼 곳)
+const martShop = (s) => (!s ? "" : `<a class="mart-shop" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer"
+    title="${esc(s.chain)} 매장가 기준이에요. 온라인몰 가격은 다를 수 있어요">
+    ${s.lowest ? "" : `<small>온라인몰 있는 곳 중 가장 싼 ${esc(s.chain)} ${won(s.price)}</small>`}${esc(s.mall)}에서 보기 →</a>`);
+
 function martCard(x) {
   const one = x.chains.length === 1;   // 한 회사에서만 조사된 재료는 비교 없이
   const sub = [one ? "" : `보통 ${won(x.typical)}`, x.daegu ? `대구 매장 ${won(x.daegu.price)}` : ""].filter(Boolean).join(" · ");
@@ -1054,6 +1126,7 @@ function martCard(x) {
     <h3>${esc(x.name)}</h3>
     <p class="mart-low"><small>${one ? "파는 곳" : "가장 싼 곳"} · ${esc(x.low_chain)}</small><b>${won(x.low)}</b></p>
     <p class="mart-sub">${sub || "한 회사에서만 조사됐어요"}</p>
+    ${martShop(x.shop)}
     ${martChange(x.change_pct) || `<span class="mart-chg">2주 전 값 없음</span>`}
     ${one ? `<p class="mart-chains-none">회사별 비교 없음</p>` : `<details class="mart-chains"><summary>회사별 가격 ${x.chains.length}곳</summary>
       <ul>${x.chains.map((c) => `<li><span>${esc(c.chain)}<small>${esc(c.channel)}</small></span><b>${won(c.price)}</b>${
@@ -1084,7 +1157,7 @@ async function loadMart() {
   try { mart = await getJSON("/api/mart"); }
   catch (e) { $("#martBasis").textContent = "대형마트 판매가를 불러오지 못했어요"; $("#martGrid").innerHTML = `<p class="muted">${esc(e.message)}</p>`; return; }
   const up = mart.items.filter((x) => x.change_pct > 0).length;
-  $("#martBasis").textContent = `한국소비자원 참가격 · ${mmdd(mart.date)} 조사 (2주마다) · 음식 재료 ${mart.items.length}개 중 2주 새 오른 것 ${up}개`;
+  $("#martBasis").textContent = `한국소비자원 참가격 · ${mmdd(mart.date)} 조사 (2주마다) · 음식 재료 ${mart.items.length}개 중 2주 새 오른 것 ${up}개 · 바로가기는 그 마트 온라인몰 검색 결과(온라인 가격은 매장가와 다를 수 있어요)`;
   renderMart();
 }
 $("#martFilter").onclick = (e) => {
@@ -1308,9 +1381,7 @@ $("#chatForm").addEventListener("submit", (e) => { e.preventDefault(); const t =
 // ---------------------------------------------------------------
 // 검색: 글자가 이름 어디에 들어 있든 찾음 ("토" → 토마토, 방울토마토 상품). 띄어쓰기와 대소문자는 무시
 // ---------------------------------------------------------------
-const searchInput = $("#searchInput"), searchList = $("#searchList");
 const squash = (s) => String(s ?? "").toLowerCase().replace(/\s/g, "");
-let searchHits = [], searchActive = -1;
 
 function markHit(text, word) {
   const at = String(text).toLowerCase().indexOf(word.toLowerCase());
@@ -1332,56 +1403,77 @@ function findAll(word) {
   return { items, goods };
 }
 
-function closeSearch() {
-  searchList.hidden = true;
-  searchActive = -1;
-  searchInput.setAttribute("aria-expanded", "false");
-  searchInput.removeAttribute("aria-activedescendant");
-}
+// 검색창 하나를 연결: 위쪽 메뉴 검색창과 첫 화면 검색창이 같은 결과를 보여 줌
+function setupSearch(searchInput, searchList, idp) {
+  const box = searchInput.closest(".search");
+  let searchHits = [], searchActive = -1;
 
-function renderSearch() {
-  const word = searchInput.value.trim();
-  if (!squash(word)) { closeSearch(); return; }
-  const { items, goods } = findAll(word);
-  searchHits = [...items, ...goods];
-  searchActive = -1;
-  searchInput.removeAttribute("aria-activedescendant");
-  const hit = (h, i) => `<a class="search-hit" id="hit${i}" role="option" aria-selected="false" href="${h.url ? esc(h.url) : `/?item=${encodeURIComponent(h.name)}`}"
-    ${h.url ? 'target="_blank" rel="noopener"' : ""}><span>${markHit(h.name, word)}</span><small>${esc(h.note)}</small></a>`;
-  searchList.innerHTML = searchHits.length
-    ? (items.length ? `<p class="search-group">야채 시세 ${items.length}개</p>${items.map((h, i) => hit(h, i)).join("")}` : "")
-      + (goods.length ? `<p class="search-group">식봄 상품 ${goods.length}개</p>${goods.map((h, i) => hit(h, items.length + i)).join("")}` : "")
-    : `<p class="search-empty">${overview.length ? `'${esc(word)}'이(가) 들어간 재료나 상품이 없어요` : "시세를 불러오는 중이에요"}</p>`;
-  searchList.hidden = false;
-  searchInput.setAttribute("aria-expanded", "true");
-}
-
-function moveSearch(step) {
-  if (!searchHits.length) return;
-  $(`#hit${searchActive}`)?.classList.remove("active");
-  $(`#hit${searchActive}`)?.setAttribute("aria-selected", "false");
-  searchActive = (searchActive + step + searchHits.length) % searchHits.length;
-  const el = $(`#hit${searchActive}`);
-  el.classList.add("active");
-  el.setAttribute("aria-selected", "true");
-  el.scrollIntoView({ block: "nearest" });
-  searchInput.setAttribute("aria-activedescendant", el.id);
-}
-
-searchInput.addEventListener("input", renderSearch);
-searchInput.addEventListener("focus", renderSearch);
-searchInput.addEventListener("keydown", (e) => {
-  if (e.isComposing) return;   // 한글 조합 중에는 키 동작 없음
-  if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); moveSearch(e.key === "ArrowDown" ? 1 : -1); }
-  if (e.key === "Escape") closeSearch();
-  if (e.key === "Enter" && searchHits.length && !searchList.hidden) {
-    e.preventDefault();
-    $(`#hit${Math.max(searchActive, 0)}`).click();
+  function closeSearch() {
+    searchList.hidden = true;
+    searchActive = -1;
+    searchInput.setAttribute("aria-expanded", "false");
+    searchInput.removeAttribute("aria-activedescendant");
   }
-});
-searchList.addEventListener("click", (e) => { if (e.target.closest(".search-hit")) closeSearch(); });
-document.addEventListener("click", (e) => { if (!e.target.closest(".search")) closeSearch(); });
-document.addEventListener("focusin", (e) => { if (!e.target.closest(".search")) closeSearch(); });
+
+  function renderSearch() {
+    const word = searchInput.value.trim();
+    if (!squash(word)) { closeSearch(); return; }
+    const { items, goods } = findAll(word);
+    searchHits = [...items, ...goods];
+    searchActive = -1;
+    searchInput.removeAttribute("aria-activedescendant");
+    const hit = (h, i) => `<a class="search-hit" id="${idp}${i}" role="option" aria-selected="false" href="${h.url ? esc(h.url) : `/?item=${encodeURIComponent(h.name)}`}"
+      ${h.url ? 'target="_blank" rel="noopener"' : ""}><span>${markHit(h.name, word)}</span><small>${esc(h.note)}</small></a>`;
+    searchList.innerHTML = searchHits.length
+      ? (items.length ? `<p class="search-group">야채 시세 ${items.length}개</p>${items.map((h, i) => hit(h, i)).join("")}` : "")
+        + (goods.length ? `<p class="search-group">식봄 상품 ${goods.length}개</p>${goods.map((h, i) => hit(h, items.length + i)).join("")}` : "")
+      : `<p class="search-empty">${overview.length ? `'${esc(word)}'이(가) 들어간 재료나 상품이 없어요` : "시세를 불러오는 중이에요"}</p>`;
+    searchList.hidden = false;
+    searchInput.setAttribute("aria-expanded", "true");
+  }
+
+  function moveSearch(step) {
+    if (!searchHits.length) return;
+    $(`#${idp}${searchActive}`)?.classList.remove("active");
+    $(`#${idp}${searchActive}`)?.setAttribute("aria-selected", "false");
+    searchActive = (searchActive + step + searchHits.length) % searchHits.length;
+    const el = $(`#${idp}${searchActive}`);
+    el.classList.add("active");
+    el.setAttribute("aria-selected", "true");
+    el.scrollIntoView({ block: "nearest" });
+    searchInput.setAttribute("aria-activedescendant", el.id);
+  }
+
+  // 검색 버튼: 고른(없으면 첫 번째) 결과로 이동. 결과가 없으면 목록 · 안내만 보여 줌
+  function goFirst() {
+    const keep = searchActive;
+    renderSearch();
+    if (searchHits.length) $(`#${idp}${Math.max(keep, 0)}`)?.click();
+    else searchInput.focus();
+  }
+
+  searchInput.addEventListener("input", renderSearch);
+  searchInput.addEventListener("focus", renderSearch);
+  searchInput.addEventListener("keydown", (e) => {
+    if (e.isComposing) return;   // 한글 조합 중에는 키 동작 없음
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); moveSearch(e.key === "ArrowDown" ? 1 : -1); }
+    if (e.key === "Escape") closeSearch();
+    if (e.key === "Enter" && searchHits.length && !searchList.hidden) {
+      e.preventDefault();
+      $(`#${idp}${Math.max(searchActive, 0)}`).click();
+    }
+  });
+  searchList.addEventListener("click", (e) => { if (e.target.closest(".search-hit")) closeSearch(); });
+  document.addEventListener("click", (e) => { if (!box.contains(e.target)) closeSearch(); });
+  document.addEventListener("focusin", (e) => { if (!box.contains(e.target)) closeSearch(); });
+  return { goFirst };
+}
+
+setupSearch($("#searchInput"), $("#searchList"), "hit");
+if ($("#heroSearchInput")) {
+  const heroSearch = setupSearch($("#heroSearchInput"), $("#heroSearchList"), "heroHit");
+  $("#heroSearchBtn").addEventListener("click", heroSearch.goFirst);
+}
 
 // ---------------------------------------------------------------
 // 알림톡 시연: 세그먼트별 메시지 (실제 발송 없음). 시세 문장은 오늘 값, 나머지는 예시 문장
@@ -1450,9 +1542,21 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#tal
 
 loadOverview();
 loadProducts();
+loadMyItems();
 if (STORE_VIEW) {
-  loadDemand();
-  loadCosts();
+  const storeReady = Promise.allSettled([loadDemand(), loadCosts()]);
+  // 위쪽 메뉴 '영수증 분석'(/?page=store#receipt): 열자마자 영수증 분석 칸으로 이동하고,
+  // 위 칸(내일 준비 · 원가율)이 늦게 채워져 길어지는 동안에도 그 자리에 머무름 (사용자가 직접 스크롤하면 멈춤)
+  if (location.hash === "#receipt") {
+    const toReceipt = () => $("#receipt").scrollIntoView({ block: "start" });
+    let follow = true;
+    const stop = () => { follow = false; };
+    ["wheel", "touchstart", "keydown"].forEach((t) => addEventListener(t, stop, { once: true, passive: true }));
+    toReceipt();
+    const keep = new ResizeObserver(() => { if (follow) toReceipt(); });
+    keep.observe($("#store")); keep.observe($("#costs"));
+    storeReady.then(() => setTimeout(() => { follow = false; keep.disconnect(); }, 5000));   // 다 그려진 뒤 5초 동안 늦게 바뀌는 칸 크기도 따라감
+  }
 } else if (!ITEM) {
   loadContext();
   loadMart();
@@ -1464,26 +1568,59 @@ if (location.hash === "#rise") setTimeout(() => goSlide(1, "instant"), 4000);   
 // ---------------------------------------------------------------
 // 영수증 한 장 자세히 (사진 + 품목) — '최근 영수증' 목록 · 마이페이지 '나의 영수증'에서 엶
 // ---------------------------------------------------------------
-async function openReceipt(id) {
-  const modal = $("#receiptModal");
-  $("#receiptModalBody").innerHTML = `<div class="reading"><div class="spinner"></div><b>영수증을 불러오는 중이에요</b></div>`;
+async function openReceipt(id, editing = false) {
+  const modal = $("#receiptModal"), box = $("#receiptModalBody");
+  box.innerHTML = `<div class="reading"><div class="spinner"></div><b>영수증을 불러오는 중이에요</b></div>`;
   modal.hidden = false;
   let d;
   try { d = await getJSON(`/api/receipt/${id}`); }
-  catch (e) { $("#receiptModalBody").innerHTML = `<p class="rc-warn">${esc(e.message)}</p>`; return; }
+  catch (e) { box.innerHTML = `<p class="rc-warn">${esc(e.message)}</p>`; return; }
+  (editing ? editReceiptView : showReceiptView)(id, d);
+}
+
+const receiptPhoto = (d) => (d.image_url
+  ? `<a href="${esc(d.image_url)}" target="_blank" rel="noopener" title="크게 보기"><img src="${esc(d.image_url)}" alt="영수증 사진"></a>`
+  : `<div class="no-photo">사진이 없어요<br><small>품목만 고쳐도 돼요</small></div>`);
+
+function showReceiptView(id, d) {
   const qtyTxt = (x) => (x.unit ? qty(x.qty_base, x.unit) : "-");
   $("#receiptModalBody").innerHTML = `
     <h3>${mmdd(d.purchased_on)} · ${esc(supplierName(d.supplier))}</h3>
     <p class="muted small">${d.source === "ocr" ? "영수증 읽기로 저장" : "기본 데이터"} · 합계 ${won(d.total_amount)}</p>
     <div class="receipt-view">
-      ${d.image_url ? `<a href="${esc(d.image_url)}" target="_blank" rel="noopener" title="크게 보기"><img src="${esc(d.image_url)}" alt="영수증 사진"></a>`
-                    : `<div class="no-photo">사진이 없어요</div>`}
-      <table class="price-table">
-        <thead><tr><th>영수증 품목</th><th>재료</th><th>양</th><th>금액</th><th>kg·모당</th></tr></thead>
-        <tbody>${d.items.map((x) => `<tr><td>${esc(x.raw_name)}</td><td>${esc(x.item || "재료 아님")}</td><td>${qtyTxt(x)}</td>
-          <td class="price">${won(x.amount)}</td><td>${x.unit_price ? won(x.unit_price) : "-"}</td></tr>`).join("")}</tbody>
-      </table>
+      ${receiptPhoto(d)}
+      <div>
+        <table class="price-table">
+          <thead><tr><th>영수증 품목</th><th>재료</th><th>양</th><th>금액</th><th>kg·모당</th></tr></thead>
+          <tbody>${d.items.map((x) => `<tr><td>${esc(x.raw_name)}</td><td>${esc(x.item || "재료 아님")}</td><td>${qtyTxt(x)}</td>
+            <td class="price">${won(x.amount)}</td><td>${x.unit_price ? won(x.unit_price) : "-"}</td></tr>`).join("")}</tbody>
+        </table>
+        <div class="receipt-actions"><button class="btn primary" id="rcViewEdit" type="button">수정하기</button></div>
+      </div>
     </div>`;
+  $("#rcViewEdit").onclick = () => editReceiptView(id, d);
+}
+
+// 저장한 영수증 고치기: 왼쪽에 사진(있으면)을 띄워 두고 오른쪽 표에서 바로 고침
+function editReceiptView(id, d) {
+  $("#receiptModalBody").innerHTML = `<h3>영수증 고치기</h3>
+    <p class="muted small">${d.source === "ocr" ? "영수증 읽기로 저장" : "기본 데이터"} · 사진과 비교하면서 틀린 곳을 고쳐 주세요</p>
+    <div class="receipt-view rc-edit-view">${receiptPhoto(d)}<div id="rcModalEditor"></div></div>`;
+  const data = {
+    date: d.purchased_on, supplier: d.supplier, items_list: d.items_list,
+    items: d.items.map((x) => ({ raw_name: x.raw_name, item_id: x.item_id, base_unit: x.unit, qty_base: x.qty_base, amount: x.amount })),
+  };
+  receiptEditor($("#rcModalEditor"), data, {
+    thumb: false, badge: "저장한 내용 · 고치고 저장하면 원가율을 다시 계산해요", saveLabel: "고친 내용 저장",
+    onCancel: () => showReceiptView(id, d),
+    onSave: async (v) => {
+      const r = await sendJSON(`/api/receipt/${id}`, "PUT", v);
+      closeReceipt();
+      $("#receiptResult").innerHTML = `<p class="ok">영수증을 고쳤어요 (${r.saved_items}줄). 위 메뉴별 원가율이 새로 계산됐어요.</p>`;
+      renderCosts(r, true);
+      loadCosts(false);
+    },
+  });
 }
 const closeReceipt = () => { $("#receiptModal").hidden = true; };
 $("#receiptModalClose").onclick = closeReceipt;
@@ -1493,7 +1630,7 @@ $("#receiptModal").onclick = (e) => { if (e.target.id === "receiptModal") closeR
 // 마이페이지 (시연: 로그인했다고 치고 시연용 가게 계정)
 // ---------------------------------------------------------------
 const ME = { name: "달서구 한식당 사장님", store: "살피 한식당", place: "대구 달서구", type: "한식 · 40석", email: "demo@salpi.example" };
-if (STORE_VIEW) $("#storeName").textContent = `나의 가게 · ${ME.store}`;
+if (STORE_VIEW) $("#storeName").textContent = `마이페이지 · ${ME.store}`;
 
 function openMypage(view = "home") {
   $("#mypage").classList.add("open");
@@ -1510,7 +1647,7 @@ function closeMypage() {
 async function renderMypage(view) {
   const box = $("#mypageBody");
   $("#mypageBack").hidden = view === "home";
-  $("#mypageTitle").textContent = view === "home" ? "마이페이지" : "나의 영수증";
+  $("#mypageTitle").textContent = view === "home" ? "설정" : "나의 영수증";
   if (view === "receipts") {
     box.innerHTML = `<p class="muted">불러오는 중이에요</p>`;
     try {
@@ -1531,12 +1668,17 @@ async function renderMypage(view) {
     <section class="my-card">
       <h4>내 정보</h4>
       <dl><dt>지역</dt><dd>${esc(ME.place)}</dd><dt>업종</dt><dd>${esc(ME.type)}</dd></dl>
-      <a class="my-link" href="/?page=store"><span>나의 가게</span><i>›</i></a>
+      <a class="my-link" href="/?page=store"><span>마이페이지 (우리 가게)</span><i>›</i></a>
       <button class="my-link" data-view="receipts"><span>나의 영수증</span><i>›</i></button>
     </section>
     <section class="my-card">
       <h4>알림 설정</h4>
       <p class="muted small">켜 둔 알림은 살피가 챗봇 창으로 보내 드려요.</p>
+      <label class="toggle-row">
+        <span><b>내 메뉴 재료만</b><small>${myItems
+          ? `내 메뉴에 들어가는 ${esc(overview.filter((r) => myItems.has(r.item)).map((r) => r.item).join(" · ") || "재료")}만 알려 드려요`
+          : "메뉴를 불러오지 못해 모든 야채를 알려 드려요"}</small></span>
+        <input type="checkbox" class="switch" data-pref="mine" ${prefs.mine ? "checked" : ""}></label>
       ${ALERT_TYPES.map(([k, title, desc]) => `<label class="toggle-row">
         <span><b>${title}</b><small>${desc}</small></span>
         <input type="checkbox" class="switch" data-pref="${k}" ${prefs[k] ? "checked" : ""}></label>`).join("")}
@@ -1621,7 +1763,21 @@ const ALERT_TYPES = [
   ["unusual", "평소랑 다를 때만", "하루 사이에 평소보다 크게 움직인 야채"],
   ["weekly", "주 1회 대시보드 리포트", "한 주 시세를 한 번에 정리해 드려요"],
 ];
-const DEFAULT_PREFS = { all: false, up: true, down: false, unusual: true, weekly: true };
+const DEFAULT_PREFS = { mine: true, all: false, up: true, down: false, unusual: true, weekly: true };
+// 내 메뉴 재료: { 재료: [메뉴, ...] } — 못 불러오면 null (그때는 '내 메뉴 재료만'을 켜도 모든 야채로 알림)
+let myItems = null, myMenus = [];
+async function loadMyItems() {
+  if (!SIGNED_IN) return;
+  try {
+    const r = await getJSON("/api/my-items");
+    myItems = new Map(Object.entries(r.items));
+    myMenus = r.menus;
+  } catch (e) { myItems = null; }
+  if (overview.length) deliverAlerts();
+}
+const menusOf = (item) => myItems?.get(item) || [];
+// 알림 문장 뒤에 붙임: (김치찌개 · 된장찌개에 들어가요)
+const inMenus = (item) => { const m = menusOf(item); return m.length ? ` (${m.join(" · ")}에 들어가요)` : ""; };
 const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } };
 function store(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
 const alertPrefs = () => ({ ...DEFAULT_PREFS, ...load(ALERT_PREFS_KEY, {}) });
@@ -1632,6 +1788,9 @@ function buildAlerts() {
   if (!overview.length) return [];
   const prefs = alertPrefs();
   const day = overview.map((r) => r.wholesale_date).filter(Boolean).sort().at(-1) || "";
+  // '내 메뉴 재료만'을 켜면 우리 가게 메뉴에 들어가는 야채만 알림
+  const mine = prefs.mine && myItems;
+  const pool = mine ? overview.filter((r) => myItems.has(r.item)) : overview;
   const tag = mmdd(day);
   const out = [], seen = new Set();
   const push = (id, text, title, item) => { if (!seen.has(id)) { seen.add(id); out.push({ id: `${day}|${id}`, text, title, item, day }); } };
@@ -1639,18 +1798,18 @@ function buildAlerts() {
   const ch = (r) => r.wholesale_change_pct ?? 0;
   const move = (r) => {
     const f = expOf(r);
-    if (ch(r) > 0) return `사장님, **${josa(r.item, "이", "가")} 지난주보다 ${pct(ch(r))} 올랐어요** (${tag} 도매 kg당 ${won(r.wholesale_kg)}).\n`
+    if (ch(r) > 0) return `사장님, **${josa(r.item, "이", "가")} 지난주보다 ${pct(ch(r))} 올랐어요** (${tag} 도매 kg당 ${won(r.wholesale_kg)})${inMenus(r.item)}.\n`
       + (f >= 2 ? "다음 주에도 오를 수 있어요. 필요한 만큼은 미리 사 두세요." : f <= -2 ? "다음 주엔 내릴 수 있어요. 급하지 않으면 조금 기다려 보세요." : "다음 주엔 비슷할 것 같아요. 필요한 만큼만 사 두세요.");
-    return `사장님, **${josa(r.item, "이", "가")} 지난주보다 ${pct(ch(r))} 내렸어요** (${tag} 도매 kg당 ${won(r.wholesale_kg)}).\n`
+    return `사장님, **${josa(r.item, "이", "가")} 지난주보다 ${pct(ch(r))} 내렸어요** (${tag} 도매 kg당 ${won(r.wholesale_kg)})${inMenus(r.item)}.\n`
       + (f >= 2 ? "다음 주엔 다시 오를 수 있어요. 지금 사 두면 좋아요." : "지금 사기 좋은 때예요.");
   };
   const byAbs = (a, b) => Math.abs(ch(b)) - Math.abs(ch(a));
   const pushMove = (r) => push(`move|${r.item}`, move(r), moveTitle(r), r.item);
-  if (prefs.all) overview.filter((r) => Math.abs(ch(r)) >= 3).sort(byAbs).slice(0, 6).forEach(pushMove);
-  if (prefs.up) overview.filter((r) => ch(r) >= 10).sort(byAbs).slice(0, 3).forEach(pushMove);
-  if (prefs.down) overview.filter((r) => ch(r) <= -10).sort(byAbs).slice(0, 3).forEach(pushMove);
+  if (prefs.all) pool.filter((r) => Math.abs(ch(r)) >= 3).sort(byAbs).slice(0, 6).forEach(pushMove);
+  if (prefs.up) pool.filter((r) => ch(r) >= 10).sort(byAbs).slice(0, 3).forEach(pushMove);
+  if (prefs.down) pool.filter((r) => ch(r) <= -10).sort(byAbs).slice(0, 3).forEach(pushMove);
   if (prefs.unusual) {
-    overview.map((r) => {
+    pool.map((r) => {
       const h = (r.history || []).map((x) => x.kg_price).filter((v) => v > 0);
       const d = h.slice(1).map((v, i) => (v / h[i] - 1) * 100);
       if (d.length < 6) return null;
@@ -1658,7 +1817,7 @@ function buildAlerts() {
       return Math.abs(last) >= Math.max(10, usual * 2.5) ? { r, last, usual } : null;
     }).filter(Boolean).sort((a, b) => Math.abs(b.last) - Math.abs(a.last)).slice(0, 3).forEach(({ r, last, usual }) =>
       push(`unusual|${r.item}`, `사장님, **${josa(r.item, "이", "가")} 평소와 달라요.** 직전 거래일보다 ${pct(last)} ${last > 0 ? "올랐는데" : "내렸는데"}, `
-        + `보통은 하루 ${usual.toFixed(0)}% 안팎으로 움직여요.\n${last > 0 ? "주문 전에 가격을 한 번 더 확인해 보세요." : "필요하면 지금 사 두는 것도 좋아요."}`,
+        + `보통은 하루 ${usual.toFixed(0)}% 안팎으로 움직여요${inMenus(r.item)}.\n${last > 0 ? "주문 전에 가격을 한 번 더 확인해 보세요." : "필요하면 지금 사 두는 것도 좋아요."}`,
         `${josa(r.item, "이", "가")} 평소와 달라요 (하루 ${pct(last)})`, r.item));
   }
   if (prefs.weekly && day) {
@@ -1671,6 +1830,7 @@ function buildAlerts() {
       + `- 가장 많이 오른 야채: ${top[0].item} ${pct(ch(top[0]))}\n`
       + `- 가장 많이 내린 야채: ${top.at(-1).item} ${pct(ch(top.at(-1)))}\n`
       + `- 다음 주 오를 가능성: ${rise.length}개${rise.length ? ` (${rise.sort((a, b) => expOf(b) - expOf(a)).slice(0, 3).map((r) => r.item).join(", ")} 등)` : ""}\n`
+      + (mine && pool.length ? `- 내 메뉴 재료: ${pool.map((r) => `${r.item} ${pct(ch(r))}`).join(", ")}\n` : "")
       + "자세한 건 위의 시세 대시보드에서 보세요." });
   }
   return out;
@@ -1732,7 +1892,7 @@ function renderBell() {
   const read = new Set(load(ALERT_READ_KEY, []));
   $("#bellList").innerHTML = delivered.length ? delivered.map((a) => `<li><button data-aid="${esc(a.id)}" class="${read.has(a.id) ? "" : "unread"}">
       <img src="/static/img/salpi_face.png" alt=""><span><b>${esc(a.title)}</b><small>${mmdd(a.day)} 시세 · ${a.item ? "누르면 재료 페이지" : "누르면 대시보드"}</small></span></button></li>`).join("")
-    : `<li class="empty">새 알림이 없어요.<br><button data-open-settings>마이페이지에서 알림 종류 켜기 ›</button></li>`;
+    : `<li class="empty">새 알림이 없어요.<br><button data-open-settings>설정에서 알림 종류 켜기 ›</button></li>`;
 }
 function toggleBell(open = $("#bellPanel").hidden) {
   $("#bellPanel").hidden = !open;

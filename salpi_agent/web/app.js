@@ -1120,16 +1120,22 @@ const martShop = (s) => (!s ? "" : `${s.lowest ? "" : `<small class="mart-note">
     <div class="mart-shop-row"><a class="mart-shop" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer"
     title="${esc(s.mall)}로 가요 · ${esc(s.chain)} 매장가 기준이라 온라인몰 가격은 다를 수 있어요"><span class="mart-go">최저가 바로가기${EXT_ICON}</span></a></div>`);
 
+// 품목 이름을 두 줄로: '쇠고기 등심' / '(1등급, 100g)' — 괄호가 없으면 한 줄
+function martName(name) {
+  const m = name.match(/^(.+?)\s*(\(.*\))$/);
+  return m ? `<span class="mart-name">${esc(m[1])}</span><small class="mart-spec">${esc(m[2])}</small>` : `<span class="mart-name">${esc(name)}</span>`;
+}
+
 function martCard(x) {
   const one = x.chains.length === 1;   // 한 회사에서만 조사된 재료는 비교 없이
   const sub = x.daegu ? `대구 매장 ${won(x.daegu.price)}` : "";
   return `<article class="mart-item">
-    <h3>${esc(x.name)}</h3>
+    <h3 title="${esc(x.name)}">${martName(x.name)}</h3>
     <p class="mart-low"><b>${won(x.low)}</b></p>
     ${sub ? `<p class="mart-sub">${sub}</p>` : ""}
     ${martShop(x.shop)}
-    ${one ? "" : `<details class="mart-chains"><summary>회사별 가격 ${x.chains.length}곳</summary>
-      <ul>${x.chains.map((c) => `<li><span>${esc(c.chain)}<small>${esc(c.channel)}</small></span><b>${won(c.price)}</b>${
+    ${one ? "" : `<details class="mart-chains"><summary>회사별 가격</summary>
+      <ul>${x.chains.map((c) => `<li${c.price === x.low ? ' class="mart-min"' : ""}><span>${esc(c.chain)}</span><b>${won(c.price)}</b>${
         c.change_pct ? `<em class="${c.change_pct > 0 ? "mart-up" : "mart-down"}">${pct(c.change_pct)}</em>` : "<em></em>"}</li>`).join("")}</ul>
     </details>`}
   </article>`;

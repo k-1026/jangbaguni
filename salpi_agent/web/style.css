@@ -787,10 +787,10 @@ a.my-link { color: inherit; text-decoration: none; }
 /* 카드는 모두 같은 크기: 이름은 2줄까지, 회사별 가격은 카드 아래로 겹쳐 펼침 */
 .mart-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 16px; }
 .mart-item { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 16px; border-radius: 18px; background: #fff; box-shadow: var(--raise-sm); }   /* 카드 안은 흰색 (바깥 판은 --neu 그대로) */
-/* 품목 이름: 윗줄 이름(크게) · 아랫줄 괄호 속 규격(작게) — 카드끼리 가격 줄이 나란하도록 두 줄 높이 확보 */
+/* 품목 이름: 윗줄 이름(크게) · 아랫줄 괄호 속 규격(작게) — 어느 종류를 눌러도 카드 크기가 같도록 각각 한 줄 (길면 … , 마우스를 올리면 전체 이름) */
 .mart-item h3 { margin: 0; min-height: 52px; font-size: 22px; line-height: 1.3; }
-.mart-name { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.mart-spec { display: block; margin-top: 2px; font-size: 15px; font-weight: 500; color: var(--muted); line-height: 1.4; }
+.mart-name { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mart-spec { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; font-size: 15px; font-weight: 500; color: var(--muted); line-height: 1.4; }
 .mart-chg { margin-top: auto; }
 .mart-chains, .mart-chains-none { min-height: 20px; }
 .mart-chains-none { margin: 0; font-size: 13px; color: #9AA19C; }

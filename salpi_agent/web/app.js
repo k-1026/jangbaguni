@@ -1476,10 +1476,6 @@ function setupSearch(searchInput, searchList, idp) {
 }
 
 setupSearch($("#searchInput"), $("#searchList"), "hit");
-if ($("#heroSearchInput")) {
-  const heroSearch = setupSearch($("#heroSearchInput"), $("#heroSearchList"), "heroHit");
-  $("#heroSearchBtn").addEventListener("click", heroSearch.goFirst);
-}
 
 // ---------------------------------------------------------------
 // 알림톡 시연: 세그먼트별 메시지 (실제 발송 없음). 시세 문장은 오늘 값, 나머지는 예시 문장

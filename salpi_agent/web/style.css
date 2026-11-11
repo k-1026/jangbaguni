@@ -821,6 +821,10 @@ a.my-link { color: inherit; text-decoration: none; }
 .mart-chains li.mart-min span, .mart-chains li.mart-min b { color: #2563EB; font-weight: 800; }   /* 회사별 가격 중 최저가는 파랑 */
 .mart-chains em { font-style: normal; font-size: 12px; font-weight: 700; text-align: right; }
 .mart-all { display: block; margin: 18px auto 0; }
+/* 더보기 버튼: 위 '전체' 버튼과 같은 주황, 판 위에 볼록하게 */
+#mart .mart-all { background: var(--accent); color: #fff; box-shadow: var(--raise-sm); padding: 8px 18px; font-size: 14px; font-weight: 700; }
+#mart .mart-all b { color: #fff; }
+#mart .mart-all:active { box-shadow: inset 3px 3px 6px #B4481B, inset -3px -3px 6px #F08A55; }
 
 @media (max-width: 1200px) {
   .hero-inner { grid-template-columns: 1fr; position: relative; }

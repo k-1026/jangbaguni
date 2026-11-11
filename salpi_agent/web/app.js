@@ -1120,9 +1120,12 @@ const martShop = (s) => (!s ? "" : `<div class="mart-shop-row"><a class="mart-sh
     title="${esc(s.mall)}로 가요 · ${esc(s.chain)} 매장가 기준이라 온라인몰 가격은 다를 수 있어요"><span class="mart-go">최저가 바로가기${EXT_ICON}</span></a></div>`);
 
 // 품목 이름을 두 줄로: '쇠고기 등심' / '(1등급, 100g)' — 괄호가 없으면 한 줄
+// 원래 자료에 무게가 없는 품목은 통째로 파는 단위를 적어 줌
+const MART_UNIT = { "양배추": "(1통)", "애호박": "(1개)" };
 function martName(name) {
   const m = name.match(/^(.+?)\s*(\(.*\))$/);
-  return m ? `<span class="mart-name">${esc(m[1])}</span><small class="mart-spec">${esc(m[2])}</small>` : `<span class="mart-name">${esc(name)}</span>`;
+  const [base, spec] = m ? [m[1], m[2]] : [name, MART_UNIT[name]];
+  return `<span class="mart-name">${esc(base)}</span>${spec ? `<small class="mart-spec">${esc(spec)}</small>` : ""}`;
 }
 
 function martCard(x) {

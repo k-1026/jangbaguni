@@ -120,7 +120,7 @@ button.chip:active, .chip[aria-expanded="true"] { box-shadow: inset 5px 5px 10px
 .slider { display: flex; gap: 64px; overflow: hidden;   /* 마우스로 끌어 넘기지 않음 — 화살표 · 자동 넘김 · 손가락 넘기기만 */
   padding: 32px; margin: -32px; }
 /* 대시보드 뉴모피즘: 바탕 --neu, 밝은 그림자 #fff · 어두운 그림자 --neu-dark */
-.slide.card { --neu: #FFFFFF; --neu-dark: #c6cbc4; background: var(--neu); border: 0; border-radius: 26px; padding: 24px;
+.slide.card { --neu: #FFFFFF; --neu-dark: #D5D9DD; background: var(--neu); border: 0; border-radius: 26px; padding: 24px;
   box-shadow: 12px 12px 26px #091915, -10px -10px 24px #1d4b42; }
 .slide.card .chart-box { border-radius: 18px; padding: 10px 8px 4px; margin-top: 6px;
   box-shadow: inset 6px 6px 12px var(--neu-dark), inset -6px -6px 12px #ffffff; }
@@ -312,7 +312,7 @@ body.store-view .store-btn { color: #fff; background: var(--accent); box-shadow:
 
 /* 영향 요인 */
 .ctx-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-#context .ctx-grid .card { background: #fff; }   /* 시세 영향 정보 칸(날씨 · 공휴일 · 행사)은 흰색 */
+#context .ctx-grid .card { --neu: #FFFFFF; background: var(--neu); --neu-dark: #D5D9DD; --raise: 8px 8px 20px #D5D9DD, -6px -6px 16px #FFFFFF; --raise-sm: 5px 5px 12px #D5D9DD, -4px -4px 10px #FFFFFF; --press: inset 4px 4px 9px #D5D9DD, inset -4px -4px 9px #FFFFFF; }   /* 시세 영향 정보 칸(날씨 · 공휴일 · 행사)은 흰색 · 그림자도 흰 바탕용 중립 회색 */
 .ctx-grid h3 { margin: 0 0 10px; font-size: 16px; }
 .ctx-list { list-style: none; margin: 0; padding: 0; font-size: 14px; }
 .ctx-list li { padding: 6px 0; border-bottom: 1px solid #F3F1EC; }
@@ -514,7 +514,7 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .talk-basis { margin: 8px 0 0 48px; color: #33424D; font-size: 12px; }
 
 /* 뉴모피즘 고정: 밝은 면은 전부 --neu 위에 그림자로 구분 (튀어나옴 --raise · 눌림 --press) */
-.topbar { background: #fff; border-bottom: 0; box-shadow: 0 6px 14px var(--neu-dark); backdrop-filter: none; }   /* 위쪽 메뉴줄은 흰색 */
+.topbar { background: #fff; border-bottom: 0; box-shadow: 0 6px 16px #D5D9DD; backdrop-filter: none; }   /* 위쪽 메뉴줄은 흰색 · 그림자는 흰 바탕용 중립 회색 */
 .card { border: 0; border-radius: 22px; padding: 20px; box-shadow: var(--raise); }
 .table-card { padding: 10px; }
 .search input { border: 0; background: var(--neu); box-shadow: var(--press); }
@@ -601,7 +601,7 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .split-bar .part-cost { flex: none; background: var(--tone); color: #fff; }
 .split-bar .part-keep { flex: 1; justify-content: flex-end; background: #DDF3EA; color: #0f5e47; }
 /* 영수증 분석 · 메뉴별 원가율 판은 흰색 (안의 버튼 · 칸도 흰 바탕 뉴모피즘) */
-#receiptCard, #costCard { --neu: #FFFFFF; background: var(--neu); }
+#receiptCard, #costCard { --neu: #FFFFFF; background: var(--neu); --neu-dark: #D5D9DD; --raise: 8px 8px 20px #D5D9DD, -6px -6px 16px #FFFFFF; --raise-sm: 5px 5px 12px #D5D9DD, -4px -4px 10px #FFFFFF; --press: inset 4px 4px 9px #D5D9DD, inset -4px -4px 9px #FFFFFF; }   /* 그림자도 흰 바탕용 중립 회색 */
 .cost-cards { display: flex; flex-direction: column; gap: 12px; }
 .cost-card { --tone: var(--down); --tone-bg: #E9F7F2; display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 18px; padding: 12px;
   border-radius: 18px; background: #fff; border: 1px solid var(--border); color: var(--ink); }
@@ -776,8 +776,12 @@ a.my-link { color: inherit; text-decoration: none; }
 .rc-open:hover { color: var(--accent); }
 
 /* 마트 판매가 */
-/* 대형마트 판: 아주 연한 민트 (안의 필터 버튼 · 회사별 가격 펼침도 같은 색) */
-#mart .mart-card { --neu: #D4ECDF; background: var(--neu); }
+/* 대형마트 판: 살피 배 색 같은 연한 베이지 (안의 필터 버튼 · 회사별 가격 펼침도 같은 색) */
+#mart .mart-card { --neu: #F3E2C7; --neu-dark: #D9C19C; --neu-light: #FFF8EC; background: var(--neu);
+  /* 그림자도 베이지에 맞춤: 어두운 쪽은 진한 베이지, 밝은 쪽은 크림색 */
+  --raise: 7px 7px 14px var(--neu-dark), -7px -7px 14px var(--neu-light);
+  --raise-sm: 4px 4px 8px var(--neu-dark), -4px -4px 8px var(--neu-light);
+  --press: inset 4px 4px 8px var(--neu-dark), inset -4px -4px 8px var(--neu-light); }
 .mart-filter { display: flex; flex-wrap: wrap; margin-bottom: 18px; }
 .mart-filter button { padding: 7px 14px; border-radius: 999px; color: var(--ink); font-size: 13px; }
 .mart-filter button.active { color: #fff; font-weight: 700; }

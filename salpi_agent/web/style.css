@@ -520,11 +520,11 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .search input { border: 0; background: var(--neu); box-shadow: var(--press); }
 .search-list { border: 0; background: var(--neu); box-shadow: var(--raise); }
 .search-hit:hover, .search-hit.active { background: none; box-shadow: var(--press); }
-/* 위쪽 메뉴 검색창: 얇은 검은 테두리의 연한 칸 + 오른쪽 진한 초록 동그라미 돋보기 버튼 */
+/* 위쪽 메뉴 검색창: 테두리 없는 연한 칸 + 오른쪽 진한 초록 동그라미 돋보기 버튼 */
 .topbar .search { flex: 0 1 340px; }
-.topbar .search input { height: 42px; padding: 0 50px 0 20px; border: 1px solid #3A3F3C; background: #EDF1EE; box-shadow: none; font-size: 15px; }
+.topbar .search input { height: 42px; padding: 0 50px 0 20px; border: 0; background: #EDF1EE; box-shadow: none; font-size: 15px; }
 .topbar .search input::placeholder { color: #6E7A74; }
-.topbar .search input:focus { outline: none; border-color: #111; box-shadow: 0 0 0 1px #111; }
+.topbar .search input:focus { outline: 2px solid #4E7361; outline-offset: -2px; }
 .topbar .search-icon { display: none; }
 .search-btn { position: absolute; right: 4px; top: 4px; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center; background: #4E7361; color: #fff; cursor: pointer; }
 .search-btn svg { width: 17px; height: 17px; }

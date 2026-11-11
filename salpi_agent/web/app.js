@@ -1475,7 +1475,8 @@ function setupSearch(searchInput, searchList, idp) {
   return { goFirst };
 }
 
-setupSearch($("#searchInput"), $("#searchList"), "hit");
+const topSearch = setupSearch($("#searchInput"), $("#searchList"), "hit");
+$("#searchBtn").addEventListener("click", topSearch.goFirst);
 
 // ---------------------------------------------------------------
 // 알림톡 시연: 세그먼트별 메시지 (실제 발송 없음). 시세 문장은 오늘 값, 나머지는 예시 문장

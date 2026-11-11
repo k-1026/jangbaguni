@@ -1130,11 +1130,9 @@ function martName(name) {
 
 function martCard(x) {
   const one = x.chains.length === 1;   // 한 회사에서만 조사된 재료는 비교 없이
-  const sub = x.daegu ? `대구 매장 ${won(x.daegu.price)}` : "";
   return `<article class="mart-item">
     <h3 title="${esc(x.name)}">${martName(x.name)}</h3>
     <p class="mart-low"><b>${won(x.low)}</b></p>
-    ${sub ? `<p class="mart-sub">${sub}</p>` : ""}
     ${martShop(x.shop)}
     ${one ? `<div class="mart-chains" aria-hidden="true"></div>` : `<details class="mart-chains"><summary>회사별 가격</summary>
       <ul>${x.chains.map((c) => `<li${c.price === x.low ? ' class="mart-min"' : ""}><span>${esc(c.chain)}</span><b>${won(c.price)}</b>${

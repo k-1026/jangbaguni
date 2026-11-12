@@ -132,6 +132,8 @@ function plainReason(factors, kind) {
   if (top.factor.includes("공휴일")) return "공휴일을 앞두고 있어요";
   if (top.factor.startsWith("한 달 평균")) return `한 달 평균보다 ${sign > 0 ? "싸서 올라올" : "비싸서 내려올"} 수 있어요`;
   if (top.factor.startsWith("김장철")) return "김장철이라 찾는 사람이 많아요";
+  if (top.factor.startsWith("도매 경락가")) return `도매 경매가가 먼저 ${sign > 0 ? "올랐어요" : "내렸어요"}`;
+  if (top.factor.startsWith("경매 물량")) return `경매에 나온 양이 ${sign > 0 ? "줄었어요" : "늘었어요"}`;
   return "대구 행사가 많아요";
 }
 
@@ -289,7 +291,7 @@ let extraReq = null;   // 받는 중인 요청 (탭 · 검색 · 재료 페이�
 const extraList = () => (Array.isArray(extra) ? extra : []);
 const extraByItem = (name) => extraList().find((r) => r.item === name);
 const extraRows = () => extraList().filter((r) => r.group === boardTab && r.price);
-const basisName = (r) => (r.price_basis === "중도매" ? "북부도매시장 중도매" : "대구 소매");
+const basisName = (r) => r.basis_label || (r.price_basis === "중도매" ? "북부도매시장 중도매가" : "대구 소매 평균");
 // 고기는 kg당 값이 커서 100g당 값도 같이 (정육점 표기와 같게)
 const per100 = (r) => (r.group === "육류" && r.unit === "kg" ? ` · 100g ${won(r.price / 10)}` : "");
 
@@ -299,7 +301,7 @@ function vegShape(r) {
   const f = r.forecast && !r.forecast.error
     ? { ...r.forecast, expected_kg_price_range: r.forecast.expected_price_range, base_kg_price: r.forecast.base_price } : null;
   const history = (r.history || []).map((h, i, a) => ({ date: h.date, kg_price: h.price, diff: i ? h.price - a[i - 1].price : null,
-    rain_mm: null, events: [], holiday: null }));
+    rain_mm: h.rain_mm ?? null, events: h.events || [], holiday: h.holiday || null }));
   return { item: r.item, history, forecast: f };
 }
 
@@ -318,7 +320,7 @@ function renderExtraSlides() {
   $("#slider").innerHTML = `
     <article class="slide card" data-item="">
       <div class="chart-head">
-        <div><h3>전체 ${boardTab} 시세</h3><p class="price-now muted">지난주보다 얼마나 올랐나 · 내렸나 (대구 조사가)</p></div>
+        <div><h3>전체 ${boardTab} 시세</h3><p class="price-now muted">지난주보다 얼마나 올랐나 · 내렸나 (${boardTab === "육류" ? "대구 소매 평균" : "북부도매시장 중도매가 중심"})</p></div>
         <div class="legend"><span><i class="lg up"></i>올랐어요</span><span><i class="lg down"></i>내렸어요</span></div>
       </div>
       <div class="chart-box"><canvas></canvas></div>
@@ -342,9 +344,12 @@ function extraSlide(r, idx) {
     <div>
       <h3>${esc(r.item)} 시세</h3>
       <p class="price-now"><strong>${won(r.price)}/${esc(r.unit || "")}</strong>
-        <span class="${cls(r.week_change_pct, 3)}">1주 전보다 ${pct(r.week_change_pct)}</span>${per100(r) ? `<span>${per100(r).slice(3)}</span>` : ""}</p>
+        <span class="${cls(r.week_change_pct, 3)}">1주 전보다 ${pct(r.week_change_pct)}</span>${per100(r) ? ` <span>· ${per100(r).slice(3)}</span>` : ""}</p>
     </div>
-    <div class="legend"><span><i class="lg line"></i>${basisName(r)} ${esc(r.unit || "")}당</span><span><i class="lg fc"></i>7일 예측</span></div>
+    <div class="legend">
+      <span><i class="lg line"></i>${esc(basisName(r))} ${esc(r.unit || "")}당</span><span><i class="lg fc"></i>7일 예측</span>
+      ${r.group === "수산물" ? `<span><i class="lg rain"></i>비</span>` : ""}<span><i class="lg event"></i>행사</span><span><i class="lg hol"></i>공휴일</span>
+    </div>
   </div>
   <div class="chart-box"><canvas></canvas></div>
   <div class="fc-strip ${v.kind}">
@@ -563,7 +568,46 @@ function renderExtraItemPage(r) {
   renderBoard();
   renderForecast(d.forecast, d.history, r.unit);
   $("#forecastCard .fc-reasons h4")?.insertAdjacentHTML("afterend",
-    `<p class="muted fc-extra-note">경매 자료(반입량)가 없어 농산물보다 이유가 적은 추정이에요 · 출처 ${esc(r.source)}</p>`);
+    `<p class="muted fc-extra-note">${r.grade_table
+      ? `${esc(r.grade_table.market)} 도매 경매가 흐름 · 경매 물량까지 본 추정이에요 (얼마나 반영할지는 아직 과거 자료로 채점 전)`
+      : "경매 자료(반입량)가 없어 농산물보다 이유가 적은 추정이에요"} · 출처 ${esc(r.source)}</p>`);
+  renderGradeTable(r.grade_table);
+}
+
+// 등급별 도매 경락가 표 (한우 · 돼지만, 재료 페이지에만 — 대시보드에는 넣지 않음)
+// 등급마다 가격 막대 · 물량 막대로 한눈에, 아래에는 "지금 소매가 vs 같은 등급 경락가" 막대 두 줄
+function renderGradeTable(t) {
+  $("#gradeTable")?.remove();
+  if (!t || !t.rows?.length) return;
+  const pig = t.rows.some((x) => x.all_price != null);
+  const maxP = Math.max(...t.rows.map((x) => Math.max(x.price || 0, x.all_price || 0)));
+  const maxC = Math.max(1, ...t.rows.map((x) => x.count || 0));
+  const bar = (v, max, cls) => (v ? `<span class="g-bar ${cls}"><i style="width:${Math.max(3, (v / max) * 100).toFixed(1)}%"></i></span>` : "");
+  const unitCnt = pig ? "마리" : "상자";
+  const r = t.retail;
+  const times = r && t.compare_price ? r.price / t.compare_price : null;
+  const cmpMax = r ? Math.max(r.price, t.compare_price || 0) : 0;
+  $("#priceBoard").insertAdjacentHTML("beforebegin", `
+    <section class="card grade-table" id="gradeTable">
+      <div class="grade-head"><h3>등급별 도매 경락가</h3>
+        <p class="muted">${esc(t.market)} · ${mmdd(t.date)} 경매 · kg당 · ${esc(t.note)}${pig ? " · 회색 막대는 전국 평균" : ""}</p></div>
+      <table class="g-table">
+        <thead><tr><th>등급</th><th>경락가 (kg당)</th><th>물량</th></tr></thead>
+        <tbody>${t.rows.map((x) => `<tr class="${x.grade === t.compare_grade ? "on" : ""}">
+          <th scope="row">${esc(x.grade)}${x.grade === t.compare_grade ? "<small>소매와 같은 등급</small>" : ""}</th>
+          <td><div class="g-cell">${bar(x.price, maxP, "price")}<b>${x.price ? won(x.price) : "-"}</b></div>
+            ${pig && x.all_price ? `<div class="g-cell all">${bar(x.all_price, maxP, "all")}<span>전국 ${won(x.all_price)}</span></div>` : ""}</td>
+          <td><div class="g-cell">${bar(x.count, maxC, "count")}<span>${x.count ? `${Math.round(x.count).toLocaleString("ko-KR")}${unitCnt}` : "-"}</span></div></td>
+        </tr>`).join("")}</tbody>
+      </table>
+      ${r && t.compare_price ? `<div class="g-compare">
+        <p><b>사장님이 사는 값(소매)은 도매 경락가의 ${times.toFixed(1)}배</b>예요</p>
+        <div class="g-cell">${bar(r.price, cmpMax, "retail")}<span>대구 소매 평균 · ${esc(r.name)} <b>${won(r.price)}/kg</b></span></div>
+        <div class="g-cell">${bar(t.compare_price, cmpMax, "price")}<span>${esc(t.market)} 경락가 · ${esc(t.compare_name)} <b>${won(t.compare_price)}/kg</b></span></div>
+        ${pig ? `<p class="muted small">돼지는 부위 경매가 없어 통째(도체) 값과 견줬어요. 부위값과 직접 같지는 않아요.</p>` : ""}
+      </div>` : ""}
+      <p class="muted small">출처 ${esc(t.source)}</p>
+    </section>`);
 }
 
 function renderItemGoods() {
@@ -1562,7 +1606,7 @@ function markHit(text, word) {
 
 // 이름에 없지만 사장님이 흔히 쓰는 말 ("소고기" → 한우 등심, "달걀" → 계란)
 const SEARCH_WORDS = {
-  "한우 등심": "소고기", "한우 양지": "소고기 국거리", "돼지고기 앞다리": "제육 찌개용", "돼지고기 삼겹살": "오겹",
+  "한우 등심": "소고기", "한우 양지": "소고기 국거리", "돼지고기 앞다리": "돼지 제육 찌개용", "돼지고기 삼겹살": "돼지 오겹",
   "닭고기": "생닭 닭볶음탕", "계란": "달걀", "오징어": "물오징어", "새우젓": "젓갈", "멸치액젓": "젓갈 액젓",
   "명태": "동태 생태", "마른멸치": "멸치", "김": "김밥김", "마른미역": "미역",
 };

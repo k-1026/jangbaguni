@@ -109,6 +109,12 @@ def item(name: str):
     return _guard(lambda: memo(f"item:{name}", lambda: analysis.item_detail(name)))
 
 
+@app.get("/api/meat-seafood")
+def meat_seafood():
+    """육류 · 수산물 대구 가격과 1주 · 4주 변화 (aT 일별 도·소매가, 예측 없음)."""
+    return _guard(lambda: memo("meat_seafood", lambda: {"items": analysis.extra_overview()}))
+
+
 @app.get("/api/products")
 def products():
     """식봄 실제 상품 · 가격 (재료마다 4개). 살피 시세 정보는 화면에서 /api/overview 와 합침."""

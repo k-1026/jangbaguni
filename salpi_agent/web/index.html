@@ -7,7 +7,7 @@
   <link rel="icon" href="/static/img/salpi_face.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=110">
+  <link rel="stylesheet" href="/static/style.css?v=111">
 </head>
 <body>
 
@@ -28,14 +28,14 @@
       <div class="search-list" id="searchList" role="listbox" aria-label="검색 결과" hidden></div>
     </div>
     <div class="top-actions">
-      <!-- 마이페이지(가게): 사장님 로그인 시 내일 준비 · 메뉴별 원가율 · 영수증 분석 (시연: 로그인했다고 치고 기본 계정) -->
-      <a class="store-btn" id="storeBtn" href="/?page=store"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h16v10H4z"/><path d="M3 10l2-5h14l2 5"/><path d="M10 20v-5h4v5"/></svg><span>마이페이지</span></a>
+      <!-- 나의 가게: 사장님 로그인 시 내일 준비 · 메뉴별 원가율 · 영수증 분석 (시연: 로그인했다고 치고 기본 계정) -->
+      <a class="store-btn" id="storeBtn" href="/?page=store"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h16v10H4z"/><path d="M3 10l2-5h14l2 5"/><path d="M10 20v-5h4v5"/></svg><span>나의 가게</span></a>
       <button class="icon-btn" id="bellBtn" aria-label="알림 모아 보기" aria-expanded="false" title="알림"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2Z"/></svg><span class="count" id="bellCount" hidden></span></button>
       <div class="bell-panel" id="bellPanel" hidden>
         <div class="bell-head"><b>알림</b><button id="bellReadAll">모두 읽음</button></div>
         <ul class="bell-list" id="bellList"></ul>
       </div>
-      <button class="icon-btn set-btn" id="meBtn" aria-label="설정" title="설정"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M19.14 12.94a7.5 7.5 0 0 0 .05-.94 7.5 7.5 0 0 0-.05-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.03 7.03 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 13.9 2.5h-3.8a.5.5 0 0 0-.49.42l-.36 2.54c-.59.24-1.13.56-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.71 8.98a.5.5 0 0 0 .12.64l2.03 1.58a7.5 7.5 0 0 0 0 1.88l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.39.3.6.22l2.39-.96c.5.38 1.04.7 1.63.94l.36 2.54c.04.24.25.42.49.42h3.8c.24 0 .45-.18.49-.42l.36-2.54c.59-.24 1.13-.56 1.63-.94l2.39.96c.22.08.47 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7Z"/></svg></button>
+      <button class="me-btn" id="meBtn" aria-label="마이페이지"><img src="/static/img/owner_face.png" alt=""><span>마이페이지</span></button>
     </div>
   </div>
 </header>
@@ -108,9 +108,9 @@
     </div>
   </section>
 
-  <!-- 마이페이지(가게) (/?page=store): 사장님 로그인 시에만 보이는 세 가지 -->
+  <!-- 나의 가게 페이지 (/?page=store): 사장님 로그인 시에만 보이는 세 가지 -->
   <section class="wrap section store-only store-head">
-    <h1 id="storeName">마이페이지</h1>
+    <h1 id="storeName">나의 가게</h1>
     <p class="muted">우리 가게 판매 기록과 영수증으로 내일 준비 · 원가율을 살펴봐요</p>
   </section>
 
@@ -196,12 +196,12 @@
   </button>
 </div>
 
-<!-- 설정 (시연: 로그인했다고 치고 시연용 가게 계정으로 보여 줌) -->
+<!-- 마이페이지 (시연: 로그인했다고 치고 시연용 가게 계정으로 보여 줌) -->
 <div class="backdrop" id="backdrop" hidden></div>
 <aside class="drawer" id="mypage" aria-hidden="true">
   <div class="drawer-head">
     <button class="drawer-back" id="mypageBack" hidden aria-label="뒤로">‹</button>
-    <b id="mypageTitle">설정</b>
+    <b id="mypageTitle">마이페이지</b>
     <button class="drawer-close" id="mypageClose" aria-label="닫기">×</button>
   </div>
   <div class="drawer-body" id="mypageBody"></div>
@@ -267,6 +267,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="/static/app.js?v=110"></script>
+<script src="/static/app.js?v=111"></script>
 </body>
 </html>

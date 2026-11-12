@@ -7,7 +7,7 @@
   <link rel="icon" href="/static/img/salpi_face.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=109">
+  <link rel="stylesheet" href="/static/style.css?v=110">
 </head>
 <body>
 
@@ -65,8 +65,16 @@
 
       <div class="hero-board">
         <div class="slider-head">
-          <div class="slider-title"><span class="basis" id="basis"></span></div>
-          <div class="slider-nav">
+          <div class="slider-title">
+            <!-- 시세 종류 탭: 누르면 아래 슬라이드가 그 종류로 바뀜 -->
+            <div class="board-tabs" id="boardTabs" role="tablist" aria-label="시세 종류">
+              <button type="button" role="tab" data-tab="농산물" aria-selected="true">농산물</button>
+              <button type="button" role="tab" data-tab="수산물" aria-selected="false">수산물</button>
+              <button type="button" role="tab" data-tab="육류" aria-selected="false">육류</button>
+            </div>
+            <span class="basis" id="basis"></span>
+          </div>
+          <div class="slider-nav" id="sliderNav">
             <button id="prevSlide" aria-label="이전">‹</button>
             <span class="slide-count" id="dots"></span>
             <button id="nextSlide" aria-label="다음">›</button>
@@ -74,7 +82,7 @@
           </div>
         </div>
         <div class="slider" id="slider">
-          <!-- app.js가 채움: 1장 전체 야채 → 2장부터 야채별 대시보드(오를 가능성 높은 순) -->
+          <!-- app.js가 채움: 1장 전체 비교 막대 → 2장부터 품목별 대시보드 (농산물은 오를 가능성 높은 순, 수산물 · 육류는 1주 변화 큰 순) -->
           <article class="slide card loading-card">
             <div class="spinner"></div>
             <b>새벽 시세를 받아 오는 중이에요</b>
@@ -174,7 +182,7 @@
   </section>
 
   <footer class="wrap footer">
-    출처: aT 전국 공영도매시장 정산정보 · aT 일별 도·소매 가격정보(KAMIS) · 기상청 ASOS(대구 143) · 한국천문연구원 특일정보 · 한국관광공사 국문관광정보(대구) · 한국소비자원 생필품 가격 정보(참가격) · 식봄 검색 결과<br>
+    출처: aT 전국 공영도매시장 정산정보 · aT 일별 도·소매 가격정보(KAMIS, 수산물 · 육류 포함) · 기상청 ASOS(대구 143) · 한국천문연구원 특일정보 · 한국관광공사 국문관광정보(대구) · 한국소비자원 생필품 가격 정보(참가격) · 식봄 검색 결과<br>
     예측은 최근 시세 흐름 · 반입량 · 날씨 · 공휴일 · 행사를 더한 규칙 기반 추정이에요.
   </footer>
 </main>
@@ -259,6 +267,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="/static/app.js?v=109"></script>
+<script src="/static/app.js?v=110"></script>
 </body>
 </html>

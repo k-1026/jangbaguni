@@ -47,6 +47,34 @@ ITEMS = {
     "가지":     {"ctgry": "200", "item": "251", "vrty": None, "sale_name": "가지",   "sale_sub": None},
 }
 
+# 육류 · 수산물: 대구 북부도매시장 정산정보(경매)에는 없어서 aT 일별 도·소매가(perDay, KAMIS 조사)만 씀
+# → 경매 반입량이 없으니 7일 예측은 하지 않고 시세 변화만 보여 줌. ITEMS와 섞지 않음
+# se: 소매 / 중도매, grd: 쓸 등급 코드(None이면 전부 평균)
+# 이름은 menu_cost.REFERENCE_PRICES 이름과 같게 둠 (메뉴 원가 계산에서 그대로 바꿔 씀)
+# 코드 근거: perDay 대구 응답으로 품목 · 품종 · 단위 확인 (2026-11-12)
+EXTRA_ITEMS = {
+    "한우 등심":          {"group": "육류", "ctgry": "500", "item": "4301", "vrty": "22", "se": "소매", "grd": "3"},  # 1등급 100g
+    "한우 양지":          {"group": "육류", "ctgry": "500", "item": "4301", "vrty": "40", "se": "소매", "grd": "3"},  # 1등급 100g (국거리)
+    "수입 소고기 갈비살": {"group": "육류", "ctgry": "500", "item": "4401", "vrty": "37", "se": "소매", "grd": "1"},  # 미국산 100g
+    "돼지고기 앞다리": {"group": "육류",   "ctgry": "500", "item": "4304", "vrty": "25", "se": "소매",   "grd": None},  # 100g
+    "돼지고기 삼겹살": {"group": "육류",   "ctgry": "500", "item": "4304", "vrty": "27", "se": "소매",   "grd": None},  # 100g
+    "닭고기":          {"group": "육류",   "ctgry": "500", "item": "9901", "vrty": "99", "se": "소매",   "grd": None},  # 육계 1kg
+    "계란":            {"group": "육류",   "ctgry": "500", "item": "9903", "vrty": "23", "se": "소매",   "grd": "1"},   # XL 30구 일반란
+    "오징어":          {"group": "수산물", "ctgry": "600", "item": "619",  "vrty": "05", "se": "중도매", "grd": None},  # 원양 냉동, 북부도매 kg
+    "고등어":          {"group": "수산물", "ctgry": "600", "item": "611",  "vrty": "02", "se": "중도매", "grd": None},  # 냉동, 북부도매 10kg
+    "새우젓":          {"group": "수산물", "ctgry": "600", "item": "650",  "vrty": "00", "se": "소매",   "grd": None},  # 1kg
+    # 중도매가는 대구 북부도매시장, 등급이 여러 개면 하나로 고정 (등급이 빠진 날 값이 튀지 않게)
+    "갈치":            {"group": "수산물", "ctgry": "600", "item": "613",  "vrty": "02", "se": "중도매", "grd": "21"},  # 냉동 中, kg
+    "명태":            {"group": "수산물", "ctgry": "600", "item": "615",  "vrty": "02", "se": "중도매", "grd": "21"},  # 냉동 中, 20kg
+    "굴":              {"group": "수산물", "ctgry": "600", "item": "644",  "vrty": "00", "se": "중도매", "grd": None},  # kg
+    "홍합":            {"group": "수산물", "ctgry": "600", "item": "658",  "vrty": "02", "se": "중도매", "grd": None},  # 안깐홍합, kg
+    "새우":            {"group": "수산물", "ctgry": "600", "item": "654",  "vrty": "01", "se": "중도매", "grd": None},  # 흰다리(수입), 2kg
+    "마른멸치":        {"group": "수산물", "ctgry": "600", "item": "638",  "vrty": "00", "se": "중도매", "grd": "28"},  # 2kg
+    "멸치액젓":        {"group": "수산물", "ctgry": "600", "item": "651",  "vrty": "00", "se": "소매",   "grd": None},  # 1kg
+    "김":              {"group": "수산물", "ctgry": "600", "item": "641",  "vrty": "00", "se": "중도매", "grd": None},  # 마른김 1속
+    "마른미역":        {"group": "수산물", "ctgry": "600", "item": "642",  "vrty": "00", "se": "중도매", "grd": None},  # kg
+}
+
 FOODSPRING_SEARCH = "https://www.foodspring.co.kr/search/all"
 
 
@@ -157,7 +185,7 @@ def sale_days(days):
 # ---------------------------------------------------------------
 
 def perday_prices(item_name, days=35):
-    cfg = ITEMS[item_name]
+    cfg = ITEMS.get(item_name) or EXTRA_ITEMS[item_name]
     start, end = date.today() - timedelta(days), date.today()
 
     def fetch():

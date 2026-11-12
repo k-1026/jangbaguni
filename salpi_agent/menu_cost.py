@@ -1,12 +1,13 @@
 """메뉴 1인분 원가 · 원가율 계산 ("이 가격에 팔아도 남아?").
 
 채소는 오늘 대구 도매 경락가(kg당)를 쓰고 (실제 구매가는 이보다 높을 수 있음),
-시세 API가 없는 재료(고기 · 두부 · 양념 등)는 아래 참고 단가를 쓴다.
+돼지고기 · 닭고기 · 계란 · 오징어 등은 대구 소매 · 중도매 조사가(EXTRA_ITEMS)를 쓴다.
+시세 API가 없는 재료(두부 · 양념 등)와 조사가를 못 받은 날은 아래 참고 단가를 쓴다.
 참고 단가는 시연용 가정값이라 사장님 영수증 값으로 바꿔야 정확해진다.
 """
 
-from analysis import item_trend
-from data_sources import ITEMS
+from analysis import extra_trend, item_trend
+from data_sources import EXTRA_ITEMS, ITEMS
 
 # 시세 API가 없는 재료: (단위, 단위당 원) — 시연용 가정값 (supabase/seed.sql 영수증 값 기준)
 REFERENCE_PRICES = {
@@ -22,7 +23,7 @@ REFERENCE_PRICES = {
 ALIASES = {
     "김치": ("배추김치", 1), "포기김치": ("배추김치", 1), "밥": ("쌀", 0.45), "공기밥": ("쌀", 0.45),
     "돼지고기": ("돼지고기 앞다리", 1), "앞다리": ("돼지고기 앞다리", 1), "삼겹살": ("돼지고기 삼겹살", 1),
-    "닭": ("닭고기", 1), "마늘": ("깐마늘", 1), "파": ("대파", 1), "호박": ("애호박", 1), "고추": ("청양고추", 1),
+    "닭": ("닭고기", 1), "물오징어": ("오징어", 1), "마늘": ("깐마늘", 1), "파": ("대파", 1), "호박": ("애호박", 1), "고추": ("청양고추", 1),
     "떡": ("떡볶이떡", 1), "달걀": ("계란", 1), "스팸": ("햄", 1), "라면": ("라면사리", 1),
 }
 
@@ -51,6 +52,15 @@ def _unit_price(name):
         t = item_trend(name)
         if t["wholesale"]["kg_price"]:
             return "kg", t["wholesale"]["kg_price"], f"오늘 시세(대구 도매 경락, {t['wholesale']['date']})"
+    if name in EXTRA_ITEMS:
+        try:
+            t = extra_trend(name)
+        except Exception:   # 조사가를 못 받으면 참고 단가로
+            t = {}
+        ref_unit = REFERENCE_PRICES.get(name, (None,))[0]
+        if t.get("price") and (ref_unit is None or t["unit"] == ref_unit):
+            where = "대구 중도매" if t["price_basis"] == "중도매" else "대구 소매"
+            return t["unit"], t["price"], f"오늘 시세({where} 조사가, {t['date']})"
     if name in REFERENCE_PRICES:
         unit, price = REFERENCE_PRICES[name]
         return unit, price, "참고 단가(가정값)"

@@ -748,7 +748,7 @@ body.chat-open .fab-count { display: none; }
 .my-link { width: 100%; display: flex; justify-content: space-between; align-items: center; border: 0; border-top: 1px solid #F3F1EC; background: none;
   padding: 12px 2px 2px; font-size: 15px; font-weight: 700; color: var(--ink); }
 a.my-link { color: inherit; text-decoration: none; }
-.my-account .my-link:first-child { border-top: 0; padding-top: 0; }
+.my-card > .my-link:first-child { border-top: 0; padding-top: 0; }   /* 카드 맨 위 줄은 구분선 없이 (설정 · 계정) */
 .my-link.danger { color: var(--up); }
 .my-account #accountNote { margin: 8px 0 0; }
 .my-link i, .my-receipts i { font-style: normal; color: var(--muted); font-size: 20px; }

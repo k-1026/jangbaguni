@@ -15,7 +15,7 @@ if (ITEM) {
   document.body.classList.add("item-view");
   $("#itemPage").hidden = false;
 }
-// 마이페이지(가게, /?page=store): 내일 준비 · 메뉴별 원가율 · 영수증 분석은 사장님 로그인 시에만
+// 나의 가게 페이지(/?page=store): 내일 준비 · 메뉴별 원가율 · 영수증 분석은 사장님 로그인 시에만
 // 로그인(카카오)은 아직 없어서 시연에서는 기본 계정으로 로그인한 것으로 봄
 const SIGNED_IN = true;
 const STORE_VIEW = !ITEM && SIGNED_IN && new URLSearchParams(location.search).get("page") === "store";
@@ -1808,10 +1808,10 @@ $("#receiptModalClose").onclick = closeReceipt;
 $("#receiptModal").onclick = (e) => { if (e.target.id === "receiptModal") closeReceipt(); };
 
 // ---------------------------------------------------------------
-// 마이페이지 (시연: 로그인했다고 치고 시연용 가게 계정)
+// 마이페이지 (시연: 로그인했다고 치고 시연용 가게 계정): 첫 화면 내 정보 · 나의 영수증 · 설정(알림 · 권한) · 계정
 // ---------------------------------------------------------------
 const ME = { name: "달서구 한식당 사장님", store: "살피 한식당", place: "대구 달서구", type: "한식 · 40석", email: "demo@salpi.example" };
-if (STORE_VIEW) $("#storeName").textContent = `마이페이지 · ${ME.store}`;
+if (STORE_VIEW) $("#storeName").textContent = `나의 가게 · ${ME.store}`;
 
 function openMypage(view = "home") {
   $("#mypage").classList.add("open");
@@ -1828,7 +1828,7 @@ function closeMypage() {
 async function renderMypage(view) {
   const box = $("#mypageBody");
   $("#mypageBack").hidden = view === "home";
-  $("#mypageTitle").textContent = view === "home" ? "설정" : "나의 영수증";
+  $("#mypageTitle").textContent = { home: "마이페이지", receipts: "나의 영수증", settings: "설정" }[view];
   if (view === "receipts") {
     box.innerHTML = `<p class="muted">불러오는 중이에요</p>`;
     try {
@@ -1840,18 +1840,10 @@ async function renderMypage(view) {
     } catch (e) { box.innerHTML = `<p class="rc-warn">${esc(e.message)}</p>`; }
     return;
   }
-  const prefs = alertPrefs();
-  box.innerHTML = `
-    <section class="my-card profile">
-      <img src="/static/img/owner_face.png" alt="">
-      <div><b>${esc(ME.name)}</b><small>${esc(ME.email)}</small></div>
-    </section>
-    <section class="my-card">
-      <h4>내 정보</h4>
-      <dl><dt>지역</dt><dd>${esc(ME.place)}</dd><dt>업종</dt><dd>${esc(ME.type)}</dd></dl>
-      <a class="my-link" href="/?page=store"><span>마이페이지 (우리 가게)</span><i>›</i></a>
-      <button class="my-link" data-view="receipts"><span>나의 영수증</span><i>›</i></button>
-    </section>
+  if (view === "settings") {
+    // 설정: 알림 설정 · 권한 설정
+    const prefs = alertPrefs();
+    box.innerHTML = `
     <section class="my-card">
       <h4>알림 설정</h4>
       <p class="muted small">켜 둔 알림은 살피가 챗봇 창으로 보내 드려요.</p>
@@ -1869,14 +1861,30 @@ async function renderMypage(view) {
       <p class="muted small">영수증을 카메라로 찍거나, 창을 닫아 둬도 시세 알림을 받으려면 권한이 필요해요.</p>
       <div class="toggle-row"><span><b>카메라</b><small id="camState">확인하는 중</small></span><span id="camAct"></span></div>
       <div class="toggle-row"><span><b>브라우저 알림</b><small id="notiState">확인하는 중</small></span><span id="notiAct"></span></div>
+    </section>`;
+    showCameraPerm();
+    showNotiPerm();
+    return;
+  }
+  box.innerHTML = `
+    <section class="my-card profile">
+      <img src="/static/img/owner_face.png" alt="">
+      <div><b>${esc(ME.name)}</b><small>${esc(ME.email)}</small></div>
+    </section>
+    <section class="my-card">
+      <h4>내 정보</h4>
+      <dl><dt>지역</dt><dd>${esc(ME.place)}</dd><dt>업종</dt><dd>${esc(ME.type)}</dd></dl>
+      <a class="my-link" href="/?page=store"><span>나의 가게</span><i>›</i></a>
+      <button class="my-link" data-view="receipts"><span>나의 영수증</span><i>›</i></button>
+    </section>
+    <section class="my-card">
+      <button class="my-link" type="button" data-view="settings"><span>설정 <small class="muted">알림 · 권한</small></span><i>›</i></button>
     </section>
     <section class="my-card my-account">
       <button class="my-link" type="button" data-account="logout"><span>로그아웃</span><i>›</i></button>
       <button class="my-link danger" type="button" data-account="leave"><span>회원탈퇴</span><i>›</i></button>
       <p class="muted small" id="accountNote" hidden>로그인 · 회원가입 기능이 생기면 쓸 수 있어요.</p>
     </section>`;
-  showCameraPerm();
-  showNotiPerm();
 }
 
 // 브라우저 알림 권한: 허용하면 새 시세 알림을 화면 밖(작업 표시줄 · 휴대폰 알림)으로도 띄움
@@ -2084,7 +2092,7 @@ $("#bellPanel").onclick = (e) => {
   e.stopPropagation();
   const a = e.target.closest("[data-aid]");
   if (a) { toggleBell(false); return goToAlert(a.dataset.aid); }
-  if (e.target.closest("[data-open-settings]")) { toggleBell(false); openMypage(); }
+  if (e.target.closest("[data-open-settings]")) { toggleBell(false); openMypage("settings"); }
 };
 $("#bellReadAll").onclick = () => markAlertsRead();
 document.addEventListener("click", () => toggleBell(false));
@@ -2149,3 +2157,7 @@ $("#eventCard").onclick = (e) => {
   const b = e.target.closest("[data-event]");
   if (b) openEvent(b.dataset.event);
 };
+
+// 시연용 주소: 마이페이지 코드 · 알림 설정 값이 모두 읽힌 뒤에 열어야 해서 파일 맨 끝에 둠
+if (location.hash === "#my") openMypage();               // 시연용: 마이페이지가 열린 채로
+if (location.hash === "#settings") openMypage("settings");   // 시연용: 마이페이지 › 설정(알림 · 권한)이 열린 채로

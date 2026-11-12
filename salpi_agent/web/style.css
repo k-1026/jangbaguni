@@ -453,6 +453,7 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .chat-input button { border: 0; background: var(--deep); color: #fff; border-radius: 14px; padding: 0 16px; font-weight: 700;
   box-shadow: 6px 6px 12px var(--cneu-dark), -6px -6px 12px var(--cneu-light); }
 .chat-input button:active { box-shadow: inset 3px 3px 7px #0a1b17, inset -3px -3px 7px #1a453c; }
+.chat-note { margin: 0; padding: 0 16px 12px; background: var(--cneu); color: var(--muted, #6b7a75); font-size: 11px; line-height: 1.4; }   /* 대화 저장 안내 */
 
 /* 화면이 좁을 때 */
 /* 우리 가게 내일 준비 */

@@ -22,8 +22,8 @@ from collections import Counter, defaultdict
 from datetime import date, timedelta
 from pathlib import Path
 
-from analysis import (EXTRA_REVERSION, VEG_REVERSION, _clip, reversion_factor, volume_factor, weather_effect)
-from data_sources import ITEMS
+from analysis import (EXTRA_REVERSION, FRUIT_REVERSION, FRUIT_VOLUME, VEG_VOLUME, VEG_REVERSION, _clip, reversion_factor, volume_factor, weather_effect)
+from data_sources import ITEMS, kind_of
 
 RAW = Path(__file__).resolve().parent.parent / "data" / "raw"
 SPLIT = date(2025, 1, 1)   # 이 날 전 = 계수를 고른 기간, 이후 = 고를 때 안 쓴 기간 (농산물)
@@ -116,15 +116,16 @@ def veg_cases(series, weather):
             if asof < date(2021, 3, 1) or j >= len(s) or s[j][0] > asof + timedelta(10):
                 continue
             win = [p for p in s[: i + 1] if p[0] > asof - timedelta(28)]   # 실제 예측처럼 28일치만
-            vol = volume_factor([p[2] for p in win])
+            fruit = kind_of(name) == "과일"   # analysis.forecast_item 과 같은 갈림
+            vol = volume_factor([p[2] for p in win], *(FRUIT_VOLUME if fruit else VEG_VOLUME))
             w = [weather[d] for d in (asof - timedelta(k) for k in range(7)) if d in weather]
             wx = weather_effect(name, sum(x[0] for x in w), sum(1 for x in w if (x[1] or 0) <= -3),
                                 sum(1 for x in w if (x[2] or 0) >= 33))[0] if w else 0.0
-            rev = reversion_factor([p[1] for p in win], *VEG_REVERSION)
-            new = (rev["effect_pct"] if rev else 0) + (vol["effect_pct"] if vol else 0) + wx
+            rev = reversion_factor([p[1] for p in win], *(FRUIT_REVERSION if fruit else VEG_REVERSION))
+            new = (rev["effect_pct"] if rev else 0) + (vol["effect_pct"] if vol else 0) + (0 if fruit else wx)
             old_vol = volume_factor([p[2] for p in win], k=-0.25)
             old = old_trend(win, asof, 10) + (old_vol["effect_pct"] if old_vol else 0) + wx
-            out.append(("이전" if asof < SPLIT else "이후", old, new, (s[j][1] / s[i][1] - 1) * 100))
+            out.append(("이전" if asof < SPLIT else "이후", old, new, (s[j][1] / s[i][1] - 1) * 100, kind_of(name)))
     return out
 
 
@@ -195,13 +196,14 @@ if __name__ == "__main__":
             for col, name in ((1, "평균과의 차이만          "), (2, "+ 도매 경락가 흐름       "),
                               (3, "+ 경매 물량              "), (4, "+ 둘 다 (예전 화면)      ")):
                 print(f"    {name}", score([(c[col], c[5]) for c in part]))
-    print("농산물 (북부도매시장 경락가, 2021-03 ~ 2026-11)")
     vc = veg_cases(*load_veg())
-    for period, label in (("이전", "2021~2024 (계수 고른 기간)"), ("이후", "2025~2026 (고를 때 안 쓴 기간)")):
-        part = [c for c in vc if c[0] == period]
-        print(f"  {label}")
-        print("    예전 공식 (최근 2주 흐름 · 반입량 −0.25)  ", score([(c[1], c[3]) for c in part]))
-        print("    지금 공식 (4주 평균과의 차이 · 반입량 −0.1)", score([(c[2], c[3]) for c in part]))
+    for kind in ("야채", "과일"):
+        print(f"농산물 · {kind} (북부도매시장 경락가, 2021-03 ~ 2026-11)")
+        for period, label in (("이전", "2021~2024 (계수 고른 기간)"), ("이후", "2025~2026 (고를 때 안 쓴 기간)")):
+            part = [c for c in vc if c[0] == period and c[4] == kind]
+            print(f"  {label}")
+            print("    예전 공식 (최근 2주 흐름 · 반입량 −0.25)  ", score([(c[1], c[3]) for c in part]))
+            print("    지금 공식 (4주 평균과의 차이 · 반입량, 과일은 따로 정한 계수)", score([(c[2], c[3]) for c in part]))
     print("수산물 · 육류 (KAMIS 대구, 2020-01 ~ 2025-08 · 육류는 2022-04까지)")
     ec = extra_cases(load_extra())
     for group in ("수산물", "육류"):

@@ -7,7 +7,7 @@
 import statistics
 from datetime import date, timedelta
 
-from data_sources import (BEEF_GRADES, EKAPE_LINKS, EKAPE_MARKET_NAME, EXTRA_ITEMS, PIG_GRADES, ITEMS, daegu_events, ekape_days,
+from data_sources import (kind_of, BEEF_GRADES, EKAPE_LINKS, EKAPE_MARKET_NAME, EXTRA_ITEMS, PIG_GRADES, ITEMS, daegu_events, ekape_days,
                           events_between, foodspring_url, holidays, holidays_between, perday_prices, sale_days,
                           weather_days)
 
@@ -61,8 +61,9 @@ def _unit_price(r):
 def retail_series(item_name, days=35):
     """KAMIS 조사가격(대구, 상품 등급): 날짜별 소매 평균가(단위 포함)."""
     by_date, unit = {}, None
+    grd = ITEMS[item_name].get("retail_grd", "04")   # 상품 등급 (감귤 · 포도는 크기 등급)
     for r in perday_prices(item_name, days):
-        if r.get("grd_cd") != "04" or r.get("se_nm") != "소매":
+        if r.get("grd_cd") != grd or r.get("se_nm") != "소매":
             continue
         try:
             price, unit = _unit_price(r)
@@ -110,7 +111,7 @@ def market_overview():
     rows = []
     for name in ITEMS:
         t = item_trend(name)
-        rows.append({"item": name,
+        rows.append({"item": name, "kind": kind_of(name),
                      "wholesale_kg": t["wholesale"]["kg_price"], "wholesale_change_pct": t["wholesale"]["week_change_pct"],
                      "wholesale_date": t["wholesale"]["date"], "direction": t["wholesale"]["direction"],
                      "retail_price": t["retail"]["price"], "retail_unit": t["retail"]["unit"],
@@ -307,6 +308,8 @@ def weather_summary(days=7):
 #   - 대신 '평균과의 차이'(평소보다 비싸면 내려오고 싸면 올라옴): 고를 때 안 쓴 2025~26 에서 정반대 41.5% → 26.1%
 VEG_REVERSION = (0.3, 15)     # 농산물: 4주 평균과의 차이 × −0.3, 최대 ±15%
 VEG_VOLUME = (-0.1, 6)        # 농산물: 반입량 변화율 × −0.1, 최대 ±6% (예전 −0.25 는 채점에서 더 나빴음)
+FRUIT_REVERSION = (0.2, 15)   # 과일: 4주 평균과의 차이 × −0.2 (2025~26 정반대 27.7% → 20.1%)
+FRUIT_VOLUME = (-0.05, 6)     # 과일: 반입량 × −0.05. 대구 날씨는 과일 채점에서 더 나빠져 안 씀
 EXTRA_REVERSION = (0.2, 4)    # 수산물 · 육류: 한 달 평균과의 차이 × −0.2, 최대 ±4% (값이 잘 안 움직여 약하게)
 
 
@@ -357,17 +360,18 @@ def forecast_item(item_name):
     factors = []
 
     # 1) 4주 평균과의 차이 (평소보다 비싸면 내려오고 싸면 올라옴 — 채점으로 '최근 2주 흐름' 대신 넣음)
-    f = reversion_factor([p["kg_price"] for p in series], *VEG_REVERSION, unit="kg", period="4주")
+    fruit = kind_of(item_name) == "과일"   # 과일은 채점으로 따로 정한 계수
+    f = reversion_factor([p["kg_price"] for p in series], *(FRUIT_REVERSION if fruit else VEG_REVERSION), unit="kg", period="4주")
     if f:
         factors.append(f)
 
     # 2) 반입량: 시장에 들어오는 양이 줄면 오르고, 늘면 내린다
-    f = volume_factor([p["volume_kg"] for p in series])
+    f = volume_factor([p["volume_kg"] for p in series], *(FRUIT_VOLUME if fruit else VEG_VOLUME))
     if f:
         factors.append(f)
 
-    # 3) 대구 날씨 (지난 7일, 주산지 날씨는 아직 반영 못 함 · 과거 채점에도 같은 규칙)
-    w = weather_summary(7)
+    # 3) 대구 날씨 (지난 7일, 야채만 · 주산지 날씨는 아직 반영 못 함 · 과거 채점에도 같은 규칙)
+    w = weather_summary(7) if not fruit else {}
     if w.get("days"):
         effect, notes = weather_effect(item_name, w["rain_total_mm"], w["freezing_days"], w["hot_days"])
         factors.append({"factor": "날씨(대구, 지난 7일)", "effect_pct": effect,

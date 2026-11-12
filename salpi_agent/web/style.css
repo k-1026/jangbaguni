@@ -22,7 +22,7 @@
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body {
-  margin: 0; background: var(--paper); color: var(--ink);
+  margin: 0; background: #fff; color: var(--ink);   /* 페이지 뒷배경은 흰색 */
   font-family: "Noto Sans KR", system-ui, sans-serif; font-size: 15px; line-height: 1.5;
 }
 button { font: inherit; cursor: pointer; }
@@ -120,7 +120,7 @@ button.chip:active, .chip[aria-expanded="true"] { box-shadow: inset 5px 5px 10px
 .slider { display: flex; gap: 64px; overflow: hidden;   /* 마우스로 끌어 넘기지 않음 — 화살표 · 자동 넘김 · 손가락 넘기기만 */
   padding: 32px; margin: -32px; }
 /* 대시보드 뉴모피즘: 바탕 --neu, 밝은 그림자 #fff · 어두운 그림자 --neu-dark */
-.slide.card { --neu: #E8ECE7; --neu-dark: #c6cbc4; background: var(--neu); border: 0; border-radius: 26px; padding: 24px;
+.slide.card { --neu: #FFFFFF; --neu-dark: #D5D9DD; background: var(--neu); border: 0; border-radius: 26px; padding: 24px;
   box-shadow: 12px 12px 26px #091915, -10px -10px 24px #1d4b42; }
 .slide.card .chart-box { border-radius: 18px; padding: 10px 8px 4px; margin-top: 6px;
   box-shadow: inset 6px 6px 12px var(--neu-dark), inset -6px -6px 12px #ffffff; }
@@ -312,6 +312,7 @@ body.store-view .store-btn { color: #fff; background: var(--accent); box-shadow:
 
 /* 영향 요인 */
 .ctx-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+#context .ctx-grid .card { --neu: #FFFFFF; background: var(--neu); --neu-dark: #D5D9DD; --raise: 8px 8px 20px #D5D9DD, -6px -6px 16px #FFFFFF; --raise-sm: 5px 5px 12px #D5D9DD, -4px -4px 10px #FFFFFF; --press: inset 4px 4px 9px #D5D9DD, inset -4px -4px 9px #FFFFFF; }   /* 시세 영향 정보 칸(날씨 · 공휴일 · 행사)은 흰색 · 그림자도 흰 바탕용 중립 회색 */
 .ctx-grid h3 { margin: 0 0 10px; font-size: 16px; }
 .ctx-list { list-style: none; margin: 0; padding: 0; font-size: 14px; }
 .ctx-list li { padding: 6px 0; border-bottom: 1px solid #F3F1EC; }
@@ -513,12 +514,23 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .talk-basis { margin: 8px 0 0 48px; color: #33424D; font-size: 12px; }
 
 /* 뉴모피즘 고정: 밝은 면은 전부 --neu 위에 그림자로 구분 (튀어나옴 --raise · 눌림 --press) */
-.topbar { background: var(--neu); border-bottom: 0; box-shadow: 0 6px 14px var(--neu-dark); backdrop-filter: none; }
+.topbar { background: #fff; border-bottom: 0; box-shadow: 0 6px 16px #D5D9DD; backdrop-filter: none; }   /* 위쪽 메뉴줄은 흰색 · 그림자는 흰 바탕용 중립 회색 */
 .card { border: 0; border-radius: 22px; padding: 20px; box-shadow: var(--raise); }
 .table-card { padding: 10px; }
 .search input { border: 0; background: var(--neu); box-shadow: var(--press); }
 .search-list { border: 0; background: var(--neu); box-shadow: var(--raise); }
 .search-hit:hover, .search-hit.active { background: none; box-shadow: var(--press); }
+/* 위쪽 메뉴 검색창: 테두리 없는 연한 칸 + 오른쪽 진한 초록 동그라미 돋보기 버튼 */
+.topbar .search { flex: 0 1 340px; }
+.topbar .search input { height: 42px; padding: 0 50px 0 20px; border: 0; background: #EDF1EE; box-shadow: none; font-size: 15px; }
+.topbar .search input::placeholder { color: #6E7A74; }
+.topbar .search input:focus { outline: 2px solid #4E7361; outline-offset: -2px; }
+.topbar .search-icon { display: none; }
+.search-btn { position: absolute; right: 4px; top: 4px; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center; background: #4E7361; color: #fff; cursor: pointer; }
+.search-btn svg { width: 17px; height: 17px; }
+.search-btn:hover { background: #3F6150; }
+.search-btn:focus-visible { outline: 2px solid var(--deep); outline-offset: 2px; }
+@media (max-width: 520px) { .topbar .search input { padding: 0 44px 0 14px; font-size: 14px; } }
 .filter { gap: 10px; }
 .filter button { border: 0; background: var(--neu); box-shadow: var(--raise-sm); }
 .filter button:active { box-shadow: var(--press); }
@@ -599,6 +611,8 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .split-bar i { display: flex; align-items: center; padding: 0 8px; font-style: normal; white-space: nowrap; overflow: hidden; }
 .split-bar .part-cost { flex: none; background: var(--tone); color: #fff; }
 .split-bar .part-keep { flex: 1; justify-content: flex-end; background: #DDF3EA; color: #0f5e47; }
+/* 영수증 분석 · 메뉴별 원가율 판은 흰색 (안의 버튼 · 칸도 흰 바탕 뉴모피즘) */
+#receiptCard, #costCard { --neu: #FFFFFF; background: var(--neu); --neu-dark: #D5D9DD; --raise: 8px 8px 20px #D5D9DD, -6px -6px 16px #FFFFFF; --raise-sm: 5px 5px 12px #D5D9DD, -4px -4px 10px #FFFFFF; --press: inset 4px 4px 9px #D5D9DD, inset -4px -4px 9px #FFFFFF; }   /* 그림자도 흰 바탕용 중립 회색 */
 .cost-cards { display: flex; flex-direction: column; gap: 12px; }
 .cost-card { --tone: var(--down); --tone-bg: #E9F7F2; display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 18px; padding: 12px;
   border-radius: 18px; background: #fff; border: 1px solid var(--border); color: var(--ink); }
@@ -612,7 +626,7 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .cost-left small { display: block; margin-top: 4px; font-size: 12px; font-weight: 700; }
 .cost-left small.up { color: var(--up); } .cost-left small.down { color: var(--down); }
 .cost-nums { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; }
-.cost-nums div { padding: 8px 10px; border-radius: 12px; background: var(--paper); }
+.cost-nums div { padding: 8px 10px; border-radius: 12px; background: #fff; border: 1px solid var(--border); }
 .cost-nums dt { font-size: 12px; color: var(--muted); } .cost-nums dd { margin: 0; font-size: 15px; font-weight: 700; color: var(--ink); }
 .cost-tips { margin: 10px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
 .cost-tips li { position: relative; padding-left: 16px; font-size: 13px; color: #4C524E; line-height: 1.5; }
@@ -659,18 +673,6 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
   font-size: 22px; font-weight: 900; color: var(--deep); background: #C8F169; }
 .buy-link:hover { transform: translateY(-2px); }
 .buy-link:active { transform: none; box-shadow: inset 5px 5px 10px #0a1b17, inset -5px -5px 10px #1a453c; }
-/* 첫 화면 검색창: 밝은 칸 + 은은한 민트 테두리 (위 칸들과 같은 그림자) + 연두 버튼 */
-.hero-search { flex: none; margin-top: 22px; }
-.hero-search input { height: 58px; padding: 0 104px 0 52px; border: 2px solid rgba(127,209,185,.45); border-radius: 999px; background: #EEF4F0; color: var(--ink); font-size: 17px;
-  box-shadow: 7px 7px 14px #0a1b17, -7px -7px 14px #1a453c; transition: border-color .15s; }
-.hero-search input::placeholder { color: #7A8A84; }
-.hero-search input:focus { outline: none; border-color: var(--mint); }
-.hero-search .search-icon { left: 20px; width: 22px; height: 22px; color: #1D3B33; }
-.hero-search button { position: absolute; right: 7px; top: 7px; height: 44px; padding: 0 22px; border: 0; border-radius: 999px;
-  background: #C8F169; color: #12302A; font: inherit; font-size: 16px; font-weight: 800; cursor: pointer; }
-.hero-search button:hover { filter: brightness(1.05); }
-.hero-search button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
-.hero-search .search-list { width: 100%; z-index: 30; }
 
 /* 위쪽 오른쪽: 알림 · 마이페이지 */
 .top-actions { display: flex; align-items: center; gap: 10px; margin-left: 4px; }
@@ -773,14 +775,22 @@ a.my-link { color: inherit; text-decoration: none; }
 .rc-open:hover { color: var(--accent); }
 
 /* 마트 판매가 */
+/* 대형마트 판: 살피 배 색 같은 연한 베이지 (안의 필터 버튼 · 회사별 가격 펼침도 같은 색) */
+#mart .mart-card { --neu: #F3E2C7; --neu-dark: #D9C19C; --neu-light: #FFF8EC; background: var(--neu);
+  /* 그림자도 베이지에 맞춤: 어두운 쪽은 진한 베이지, 밝은 쪽은 크림색 */
+  --raise: 7px 7px 14px var(--neu-dark), -7px -7px 14px var(--neu-light);
+  --raise-sm: 4px 4px 8px var(--neu-dark), -4px -4px 8px var(--neu-light);
+  --press: inset 4px 4px 8px var(--neu-dark), inset -4px -4px 8px var(--neu-light); }
 .mart-filter { display: flex; flex-wrap: wrap; margin-bottom: 18px; }
 .mart-filter button { padding: 7px 14px; border-radius: 999px; color: var(--ink); font-size: 13px; }
 .mart-filter button.active { color: #fff; font-weight: 700; }
 /* 카드는 모두 같은 크기: 이름은 2줄까지, 회사별 가격은 카드 아래로 겹쳐 펼침 */
 .mart-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 16px; }
-.mart-item { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 16px; border-radius: 18px; background: var(--neu); box-shadow: var(--raise-sm); }
-.mart-item h3 { margin: 0; min-height: 2.7em; font-size: 15px; line-height: 1.35;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.mart-item { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 16px; border-radius: 18px; background: #fff; box-shadow: var(--raise-sm); }   /* 카드 안은 흰색 (바깥 판은 --neu 그대로) */
+/* 품목 이름: 윗줄 이름(크게) · 아랫줄 괄호 속 규격(작게) — 어느 종류를 눌러도 카드 크기가 같도록 각각 한 줄 (길면 … , 마우스를 올리면 전체 이름) */
+.mart-item h3 { margin: 0; min-height: 52px; font-size: 22px; line-height: 1.3; }
+.mart-name { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mart-spec { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; font-size: 15px; font-weight: 500; color: var(--muted); line-height: 1.4; }
 .mart-chg { margin-top: auto; }
 .mart-chains, .mart-chains-none { min-height: 20px; }
 .mart-chains-none { margin: 0; font-size: 13px; color: #9AA19C; }
@@ -788,23 +798,30 @@ a.my-link { color: inherit; text-decoration: none; }
 .mart-chains[open] ul { position: absolute; left: 0; right: 0; top: calc(100% - 14px); padding: 12px 16px 14px; border-radius: 0 0 18px 18px;
   background: var(--neu); box-shadow: 4px 8px 12px var(--neu-dark); }
 .mart-cat { margin: 0; font-size: 12px; color: var(--muted); }
-.mart-low { display: flex; flex-direction: column; margin: 4px 0 0; }
+.mart-low { margin: 4px 0 0; }
 .mart-low small { font-size: 12px; color: var(--muted); }
-.mart-low b { font-size: 22px; }
-.mart-sub { margin: 0; font-size: 13px; color: #4C524E; }
-.mart-shop { display: flex; flex-direction: column; align-self: flex-start; font-size: 13px; font-weight: 700; color: var(--deep); text-decoration: none; }
-.mart-shop:hover, .mart-shop:focus-visible { text-decoration: underline; }
-.mart-shop small { font-size: 11px; font-weight: 400; color: var(--muted); }
+.mart-low b { font-size: 28px; font-weight: 800; color: #D9541A; letter-spacing: -.3px; }   /* 가격: 진한 주황으로 크게 */
+.mart-shop-row { margin-top: 4px; }   /* 가격 바로 아래에 바로가기 */
+.mart-shop { display: block; font-size: 15px; font-weight: 800; color: #C2410C; text-decoration: none; }
+/* 온라인몰 바로가기: 새 창으로 열리는 링크 버튼 (밖으로 나가는 화살표 아이콘) */
+.mart-go { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 10px 12px; border-radius: 12px; background: #FDE6D3; color: #C2410C; transition: background .15s, color .15s; }   /* 카드 폭 꽉 차는 연한 주황 버튼 */
+.mart-shop:hover .mart-go, .mart-shop:focus-visible .mart-go { background: var(--accent); color: #fff; }
+.mart-go .ext { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 .mart-chg { align-self: flex-start; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #5A615C; box-shadow: var(--press); }
 .mart-chg.mart-up, .mart-chains em.mart-up { color: var(--up); }
 .mart-chg.mart-down, .mart-chains em.mart-down { color: var(--down); }
-.mart-chains summary { font-size: 13px; color: var(--muted); cursor: pointer; }
+.mart-chains summary { font-size: 13px; color: var(--muted); cursor: pointer; text-align: center; }
 .mart-chains ul { list-style: none; margin: 0; display: grid; gap: 6px; }
 .mart-chains li { display: grid; grid-template-columns: minmax(0, 1fr) auto 50px; gap: 8px; align-items: baseline; font-size: 13px; }
 .mart-chains li span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mart-chains li small { margin-left: 5px; font-size: 11px; color: var(--muted); }
+.mart-chains li.mart-min span, .mart-chains li.mart-min b { color: #2563EB; font-weight: 800; }   /* 회사별 가격 중 최저가는 파랑 */
 .mart-chains em { font-style: normal; font-size: 12px; font-weight: 700; text-align: right; }
 .mart-all { display: block; margin: 18px auto 0; }
+/* 더보기 버튼: 위 '전체' 버튼과 같은 주황, 판 위에 볼록하게 */
+#mart .mart-all { background: var(--accent); color: #fff; box-shadow: var(--raise-sm); padding: 8px 18px; font-size: 14px; font-weight: 700; }
+#mart .mart-all b { color: #fff; }
+#mart .mart-all:active { box-shadow: inset 3px 3px 6px #B4481B, inset -3px -3px 6px #F08A55; }
 
 @media (max-width: 1200px) {
   .hero-inner { grid-template-columns: 1fr; position: relative; }
@@ -854,7 +871,6 @@ a.my-link { color: inherit; text-decoration: none; }
   .chip { padding: 12px 14px; }
   .chip b { font-size: 19px; }
   .chip small { font-size: 14px; }
-  .hero-search input { height: 50px; font-size: 15px; padding-right: 90px; } .hero-search button { top: 5px; height: 40px; padding: 0 16px; }
   .chip[data-list] { padding-right: 46px; } .chip-caret { right: 12px; width: 26px; height: 26px; margin-top: -13px; }
   .fc-strip { padding-right: 104px; }
   .fc-strip .say { display: none; }

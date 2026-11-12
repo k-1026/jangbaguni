@@ -703,6 +703,14 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
   font-size: 22px; font-weight: 900; color: #D3F178; background: var(--deep); }
 .buy-link:hover { transform: translateY(-2px); }
 .buy-link:active { transform: none; box-shadow: inset 4px 4px 6px #A6C255, inset -4px -4px 6px #F2FFA6; }
+/* 첫 화면: 영수증 분석 체험해보기 (식자재 바로가기 아래, 노란색으로 눈에 띄게) */
+.receipt-link { margin-top: 18px; background: #FFD84D; }
+.receipt-link .receipt-emoji { flex: none; font-size: 40px; line-height: 1; }
+.receipt-link .receipt-text { flex: 1; min-width: 0; }
+.receipt-link small { display: block; margin-bottom: 6px; color: #5C4600; font-size: 14px; line-height: 1.45; }
+.receipt-link b { font-size: 24px; color: #3D2E00; }
+.receipt-link i { color: #FFD84D; background: var(--deep); }
+.receipt-link:active { box-shadow: inset 4px 4px 6px #D1AF2E, inset -4px -4px 6px #FFF27A; }
 
 /* 위쪽 오른쪽: 알림 · 마이페이지 */
 .top-actions { display: flex; align-items: center; gap: 10px; margin-left: 4px; }

@@ -1,4 +1,4 @@
-PPT : https://www.canva.com/design/DAHaCOrOpjk/eOPsCvl-UyQMCbCMmQMd2Q/edit
+PPT : https://canva.link/jnh1re4nnvya3oi
 
 ### 팀원별 GitHub Repository
 

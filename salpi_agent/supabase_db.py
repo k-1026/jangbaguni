@@ -47,6 +47,20 @@ def upsert(table, rows, on_conflict):
         raise ApiError(f"Supabase {table} 저장 실패 ({code})") from None
 
 
+def insert_ignore(table, rows, on_conflict):
+    """같은 키(on_conflict)가 이미 있으면 건너뛰고 없는 줄만 넣는다 (처음 저장한 값을 바꾸지 않음)."""
+    if not rows:
+        return
+    base, headers = _base()
+    try:
+        r = requests.post(base + table, params={"on_conflict": on_conflict}, json=rows, timeout=20,
+                          headers={**headers, "Prefer": "resolution=ignore-duplicates,return=minimal"})
+        r.raise_for_status()
+    except requests.RequestException as e:
+        code = getattr(getattr(e, "response", None), "status_code", None) or type(e).__name__
+        raise ApiError(f"Supabase {table} 저장 실패 ({code})") from None
+
+
 def insert(table, rows):
     """새 줄을 넣고 넣은 줄(자동 번호 포함)을 돌려받음."""
     base, headers = _base()

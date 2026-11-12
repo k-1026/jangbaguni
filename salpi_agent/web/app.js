@@ -1444,6 +1444,8 @@ async function loadContext() {
 // ---------------------------------------------------------------
 const chatEl = $("#chat"), body = $("#chatBody");
 const history = [];   // 지난 대화 (서버가 기억하지 않으므로 화면이 보관해서 매번 보냄)
+// 대화 기록용 묶음 번호: 이 창에서 나눈 대화끼리만 묶음 (가게 · 로그인 정보와 연결하지 않음, 새로 고침하면 바뀜)
+const chatSession = (crypto.randomUUID && crypto.randomUUID()) || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 function md(text) {
   // 굵게 · 목록 · 줄바꿈만 지원하는 간단한 변환
@@ -1606,7 +1608,7 @@ async function send(text) {
   typing.classList.add("typing");
   try {
     const r = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text, history }) });
+      body: JSON.stringify({ message: text, history, session: chatSession }) });
     const d = await r.json();
     typing.remove();
     addMsg("bot", d.reply);

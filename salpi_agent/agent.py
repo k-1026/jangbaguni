@@ -305,6 +305,7 @@ class SalpiAgent:
 
     def _start(self, model, history):
         self.model = model
+        self.last_tools = []
         self.chat = self.client.chats.create(
             model=model,
             config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT, tools=TOOLS, temperature=0.3),
@@ -319,7 +320,12 @@ class SalpiAgent:
             if model != self.model:
                 self._start(model, history=self.chat.get_history())
             try:
-                return self.chat.send_message(message).text or "답을 만들지 못했어요. 다시 물어봐 주세요."
+                before = len(self.chat.get_history(curated=False))
+                text = self.chat.send_message(message).text or "답을 만들지 못했어요. 다시 물어봐 주세요."
+                # 이번 질문에 부른 도구 이름 (대화 기록 chat_log 용)
+                self.last_tools = [p.function_call.name for c in self.chat.get_history(curated=False)[before:]
+                                   for p in (c.parts or []) if getattr(p, "function_call", None)]
+                return text
             except errors.APIError as e:
                 if 400 <= e.code < 500 and e.code not in (404, 429):
                     raise      # 요청 자체가 잘못된 경우는 갈아타도 같음

@@ -18,6 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 import analysis
+import chat_log
 import demand
 import forecast_log
 import foodspring
@@ -319,18 +320,25 @@ def receipt_delete(purchase_id: int):
 class ChatIn(BaseModel):
     message: str
     history: list[dict] = []
+    session: str = ""      # 같은 채팅창의 대화 묶음 (화면이 만든 임의 번호, 대화 기록용)
 
 
 @app.post("/api/chat")
 def chat(body: ChatIn):
+    question, started, agent, status = body.message.strip()[:1000], time.time(), None, "ok"
     try:
-        reply = SalpiAgent(history=body.history).ask(body.message.strip()[:1000])
+        agent = SalpiAgent(history=body.history)
+        reply = agent.ask(question)
     except ApiKeyMissing as e:
-        reply = str(e)
+        reply, status = str(e), "nokey"
     except Exception as e:
         busy = "429" in str(e) or "503" in str(e) or type(e).__name__ == "ServerError"
+        status = "busy" if busy else "error"
         reply = ("지금 AI 서버가 바빠요. 잠시 뒤 다시 물어봐 주세요." if busy
                  else f"지금은 답을 만들지 못했어요 ({type(e).__name__}). 잠시 뒤 다시 물어봐 주세요.")
+    if question:
+        chat_log.save(body.session, len(body.history) // 2, question, reply, getattr(agent, "last_tools", []),
+                      getattr(agent, "model", None), (time.time() - started) * 1000, status)
     return {"reply": reply}
 
 

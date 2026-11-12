@@ -341,11 +341,12 @@ body.store-view .store-btn { color: #fff; background: var(--accent); box-shadow:
 
 /* 영향 요인 */
 .ctx-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-#context .ctx-grid .card { --neu: #FFFFFF; background: var(--neu); --neu-dark: #D5D9DD; --raise: 8px 8px 20px #D5D9DD, -6px -6px 16px #FFFFFF; --raise-sm: 5px 5px 12px #D5D9DD, -4px -4px 10px #FFFFFF; --press: inset 4px 4px 9px #D5D9DD, inset -4px -4px 9px #FFFFFF; }   /* 시세 영향 정보 칸(날씨 · 공휴일 · 행사)은 흰색 · 그림자도 흰 바탕용 중립 회색 */
+#context .ctx-grid .card { --neu: #EAF4D4; background: var(--neu); --neu-dark: #D5D9DD; --raise: 8px 8px 20px #D5D9DD, -6px -6px 16px #FFFFFF; --raise-sm: 5px 5px 12px #D5D9DD, -4px -4px 10px #FFFFFF; --press: inset 4px 4px 9px #D5D9DD, inset -4px -4px 9px #FFFFFF; }   /* 시세 영향 정보 칸(날씨 · 공휴일 · 행사)은 흰색 · 그림자도 흰 바탕용 중립 회색 */
 .ctx-grid h3 { margin: 0 0 10px; font-size: 16px; }
 .ctx-list { list-style: none; margin: 0; padding: 0; font-size: 14px; }
 .ctx-list li { padding: 6px 0; border-bottom: 1px solid #F3F1EC; }
 .ctx-list small { color: var(--muted); display: block; }
+#eventCard .ctx-list li { background: #FFFFFF; padding: 12px 14px; border-radius: 12px; border-bottom: 0; margin-bottom: 8px; }   /* 행사 칸은 흰색 */
 .event-link { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 8px; border: 0; background: none;
   padding: 2px 0; text-align: left; font: inherit; color: var(--ink); cursor: pointer; }
 .event-link b { font-weight: 500; } .event-link small { grid-column: 1; }
@@ -370,7 +371,7 @@ body.store-view .store-btn { color: #fff; background: var(--accent); box-shadow:
 .event-links { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
 .event-links a { padding: 8px 14px; border-radius: 999px; background: var(--deep); color: #fff; font-size: 13px; font-weight: 700; text-decoration: none; }
 .wx { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 12px; }
-.wx div { background: #EAF4D4; border-radius: 8px; padding: 6px 2px; }
+.wx div { background: #FFFFFF; border-radius: 8px; padding: 6px 2px; }
 .wx b { display: block; font-size: 13px; }
 .wx-icon { display: block; width: 32px; height: 32px; margin: 4px auto 2px; max-width: 100%; }
 

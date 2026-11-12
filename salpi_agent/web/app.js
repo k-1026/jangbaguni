@@ -126,14 +126,10 @@ function plainReason(factors, kind) {
   if (!sign) return "";
   const top = (factors || []).filter((x) => x.effect_pct * sign > 0).sort((a, b) => Math.abs(b.effect_pct) - Math.abs(a.effect_pct))[0];
   if (!top) return "";
-  if (top.factor.startsWith("최근 2주")) return `최근 2주 동안 ${sign > 0 ? "올랐어요" : "내렸어요"}`;
   if (top.factor.startsWith("도매시장")) return `시장에 들어오는 양이 ${sign > 0 ? "줄었어요" : "늘었어요"}`;
   if (top.factor.startsWith("날씨")) return "최근 날씨 영향이 있어요";
   if (top.factor.includes("공휴일")) return "공휴일을 앞두고 있어요";
-  if (top.factor.startsWith("한 달 평균")) return `한 달 평균보다 ${sign > 0 ? "싸서 올라올" : "비싸서 내려올"} 수 있어요`;
-  if (top.factor.startsWith("김장철")) return "김장철이라 찾는 사람이 많아요";
-  if (top.factor.startsWith("도매 경락가")) return `도매 경매가가 먼저 ${sign > 0 ? "올랐어요" : "내렸어요"}`;
-  if (top.factor.startsWith("경매 물량")) return `경매에 나온 양이 ${sign > 0 ? "줄었어요" : "늘었어요"}`;
+  if (top.factor.includes("평균과의 차이")) return `${top.factor.split(" ")[0]} 평균보다 ${sign > 0 ? "싸서 올라올" : "비싸서 내려올"} 수 있어요`;
   return "대구 행사가 많아요";
 }
 
@@ -182,13 +178,41 @@ const POSE_SIZE = {
 };
 const poseVars = (p) => Object.entries(POSE_SIZE[p]).map(([k, v]) => `--${k}:${v}`).join(";");
 
+// 차트 끝(최근 4거래일)이 어느 쪽으로 갔나: 그래프를 보는 눈과 같게 (±3% 안쪽은 비슷)
+function recentMove(prices) {
+  const v = prices.filter((x) => x > 0);
+  if (v.length < 4) return "flat";
+  const p = ((v.at(-1) - v.at(-4)) / v.at(-4)) * 100;
+  return p >= 3 ? "up" : p <= -3 ? "down" : "flat";
+}
+
+// 살피 그림 · 말풍선 · 한마디: 다음 주 예측을 따르되, 차트(최근)와 반대 방향이면 둘 다 말함
+// (예: 최근 올랐는데 다음 주 내릴 것 → "최근 올랐지만 다음 주엔 떨어질 가능성" + 알람시계 살피 "며칠 기다려 보세요")
+// 오름: 경광등 살피(2 · 4번째 포즈 번갈아) · 유지 · 엇갈림: 알람시계 살피(1 · 3번째) · 내림: 쇼핑백 살피(6번째)
+function salpiSays(prices, f, idx = 0) {
+  const v = verdict(f), m = recentMove(prices);
+  const crossed = (m === "up" && v.kind === "down") || (m === "down" && v.kind === "up");
+  if (crossed) {
+    return { kind: v.kind, crossed,
+      text: `최근 ${m === "up" ? "올랐지만" : "내렸지만"} 다음 주엔 ${v.kind === "up" ? "오를" : "떨어질"} 가능성이 있어요`,
+      say: v.kind === "down" ? "오른 값에 급히 사지 말고 며칠 기다려 보세요" : "내린 지금 필요한 만큼 사 두세요",
+      pose: `alert_flat${(idx % 2) + 1}` };
+  }
+  // 유지: 한 달(최근 22거래일) 중 지금 값 위치로 한마디 — 계속 내려 싼 편이면 그렇다고 말함
+  const month = prices.filter((x) => x > 0).slice(-22);
+  const lo = Math.min(...month), hi = Math.max(...month), at = hi > lo ? (month.at(-1) - lo) / (hi - lo) : 0.5;
+  const flatSay = month.length < 5 ? "평소대로 구매하셔도 좋아요"
+    : at <= 0.3 ? "한 달 중 싼 편이라 지금 사셔도 괜찮아요" : at >= 0.7 ? "한 달 중 비싼 편이에요. 필요한 만큼만 사세요" : "평소대로 구매하셔도 좋아요";
+  return { kind: v.kind, crossed, text: v.text,
+    say: { up: "미리 사두는 게 좋을 것 같아요.", flat: flatSay, down: "급하지 않으면 나중에 사셔도 좋아요" }[v.kind],
+    pose: v.kind === "down" ? "alert_down" : `alert_${v.kind === "up" ? "rise" : "flat"}${(idx % 2) + 1}` };
+}
+
 function itemSlide(r, idx) {
   const f = r.forecast || {};
-  const v = verdict(f);
+  const v = salpiSays((r.history || []).map((h) => h.kg_price), f, idx);
   const why = plainReason(f.factors, v.kind);
-  // 오름: 경광등 살피(2 · 4번째 포즈 번갈아) · 유지: 알람시계 살피(1 · 3번째) · 내림: 쇼핑백 살피(6번째)
-  const pose = v.kind === "down" ? "alert_down" : `alert_${v.kind === "up" ? "rise" : "flat"}${(idx % 2) + 1}`;
-  const say = { up: "미리 사두는 게 좋을 것 같아요.", flat: "평소대로 구매하셔도 좋아요", down: "급하지 않으면 나중에 사셔도 좋아요" }[v.kind];
+  const { pose, say } = v;
   return `
 <article class="slide card" data-item="${esc(r.item)}">
   <div class="chart-head">
@@ -206,7 +230,7 @@ function itemSlide(r, idx) {
   <div class="fc-strip ${v.kind}">
     <div class="fc-text">
       <span class="verdict">${v.text}</span>
-      <span class="range">예상 ${won(f.expected_kg_price_range?.[0])} ~ ${won(f.expected_kg_price_range?.[1])}/kg${why ? ` · ${why}` : ""}</span>
+      <span class="range">예상 ${won(f.expected_kg_price_range?.[0])} ~ ${won(f.expected_kg_price_range?.[1])}/kg (가운데 ${pct(f.expected_change_pct)})${why ? ` · ${why}` : ""}</span>
     </div>
     <div class="advice" style="${poseVars(pose)}"><span class="say">${say}</span><img class="pose" src="/static/img/${pose}.png" alt=""></div>
   </div>
@@ -283,7 +307,7 @@ function drawSlideChart(i) {
 
 // ---------------------------------------------------------------
 // 시세 종류 탭: 농산물 · 수산물 · 육류. 셋 다 같은 슬라이드(1장 전체 비교 막대 → 품목별)
-// 수산물 · 육류는 경매 자료(반입량)가 없어 최근 흐름 · 한 달 평균과의 차이 · 명절 · 김장철로 7일 예측 (/api/meat-seafood)
+// 수산물 · 육류는 경매 자료(반입량)가 없어 한 달 평균과의 차이 · 명절 · 행사(+ 한우 · 돼지는 경락가)로 7일 예측 (/api/meat-seafood)
 // ---------------------------------------------------------------
 let extra = null;      // 육류 · 수산물 시세 (처음 한 번 받음, 검색에도 씀)
 let extraReq = null;   // 받는 중인 요청 (탭 · 검색 · 재료 페이지가 같이 기다림)
@@ -333,11 +357,10 @@ function renderExtraSlides() {
 // 품목 한 장: 메인 슬라이드와 재료 페이지가 함께 씀
 function extraSlide(r, idx) {
   const f = r.forecast || {};
-  const v = verdict(f);
+  const v = salpiSays((r.history || []).map((h) => h.price), f, idx);
   const why = plainReason(f.factors, v.kind);
-  const pose = v.kind === "down" ? "alert_down" : `alert_${v.kind === "up" ? "rise" : "flat"}${(idx % 2) + 1}`;
-  const say = { up: "미리 사두는 게 좋을 것 같아요.", flat: "평소대로 구매하셔도 좋아요", down: "급하지 않으면 나중에 사셔도 좋아요" }[v.kind];
-  const range = f.expected_price_range ? `예상 ${won(f.expected_price_range[0])} ~ ${won(f.expected_price_range[1])}/${esc(r.unit || "")}` : "예측할 자료가 부족해요";
+  const { pose, say } = v;
+  const range = f.expected_price_range ? `예상 ${won(f.expected_price_range[0])} ~ ${won(f.expected_price_range[1])}/${esc(r.unit || "")} (가운데 ${pct(f.expected_change_pct)})` : "예측할 자료가 부족해요";
   return `
 <article class="slide card" data-item="${esc(r.item)}">
   <div class="chart-head">
@@ -542,7 +565,7 @@ function renderItemPage() {
   }
   itemDone = true;
   document.title = `${r.item} 시세 · 살피`;
-  const v = verdict(r.forecast);
+  const v = salpiSays((r.history || []).map((h) => h.kg_price), r.forecast);
   $("#itemHead").innerHTML = `
     <div><h1>${esc(r.item)}</h1><p class="${v.kind === "flat" ? "" : v.kind}">${esc(v.text)}</p></div>
     <a class="item-shop" href="${esc(r.foodspring_url || "https://www.foodspring.co.kr")}" target="_blank" rel="noopener" title="식봄에서 ${esc(r.item)} 사기">식자재 바로가기 →</a>`;
@@ -557,7 +580,7 @@ function renderItemPage() {
 function renderExtraItemPage(r) {
   document.title = `${r.item} 시세 · 살피`;
   const d = vegShape(r);
-  const v = verdict(d.forecast);
+  const v = salpiSays(d.history.map((h) => h.kg_price), d.forecast);
   $("#itemHead").innerHTML = `
     <div><h1>${esc(r.item)}</h1><p class="${v.kind === "flat" ? "" : v.kind}">${esc(v.text)} · ${esc(r.group)}</p></div>
     <a class="item-shop" href="${esc(r.foodspring_url || "https://www.foodspring.co.kr")}" target="_blank" rel="noopener" title="식봄에서 ${esc(r.item)} 사기">식자재 바로가기 →</a>`;
@@ -568,9 +591,7 @@ function renderExtraItemPage(r) {
   renderBoard();
   renderForecast(d.forecast, d.history, r.unit);
   $("#forecastCard .fc-reasons h4")?.insertAdjacentHTML("afterend",
-    `<p class="muted fc-extra-note">${r.grade_table
-      ? `${esc(r.grade_table.market)} 도매 경매가 흐름 · 경매 물량까지 본 추정이에요 (얼마나 반영할지는 아직 과거 자료로 채점 전)`
-      : "경매 자료(반입량)가 없어 농산물보다 이유가 적은 추정이에요"} · 출처 ${esc(r.source)}</p>`);
+    `<p class="muted fc-extra-note">경매 자료(반입량)가 없어 농산물보다 이유가 적은 추정이에요 · 출처 ${esc(r.source)}</p>`);
   renderGradeTable(r.grade_table);
 }
 
@@ -1607,8 +1628,8 @@ function markHit(text, word) {
 // 이름에 없지만 사장님이 흔히 쓰는 말 ("소고기" → 한우 등심, "달걀" → 계란)
 const SEARCH_WORDS = {
   "한우 등심": "소고기", "한우 양지": "소고기 국거리", "돼지고기 앞다리": "돼지 제육 찌개용", "돼지고기 삼겹살": "돼지 오겹",
-  "닭고기": "생닭 닭볶음탕", "계란": "달걀", "오징어": "물오징어", "새우젓": "젓갈", "멸치액젓": "젓갈 액젓",
-  "명태": "동태 생태", "마른멸치": "멸치", "김": "김밥김", "마른미역": "미역",
+  "닭고기": "생닭 닭볶음탕", "계란": "달걀", "새우젓": "젓갈", "멸치액젓": "젓갈 액젓",
+  "명태": "동태 생태", "새우": "흰다리",
 };
 
 function findAll(word) {

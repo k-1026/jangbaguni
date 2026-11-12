@@ -63,7 +63,6 @@ EXTRA_ITEMS = {
     "돼지고기 삼겹살": {"group": "육류",   "ctgry": "500", "item": "4304", "vrty": "27", "se": "소매",   "grd": None},  # 100g
     "닭고기":          {"group": "육류",   "ctgry": "500", "item": "9901", "vrty": "99", "se": "소매",   "grd": None},  # 육계 1kg
     "계란":            {"group": "육류",   "ctgry": "500", "item": "9903", "vrty": "23", "se": "소매",   "grd": "1"},   # XL 30구 일반란
-    "오징어":          {"group": "수산물", "ctgry": "600", "item": "619",  "vrty": "05", "se": "중도매", "grd": None},  # 원양 냉동, 북부도매 kg
     "고등어":          {"group": "수산물", "ctgry": "600", "item": "611",  "vrty": "02", "se": "중도매", "grd": None},  # 냉동, 북부도매 10kg
     "새우젓":          {"group": "수산물", "ctgry": "600", "item": "650",  "vrty": "00", "se": "소매",   "grd": None},  # 1kg
     # 중도매가는 대구 북부도매시장, 등급이 여러 개면 하나로 고정 (등급이 빠진 날 값이 튀지 않게)
@@ -72,10 +71,9 @@ EXTRA_ITEMS = {
     "굴":              {"group": "수산물", "ctgry": "600", "item": "644",  "vrty": "00", "se": "중도매", "grd": None},  # kg
     "홍합":            {"group": "수산물", "ctgry": "600", "item": "658",  "vrty": "02", "se": "중도매", "grd": None},  # 안깐홍합, kg
     "새우":            {"group": "수산물", "ctgry": "600", "item": "654",  "vrty": "01", "se": "중도매", "grd": None},  # 흰다리(수입), 2kg
-    "마른멸치":        {"group": "수산물", "ctgry": "600", "item": "638",  "vrty": "00", "se": "중도매", "grd": "28"},  # 2kg
     "멸치액젓":        {"group": "수산물", "ctgry": "600", "item": "651",  "vrty": "00", "se": "소매",   "grd": None},  # 1kg
-    "김":              {"group": "수산물", "ctgry": "600", "item": "641",  "vrty": "00", "se": "중도매", "grd": None},  # 마른김 1속
-    "마른미역":        {"group": "수산물", "ctgry": "600", "item": "642",  "vrty": "00", "se": "중도매", "grd": None},  # kg
+    # 오징어(냉동) · 마른멸치 · 김 · 마른미역은 뺌 (2026-11-12): 북부도매 조사값이 몇 달씩 같은 값이라 시세 · 예측이 의미 없음
+    #   (2020~2025 대구 도매 조사에서 값이 바뀐 날 1~9%, 같은 값 최장 120~280일). 오징어볶음 원가는 참고 단가로 계산
 }
 
 FOODSPRING_SEARCH = "https://www.foodspring.co.kr/search/all"
@@ -435,7 +433,7 @@ def ekape_day(day):
 
 
 def ekape_days(days=35):
-    """오늘부터 거꾸로 days일 중 평일만 {날짜: 하루치}. 키가 없으면 빈 값 (육류 화면은 소매가만으로 동작)."""
+    """오늘부터 거꾸로 days일 중 평일만 {날짜: 하루치}. 키가 없으면 빈 값 (재료 페이지 등급표만 빠짐)."""
     if not os.getenv("EKAPE_API_KEY", "").strip():
         return {}
     dates = [d for d in (date.today() - timedelta(n) for n in range(days)) if d.weekday() < 5]

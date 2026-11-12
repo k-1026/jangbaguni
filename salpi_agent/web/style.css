@@ -1,8 +1,8 @@
 /* 살피 브랜드 색 (brand/SKILL.md 비주얼) */
 :root {
   --accent: #E86A2E;      /* 강조 */
-  --deep: #12302A;        /* 칠판 녹색 */
-  --neu: #E8ECE7;         /* 뉴모피즘 바탕 (사이트 전체 고정) */
+  --deep: 	#3E7809;        /* 칠판 녹색 */
+  --neu: #1f690d;         /* 뉴모피즘 바탕 (사이트 전체 고정) */
   --neu-dark: #c6cbc4;
   --paper: var(--neu);    /* 바탕 */
   --line: #5BC236;        /* 시세 선 */
@@ -64,24 +64,24 @@ button { font: inherit; cursor: pointer; }
 .hero-title { display: flex; align-items: center; gap: 18px; margin: 10px 0 22px; }
 .hero-copy { min-width: 0; }
 .hero h1 { font-size: 32px; line-height: 1.3; margin: 0 0 12px; font-weight: 900; }
-.hero-sub { color: #C9D6D1; margin: 0; }
+.hero-sub { color: #E6F5C9; margin: 0; }
 .summary { display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; margin: 6px 0 -18px; }   /* 줄 간격은 칸 아래 여백으로 (접힌 목록이 간격을 더 만들지 않게) */
 .summary > .chip { margin-bottom: 18px; }
 /* 뉴모피즘 (바탕과 같은 색 + 밝은 그림자 · 어두운 그림자) */
-.chip { width: 100%; background: var(--deep); border: 0; border-radius: 20px; padding: 18px 20px; color: #fff; text-align: left;
-  box-shadow: 7px 7px 14px #0a1b17, -7px -7px 14px #1a453c; transition: box-shadow .15s; }
-button.chip:active, .chip[aria-expanded="true"] { box-shadow: inset 5px 5px 10px #0a1b17, inset -5px -5px 10px #1a453c; }
+.chip { width: 100%; background: #2F6408; border: 0; border-radius: 20px; padding: 18px 20px; color: #fff; text-align: left;
+  box-shadow: 5px 5px 8px #2C5706, -4px -4px 8px #509A0C; transition: box-shadow .15s; }
+button.chip:active, .chip[aria-expanded="true"] { box-shadow: inset 4px 4px 6px #224806, inset -4px -4px 6px #3C800A; }
 .chip:focus-visible, .summary-list button:focus-visible, .slider-nav button:focus-visible { outline: 2px solid var(--mint); outline-offset: 2px; }
 .chip b { display: block; font-size: 28px; line-height: 1.25; }
-.chip small { display: block; margin-top: 2px; color: #E3ECE8; font-size: 16px; }
+.chip small { display: block; margin-top: 2px; color: #FFFFFF; font-size: 16px; }
 .chip small em { font-style: normal; font-weight: 800; }
-.chip.up b, .chip.up em { color: #FF8A7A; } .chip.down b, .chip.down em { color: var(--mint); } .chip.warn b, .chip.warn em { color: #FFC266; }
+.chip.up b, .chip.up em { color: #FFB3A7; } .chip.down b, .chip.down em { color: #9EE6FF; } .chip.warn b, .chip.warn em { color: #FFD66B; }
 /* 펼치기 표시: 오른쪽 꺾쇠 · 펼치면 위로 뒤집힘 */
 .chip[data-list] { position: relative; padding-right: 58px; }
 .chip-caret { position: absolute; right: 18px; top: 50%; width: 30px; height: 30px; margin-top: -15px; border-radius: 50%; display: grid; place-items: center;
-  background: var(--deep); box-shadow: 3px 3px 6px #0a1b17, -3px -3px 6px #1a453c; transition: transform .25s; }
+  background: #2F6408; box-shadow: 3px 3px 4px #224806, -2px -2px 4px #3C800A; transition: transform .25s; }
 .chip-caret svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.chip.up .chip-caret { color: #FF8A7A; } .chip.down .chip-caret { color: var(--mint); }
+.chip.up .chip-caret { color: #FFB3A7; } .chip.down .chip-caret { color: #9EE6FF; }
 .chip[aria-expanded="true"] .chip-caret { transform: rotate(180deg); }
 /* 목록은 칸(오른 · 내린) 줄 바로 아래 */
 .summary > .chip { order: 1; }
@@ -94,10 +94,10 @@ button.chip:active, .chip[aria-expanded="true"] { box-shadow: inset 5px 5px 10px
 .summary-clip { min-height: 0; overflow: hidden; }
 .summary-inner { display: flex; flex-wrap: wrap; gap: 10px; padding: 8px; }
 .summary-list button { border: 0; border-radius: 999px; padding: 6px 13px; background: var(--deep); color: #fff; font-size: 14px;
-  box-shadow: 4px 4px 9px #0a1b17, -4px -4px 9px #1a453c; }
-.summary-list button:active { box-shadow: inset 3px 3px 7px #0a1b17, inset -3px -3px 7px #1a453c; }
-.summary-list .rise { color: #FF8A7A; } .summary-list .fall { color: var(--mint); }
-.summary-list p { margin: 0; color: #C9D6D1; font-size: 14px; }
+  box-shadow: 3px 3px 5px #2C5706, -3px -3px 5px #509A0C; }
+.summary-list button:active { box-shadow: inset 3px 3px 5px #2C5706, inset -3px -3px 5px #509A0C; }
+.summary-list .rise { color: #FFC2B8; } .summary-list .fall { color: #BFF0FF; }
+.summary-list p { margin: 0; color: #E6F5C9; font-size: 14px; }
 .skeleton { height: 86px; animation: pulse 1.2s infinite; }
 @keyframes pulse { 50% { opacity: .5; } }
 /* 살피: 제목 두 줄 왼쪽, 원본 방향(지시봉이 오른쪽 글자를 가리킴) */
@@ -108,20 +108,20 @@ button.chip:active, .chip[aria-expanded="true"] { box-shadow: inset 5px 5px 10px
 .hero-board { display: flex; flex-direction: column; gap: 8px; }
 .slider-head { display: flex; justify-content: space-between; align-items: center; position: relative; z-index: 2; }   /* 아래 대시보드 여백이 화살표를 덮지 않게 */
 .slider-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
-.basis { font-size: 13px; font-weight: 500; color: #C9D6D1; white-space: nowrap; }
+.basis { font-size: 13px; font-weight: 500; color: #E6F5C9; white-space: nowrap; }
 .slider-nav { display: flex; align-items: center; gap: 8px; }
 .slider-nav button { width: 34px; height: 34px; border-radius: 50%; border: 0; background: var(--deep); color: #fff; font-size: 18px; line-height: 1;
-  box-shadow: 4px 4px 9px #0a1b17, -4px -4px 9px #1a453c; }
-.slider-nav button:active { box-shadow: inset 3px 3px 7px #0a1b17, inset -3px -3px 7px #1a453c; }
+  box-shadow: 3px 3px 5px #2C5706, -3px -3px 5px #509A0C; }
+.slider-nav button:active { box-shadow: inset 3px 3px 5px #2C5706, inset -3px -3px 5px #509A0C; }
 .slider-nav svg { display: block; width: 12px; height: 12px; margin: auto; fill: currentColor; }
-#pauseSlide[aria-pressed="true"] { color: var(--mint); box-shadow: inset 3px 3px 7px #0a1b17, inset -3px -3px 7px #1a453c; }
-.slide-count { font-size: 12px; color: #C9D6D1; min-width: 44px; text-align: center; }
+#pauseSlide[aria-pressed="true"] { color: var(--mint); box-shadow: inset 3px 3px 5px #2C5706, inset -3px -3px 5px #509A0C; }
+.slide-count { font-size: 12px; color: #E6F5C9; min-width: 44px; text-align: center; }
 /* 그림자가 잘리지 않게 안쪽 여백 32px, 다음 장이 옆에 비치지 않게 장 사이 간격은 여백의 2배 */
 .slider { display: flex; gap: 64px; overflow: hidden;   /* 마우스로 끌어 넘기지 않음 — 화살표 · 자동 넘김 · 손가락 넘기기만 */
   padding: 32px; margin: -32px; }
 /* 대시보드 뉴모피즘: 바탕 --neu, 밝은 그림자 #fff · 어두운 그림자 --neu-dark */
 .slide.card { --neu: #FFFFFF; --neu-dark: #D5D9DD; background: var(--neu); border: 0; border-radius: 26px; padding: 24px;
-  box-shadow: 12px 12px 26px #091915, -10px -10px 24px #1d4b42; }
+  box-shadow: 8px 8px 12px #2C5706, -6px -6px 12px #509A0C; }
 .slide.card .chart-box { border-radius: 18px; padding: 10px 8px 4px; margin-top: 6px;
   box-shadow: inset 6px 6px 12px var(--neu-dark), inset -6px -6px 12px #ffffff; }
 .slide.card .legend span { padding: 3px 8px; border-radius: 999px; box-shadow: 3px 3px 6px var(--neu-dark), -3px -3px 6px #ffffff; }
@@ -136,10 +136,10 @@ button.chip:active, .chip[aria-expanded="true"] { box-shadow: inset 5px 5px 10px
 .slide { flex: 0 0 100%; color: var(--ink); height: clamp(380px, calc(100vh - 186px), 600px); display: flex; flex-direction: column; }
 
 /* 시세 종류 탭 (농산물 · 수산물 · 육류): 진한 녹색 바탕 위 알약 버튼 */
-.board-tabs { display: flex; gap: 6px; padding: 4px; border-radius: 999px; box-shadow: inset 3px 3px 7px #0a1b17, inset -3px -3px 7px #1a453c; }
-.board-tabs button { border: 0; border-radius: 999px; padding: 6px 14px; background: transparent; color: #C9D6D1;
+.board-tabs { display: flex; gap: 6px; padding: 4px; border-radius: 999px; box-shadow: inset 3px 3px 5px #2C5706, inset -3px -3px 5px #509A0C; }
+.board-tabs button { border: 0; border-radius: 999px; padding: 6px 14px; background: transparent; color: #E6F5C9;
   font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
-.board-tabs button[aria-selected="true"] { background: var(--accent); color: #fff; box-shadow: 3px 3px 7px #0a1b17; }
+.board-tabs button[aria-selected="true"] { background: var(--accent); color: #fff; box-shadow: 3px 3px 5px #2C5706; }
 .board-tabs button:focus-visible { outline: 2px solid var(--mint); outline-offset: 2px; }
 .board-tabs button small { font-size: 10px; font-weight: 500; opacity: .75; margin-right: 3px; }   /* 농산물 야채 · 농산물 과일 */
 .slider-title { align-items: center; }
@@ -370,7 +370,7 @@ body.store-view .store-btn { color: #fff; background: var(--accent); box-shadow:
 .event-links { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
 .event-links a { padding: 8px 14px; border-radius: 999px; background: var(--deep); color: #fff; font-size: 13px; font-weight: 700; text-decoration: none; }
 .wx { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 12px; }
-.wx div { background: var(--paper); border-radius: 8px; padding: 6px 2px; }
+.wx div { background: #EAF4D4; border-radius: 8px; padding: 6px 2px; }
 .wx b { display: block; font-size: 13px; }
 .wx-icon { display: block; width: 32px; height: 32px; margin: 4px auto 2px; max-width: 100%; }
 
@@ -694,14 +694,14 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 
 /* 첫 화면: 식자재 구매 바로가기 (요약 칸과 같은 뉴모피즘, 누르면 눌림) */
 .buy-link { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 22px; padding: 22px 26px;
-  border-radius: 20px; background: var(--deep); color: #fff; text-decoration: none; box-shadow: 7px 7px 14px #0a1b17, -7px -7px 14px #1a453c;
+  border-radius: 20px; background: #D3F178; color: #fff; text-decoration: none; box-shadow: 5px 5px 8px #2C5706, -4px -4px 8px #509A0C;
   transition: box-shadow .15s, transform .15s; }
-.buy-link b { display: block; font-size: 22px; color: #C8F169; }
-.buy-link small { color: #C9D6D1; font-size: 14px; }
+.buy-link b { display: block; font-size: 22px; color: #2A5206; }
+.buy-link small { color: #3F6B12; font-size: 14px; }
 .buy-link i { font-style: normal; width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex: none;
-  font-size: 22px; font-weight: 900; color: var(--deep); background: #C8F169; }
+  font-size: 22px; font-weight: 900; color: #D3F178; background: var(--deep); }
 .buy-link:hover { transform: translateY(-2px); }
-.buy-link:active { transform: none; box-shadow: inset 5px 5px 10px #0a1b17, inset -5px -5px 10px #1a453c; }
+.buy-link:active { transform: none; box-shadow: inset 4px 4px 6px #A6C255, inset -4px -4px 6px #F2FFA6; }
 
 /* 위쪽 오른쪽: 알림 · 마이페이지 */
 .top-actions { display: flex; align-items: center; gap: 10px; margin-left: 4px; }
@@ -748,7 +748,7 @@ body.chat-open .fab-count { display: none; }
 .msg.alert .alert-more { display: block; margin-top: 6px; font-size: 12px; font-weight: 700; color: var(--accent); }
 /* 알림에서 넘어온 대시보드 잠깐 강조 */
 .slide.card.flash { animation: flash 1.6s ease-out; }
-@keyframes flash { 0%, 30% { box-shadow: 0 0 0 4px var(--accent), 12px 12px 26px #091915; } 100% { box-shadow: 12px 12px 26px #091915, -10px -10px 24px #1d4b42; } }
+@keyframes flash { 0%, 30% { box-shadow: 0 0 0 4px var(--accent), 8px 8px 12px #2C5706; } 100% { box-shadow: 8px 8px 12px #2C5706, -6px -6px 12px #509A0C; } }
 
 /* 마이페이지 (오른쪽에서 열리는 판) */
 .backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 60; }
@@ -805,7 +805,7 @@ a.my-link { color: inherit; text-decoration: none; }
 
 /* 마트 판매가 */
 /* 대형마트 판: 살피 배 색 같은 연한 베이지 (안의 필터 버튼 · 회사별 가격 펼침도 같은 색) */
-#mart .mart-card { --neu: #F3E2C7; --neu-dark: #D9C19C; --neu-light: #FFF8EC; background: var(--neu);
+#mart .mart-card { --neu: #E9F4D5; --neu-dark: #C4D9A4; --neu-light: #F8FCEE; background: var(--neu);
   /* 그림자도 베이지에 맞춤: 어두운 쪽은 진한 베이지, 밝은 쪽은 크림색 */
   --raise: 7px 7px 14px var(--neu-dark), -7px -7px 14px var(--neu-light);
   --raise-sm: 4px 4px 8px var(--neu-dark), -4px -4px 8px var(--neu-light);
@@ -829,12 +829,12 @@ a.my-link { color: inherit; text-decoration: none; }
 .mart-cat { margin: 0; font-size: 12px; color: var(--muted); }
 .mart-low { margin: 4px 0 0; }
 .mart-low small { font-size: 12px; color: var(--muted); }
-.mart-low b { font-size: 28px; font-weight: 800; color: #D9541A; letter-spacing: -.3px; }   /* 가격: 진한 주황으로 크게 */
+.mart-low b { font-size: 28px; font-weight: 800; color: #2F6B0F; letter-spacing: -.3px; }   /* 가격: 진한 주황으로 크게 */
 .mart-shop-row { margin-top: 4px; }   /* 가격 바로 아래에 바로가기 */
-.mart-shop { display: block; font-size: 15px; font-weight: 800; color: #C2410C; text-decoration: none; }
+.mart-shop { display: block; font-size: 15px; font-weight: 800; color: #2F5E0E; text-decoration: none; }
 /* 온라인몰 바로가기: 새 창으로 열리는 링크 버튼 (밖으로 나가는 화살표 아이콘) */
-.mart-go { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 10px 12px; border-radius: 12px; background: #FDE6D3; color: #C2410C; transition: background .15s, color .15s; }   /* 카드 폭 꽉 차는 연한 주황 버튼 */
-.mart-shop:hover .mart-go, .mart-shop:focus-visible .mart-go { background: var(--accent); color: #fff; }
+.mart-go { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 10px 12px; border-radius: 12px; background: #C8F169; color: #2F5E0E; transition: background .15s, color .15s; }   /* 카드 폭 꽉 차는 연한 주황 버튼 */
+.mart-shop:hover .mart-go, .mart-shop:focus-visible .mart-go { background: var(--deep); color: #fff; }
 .mart-go .ext { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 .mart-chg { align-self: flex-start; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #5A615C; box-shadow: var(--press); }
 .mart-chg.mart-up, .mart-chains em.mart-up { color: var(--up); }
@@ -848,9 +848,9 @@ a.my-link { color: inherit; text-decoration: none; }
 .mart-chains em { font-style: normal; font-size: 12px; font-weight: 700; text-align: right; }
 .mart-all { display: block; margin: 18px auto 0; }
 /* 더보기 버튼: 위 '전체' 버튼과 같은 주황, 판 위에 볼록하게 */
-#mart .mart-all { background: var(--accent); color: #fff; box-shadow: var(--raise-sm); padding: 8px 18px; font-size: 14px; font-weight: 700; }
+#mart .mart-all { background: var(--deep); color: #fff; box-shadow: var(--raise-sm); padding: 8px 18px; font-size: 14px; font-weight: 700; }
 #mart .mart-all b { color: #fff; }
-#mart .mart-all:active { box-shadow: inset 3px 3px 6px #B4481B, inset -3px -3px 6px #F08A55; }
+#mart .mart-all:active { box-shadow: inset 3px 3px 5px #2C5706, inset -3px -3px 5px #509A0C; }
 
 @media (max-width: 1200px) {
   .hero-inner { grid-template-columns: 1fr; position: relative; }

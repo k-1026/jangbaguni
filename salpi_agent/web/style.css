@@ -135,6 +135,14 @@ button.chip:active, .chip[aria-expanded="true"] { box-shadow: inset 5px 5px 10px
 /* 창 높이에 맞춤: 위 메뉴 · 제목을 뺀 만큼 (최소 380px, 최대 600px) */
 .slide { flex: 0 0 100%; color: var(--ink); height: clamp(380px, calc(100vh - 186px), 600px); display: flex; flex-direction: column; }
 
+/* 시세 종류 탭 (농산물 · 수산물 · 육류): 진한 녹색 바탕 위 알약 버튼 */
+.board-tabs { display: flex; gap: 6px; padding: 4px; border-radius: 999px; box-shadow: inset 3px 3px 7px #0a1b17, inset -3px -3px 7px #1a453c; }
+.board-tabs button { border: 0; border-radius: 999px; padding: 6px 14px; background: transparent; color: #C9D6D1;
+  font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.board-tabs button[aria-selected="true"] { background: var(--accent); color: #fff; box-shadow: 3px 3px 7px #0a1b17; }
+.board-tabs button:focus-visible { outline: 2px solid var(--mint); outline-offset: 2px; }
+.slider-title { align-items: center; }
+
 /* 불러오는 중 */
 .loading-card { align-items: center; justify-content: center; text-align: center; gap: 8px; }
 .spinner { width: 34px; height: 34px; border: 4px solid #EDE9E0; border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
@@ -860,6 +868,8 @@ a.my-link { color: inherit; text-decoration: none; }
   .fc-strip .say { display: none; }
   .summary { max-width: none; }
   .slide { height: 500px; }
+  .slider-head { flex-wrap: wrap; gap: 8px; }
+  .board-tabs button { padding: 6px 12px; font-size: 13px; }
   .topbar .wrap { padding: 0 16px; }
   .fc-strip .advice { --kit: 96px; }
   .ctx-grid { grid-template-columns: 1fr; }

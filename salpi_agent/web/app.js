@@ -7,6 +7,8 @@ const mmdd = (d) => `${d.slice(5, 7)}.${d.slice(8, 10)}`;
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
 let overview = [];          // 재료별 시세 · 날짜별 기록 · 예측 (/api/overview 한 번으로 받음)
+let boardTab = "농산물";    // 시세 대시보드 탭: 농산물(슬라이드) · 수산물 · 육류(품목 카드)
+let vegBasis = "";          // 농산물 탭의 기준 문구 (다른 탭에 갔다 돌아올 때 되돌림)
 const charts = {};          // 슬라이드별 차트 (보이는 슬라이드만 그림)
 const ITEM = new URLSearchParams(location.search).get("item");   // 재료 전용 페이지(/?item=토마토)의 재료 이름
 if (ITEM) {
@@ -45,14 +47,15 @@ async function loadOverview(attempt = 1) {
     overview = (await getJSON("/api/overview")).items;
   } catch (e) {
     if (attempt < 4) { setTimeout(() => loadOverview(attempt + 1), 5000); return; }   // 서버가 막 켜졌을 때는 잠시 뒤 다시
-    if (ITEM) { $("#itemHead").innerHTML = `<p class="muted">시세를 불러오지 못했어요. ${esc(e.message)}</p>`; return; }
-    $("#slider").innerHTML = `<article class="slide card loading-card"><b>시세를 불러오지 못했어요</b>
+    if (ITEM) { if (!itemDone) $("#itemHead").innerHTML = `<p class="muted">시세를 불러오지 못했어요. ${esc(e.message)}</p>`; return; }
+    if (boardTab === "농산물") $("#slider").innerHTML = `<article class="slide card loading-card"><b>시세를 불러오지 못했어요</b>
       <p class="muted">${esc(e.message)}</p><button class="sort" onclick="location.reload()">다시 불러오기</button></article>`;
     $("#summary").innerHTML = "";
     return;
   }
   const dated = overview.map((r) => r.wholesale_date).filter(Boolean).sort();
-  $("#basis").textContent = dated.length ? `대구 북부도매시장 · ${mmdd(dated.at(-1))} 기준` : "";
+  vegBasis = dated.length ? `대구 북부도매시장 · ${mmdd(dated.at(-1))} 기준` : "";
+  if (boardTab === "농산물") $("#basis").textContent = vegBasis;
   if (ITEM) { renderItemPage(); deliverAlerts(); return; }
 
   const up = overview.filter((r) => (r.wholesale_change_pct ?? 0) >= 3);
@@ -67,8 +70,7 @@ async function loadOverview(attempt = 1) {
     ${chip("up", "up", up.length, "지난주보다 <em>오른</em> 야채")}
     ${chip("down", "down", down.length, "지난주보다 <em>내린</em> 야채")}`;
 
-  renderSlides();
-  onSlideChange();
+  if (boardTab === "농산물") renderSlides();
   deliverAlerts();
 }
 
@@ -110,8 +112,9 @@ const summaryHTML = (list) => `<div class="summary-clip"><div class="summary-inn
   || "<p>해당하는 야채가 없어요</p>"}</div></div>`;
 
 
-// 고른 야채의 대시보드로 가서 자동 넘김을 멈춤
+// 고른 야채의 대시보드로 가서 자동 넘김을 멈춤 (요약 칸의 야채는 농산물 탭에 있음)
 function showItem(name) {
+  if (boardTab !== "농산물" && byItem(name)) setBoardTab("농산물");
   setPaused(true);
   goSlide(slides().findIndex((s) => s.dataset.item === name));
   $(".hero-board").scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -127,17 +130,31 @@ function plainReason(factors, kind) {
   if (top.factor.startsWith("도매시장")) return `시장에 들어오는 양이 ${sign > 0 ? "줄었어요" : "늘었어요"}`;
   if (top.factor.startsWith("날씨")) return "최근 날씨 영향이 있어요";
   if (top.factor.includes("공휴일")) return "공휴일을 앞두고 있어요";
+  if (top.factor.startsWith("한 달 평균")) return `한 달 평균보다 ${sign > 0 ? "싸서 올라올" : "비싸서 내려올"} 수 있어요`;
+  if (top.factor.startsWith("김장철")) return "김장철이라 찾는 사람이 많아요";
   return "대구 행사가 많아요";
 }
 
 // 슬라이드 순서: 전체 → 오를 가능성 높은 순 → 유지 → 떨어질 가능성
 function slideOrder() { return [...overview].sort((a, b) => expOf(b) - expOf(a)); }
 
+const LOADING_SLIDE = (what, note = "") => `<article class="slide card loading-card"><div class="spinner"></div>
+  <b>${what} 시세를 받아 오는 중이에요</b>${note ? `<p class="muted">${note}</p>` : ""}</article>`;
+
+// 지금 탭의 슬라이드를 새로 그림: 1장 전체 비교 막대 → 2장부터 품목별
 function renderSlides() {
   Object.values(charts).forEach((c) => c.destroy());
   Object.keys(charts).forEach((k) => delete charts[k]);
   lastSlide = -1;
   cur = 0;
+  $("#slider").scrollLeft = 0;
+  if (boardTab !== "농산물") renderExtraSlides();
+  else if (!overview.length) $("#slider").innerHTML = LOADING_SLIDE("새벽", "처음 열 때는 1분쯤 걸려요. 그다음부터는 바로 떠요.");
+  else renderVegSlides();
+  onSlideChange(0);
+}
+
+function renderVegSlides() {
   $("#slider").innerHTML = `
     <article class="slide card" data-item="" data-title="전체 야채 시세">
       <div class="chart-head">
@@ -211,7 +228,7 @@ let lastSlide = -1;
 function onSlideChange(target) {
   const s = slides(), i = target ?? Math.min(slideIndex(), s.length - 1);
   $("#dots").textContent = s.length > 1 ? `${i + 1} / ${s.length}` : "";
-  if (i === lastSlide || !overview.length) return;
+  if (i === lastSlide) return;
   lastSlide = i;
   drawSlideChart(i);
 }
@@ -228,7 +245,7 @@ slider.addEventListener("pointerup", (e) => {
   if (Math.abs(dx) > 50) { goSlide(cur + (dx < 0 ? 1 : -1)); restartAuto(); }
 });
 
-// 8초마다 자동으로 다음 장. 대시보드에 마우스를 올려 보는 동안 · 다른 탭을 볼 때는 멈춤
+// 8초마다 자동으로 다음 장. 대시보드에 마우스를 올려 보는 동안은 멈춤
 const AUTO_MS = 8000;
 let autoTimer = null, hovering = false, paused = false;
 function restartAuto() {
@@ -255,32 +272,155 @@ $("#pauseSlide").onclick = () => setPaused(!paused);
 
 function drawSlideChart(i) {
   const el = slides()[i];
-  if (!el || charts[i]) return;
+  const canvas = el?.querySelector("canvas");
+  if (!canvas || charts[i]) return;
   const item = el.dataset.item;
-  charts[i] = item ? drawItemChart(el.querySelector("canvas"), byItem(item)) : drawOverviewChart(el.querySelector("canvas"));
+  if (boardTab === "농산물") charts[i] = item ? drawItemChart(canvas, byItem(item)) : drawOverviewChart(canvas, vegBars());
+  else charts[i] = item ? drawExtraItemChart(canvas, extraByItem(item)) : drawOverviewChart(canvas, extraBars());
 }
 
-function drawOverviewChart(canvas) {
-  const rows = [...overview].filter((r) => r.wholesale_change_pct != null).sort((a, b) => b.wholesale_change_pct - a.wholesale_change_pct);
-  // 이웃한 야채 이름끼리 겹치지 않는 글자 크기: 막대 한 칸 너비 ÷ (가장 긴 이웃 두 이름의 평균 글자 수 + 띄움 0.5자)
-  const longestPair = Math.max(...rows.slice(1).map((r, i) => (r.item.length + rows[i].item.length) / 2));
-  const labelSize = (c) => Math.min(14, Math.floor((c.chart.width - 48) / rows.length / (longestPair + 0.5)));
+// ---------------------------------------------------------------
+// 시세 종류 탭: 농산물 · 수산물 · 육류. 셋 다 같은 슬라이드(1장 전체 비교 막대 → 품목별)
+// 수산물 · 육류는 경매 자료(반입량)가 없어 최근 흐름 · 한 달 평균과의 차이 · 명절 · 김장철로 7일 예측 (/api/meat-seafood)
+// ---------------------------------------------------------------
+let extra = null;      // 육류 · 수산물 시세 (처음 한 번 받음, 검색에도 씀)
+let extraReq = null;   // 받는 중인 요청 (탭 · 검색 · 재료 페이지가 같이 기다림)
+
+const extraList = () => (Array.isArray(extra) ? extra : []);
+const extraByItem = (name) => extraList().find((r) => r.item === name);
+const extraRows = () => extraList().filter((r) => r.group === boardTab && r.price);
+const basisName = (r) => (r.price_basis === "중도매" ? "북부도매시장 중도매" : "대구 소매");
+// 고기는 kg당 값이 커서 100g당 값도 같이 (정육점 표기와 같게)
+const per100 = (r) => (r.group === "육류" && r.unit === "kg" ? ` · 100g ${won(r.price / 10)}` : "");
+
+const extraExp = (r) => r.forecast?.expected_change_pct ?? 0;
+// 농산물 차트 · 예측 칸을 그대로 쓰도록 모양을 맞춤 (price → kg_price, expected_price_range → expected_kg_price_range)
+function vegShape(r) {
+  const f = r.forecast && !r.forecast.error
+    ? { ...r.forecast, expected_kg_price_range: r.forecast.expected_price_range, base_kg_price: r.forecast.base_price } : null;
+  const history = (r.history || []).map((h, i, a) => ({ date: h.date, kg_price: h.price, diff: i ? h.price - a[i - 1].price : null,
+    rain_mm: null, events: [], holiday: null }));
+  return { item: r.item, history, forecast: f };
+}
+
+function renderExtraSlides() {
+  if (!extra) { $("#basis").textContent = ""; $("#slider").innerHTML = LOADING_SLIDE(boardTab); return; }
+  if (extra.error) {
+    $("#slider").innerHTML = `<article class="slide card loading-card"><b>${boardTab} 시세를 불러오지 못했어요</b>
+      <p class="muted">${esc(extra.error)}</p><button class="sort" type="button" id="extraRetry">다시 불러오기</button></article>`;
+    $("#extraRetry").onclick = () => { extra = null; extraReq = null; setBoardTab(boardTab); };
+    return;
+  }
+  const rows = extraRows();
+  const dated = rows.map((r) => r.date).filter(Boolean).sort();
+  $("#basis").textContent = dated.length ? `대구 · ${mmdd(dated.at(-1))} 기준` : "";
+  const order = [...rows].sort((a, b) => extraExp(b) - extraExp(a));
+  $("#slider").innerHTML = `
+    <article class="slide card" data-item="">
+      <div class="chart-head">
+        <div><h3>전체 ${boardTab} 시세</h3><p class="price-now muted">지난주보다 얼마나 올랐나 · 내렸나 (대구 조사가)</p></div>
+        <div class="legend"><span><i class="lg up"></i>올랐어요</span><span><i class="lg down"></i>내렸어요</span></div>
+      </div>
+      <div class="chart-box"><canvas></canvas></div>
+      <p class="overview-note">다음 주 <b class="up">오를 가능성 ${rows.filter((r) => extraExp(r) >= 2).length}개</b> ·
+        <b>유지 ${rows.filter((r) => Math.abs(extraExp(r)) < 2).length}개</b> ·
+        <b class="down">떨어질 가능성 ${rows.filter((r) => extraExp(r) <= -2).length}개</b></p>
+    </article>` + order.map(extraSlide).join("");
+}
+
+// 품목 한 장: 메인 슬라이드와 재료 페이지가 함께 씀
+function extraSlide(r, idx) {
+  const f = r.forecast || {};
+  const v = verdict(f);
+  const why = plainReason(f.factors, v.kind);
+  const pose = v.kind === "down" ? "alert_down" : `alert_${v.kind === "up" ? "rise" : "flat"}${(idx % 2) + 1}`;
+  const say = { up: "미리 사두는 게 좋을 것 같아요.", flat: "평소대로 구매하셔도 좋아요", down: "급하지 않으면 나중에 사셔도 좋아요" }[v.kind];
+  const range = f.expected_price_range ? `예상 ${won(f.expected_price_range[0])} ~ ${won(f.expected_price_range[1])}/${esc(r.unit || "")}` : "예측할 자료가 부족해요";
+  return `
+<article class="slide card" data-item="${esc(r.item)}">
+  <div class="chart-head">
+    <div>
+      <h3>${esc(r.item)} 시세</h3>
+      <p class="price-now"><strong>${won(r.price)}/${esc(r.unit || "")}</strong>
+        <span class="${cls(r.week_change_pct, 3)}">1주 전보다 ${pct(r.week_change_pct)}</span>${per100(r) ? `<span>${per100(r).slice(3)}</span>` : ""}</p>
+    </div>
+    <div class="legend"><span><i class="lg line"></i>${basisName(r)} ${esc(r.unit || "")}당</span><span><i class="lg fc"></i>7일 예측</span></div>
+  </div>
+  <div class="chart-box"><canvas></canvas></div>
+  <div class="fc-strip ${v.kind}">
+    <div class="fc-text">
+      <span class="verdict">${v.text}</span>
+      <span class="range">${range}${why ? ` · ${why}` : ""}</span>
+    </div>
+    <div class="advice" style="${poseVars(pose)}"><span class="say">${say}</span><img class="pose" src="/static/img/${pose}.png" alt=""></div>
+  </div>
+</article>`;
+}
+
+const drawExtraItemChart = (canvas, r) => drawItemChart(canvas, vegShape(r), `${basisName(r)} ${r.unit}당`);
+
+function loadExtra() {
+  extraReq ||= getJSON("/api/meat-seafood")
+    .then((b) => { extra = b.items; })
+    .catch((e) => { extra = { error: e.message }; })
+    .then(() => {
+      if (boardTab !== "농산물") renderSlides();
+      if (ITEM) renderItemPage();
+    });
+  return extraReq;
+}
+
+function setBoardTab(tab) {
+  boardTab = tab;
+  $("#boardTabs").querySelectorAll("[data-tab]").forEach((b) => b.setAttribute("aria-selected", b.dataset.tab === tab));
+  if (tab === "농산물") $("#basis").textContent = vegBasis;
+  else if (!extra) loadExtra();
+  renderSlides();
+  restartAuto();
+}
+$("#boardTabs").onclick = (e) => {
+  const b = e.target.closest("[data-tab]");
+  if (b && b.dataset.tab !== boardTab) setBoardTab(b.dataset.tab);
+};
+// 탭 사이 왼쪽 · 오른쪽 화살표 이동
+$("#boardTabs").onkeydown = (e) => {
+  if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+  const tabs = [...$("#boardTabs").querySelectorAll("[data-tab]")];
+  const i = tabs.findIndex((b) => b.dataset.tab === boardTab);
+  const next = tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+  setBoardTab(next.dataset.tab);
+  next.focus();
+};
+
+// 전체 비교 막대: rows = [{ name, value(1주 변화 %), tip }]
+const vegBars = () => overview.filter((r) => r.wholesale_change_pct != null).map((r) => ({
+  name: r.item, value: r.wholesale_change_pct,
+  tip: ` 1주 ${pct(r.wholesale_change_pct)} · ${won(r.wholesale_kg)}/kg · ${verdict(r.forecast).text}` }));
+const extraBars = () => extraRows().map((r) => ({
+  name: r.item, value: r.week_change_pct ?? 0,
+  tip: ` 1주 ${pct(r.week_change_pct)} · ${won(r.price)}/${r.unit} · ${basisName(r)}` }));
+
+function drawOverviewChart(canvas, bars) {
+  const rows = [...bars].sort((a, b) => b.value - a.value);
+  // 이웃한 이름끼리 겹치지 않는 글자 크기: 막대 한 칸 너비 ÷ (가장 긴 이웃 두 이름의 평균 글자 수 + 띄움 0.5자)
+  const longestPair = Math.max(1, ...rows.slice(1).map((r, i) => (r.name.length + rows[i].name.length) / 2));
+  const labelSize = (c) => Math.max(9, Math.min(14, Math.floor((c.chart.width - 48) / rows.length / (longestPair + 0.5))));
   return new Chart(canvas.getContext("2d"), {
     type: "bar",
     data: {
-      labels: rows.map((r) => r.item),
-      datasets: [{ data: rows.map((r) => r.wholesale_change_pct), borderRadius: 4,
-        backgroundColor: rows.map((r) => (r.wholesale_change_pct >= 0 ? "#E2453C" : "#1E9E7A")) }],
+      labels: rows.map((r) => r.name),
+      datasets: [{ data: rows.map((r) => r.value), borderRadius: 4,
+        backgroundColor: rows.map((r) => (r.value >= 0 ? "#E2453C" : "#1E9E7A")) }],
     },
     options: {
       maintainAspectRatio: false,
       plugins: { legend: { display: false },
-        tooltip: { callbacks: { label: (c) => ` 1주 ${pct(c.raw)} · ${won(rows[c.dataIndex].wholesale_kg)}/kg · ${verdict(rows[c.dataIndex].forecast).text}` } } },
+        tooltip: { callbacks: { label: (c) => rows[c.dataIndex].tip } } },
       scales: {
         x: { grid: { display: false }, ticks: { color: "#1F2622", font: (c) => ({ size: labelSize(c), weight: "700" }), autoSkip: false, maxRotation: 0 } },
         y: { grid: { color: "#F0EDE6" }, ticks: { color: "#8A918C", font: { size: 11 }, callback: (v) => `${v}%` } },
       },
-      onClick: (_e, els) => { if (els.length) showItem(rows[els[0].index].item); },
+      onClick: (_e, els) => { if (els.length) showItem(rows[els[0].index].name); },
     },
   });
 }
@@ -310,7 +450,7 @@ const overlayPlugin = {
   },
 };
 
-function drawItemChart(canvas, d) {
+function drawItemChart(canvas, d, label = "도매 kg당") {
   const h = d.history || [];
   const f = d.forecast;
   const labels = h.map((r) => mmdd(r.date));
@@ -339,7 +479,7 @@ function drawItemChart(canvas, d) {
     data: {
       labels,
       datasets: [
-        { type: "line", label: "도매 kg당", data: price, borderColor: "#5BC236", backgroundColor: grad, fill: true,
+        { type: "line", label, data: price, borderColor: "#5BC236", backgroundColor: grad, fill: true,
           tension: 0.15, pointRadius: 3, pointBackgroundColor: "#5BC236", borderWidth: 2, yAxisID: "y", order: 1 },
         { type: "line", label: "예측 상단", data: hi, borderColor: "transparent", backgroundColor: "rgba(232,106,46,0.12)",
           fill: "+1", spanGaps: true, pointRadius: 0, yAxisID: "y", order: 2 },
@@ -384,12 +524,18 @@ function drawItemChart(canvas, d) {
 // ---------------------------------------------------------------
 // 재료 전용 페이지 (/?item=토마토): 그 재료의 날짜별 시세 · 예측 · 식봄 연결만 보여 줌
 // ---------------------------------------------------------------
+// 야채 시세(overview)와 육류 · 수산물 시세(extra) 중 먼저 찾은 쪽으로 한 번만 그림
+let itemDone = false;
 function renderItemPage() {
+  if (itemDone) return;
   const r = byItem(ITEM);
   if (!r) {
-    $("#itemHead").innerHTML = `<h1>${esc(ITEM)}</h1><p class="muted">아직 시세를 제공하지 않는 재료예요.</p>`;
+    const x = extraByItem(ITEM);
+    if (x) { itemDone = true; renderExtraItemPage(x); return; }
+    if (overview.length && extra) $("#itemHead").innerHTML = `<h1>${esc(ITEM)}</h1><p class="muted">아직 시세를 제공하지 않는 재료예요.</p>`;
     return;
   }
+  itemDone = true;
   document.title = `${r.item} 시세 · 살피`;
   const v = verdict(r.forecast);
   $("#itemHead").innerHTML = `
@@ -400,6 +546,24 @@ function renderItemPage() {
   drawItemChart($("#itemDash canvas"), r);
   renderDetail(r.item);
   renderItemGoods();
+}
+
+// 육류 · 수산물 재료 페이지: 대시보드(4주 그래프) · 시세판(조사일별 증감) · 한 달 시세 위치. 예측 칸은 없다는 안내
+function renderExtraItemPage(r) {
+  document.title = `${r.item} 시세 · 살피`;
+  const d = vegShape(r);
+  const v = verdict(d.forecast);
+  $("#itemHead").innerHTML = `
+    <div><h1>${esc(r.item)}</h1><p class="${v.kind === "flat" ? "" : v.kind}">${esc(v.text)} · ${esc(r.group)}</p></div>
+    <a class="item-shop" href="${esc(r.foodspring_url || "https://www.foodspring.co.kr")}" target="_blank" rel="noopener" title="식봄에서 ${esc(r.item)} 사기">식자재 바로가기 →</a>`;
+  $("#itemBody").hidden = false;
+  $("#itemDash").innerHTML = extraSlide(r, 0);
+  drawExtraItemChart($("#itemDash canvas"), r);
+  boardItem = { item: r.item, history: d.history, label: `${basisName(r)} ${r.unit}당` };
+  renderBoard();
+  renderForecast(d.forecast, d.history, r.unit);
+  $("#forecastCard .fc-reasons h4")?.insertAdjacentHTML("afterend",
+    `<p class="muted fc-extra-note">경매 자료(반입량)가 없어 농산물보다 이유가 적은 추정이에요 · 출처 ${esc(r.source)}</p>`);
 }
 
 function renderItemGoods() {
@@ -470,7 +634,7 @@ function renderBoard() {
   $("#priceBoard").innerHTML = `
     <div class="board-head">
       <div>
-        <p class="board-label">${esc(d.item)} · 도매 kg당 · ${mmdd(last.date)} 기준</p>
+        <p class="board-label">${esc(d.item)} · ${esc(d.label || "도매 kg당")} · ${mmdd(last.date)} 기준</p>
         <p class="board-now"><b>${number(last.kg_price)}<small>원</small></b>
           ${change == null ? "" : `<span><strong class="${cls(change)}">${arrow(change)} ${boardSigned(change)}</strong> 직전 거래일${prev ? `(${mmdd(prev.date)})` : ""} 대비</span>`}</p>
       </div>
@@ -504,7 +668,7 @@ $("#priceBoard").addEventListener("click", (e) => {
   renderBoard();
 });
 
-function renderForecast(f, history = []) {
+function renderForecast(f, history = [], unit = "kg") {
   if (!f || f.error) { $("#forecastCard").innerHTML = ""; return; }
   const v = verdict(f);
   const big = (x) => Math.abs(x.effect_pct) >= 0.1;
@@ -519,7 +683,7 @@ function renderForecast(f, history = []) {
       <p class="tip">${esc(f.suggestion)}</p>
       ${fcSpark(history, lo, hi)}
       <div class="fc-range">
-        <div><small>지금 (kg당)</small><b>${won(f.base_kg_price)}</b></div>
+        <div><small>지금 (${esc(unit)}당)</small><b>${won(f.base_kg_price)}</b></div>
         <i aria-hidden="true">→</i>
         <div><small>7일 뒤 예상</small><b>${won(lo)} ~ ${won(hi)}</b></div>
       </div>
@@ -1390,10 +1554,21 @@ function markHit(text, word) {
   return `${esc(text.slice(0, at))}<mark>${esc(text.slice(at, end))}</mark>${esc(text.slice(end))}`;
 }
 
+// 이름에 없지만 사장님이 흔히 쓰는 말 ("소고기" → 한우 등심, "달걀" → 계란)
+const SEARCH_WORDS = {
+  "한우 등심": "소고기", "한우 양지": "소고기 국거리", "돼지고기 앞다리": "제육 찌개용", "돼지고기 삼겹살": "오겹",
+  "닭고기": "생닭 닭볶음탕", "계란": "달걀", "오징어": "물오징어", "새우젓": "젓갈", "멸치액젓": "젓갈 액젓",
+  "명태": "동태 생태", "마른멸치": "멸치", "김": "김밥김", "마른미역": "미역",
+};
+
 function findAll(word) {
   const key = squash(word);
-  const items = overview.filter((r) => squash(r.item).includes(key))
-    .map((r) => ({ name: r.item, note: r.wholesale_kg ? `도매 kg당 ${won(r.wholesale_kg)}` : "" }));
+  const items = [
+    ...overview.filter((r) => squash(r.item).includes(key))
+      .map((r) => ({ name: r.item, note: r.wholesale_kg ? `농산물 · 도매 kg당 ${won(r.wholesale_kg)}` : "농산물" })),
+    ...extraList().filter((r) => r.price && squash(`${r.item} ${SEARCH_WORDS[r.item] || ""}`).includes(key))
+      .map((r) => ({ name: r.item, note: `${r.group} · ${basisName(r)} ${won(r.price)}/${r.unit}` })),
+  ];
   const seen = new Set();
   const goods = Object.values(shop).flat().filter((g) => {
     if (seen.has(g.url) || !squash(g.name).includes(key)) return false;
@@ -1425,7 +1600,7 @@ function setupSearch(searchInput, searchList, idp) {
     const hit = (h, i) => `<a class="search-hit" id="${idp}${i}" role="option" aria-selected="false" href="${h.url ? esc(h.url) : `/?item=${encodeURIComponent(h.name)}`}"
       ${h.url ? 'target="_blank" rel="noopener"' : ""}><span>${markHit(h.name, word)}</span><small>${esc(h.note)}</small></a>`;
     searchList.innerHTML = searchHits.length
-      ? (items.length ? `<p class="search-group">야채 시세 ${items.length}개</p>${items.map((h, i) => hit(h, i)).join("")}` : "")
+      ? (items.length ? `<p class="search-group">재료 시세 ${items.length}개</p>${items.map((h, i) => hit(h, i)).join("")}` : "")
         + (goods.length ? `<p class="search-group">식봄 상품 ${goods.length}개</p>${goods.map((h, i) => hit(h, items.length + i)).join("")}` : "")
       : `<p class="search-empty">${overview.length ? `'${esc(word)}'이(가) 들어간 재료나 상품이 없어요` : "시세를 불러오는 중이에요"}</p>`;
     searchList.hidden = false;
@@ -1541,6 +1716,7 @@ $("#talk").addEventListener("click", (e) => {
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#talk").hidden) closeTalk(); });
 
 loadOverview();
+loadExtra();   // 육류 · 수산물: 탭 · 검색 · 재료 페이지(/?item=삼겹살)에서 씀
 loadProducts();
 loadMyItems();
 if (STORE_VIEW) {
@@ -1564,6 +1740,8 @@ if (STORE_VIEW) {
 if (location.hash === "#chat") openChat();   // 주소 끝에 #chat 을 붙이면 채팅창이 열린 채로 시작
 if (location.hash === "#talk") openTalk();   // 주소 끝에 #talk 을 붙이면 알림톡 시연이 열린 채로 시작
 if (location.hash === "#rise") setTimeout(() => goSlide(1, "instant"), 4000);   // 시연용: 첫 야채 대시보드부터
+if (location.hash === "#sea") setBoardTab("수산물");   // 시연용: 수산물 탭이 열린 채로
+if (location.hash === "#meat") setBoardTab("육류");    // 시연용: 육류 탭이 열린 채로
 
 // ---------------------------------------------------------------
 // 영수증 한 장 자세히 (사진 + 품목) — '최근 영수증' 목록 · 마이페이지 '나의 영수증'에서 엶

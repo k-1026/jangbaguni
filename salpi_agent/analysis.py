@@ -7,8 +7,9 @@
 import statistics
 from datetime import date, timedelta
 
-from data_sources import (EXTRA_ITEMS, ITEMS, daegu_events, events_between, foodspring_url, holidays,
-                          holidays_between, perday_prices, sale_days, weather_days)
+from data_sources import (BEEF_GRADES, EKAPE_LINKS, EKAPE_MARKET_NAME, EXTRA_ITEMS, PIG_GRADES, ITEMS, daegu_events, ekape_days,
+                          events_between, foodspring_url, holidays, holidays_between, perday_prices, sale_days,
+                          weather_days)
 
 FLAT_BAND = 3.0  # ±3% 안쪽은 '비슷함'으로 본다
 
@@ -118,7 +119,11 @@ def market_overview():
 
 
 # ---------------------------------------------------------------
-# 육류 · 수산물 (KAMIS 조사가격만 있음 → 시세 변화만, 예측 없음)
+# 육류 · 수산물
+#   가격: aT 일별 도·소매가(KAMIS 조사) — 수산물은 북부도매시장 중도매가, 육류 · 젓갈은 대구 소매 평균
+#         (육류는 KAMIS에 소매만 있음. 사장님이 실제로 사는 값이라 대시보드는 이 값)
+#   한우 등심 · 양지 · 돼지 앞다리 · 삼겹살은 협신식품(대구) 도매 경락가(축산물품질평가원)를
+#   예측 이유(먼저 움직이는 가격 · 경매 물량)와 재료 페이지 등급표에만 씀
 # ---------------------------------------------------------------
 
 def _extra_unit_price(r):
@@ -134,8 +139,8 @@ def _extra_unit_price(r):
     return price / size, unit or "개"
 
 
-def extra_series(item_name, days=35):
-    """육류 · 수산물: 날짜별 대구 평균가(조사한 곳 · 등급 평균)."""
+def retail_extra_series(item_name, days=35):
+    """perDay(KAMIS 조사가): 날짜별 대구 평균가(조사한 곳 · 등급 평균)."""
     cfg = EXTRA_ITEMS[item_name]
     by_date, unit = {}, None
     for r in perday_prices(item_name, days):
@@ -150,39 +155,126 @@ def extra_series(item_name, days=35):
     return [{"date": d, "price": round(statistics.mean(v)), "unit": unit} for d, v in sorted(by_date.items())]
 
 
+def auction_series(item_name, days=35):
+    """한우 등심 · 양지 · 돼지고기: 협신식품(대구) 경락가 kg당과 경매 물량(상자 · 마리). 키가 없거나 실패하면 빈 목록."""
+    link = EKAPE_LINKS.get(item_name)
+    if not link:
+        return []
+    try:
+        by_day = ekape_days(days)
+    except Exception:
+        return []
+    out = []
+    for d, v in sorted(by_day.items()):
+        if link["op"] == "beefGrade":
+            x = (v.get("beef") or {}).get(link["cut"]) or {}
+            price, count = x.get(link["price"]), x.get(link["count"])
+        else:
+            x = (v.get("pig") or {}).get(link["grade"]) or {}
+            price, count = x.get("price"), x.get("count")
+        if price:
+            out.append({"date": d.isoformat(), "price": round(price), "unit": "kg", "count": count})
+    return out
+
+
+def extra_series(item_name, days=35):
+    """대시보드에 쓰는 가격 (KAMIS 조사가: 수산물 중도매 · 육류 소매)."""
+    return retail_extra_series(item_name, days)
+
+
+def _with_context(series, rain=True, days=40):
+    """날짜마다 그날 비 · 공휴일 · 대구 행사를 붙임 (야채 대시보드와 같은 칸)."""
+    if not series:
+        return series
+    start, end = date.fromisoformat(series[0]["date"]), date.today()
+    try:
+        weather = {w["date"]: w for w in weather_days(days)} if rain else {}
+        hols = {f"{h['date'][:4]}-{h['date'][4:6]}-{h['date'][6:]}": h["name"] for h in holidays_between(start, end)}
+        events = events_between(start, end)
+    except Exception:   # 참고 정보라 못 받아도 가격은 그대로 보여 줌
+        weather, hols, events = {}, {}, []
+
+    def active(d):
+        k = d.replace("-", "")
+        return [e["title"] for e in events if (e["start"] or "") <= k <= (e["end"] or "")]
+
+    return [{**p, "rain_mm": weather.get(p["date"], {}).get("rain_mm") if rain else None,
+             "holiday": hols.get(p["date"]), "events": active(p["date"])} for p in series]
+
+
+def _grade_table(item_name):
+    """재료 페이지용 표: 최근 경매일의 등급별 경락가 · 물량 (+ 소매 참고값)."""
+    link = EKAPE_LINKS.get(item_name)
+    if not link:
+        return None
+    try:
+        by_day = ekape_days(14)
+    except Exception:
+        return None
+    for d, v in sorted(by_day.items(), reverse=True):
+        rows = []
+        if link["op"] == "beefGrade":
+            x = (v.get("beef") or {}).get(link["cut"]) or {}
+            if not x.get(link["price"]):   # 그 부위 경매가 없던 날은 건너뜀
+                continue
+            for name, n in BEEF_GRADES:
+                if x.get(f"hanAvg_{n}"):
+                    rows.append({"grade": name, "price": round(x[f"hanAvg_{n}"]), "count": x.get(f"han_{n}Cnt")})
+            note = f"한우 {link['cut']} · 물량은 경매에 나온 상자 수"
+        else:
+            pig = v.get("pig") or {}
+            if not (pig.get(link["grade"]) or {}).get("price"):
+                continue
+            for name in PIG_GRADES:
+                g = pig.get(name) or {}
+                if g.get("price") or g.get("all_price"):
+                    rows.append({"grade": name, "price": round(g["price"]) if g.get("price") else None,
+                                 "count": g.get("count"), "all_price": round(g["all_price"]) if g.get("all_price") else None})
+            note = "돼지 도체(통째) · 물량은 마리 수"
+        r = retail_extra_series(item_name)
+        retail = {"name": item_name, "price": r[-1]["price"], "unit": r[-1]["unit"], "date": r[-1]["date"]} if r else None
+        return {"date": d.isoformat(), "market": EKAPE_MARKET_NAME, "unit": "kg", "rows": rows, "note": note,
+                # 소매가와 견줄 경락가: 한우는 같은 1등급, 돼지는 도체 등외 제외 평균
+                "compare_grade": "1" if link["op"] == "beefGrade" else None,
+                "compare_price": (round(x[link["price"]]) if link["op"] == "beefGrade"
+                                  else round((v.get("pig") or {})[link["grade"]]["price"])),
+                "compare_name": link["what"], "retail": retail,
+                "source": f"축산물품질평가원 축산물경락가격정보 · {EKAPE_MARKET_NAME}"}
+    return None
+
+
 def extra_trend(item_name):
-    """육류 · 수산물 하나의 최근 대구 가격과 1주 · 4주 전 대비 변화."""
+    """육류 · 수산물 하나의 최근 대구 가격과 1주 · 4주 전 대비 변화 · 7일 예측."""
     if item_name not in EXTRA_ITEMS:
         return {"error": f"'{item_name}'은(는) 아직 지원하지 않아요. 육류 · 수산물: {', '.join(EXTRA_ITEMS)}"}
     cfg = EXTRA_ITEMS[item_name]
     series = extra_series(item_name)
+    auction = auction_series(item_name) if item_name in EKAPE_LINKS else []
     price, week_pct, last = _week_change(series, "price")
     # 4주 변화: 첫 3개 값의 가운데값과 비교 (조사 첫날 하루만 튀는 값이 있음, 예: 닭고기 10/8)
     month_pct = (_pct(series[-1]["price"], statistics.median(p["price"] for p in series[:3]))
                  if len(series) >= 4 else None)
-    where = "대구 북부도매시장 중도매가" if cfg["se"] == "중도매" else "대구 소매 평균"
+    if cfg.get("se") == "중도매":
+        basis, label, source = "중도매", "북부도매시장 중도매가", "aT 일별 도·소매가(KAMIS 조사) · 대구 북부도매시장 중도매가"
+    else:
+        basis, label, source = "소매", "대구 소매 평균", "aT 일별 도·소매가(KAMIS 조사) · 대구 소매 평균"
     return {
         "item": item_name, "group": cfg["group"],
-        "source": f"aT 일별 도·소매가(KAMIS 조사) · {where}", "price_basis": cfg["se"],
+        "source": source, "price_basis": basis, "basis_label": label,
         "date": last, "price": price, "unit": series[-1]["unit"] if series else None,
         "week_change_pct": week_pct, "direction": _direction(week_pct),
         "month_change_pct": month_pct, "month_from": series[0]["date"] if series else None,
-        "history": series,   # 약 4주 (대시보드 그래프 · 재료 페이지 시세판에 씀)
-        "forecast": extra_forecast(item_name, series),
+        # 약 4주 + 그날 비(수산물만) · 공휴일 · 행사 (대시보드 그래프 · 재료 페이지 시세판에 씀)
+        "history": _with_context(series, rain=cfg["group"] == "수산물"),
+        "forecast": extra_forecast(item_name, series, auction),
+        "grade_table": _grade_table(item_name) if auction else None,
         "foodspring_url": foodspring_url(item_name),
-        "note": "경매 자료(반입량)가 없어 농산물보다 이유가 적은 추정이에요",
     }
 
 
 def extra_overview():
-    """육류 · 수산물 전체 요약."""
-    rows = []
-    for name in EXTRA_ITEMS:
-        t = extra_trend(name)
-        rows.append({k: t.get(k) for k in ("item", "group", "price_basis", "source", "date", "price", "unit",
-                                            "week_change_pct", "direction", "month_change_pct", "month_from", "history",
-                                            "forecast", "foodspring_url")})
-    return rows
+    """육류 · 수산물 전체 요약 (등급 표는 한우 · 돼지 3개만 있고 몇 줄이라 같이 보냄 → 재료 페이지에서 씀)."""
+    return [extra_trend(name) for name in EXTRA_ITEMS]
 
 
 # ---------------------------------------------------------------
@@ -305,11 +397,13 @@ HOLIDAY_DEMAND = {"한우 등심", "한우 양지", "수입 소고기 갈비살"
                   "돼지고기 삼겹살", "계란", "갈치", "명태", "새우"}   # 명절 차례 · 선물 · 전 부치기 수요
 
 
-def extra_forecast(item_name, series=None):
+def extra_forecast(item_name, series=None, auction=None):
     """육류 · 수산물: 다음 7일 가격 방향을 이유(요인별 %)와 함께 추정 (농산물 forecast_item 과 같은 모양)."""
     if item_name not in EXTRA_ITEMS:
         return {"error": f"'{item_name}'은(는) 아직 지원하지 않아요"}
     series = series if series is not None else extra_series(item_name)
+    if auction is None:
+        auction = auction_series(item_name) if item_name in EKAPE_LINKS else []
     if len(series) < 5:
         return {"error": "조사한 날이 적어 예측할 수 없어요"}
     prices = [p["price"] for p in series]
@@ -333,6 +427,25 @@ def extra_forecast(item_name, series=None):
         effect = _clip(-0.3 * gap, -4, 4)
         factors.append({"factor": "한 달 평균과의 차이", "effect_pct": round(effect, 1),
                         "detail": f"지금 값이 최근 한 달 평균({round(avg):,}원)보다 {gap:+.1f}%"})
+
+    # 한우 · 돼지: 협신식품(대구) 경락가를 먼저 움직이는 신호로 (소매가는 도매가를 며칠 늦게 따라감)
+    #   - 도매 경락가 흐름: 경락가가 1주 새 소매가보다 더 움직인 만큼의 30% (최대 ±4%)
+    #   - 경매 물량: 경매에 나온 양이 줄면 오르고 늘면 내림, 최근 3번 vs 그 전 10번 평균 × -0.1 (최대 ±3%)
+    #   계수는 과거 자료로 맞추기 전 가정값 (plan/forecast/1112_forecast_validation_agent.md 로 채점 예정)
+    if auction:
+        a_week = _week_change(auction, "price")[1]
+        if a_week is not None:
+            r_week = _week_change(series, "price")[1] or 0
+            link = EKAPE_LINKS[item_name]
+            factors.append({"factor": "도매 경락가 흐름", "effect_pct": round(_clip(0.3 * (a_week - r_week), -4, 4), 1),
+                            "detail": f"{EKAPE_MARKET_NAME} {link['what']} 경락가가 1주 새 {a_week:+.1f}% (소매는 {r_week:+.1f}%)"})
+    counts = [p["count"] for p in auction if p.get("count")]
+    if len(counts) >= 6:
+        c_pct = _pct(statistics.mean(counts[-3:]), statistics.mean(counts[-13:-3]))
+        if c_pct is not None:
+            unit = EKAPE_LINKS.get(item_name, {}).get("count_unit", "")
+            factors.append({"factor": "경매 물량", "effect_pct": round(_clip(-0.1 * c_pct, -3, 3), 1),
+                            "detail": f"최근 3번 경매에 나온 양({unit})이 그 전 평균보다 {c_pct:+.0f}%"})
 
     # 3) 다가오는 공휴일: 설 · 추석이면 고기 · 차례 생선 수요가 몰림
     hol = holidays(7)
@@ -372,7 +485,8 @@ def extra_forecast(item_name, series=None):
         "direction": direction, "suggestion": tip,
         "confidence": "낮음" if len(series) < 10 or spread >= 8 else "보통",
         "factors": factors,
-        "method": "규칙 기반 추정(최근 흐름 · 한 달 평균과의 차이 · 명절 · 김장철 · 행사). 반입량 · 조업 · 수입량은 반영 못 함",
+        "method": "규칙 기반 추정(최근 흐름 · 한 달 평균과의 차이 · 명절 · 김장철 · 행사, 한우 · 돼지는 협신식품 경락가 흐름 · 경매 물량도)."
+                  " 수산물 반입량 · 조업 · 수입량은 반영 못 함",
     }
 
 

@@ -5,6 +5,7 @@ cache/ 폴더에 저장해 두고 다시 부르지 않는다 (API 호출 횟수 
 """
 
 import json
+import xml.etree.ElementTree as ET
 import os
 import threading
 import time
@@ -52,6 +53,8 @@ ITEMS = {
 # se: 소매 / 중도매, grd: 쓸 등급 코드(None이면 전부 평균)
 # 이름은 menu_cost.REFERENCE_PRICES 이름과 같게 둠 (메뉴 원가 계산에서 그대로 바꿔 씀)
 # 코드 근거: perDay 대구 응답으로 품목 · 품종 · 단위 확인 (2026-11-12)
+# 육류는 KAMIS에 대구 · 전국 모두 소매가만 있음 (도매는 경매 경락가뿐) → 대시보드는 사장님이 실제로 사는 부위별 소매가
+# 경락가(협신식품)는 예측 이유(먼저 움직이는 가격 · 경매 물량)와 재료 페이지 등급표에만 씀 (EKAPE_LINKS)
 EXTRA_ITEMS = {
     "한우 등심":          {"group": "육류", "ctgry": "500", "item": "4301", "vrty": "22", "se": "소매", "grd": "3"},  # 1등급 100g
     "한우 양지":          {"group": "육류", "ctgry": "500", "item": "4301", "vrty": "40", "se": "소매", "grd": "3"},  # 1등급 100g (국거리)
@@ -358,3 +361,85 @@ def holidays_between(start, end):
 
 def holidays(days_ahead=30):
     return holidays_between(date.today(), date.today() + timedelta(days_ahead))
+
+
+# ---------------------------------------------------------------
+# 축산물품질평가원 축산물경락가격정보: 대구 협신식품 경매가 (육류 예측의 '먼저 움직이는 가격' · '경매 물량')
+#   beefGrade: 소고기 부위별(등심 · 양지 …) 등급별 경락가 kg당 · 상자 수 (abattCd 로 시장 지정)
+#   pigGrade : 돼지 도체 등급별 경락가 kg당 · 마릿수 (시장별 값이 c_<코드>Amt · c_<코드>Cnt 칸으로 한꺼번에 옴)
+# 하루치씩 불러야 날짜별 값이 나옴 (기간을 넣으면 그 기간 평균 하나). 요청마다 하루 1,000번 한도
+# → 주말(경매 없음)은 부르지 않고, 지난 날짜는 한 번 받으면 영구 보관
+# ---------------------------------------------------------------
+
+EKAPE_MARKET = "0302"   # 협신식품 (대구 북구 축산물 도매시장)
+EKAPE_MARKET_NAME = "협신식품(대구)"
+# 육류 소매 품목 → 참고할 경락가. 한우는 같은 부위 1등급(hanAvg_2), 돼지는 부위 경매가 없어 도체(등외 제외 평균)
+EKAPE_LINKS = {
+    "한우 등심":       {"op": "beefGrade", "cut": "등심", "price": "hanAvg_2", "count": "hanBoxCnt", "what": "한우 등심 1등급", "count_unit": "상자"},
+    "한우 양지":       {"op": "beefGrade", "cut": "양지", "price": "hanAvg_2", "count": "hanBoxCnt", "what": "한우 양지 1등급", "count_unit": "상자"},
+    "돼지고기 앞다리": {"op": "pigGrade", "grade": "등외제외", "what": "돼지 도체(등외 제외 평균)", "count_unit": "마리"},
+    "돼지고기 삼겹살": {"op": "pigGrade", "grade": "등외제외", "what": "돼지 도체(등외 제외 평균)", "count_unit": "마리"},
+}
+BEEF_GRADES = [("1++", "0"), ("1+", "1"), ("1", "2"), ("2", "3"), ("3", "4")]   # 등급 → hanAvg_<n> · han_<n>Cnt
+PIG_GRADES = ["1+", "1", "2", "등외"]
+
+
+def _ekape_get(op, day, **params):
+    """XML 응답 → item 목록. 실패하면 키가 보이지 않는 오류 문장으로."""
+    url = f"{os.getenv('EKAPE_ENDPOINT', 'http://data.ekape.or.kr/openapi-data/service/user/grade').rstrip('/')}/auct/{op}"
+    ymd = day.strftime("%Y%m%d")
+    params = {"serviceKey": _key("EKAPE_API_KEY"), "startYmd": ymd, "endYmd": ymd, **params}
+    for attempt in range(4):
+        try:
+            with _api_slots:
+                r = requests.get(url, params=params, timeout=40)
+            r.raise_for_status()
+            root = ET.fromstring(r.content)
+            code = root.findtext(".//resultCode")
+            if code not in (None, "00"):
+                raise ApiError(f"축산물품질평가원 {op} 오류 ({code} {root.findtext('.//resultMsg')})")
+            return [{c.tag: c.text for c in it} for it in root.iter("item")]
+        except ApiError:
+            raise
+        except (requests.RequestException, ET.ParseError) as e:
+            if attempt == 3:
+                code = getattr(getattr(e, "response", None), "status_code", None) or type(e).__name__
+                raise ApiError(f"축산물품질평가원 {op} 호출 실패 ({code})") from None
+            time.sleep(2 ** (attempt + 1))
+
+
+def _num(v):
+    try:
+        return float(v) if v not in (None, "", "0") else None
+    except ValueError:
+        return None
+
+
+def _fetch_ekape_day(day):
+    """하루치: {"beef": {부위: {price_<칸>, count}}, "pig": {등급: {price, count, all_price, all_count}}}"""
+    beef = {}
+    for x in _ekape_get("beefGrade", day, abattCd=EKAPE_MARKET):
+        cut = x.get("cutmeatName")
+        if cut in ("등심", "양지"):
+            beef[cut] = {k: _num(v) for k, v in x.items() if k.startswith(("hanAvg", "hanBoxCnt", "han_"))}
+    pig = {}
+    for x in _ekape_get("pigGrade", day):
+        pig[x.get("gradeNm")] = {"price": _num(x.get(f"c_{EKAPE_MARKET}Amt")), "count": _num(x.get(f"c_{EKAPE_MARKET}Cnt")),
+                                 "all_price": _num(x.get("CTotAmt")), "all_count": _num(x.get("CTotCnt"))}
+    return {"beef": beef, "pig": pig}
+
+
+def ekape_day(day):
+    recent = (date.today() - day).days <= 2   # 최근 이틀은 늦게 올라오는 값이 있어 3시간마다 갱신
+    return _cached(f"ekape2_{day.isoformat()}", 3 if recent else None, lambda: _fetch_ekape_day(day))
+
+
+def ekape_days(days=35):
+    """오늘부터 거꾸로 days일 중 평일만 {날짜: 하루치}. 키가 없으면 빈 값 (육류 화면은 소매가만으로 동작)."""
+    if not os.getenv("EKAPE_API_KEY", "").strip():
+        return {}
+    dates = [d for d in (date.today() - timedelta(n) for n in range(days)) if d.weekday() < 5]
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        results = pool.map(ekape_day, dates)
+    return dict(zip(dates, results))
+

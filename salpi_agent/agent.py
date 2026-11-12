@@ -91,6 +91,7 @@ def get_meat_seafood_prices(item: str = "") -> dict:
     오징어, 고등어, 갈치, 명태, 굴, 홍합, 새우, 마른멸치, 김, 마른미역, 새우젓, 멸치액젓)의 대구 가격과
     1주 · 4주 전 대비 변화, 다음 7일 예측(forecast: 최근 흐름 · 한 달 평균과의 차이 · 명절 · 김장철 · 행사).
     경매 자료(반입량)가 없어 농산물보다 이유가 적은 추정이다.
+    육류 가격은 대구 소매 평균(사장님이 실제로 사는 값)이다. 한우 · 돼지 예측 이유에는 협신식품(대구) 경락가 흐름 · 경매 물량이 들어간다.
     price_basis 가 '소매'면 대구 소매 평균, '중도매'면 대구 북부도매시장 중도매가.
 
     Args:
@@ -101,7 +102,7 @@ def get_meat_seafood_prices(item: str = "") -> dict:
         # 날짜별 기록 · 예측 이유는 빼고 보냄 (19개 품목 × 4주면 길어서 답이 느려짐, 이유는 품목 하나로 다시 물어봄)
         def slim(r):
             f = r.get("forecast") or {}
-            out = {k: v for k, v in r.items() if k not in ("history", "foodspring_url", "forecast")}
+            out = {k: v for k, v in r.items() if k not in ("history", "foodspring_url", "forecast", "grade_table")}
             out["forecast"] = {k: f.get(k) for k in ("direction", "expected_change_pct", "expected_price_range")}
             return out
         return _safe(lambda: {"rows": [slim(r) for r in analysis.extra_overview()]})
@@ -267,6 +268,7 @@ D. "내일 얼마나 준비할까?", 판매량 · 몇 그릇 · 발주량 질문
 F. 고기 · 계란 · 생선 · 오징어 · 젓갈 시세 질문 → get_meat_seafood_prices 를 부른다.
    가격 기준(price_basis: 소매 / 중도매)과 단위를 꼭 붙이고, 1주 전 대비 변화를 말한다.
    다음 7일 예측은 forecast 를 쓰되, 경매 자료(반입량)가 없어 농산물보다 이유가 적은 추정이라고 한 번 덧붙인다.
+   가격은 소매가로 말하고, 경락가는 예측 이유를 설명할 때만 "도매 경매가(협신식품)"라고 덧붙인다.
    "지금 사기 / 기다리기"를 물으면 최근 변화만 알려 주고, 예측은 야채만 된다고 짧게 덧붙인다.
 
 출력 형식

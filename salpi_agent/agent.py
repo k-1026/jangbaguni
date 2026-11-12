@@ -43,7 +43,7 @@ def _safe(fn, *args):
 
 def list_supported_items() -> dict:
     """살피가 시세를 볼 수 있는 재료 목록을 돌려준다.
-    items: 야채(도매 경락가 · 7일 예측), meat_seafood: 육류 · 수산물(대구 조사가 · 7일 예측)."""
+    items: 농산물 야채 · 과일(도매 경락가 · 7일 예측, 각 줄의 kind 로 구분), meat_seafood: 육류 · 수산물(대구 조사가 · 7일 예측)."""
     return {"items": list(ITEMS), "meat_seafood": list(EXTRA_ITEMS)}
 
 

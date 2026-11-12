@@ -46,7 +46,21 @@ ITEMS = {
     "시금치":   {"ctgry": "200", "item": "213", "vrty": None, "sale_name": "시금치", "sale_sub": None},
     "토마토":   {"ctgry": "200", "item": "225", "vrty": None, "sale_name": "토마토", "sale_sub": None},
     "가지":     {"ctgry": "200", "item": "251", "vrty": None, "sale_name": "가지",   "sale_sub": None},
+    # 과일 (kind: 과일): 야채와 같은 길 — 북부도매시장 경락가 · 반입량 · 7일 예측, 소매는 KAMIS 대구 상품 등급
+    # 코드 근거: data/raw/1112 합본(대구) + 1109_5y 정산정보 품종 이름 (2026-11-12). retail_grd: 소매 등급 코드가 '04'(상품)가 아닌 품목
+    "사과":     {"kind": "과일", "ctgry": "400", "item": "411", "vrty": "05", "sale_name": "사과",   "sale_sub": None},   # 소매는 후지
+    "배":       {"kind": "과일", "ctgry": "400", "item": "412", "vrty": "01", "sale_name": "배",     "sale_sub": None},   # 소매는 신고
+    "감귤":     {"kind": "과일", "ctgry": "400", "item": "415", "vrty": None, "sale_name": "감귤",   "sale_sub": None, "retail_grd": "15"},  # M과
+    "포도":     {"kind": "과일", "ctgry": "400", "item": "414", "vrty": "12", "sale_name": "포도",   "sale_sub": "샤인", "retail_grd": "24"},  # 샤인머스켓 L과
+    "단감":     {"kind": "과일", "ctgry": "400", "item": "416", "vrty": "00", "sale_name": "단감",   "sale_sub": None},
+    "바나나":   {"kind": "과일", "ctgry": "400", "item": "418", "vrty": "02", "sale_name": "바나나", "sale_sub": None},   # 수입
+    "딸기":     {"kind": "과일", "ctgry": "200", "item": "226", "vrty": "00", "sale_name": "딸기",   "sale_sub": "설향"},  # 산딸기 제외
+    "수박":     {"kind": "과일", "ctgry": "200", "item": "221", "vrty": "00", "sale_name": "수박",   "sale_sub": None},   # 소매는 1통
+    "참외":     {"kind": "과일", "ctgry": "200", "item": "222", "vrty": "00", "sale_name": "참외",   "sale_sub": None},
+    "키위":     {"kind": "과일", "ctgry": "400", "item": "419", "vrty": None, "sale_name": "참다래(키위)", "sale_sub": None},
+    "레몬":     {"kind": "과일", "ctgry": "400", "item": "424", "vrty": "00", "sale_name": "레몬",   "sale_sub": "레몬"},  # 라임 제외
 }
+kind_of = lambda name: ITEMS[name].get("kind", "야채")   # 농산물 안에서 야채 · 과일 구분
 
 # 육류 · 수산물: 대구 북부도매시장 정산정보(경매)에는 없어서 aT 일별 도·소매가(perDay, KAMIS 조사)만 씀
 # → 경매 반입량이 없으니 7일 예측은 하지 않고 시세 변화만 보여 줌. ITEMS와 섞지 않음

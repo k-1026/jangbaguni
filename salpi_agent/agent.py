@@ -19,7 +19,7 @@ import demand
 import menu_cost
 import receipts
 import supabase_db
-from data_sources import ITEMS, ApiKeyMissing, daegu_events, holidays
+from data_sources import EXTRA_ITEMS, ITEMS, ApiKeyMissing, daegu_events, holidays
 
 ROOT = Path(__file__).resolve().parent
 MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
@@ -42,8 +42,9 @@ def _safe(fn, *args):
 
 
 def list_supported_items() -> dict:
-    """살피가 시세를 볼 수 있는 재료 목록을 돌려준다."""
-    return {"items": list(ITEMS)}
+    """살피가 시세를 볼 수 있는 재료 목록을 돌려준다.
+    items: 농산물 야채 · 과일(도매 경락가 · 7일 예측, 각 줄의 kind 로 구분), meat_seafood: 육류 · 수산물(대구 조사가 · 7일 예측)."""
+    return {"items": list(ITEMS), "meat_seafood": list(EXTRA_ITEMS)}
 
 
 def get_market_overview() -> dict:
@@ -77,6 +78,35 @@ def forecast_item_price(item: str) -> dict:
         item: 재료 이름 (예: 양파, 대파, 양배추, 청양고추, 당근, 깻잎)
     """
     return _safe(analysis.forecast_item, _item(item))
+
+
+EXTRA_ALIASES = {"돼지고기": "돼지고기 앞다리", "앞다리": "돼지고기 앞다리", "삼겹살": "돼지고기 삼겹살",
+                 "닭": "닭고기", "달걀": "계란",
+                 "등심": "한우 등심", "소고기등심": "한우 등심", "양지": "한우 양지", "국거리": "한우 양지",
+                 "갈비살": "수입 소고기 갈비살"}
+
+
+def get_meat_seafood_prices(item: str = "") -> dict:
+    """육류 · 수산물(한우 등심 · 양지, 수입 소고기 갈비살, 돼지고기 앞다리 · 삼겹살, 닭고기, 계란,
+    고등어, 갈치, 명태, 굴, 홍합, 새우, 새우젓, 멸치액젓)의 대구 가격과
+    1주 · 4주 전 대비 변화, 다음 7일 예측(forecast: 한 달 평균과의 차이 · 명절 · 행사).
+    경매 자료(반입량)가 없어 농산물보다 이유가 적은 추정이다.
+    육류 가격은 대구 소매 평균(사장님이 실제로 사는 값)이다. 한우 · 돼지는 grade_table 에 협신식품(대구) 등급별 경락가가 참고로 온다.
+    price_basis 가 '소매'면 대구 소매 평균, '중도매'면 대구 북부도매시장 중도매가.
+
+    Args:
+        item: 품목 하나만 볼 때 이름 (예: 삼겹살, 고등어). 전체를 볼 때는 빈 문자열.
+    """
+    name = (item or "").strip()
+    if not name:
+        # 날짜별 기록 · 예측 이유는 빼고 보냄 (19개 품목 × 4주면 길어서 답이 느려짐, 이유는 품목 하나로 다시 물어봄)
+        def slim(r):
+            f = r.get("forecast") or {}
+            out = {k: v for k, v in r.items() if k not in ("history", "foodspring_url", "forecast", "grade_table")}
+            out["forecast"] = {k: f.get(k) for k in ("direction", "expected_change_pct", "expected_price_range")}
+            return out
+        return _safe(lambda: {"rows": [slim(r) for r in analysis.extra_overview()]})
+    return _safe(analysis.extra_trend, EXTRA_ALIASES.get(name.replace(" ", ""), name))
 
 
 def get_weather_summary(days: int = 7) -> dict:
@@ -178,7 +208,7 @@ def get_store_cost_ratio() -> dict:
 
 TOOLS = [list_supported_items, get_market_overview, get_item_price_trend, forecast_item_price,
          recommend_buy_now, list_standard_menus, calc_menu_margin, forecast_store_demand, get_store_cost_ratio,
-         get_weather_summary, get_daegu_events, get_upcoming_holidays]
+         get_meat_seafood_prices, get_weather_summary, get_daegu_events, get_upcoming_holidays]
 
 
 # ---------------------------------------------------------------
@@ -235,6 +265,11 @@ D. "내일 얼마나 준비할까?", 판매량 · 몇 그릇 · 발주량 질문
    그다음 orders 의 앞에서 3개를 "재료 · 발주량 · 판단(지금 사기/나눠 사기)" 한 줄씩 그대로 말하고,
    (orders 에 없는 재료 · 숫자를 말하지 않는다. 메뉴는 menus 에 있는 것만 전부 말한다)
    다음 입고일(next_delivery_date)까지 기준이라고 덧붙인다. 우리 가게 판매량을 넣으면 그 가게 기준으로 바뀐다고 안내한다.
+F. 고기 · 계란 · 생선 · 오징어 · 젓갈 시세 질문 → get_meat_seafood_prices 를 부른다.
+   가격 기준(price_basis: 소매 / 중도매)과 단위를 꼭 붙이고, 1주 전 대비 변화를 말한다.
+   다음 7일 예측은 forecast 를 쓰되, 경매 자료(반입량)가 없어 농산물보다 이유가 적은 추정이라고 한 번 덧붙인다.
+   가격은 소매가로 말하고, 경락가는 물어볼 때만 "도매 경매가(협신식품)"라고 구분해서 말한다 (예측 이유가 아님).
+   "지금 사기 / 기다리기"를 물으면 최근 변화만 알려 주고, 예측은 야채만 된다고 짧게 덧붙인다.
 
 출력 형식
 - 짧게. 전체 10줄 이내, 묶음마다 재료 3개까지, 재료당 한 줄. [무엇이] → [얼마나] → [그래서 어떻게].
@@ -270,6 +305,7 @@ class SalpiAgent:
 
     def _start(self, model, history):
         self.model = model
+        self.last_tools = []
         self.chat = self.client.chats.create(
             model=model,
             config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT, tools=TOOLS, temperature=0.3),
@@ -284,7 +320,12 @@ class SalpiAgent:
             if model != self.model:
                 self._start(model, history=self.chat.get_history())
             try:
-                return self.chat.send_message(message).text or "답을 만들지 못했어요. 다시 물어봐 주세요."
+                before = len(self.chat.get_history(curated=False))
+                text = self.chat.send_message(message).text or "답을 만들지 못했어요. 다시 물어봐 주세요."
+                # 이번 질문에 부른 도구 이름 (대화 기록 chat_log 용)
+                self.last_tools = [p.function_call.name for c in self.chat.get_history(curated=False)[before:]
+                                   for p in (c.parts or []) if getattr(p, "function_call", None)]
+                return text
             except errors.APIError as e:
                 if 400 <= e.code < 500 and e.code not in (404, 429):
                     raise      # 요청 자체가 잘못된 경우는 갈아타도 같음

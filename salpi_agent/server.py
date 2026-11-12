@@ -18,7 +18,9 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 import analysis
+import chat_log
 import demand
+import forecast_log
 import foodspring
 import mart_price
 import receipts
@@ -37,6 +39,7 @@ async def lifespan(_app):
     def warm():
         try:
             memo("overview", _overview)
+            _daily("forecast")
         except Exception:
             pass   # 키가 없거나 API 장애면 화면에서 안내
     threading.Thread(target=warm, daemon=True).start()
@@ -99,7 +102,9 @@ def health():
 
 @app.get("/api/overview")
 def overview():
-    return _guard(lambda: {"items": memo("overview", _overview)})
+    out = _guard(lambda: {"items": memo("overview", _overview)})
+    _daily("forecast")
+    return out
 
 
 @app.get("/api/item/{name}")
@@ -109,10 +114,69 @@ def item(name: str):
     return _guard(lambda: memo(f"item:{name}", lambda: analysis.item_detail(name)))
 
 
+@app.get("/api/meat-seafood")
+def meat_seafood():
+    """육류 · 수산물 대구 가격과 1주 · 4주 변화 (aT 일별 도·소매가, 예측 없음)."""
+    out = _guard(lambda: memo("meat_seafood", lambda: {"items": analysis.extra_overview()}))
+    _daily("forecast")
+    return out
+
+
 @app.get("/api/products")
 def products():
     """식봄 실제 상품 · 가격 (재료마다 4개). 살피 시세 정보는 화면에서 /api/overview 와 합침."""
-    return memo("products", lambda: {"items": foodspring.all_products(4)})
+    out = memo("products", lambda: {"items": foodspring.all_products(4)})
+    _daily("shop")
+    return out
+
+
+# ---------------------------------------------------------------
+# 예측 기록 · 채점 · 식봄 판매가 기록 (Supabase forecast_log · price_snapshots), 하루 한 번
+# 그날 처음 대시보드를 계산할 때 뒤에서 저장 → 따로 예약 실행을 걸지 않아도 쌓임
+# (아무도 안 들어온 날은 빠짐. 꼭 매일 남기려면 POST /api/jobs/daily 를 예약 실행으로 부르면 됨)
+# ---------------------------------------------------------------
+_daily_done, _daily_lock = {}, threading.Lock()
+
+
+def _run_forecast_job():
+    veg = memo("overview", _overview)
+    extra = memo("meat_seafood", lambda: {"items": analysis.extra_overview()})["items"]
+    return {"recorded": forecast_log.record(veg, extra), "scored": forecast_log.score(veg, extra)}
+
+
+def _run_shop_job():
+    return {"shop_rows": forecast_log.snapshot_shop(memo("products", lambda: {"items": foodspring.all_products(4)})["items"])}
+
+
+def _daily(job):
+    """job 을 오늘 아직 안 했으면 뒤에서 한 번 실행 (실패해도 화면에는 영향 없음, 다음 요청 때 다시)."""
+    day = forecast_log.today()
+    with _daily_lock:
+        if _daily_done.get(job) == day:
+            return
+        _daily_done[job] = day
+
+    def run():
+        try:
+            print(f"[하루 기록] {job}", (_run_forecast_job if job == "forecast" else _run_shop_job)(), flush=True)
+        except Exception as e:   # Supabase 키가 없거나 표가 아직 없으면 오늘은 건너뜀
+            with _daily_lock:
+                _daily_done.pop(job, None)
+            print(f"[하루 기록] {job} 실패: {e}", flush=True)
+    threading.Thread(target=run, daemon=True).start()
+
+
+@app.post("/api/jobs/daily")
+def daily_jobs():
+    """예약 실행용: 예측 저장 · 채점 · 식봄 판매가 저장을 바로 실행하고 결과 수를 돌려줌."""
+    return _guard(lambda: {**_run_forecast_job(), **_run_shop_job()})
+
+
+@app.get("/api/forecast-score")
+def forecast_score(weeks: int = 4):
+    """최근 weeks주 실제 화면 예측의 채점 결과 (종류별 · 품목별 방향 적중 · 범위 적중 · 정반대)."""
+    weeks = max(1, min(weeks, 26))
+    return _guard(lambda: memo(f"forecast_score:{weeks}", lambda: forecast_log.scorecard(weeks), ttl=1800))
 
 
 @app.get("/api/event/{content_id}")
@@ -256,18 +320,25 @@ def receipt_delete(purchase_id: int):
 class ChatIn(BaseModel):
     message: str
     history: list[dict] = []
+    session: str = ""      # 같은 채팅창의 대화 묶음 (화면이 만든 임의 번호, 대화 기록용)
 
 
 @app.post("/api/chat")
 def chat(body: ChatIn):
+    question, started, agent, status = body.message.strip()[:1000], time.time(), None, "ok"
     try:
-        reply = SalpiAgent(history=body.history).ask(body.message.strip()[:1000])
+        agent = SalpiAgent(history=body.history)
+        reply = agent.ask(question)
     except ApiKeyMissing as e:
-        reply = str(e)
+        reply, status = str(e), "nokey"
     except Exception as e:
         busy = "429" in str(e) or "503" in str(e) or type(e).__name__ == "ServerError"
+        status = "busy" if busy else "error"
         reply = ("지금 AI 서버가 바빠요. 잠시 뒤 다시 물어봐 주세요." if busy
                  else f"지금은 답을 만들지 못했어요 ({type(e).__name__}). 잠시 뒤 다시 물어봐 주세요.")
+    if question:
+        chat_log.save(body.session, len(body.history) // 2, question, reply, getattr(agent, "last_tools", []),
+                      getattr(agent, "model", None), (time.time() - started) * 1000, status)
     return {"reply": reply}
 
 

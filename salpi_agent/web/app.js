@@ -7,13 +7,19 @@ const mmdd = (d) => `${d.slice(5, 7)}.${d.slice(8, 10)}`;
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
 let overview = [];          // 재료별 시세 · 날짜별 기록 · 예측 (/api/overview 한 번으로 받음)
+let boardTab = "야채";      // 시세 대시보드 탭: 농산물 야채 · 농산물 과일(북부도매시장 경락가) · 수산물 · 육류
+// 야채 · 과일은 /api/overview 한 번으로 받고 kind 로 나눔. 제철이 아니라 4주 동안 거래가 8일 안 되는 과일은 숨김
+const PRODUCE = (t) => t === "야채" || t === "과일";
+const kindOf = (r) => r.kind || "야채";
+const produceRows = (kind = boardTab) => overview.filter((r) => kindOf(r) === kind && r.wholesale_kg && (r.history || []).length >= 8);
+let vegBasis = "";          // 농산물 탭의 기준 문구 (다른 탭에 갔다 돌아올 때 되돌림)
 const charts = {};          // 슬라이드별 차트 (보이는 슬라이드만 그림)
 const ITEM = new URLSearchParams(location.search).get("item");   // 재료 전용 페이지(/?item=토마토)의 재료 이름
 if (ITEM) {
   document.body.classList.add("item-view");
   $("#itemPage").hidden = false;
 }
-// 마이페이지(가게, /?page=store): 내일 준비 · 메뉴별 원가율 · 영수증 분석은 사장님 로그인 시에만
+// 나의 가게 페이지(/?page=store): 내일 준비 · 메뉴별 원가율 · 영수증 분석은 사장님 로그인 시에만
 // 로그인(카카오)은 아직 없어서 시연에서는 기본 계정으로 로그인한 것으로 봄
 const SIGNED_IN = true;
 const STORE_VIEW = !ITEM && SIGNED_IN && new URLSearchParams(location.search).get("page") === "store";
@@ -45,18 +51,20 @@ async function loadOverview(attempt = 1) {
     overview = (await getJSON("/api/overview")).items;
   } catch (e) {
     if (attempt < 4) { setTimeout(() => loadOverview(attempt + 1), 5000); return; }   // 서버가 막 켜졌을 때는 잠시 뒤 다시
-    if (ITEM) { $("#itemHead").innerHTML = `<p class="muted">시세를 불러오지 못했어요. ${esc(e.message)}</p>`; return; }
-    $("#slider").innerHTML = `<article class="slide card loading-card"><b>시세를 불러오지 못했어요</b>
+    if (ITEM) { if (!itemDone) $("#itemHead").innerHTML = `<p class="muted">시세를 불러오지 못했어요. ${esc(e.message)}</p>`; return; }
+    if (PRODUCE(boardTab)) $("#slider").innerHTML = `<article class="slide card loading-card"><b>시세를 불러오지 못했어요</b>
       <p class="muted">${esc(e.message)}</p><button class="sort" onclick="location.reload()">다시 불러오기</button></article>`;
     $("#summary").innerHTML = "";
     return;
   }
   const dated = overview.map((r) => r.wholesale_date).filter(Boolean).sort();
-  $("#basis").textContent = dated.length ? `대구 북부도매시장 · ${mmdd(dated.at(-1))} 기준` : "";
+  vegBasis = dated.length ? `대구 북부도매시장 · ${mmdd(dated.at(-1))} 기준` : "";
+  if (PRODUCE(boardTab)) $("#basis").textContent = vegBasis;
   if (ITEM) { renderItemPage(); deliverAlerts(); return; }
 
-  const up = overview.filter((r) => (r.wholesale_change_pct ?? 0) >= 3);
-  const down = overview.filter((r) => (r.wholesale_change_pct ?? 0) <= -3);
+  const veg = produceRows("야채");   // 왼쪽 요약 칸은 야채만 (문구가 '야채')
+  const up = veg.filter((r) => (r.wholesale_change_pct ?? 0) >= 3);
+  const down = veg.filter((r) => (r.wholesale_change_pct ?? 0) <= -3);
   const week = (r) => r.wholesale_change_pct;
   summaryLists = {
     up: [...up].sort((a, b) => week(b) - week(a)).map((r) => [r.item, week(r)]),
@@ -67,8 +75,7 @@ async function loadOverview(attempt = 1) {
     ${chip("up", "up", up.length, "지난주보다 <em>오른</em> 야채")}
     ${chip("down", "down", down.length, "지난주보다 <em>내린</em> 야채")}`;
 
-  renderSlides();
-  onSlideChange();
+  if (PRODUCE(boardTab)) renderSlides();
   deliverAlerts();
 }
 
@@ -110,8 +117,10 @@ const summaryHTML = (list) => `<div class="summary-clip"><div class="summary-inn
   || "<p>해당하는 야채가 없어요</p>"}</div></div>`;
 
 
-// 고른 야채의 대시보드로 가서 자동 넘김을 멈춤
+// 고른 재료의 대시보드로 가서 자동 넘김을 멈춤 (야채 · 과일은 그 탭으로 옮김)
 function showItem(name) {
+  const r = byItem(name);
+  if (r && boardTab !== kindOf(r)) setBoardTab(kindOf(r));
   setPaused(true);
   goSlide(slides().findIndex((s) => s.dataset.item === name));
   $(".hero-board").scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -123,31 +132,45 @@ function plainReason(factors, kind) {
   if (!sign) return "";
   const top = (factors || []).filter((x) => x.effect_pct * sign > 0).sort((a, b) => Math.abs(b.effect_pct) - Math.abs(a.effect_pct))[0];
   if (!top) return "";
-  if (top.factor.startsWith("최근 2주")) return `최근 2주 동안 ${sign > 0 ? "올랐어요" : "내렸어요"}`;
   if (top.factor.startsWith("도매시장")) return `시장에 들어오는 양이 ${sign > 0 ? "줄었어요" : "늘었어요"}`;
   if (top.factor.startsWith("날씨")) return "최근 날씨 영향이 있어요";
   if (top.factor.includes("공휴일")) return "공휴일을 앞두고 있어요";
+  if (top.factor.includes("평균과의 차이")) return `${top.factor.split(" ")[0]} 평균보다 ${sign > 0 ? "싸서 올라올" : "비싸서 내려올"} 수 있어요`;
   return "대구 행사가 많아요";
 }
 
 // 슬라이드 순서: 전체 → 오를 가능성 높은 순 → 유지 → 떨어질 가능성
-function slideOrder() { return [...overview].sort((a, b) => expOf(b) - expOf(a)); }
+function slideOrder() { return [...produceRows()].sort((a, b) => expOf(b) - expOf(a)); }
 
+const LOADING_SLIDE = (what, note = "") => `<article class="slide card loading-card"><div class="spinner"></div>
+  <b>${what} 시세를 받아 오는 중이에요</b>${note ? `<p class="muted">${note}</p>` : ""}</article>`;
+
+// 지금 탭의 슬라이드를 새로 그림: 1장 전체 비교 막대 → 2장부터 품목별
 function renderSlides() {
   Object.values(charts).forEach((c) => c.destroy());
   Object.keys(charts).forEach((k) => delete charts[k]);
   lastSlide = -1;
   cur = 0;
+  $("#slider").scrollLeft = 0;
+  if (!PRODUCE(boardTab)) renderExtraSlides();
+  else if (!overview.length) $("#slider").innerHTML = LOADING_SLIDE("새벽", "처음 열 때는 1분쯤 걸려요. 그다음부터는 바로 떠요.");
+  else renderVegSlides();
+  onSlideChange(0);
+}
+
+function renderVegSlides() {
+  const rows = produceRows();
   $("#slider").innerHTML = `
-    <article class="slide card" data-item="" data-title="전체 야채 시세">
+    <article class="slide card" data-item="" data-title="전체 ${boardTab} 시세">
       <div class="chart-head">
-        <div><h3>전체 야채 시세</h3><p class="price-now muted">지난주보다 얼마나 올랐나 · 내렸나 (도매 kg당)</p></div>
+        <div><h3>전체 ${boardTab} 시세</h3><p class="price-now muted">지난주보다 얼마나 올랐나 · 내렸나 (도매 kg당)</p></div>
         <div class="legend"><span><i class="lg up"></i>올랐어요</span><span><i class="lg down"></i>내렸어요</span></div>
       </div>
       <div class="chart-box"><canvas></canvas></div>
-      <p class="overview-note">다음 주 <b class="up">오를 가능성 ${overview.filter((r) => expOf(r) >= 2).length}개</b> ·
-        <b>유지 ${overview.filter((r) => Math.abs(expOf(r)) < 2).length}개</b> ·
-        <b class="down">떨어질 가능성 ${overview.filter((r) => expOf(r) <= -2).length}개</b></p>
+      <p class="overview-note">다음 주 <b class="up">오를 가능성 ${rows.filter((r) => expOf(r) >= 2).length}개</b> ·
+        <b>유지 ${rows.filter((r) => Math.abs(expOf(r)) < 2).length}개</b> ·
+        <b class="down">떨어질 가능성 ${rows.filter((r) => expOf(r) <= -2).length}개</b>${boardTab === "과일"
+        ? " · 제철이 아니라 거래가 적은 과일은 빼고 보여 줘요" : ""}</p>
     </article>` + slideOrder().map(itemSlide).join("");
 }
 
@@ -163,13 +186,41 @@ const POSE_SIZE = {
 };
 const poseVars = (p) => Object.entries(POSE_SIZE[p]).map(([k, v]) => `--${k}:${v}`).join(";");
 
+// 차트 끝(최근 4거래일)이 어느 쪽으로 갔나: 그래프를 보는 눈과 같게 (±3% 안쪽은 비슷)
+function recentMove(prices) {
+  const v = prices.filter((x) => x > 0);
+  if (v.length < 4) return "flat";
+  const p = ((v.at(-1) - v.at(-4)) / v.at(-4)) * 100;
+  return p >= 3 ? "up" : p <= -3 ? "down" : "flat";
+}
+
+// 살피 그림 · 말풍선 · 한마디: 다음 주 예측을 따르되, 차트(최근)와 반대 방향이면 둘 다 말함
+// (예: 최근 올랐는데 다음 주 내릴 것 → "최근 올랐지만 다음 주엔 떨어질 가능성" + 알람시계 살피 "며칠 기다려 보세요")
+// 오름: 경광등 살피(2 · 4번째 포즈 번갈아) · 유지 · 엇갈림: 알람시계 살피(1 · 3번째) · 내림: 쇼핑백 살피(6번째)
+function salpiSays(prices, f, idx = 0) {
+  const v = verdict(f), m = recentMove(prices);
+  const crossed = (m === "up" && v.kind === "down") || (m === "down" && v.kind === "up");
+  if (crossed) {
+    return { kind: v.kind, crossed,
+      text: `최근 ${m === "up" ? "올랐지만" : "내렸지만"} 다음 주엔 ${v.kind === "up" ? "오를" : "떨어질"} 가능성이 있어요`,
+      say: v.kind === "down" ? "오른 값에 급히 사지 말고 며칠 기다려 보세요" : "내린 지금 필요한 만큼 사 두세요",
+      pose: `alert_flat${(idx % 2) + 1}` };
+  }
+  // 유지: 한 달(최근 22거래일) 중 지금 값 위치로 한마디 — 계속 내려 싼 편이면 그렇다고 말함
+  const month = prices.filter((x) => x > 0).slice(-22);
+  const lo = Math.min(...month), hi = Math.max(...month), at = hi > lo ? (month.at(-1) - lo) / (hi - lo) : 0.5;
+  const flatSay = month.length < 5 ? "평소대로 구매하셔도 좋아요"
+    : at <= 0.3 ? "한 달 중 싼 편이라 지금 사셔도 괜찮아요" : at >= 0.7 ? "한 달 중 비싼 편이에요. 필요한 만큼만 사세요" : "평소대로 구매하셔도 좋아요";
+  return { kind: v.kind, crossed, text: v.text,
+    say: { up: "미리 사두는 게 좋을 것 같아요.", flat: flatSay, down: "급하지 않으면 나중에 사셔도 좋아요" }[v.kind],
+    pose: v.kind === "down" ? "alert_down" : `alert_${v.kind === "up" ? "rise" : "flat"}${(idx % 2) + 1}` };
+}
+
 function itemSlide(r, idx) {
   const f = r.forecast || {};
-  const v = verdict(f);
+  const v = salpiSays((r.history || []).map((h) => h.kg_price), f, idx);
   const why = plainReason(f.factors, v.kind);
-  // 오름: 경광등 살피(2 · 4번째 포즈 번갈아) · 유지: 알람시계 살피(1 · 3번째) · 내림: 쇼핑백 살피(6번째)
-  const pose = v.kind === "down" ? "alert_down" : `alert_${v.kind === "up" ? "rise" : "flat"}${(idx % 2) + 1}`;
-  const say = { up: "미리 사두는 게 좋을 것 같아요.", flat: "평소대로 구매하셔도 좋아요", down: "급하지 않으면 나중에 사셔도 좋아요" }[v.kind];
+  const { pose, say } = v;
   return `
 <article class="slide card" data-item="${esc(r.item)}">
   <div class="chart-head">
@@ -187,7 +238,7 @@ function itemSlide(r, idx) {
   <div class="fc-strip ${v.kind}">
     <div class="fc-text">
       <span class="verdict">${v.text}</span>
-      <span class="range">예상 ${won(f.expected_kg_price_range?.[0])} ~ ${won(f.expected_kg_price_range?.[1])}/kg${why ? ` · ${why}` : ""}</span>
+      <span class="range">예상 ${won(f.expected_kg_price_range?.[0])} ~ ${won(f.expected_kg_price_range?.[1])}/kg (가운데 ${pct(f.expected_change_pct)})${why ? ` · ${why}` : ""}</span>
     </div>
     <div class="advice" style="${poseVars(pose)}"><span class="say">${say}</span><img class="pose" src="/static/img/${pose}.png" alt=""></div>
   </div>
@@ -211,7 +262,7 @@ let lastSlide = -1;
 function onSlideChange(target) {
   const s = slides(), i = target ?? Math.min(slideIndex(), s.length - 1);
   $("#dots").textContent = s.length > 1 ? `${i + 1} / ${s.length}` : "";
-  if (i === lastSlide || !overview.length) return;
+  if (i === lastSlide) return;
   lastSlide = i;
   drawSlideChart(i);
 }
@@ -228,7 +279,7 @@ slider.addEventListener("pointerup", (e) => {
   if (Math.abs(dx) > 50) { goSlide(cur + (dx < 0 ? 1 : -1)); restartAuto(); }
 });
 
-// 8초마다 자동으로 다음 장. 대시보드에 마우스를 올려 보는 동안 · 다른 탭을 볼 때는 멈춤
+// 8초마다 자동으로 다음 장. 대시보드에 마우스를 올려 보는 동안은 멈춤
 const AUTO_MS = 8000;
 let autoTimer = null, hovering = false, paused = false;
 function restartAuto() {
@@ -255,32 +306,157 @@ $("#pauseSlide").onclick = () => setPaused(!paused);
 
 function drawSlideChart(i) {
   const el = slides()[i];
-  if (!el || charts[i]) return;
+  const canvas = el?.querySelector("canvas");
+  if (!canvas || charts[i]) return;
   const item = el.dataset.item;
-  charts[i] = item ? drawItemChart(el.querySelector("canvas"), byItem(item)) : drawOverviewChart(el.querySelector("canvas"));
+  if (PRODUCE(boardTab)) charts[i] = item ? drawItemChart(canvas, byItem(item)) : drawOverviewChart(canvas, vegBars());
+  else charts[i] = item ? drawExtraItemChart(canvas, extraByItem(item)) : drawOverviewChart(canvas, extraBars());
 }
 
-function drawOverviewChart(canvas) {
-  const rows = [...overview].filter((r) => r.wholesale_change_pct != null).sort((a, b) => b.wholesale_change_pct - a.wholesale_change_pct);
-  // 이웃한 야채 이름끼리 겹치지 않는 글자 크기: 막대 한 칸 너비 ÷ (가장 긴 이웃 두 이름의 평균 글자 수 + 띄움 0.5자)
-  const longestPair = Math.max(...rows.slice(1).map((r, i) => (r.item.length + rows[i].item.length) / 2));
-  const labelSize = (c) => Math.min(14, Math.floor((c.chart.width - 48) / rows.length / (longestPair + 0.5)));
+// ---------------------------------------------------------------
+// 시세 종류 탭: 농산물 · 수산물 · 육류. 셋 다 같은 슬라이드(1장 전체 비교 막대 → 품목별)
+// 수산물 · 육류는 경매 자료(반입량)가 없어 한 달 평균과의 차이 · 명절 · 행사(+ 한우 · 돼지는 경락가)로 7일 예측 (/api/meat-seafood)
+// ---------------------------------------------------------------
+let extra = null;      // 육류 · 수산물 시세 (처음 한 번 받음, 검색에도 씀)
+let extraReq = null;   // 받는 중인 요청 (탭 · 검색 · 재료 페이지가 같이 기다림)
+
+const extraList = () => (Array.isArray(extra) ? extra : []);
+const extraByItem = (name) => extraList().find((r) => r.item === name);
+const extraRows = () => extraList().filter((r) => r.group === boardTab && r.price);
+const basisName = (r) => r.basis_label || (r.price_basis === "중도매" ? "북부도매시장 중도매가" : "대구 소매 평균");
+// 고기는 kg당 값이 커서 100g당 값도 같이 (정육점 표기와 같게)
+const per100 = (r) => (r.group === "육류" && r.unit === "kg" ? ` · 100g ${won(r.price / 10)}` : "");
+
+const extraExp = (r) => r.forecast?.expected_change_pct ?? 0;
+// 농산물 차트 · 예측 칸을 그대로 쓰도록 모양을 맞춤 (price → kg_price, expected_price_range → expected_kg_price_range)
+function vegShape(r) {
+  const f = r.forecast && !r.forecast.error
+    ? { ...r.forecast, expected_kg_price_range: r.forecast.expected_price_range, base_kg_price: r.forecast.base_price } : null;
+  const history = (r.history || []).map((h, i, a) => ({ date: h.date, kg_price: h.price, diff: i ? h.price - a[i - 1].price : null,
+    rain_mm: h.rain_mm ?? null, events: h.events || [], holiday: h.holiday || null }));
+  return { item: r.item, history, forecast: f };
+}
+
+function renderExtraSlides() {
+  if (!extra) { $("#basis").textContent = ""; $("#slider").innerHTML = LOADING_SLIDE(boardTab); return; }
+  if (extra.error) {
+    $("#slider").innerHTML = `<article class="slide card loading-card"><b>${boardTab} 시세를 불러오지 못했어요</b>
+      <p class="muted">${esc(extra.error)}</p><button class="sort" type="button" id="extraRetry">다시 불러오기</button></article>`;
+    $("#extraRetry").onclick = () => { extra = null; extraReq = null; setBoardTab(boardTab); };
+    return;
+  }
+  const rows = extraRows();
+  const dated = rows.map((r) => r.date).filter(Boolean).sort();
+  $("#basis").textContent = dated.length ? `대구 · ${mmdd(dated.at(-1))} 기준` : "";
+  const order = [...rows].sort((a, b) => extraExp(b) - extraExp(a));
+  $("#slider").innerHTML = `
+    <article class="slide card" data-item="">
+      <div class="chart-head">
+        <div><h3>전체 ${boardTab} 시세</h3><p class="price-now muted">지난주보다 얼마나 올랐나 · 내렸나 (${boardTab === "육류" ? "대구 소매 평균" : "북부도매시장 중도매가 중심"})</p></div>
+        <div class="legend"><span><i class="lg up"></i>올랐어요</span><span><i class="lg down"></i>내렸어요</span></div>
+      </div>
+      <div class="chart-box"><canvas></canvas></div>
+      <p class="overview-note">다음 주 <b class="up">오를 가능성 ${rows.filter((r) => extraExp(r) >= 2).length}개</b> ·
+        <b>유지 ${rows.filter((r) => Math.abs(extraExp(r)) < 2).length}개</b> ·
+        <b class="down">떨어질 가능성 ${rows.filter((r) => extraExp(r) <= -2).length}개</b></p>
+    </article>` + order.map(extraSlide).join("");
+}
+
+// 품목 한 장: 메인 슬라이드와 재료 페이지가 함께 씀
+function extraSlide(r, idx) {
+  const f = r.forecast || {};
+  const v = salpiSays((r.history || []).map((h) => h.price), f, idx);
+  const why = plainReason(f.factors, v.kind);
+  const { pose, say } = v;
+  const range = f.expected_price_range ? `예상 ${won(f.expected_price_range[0])} ~ ${won(f.expected_price_range[1])}/${esc(r.unit || "")} (가운데 ${pct(f.expected_change_pct)})` : "예측할 자료가 부족해요";
+  return `
+<article class="slide card" data-item="${esc(r.item)}">
+  <div class="chart-head">
+    <div>
+      <h3>${esc(r.item)} 시세</h3>
+      <p class="price-now"><strong>${won(r.price)}/${esc(r.unit || "")}</strong>
+        <span class="${cls(r.week_change_pct, 3)}">1주 전보다 ${pct(r.week_change_pct)}</span>${per100(r) ? ` <span>· ${per100(r).slice(3)}</span>` : ""}</p>
+    </div>
+    <div class="legend">
+      <span><i class="lg line"></i>${esc(basisName(r))} ${esc(r.unit || "")}당</span><span><i class="lg fc"></i>7일 예측</span>
+      ${r.group === "수산물" ? `<span><i class="lg rain"></i>비</span>` : ""}<span><i class="lg event"></i>행사</span><span><i class="lg hol"></i>공휴일</span>
+    </div>
+  </div>
+  <div class="chart-box"><canvas></canvas></div>
+  <div class="fc-strip ${v.kind}">
+    <div class="fc-text">
+      <span class="verdict">${v.text}</span>
+      <span class="range">${range}${why ? ` · ${why}` : ""}</span>
+    </div>
+    <div class="advice" style="${poseVars(pose)}"><span class="say">${say}</span><img class="pose" src="/static/img/${pose}.png" alt=""></div>
+  </div>
+</article>`;
+}
+
+const drawExtraItemChart = (canvas, r) => drawItemChart(canvas, vegShape(r), `${basisName(r)} ${r.unit}당`);
+
+function loadExtra() {
+  extraReq ||= getJSON("/api/meat-seafood")
+    .then((b) => { extra = b.items; })
+    .catch((e) => { extra = { error: e.message }; })
+    .then(() => {
+      if (!PRODUCE(boardTab)) renderSlides();
+      if (ITEM) renderItemPage();
+    });
+  return extraReq;
+}
+
+function setBoardTab(tab) {
+  boardTab = tab;
+  $("#boardTabs").querySelectorAll("[data-tab]").forEach((b) => b.setAttribute("aria-selected", b.dataset.tab === tab));
+  if (PRODUCE(tab)) $("#basis").textContent = vegBasis;
+  else if (!extra) loadExtra();
+  renderSlides();
+  restartAuto();
+}
+$("#boardTabs").onclick = (e) => {
+  const b = e.target.closest("[data-tab]");
+  if (b && b.dataset.tab !== boardTab) setBoardTab(b.dataset.tab);
+};
+// 탭 사이 왼쪽 · 오른쪽 화살표 이동
+$("#boardTabs").onkeydown = (e) => {
+  if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+  const tabs = [...$("#boardTabs").querySelectorAll("[data-tab]")];
+  const i = tabs.findIndex((b) => b.dataset.tab === boardTab);
+  const next = tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+  setBoardTab(next.dataset.tab);
+  next.focus();
+};
+
+// 전체 비교 막대: rows = [{ name, value(1주 변화 %), tip }]
+const vegBars = () => produceRows().filter((r) => r.wholesale_change_pct != null).map((r) => ({
+  name: r.item, value: r.wholesale_change_pct,
+  tip: ` 1주 ${pct(r.wholesale_change_pct)} · ${won(r.wholesale_kg)}/kg · ${verdict(r.forecast).text}` }));
+const extraBars = () => extraRows().map((r) => ({
+  name: r.item, value: r.week_change_pct ?? 0,
+  tip: ` 1주 ${pct(r.week_change_pct)} · ${won(r.price)}/${r.unit} · ${basisName(r)}` }));
+
+function drawOverviewChart(canvas, bars) {
+  const rows = [...bars].sort((a, b) => b.value - a.value);
+  // 이웃한 이름끼리 겹치지 않는 글자 크기: 막대 한 칸 너비 ÷ (가장 긴 이웃 두 이름의 평균 글자 수 + 띄움 0.5자)
+  const longestPair = Math.max(1, ...rows.slice(1).map((r, i) => (r.name.length + rows[i].name.length) / 2));
+  const labelSize = (c) => Math.max(9, Math.min(14, Math.floor((c.chart.width - 48) / rows.length / (longestPair + 0.5))));
   return new Chart(canvas.getContext("2d"), {
     type: "bar",
     data: {
-      labels: rows.map((r) => r.item),
-      datasets: [{ data: rows.map((r) => r.wholesale_change_pct), borderRadius: 4,
-        backgroundColor: rows.map((r) => (r.wholesale_change_pct >= 0 ? "#E2453C" : "#1E9E7A")) }],
+      labels: rows.map((r) => r.name),
+      datasets: [{ data: rows.map((r) => r.value), borderRadius: 4,
+        backgroundColor: rows.map((r) => (r.value >= 0 ? "#E2453C" : "#1E9E7A")) }],
     },
     options: {
       maintainAspectRatio: false,
       plugins: { legend: { display: false },
-        tooltip: { callbacks: { label: (c) => ` 1주 ${pct(c.raw)} · ${won(rows[c.dataIndex].wholesale_kg)}/kg · ${verdict(rows[c.dataIndex].forecast).text}` } } },
+        tooltip: { callbacks: { label: (c) => rows[c.dataIndex].tip } } },
       scales: {
         x: { grid: { display: false }, ticks: { color: "#1F2622", font: (c) => ({ size: labelSize(c), weight: "700" }), autoSkip: false, maxRotation: 0 } },
         y: { grid: { color: "#F0EDE6" }, ticks: { color: "#8A918C", font: { size: 11 }, callback: (v) => `${v}%` } },
       },
-      onClick: (_e, els) => { if (els.length) showItem(rows[els[0].index].item); },
+      onClick: (_e, els) => { if (els.length) showItem(rows[els[0].index].name); },
     },
   });
 }
@@ -310,7 +486,7 @@ const overlayPlugin = {
   },
 };
 
-function drawItemChart(canvas, d) {
+function drawItemChart(canvas, d, label = "도매 kg당") {
   const h = d.history || [];
   const f = d.forecast;
   const labels = h.map((r) => mmdd(r.date));
@@ -339,7 +515,7 @@ function drawItemChart(canvas, d) {
     data: {
       labels,
       datasets: [
-        { type: "line", label: "도매 kg당", data: price, borderColor: "#5BC236", backgroundColor: grad, fill: true,
+        { type: "line", label, data: price, borderColor: "#5BC236", backgroundColor: grad, fill: true,
           tension: 0.15, pointRadius: 3, pointBackgroundColor: "#5BC236", borderWidth: 2, yAxisID: "y", order: 1 },
         { type: "line", label: "예측 상단", data: hi, borderColor: "transparent", backgroundColor: "rgba(232,106,46,0.12)",
           fill: "+1", spanGaps: true, pointRadius: 0, yAxisID: "y", order: 2 },
@@ -384,14 +560,20 @@ function drawItemChart(canvas, d) {
 // ---------------------------------------------------------------
 // 재료 전용 페이지 (/?item=토마토): 그 재료의 날짜별 시세 · 예측 · 식봄 연결만 보여 줌
 // ---------------------------------------------------------------
+// 야채 시세(overview)와 육류 · 수산물 시세(extra) 중 먼저 찾은 쪽으로 한 번만 그림
+let itemDone = false;
 function renderItemPage() {
+  if (itemDone) return;
   const r = byItem(ITEM);
   if (!r) {
-    $("#itemHead").innerHTML = `<h1>${esc(ITEM)}</h1><p class="muted">아직 시세를 제공하지 않는 재료예요.</p>`;
+    const x = extraByItem(ITEM);
+    if (x) { itemDone = true; renderExtraItemPage(x); return; }
+    if (overview.length && extra) $("#itemHead").innerHTML = `<h1>${esc(ITEM)}</h1><p class="muted">아직 시세를 제공하지 않는 재료예요.</p>`;
     return;
   }
+  itemDone = true;
   document.title = `${r.item} 시세 · 살피`;
-  const v = verdict(r.forecast);
+  const v = salpiSays((r.history || []).map((h) => h.kg_price), r.forecast);
   $("#itemHead").innerHTML = `
     <div><h1>${esc(r.item)}</h1><p class="${v.kind === "flat" ? "" : v.kind}">${esc(v.text)}</p></div>
     <a class="item-shop" href="${esc(r.foodspring_url || "https://www.foodspring.co.kr")}" target="_blank" rel="noopener" title="식봄에서 ${esc(r.item)} 사기">식자재 바로가기 →</a>`;
@@ -400,6 +582,61 @@ function renderItemPage() {
   drawItemChart($("#itemDash canvas"), r);
   renderDetail(r.item);
   renderItemGoods();
+}
+
+// 육류 · 수산물 재료 페이지: 대시보드(4주 그래프) · 시세판(조사일별 증감) · 한 달 시세 위치. 예측 칸은 없다는 안내
+function renderExtraItemPage(r) {
+  document.title = `${r.item} 시세 · 살피`;
+  const d = vegShape(r);
+  const v = salpiSays(d.history.map((h) => h.kg_price), d.forecast);
+  $("#itemHead").innerHTML = `
+    <div><h1>${esc(r.item)}</h1><p class="${v.kind === "flat" ? "" : v.kind}">${esc(v.text)} · ${esc(r.group)}</p></div>
+    <a class="item-shop" href="${esc(r.foodspring_url || "https://www.foodspring.co.kr")}" target="_blank" rel="noopener" title="식봄에서 ${esc(r.item)} 사기">식자재 바로가기 →</a>`;
+  $("#itemBody").hidden = false;
+  $("#itemDash").innerHTML = extraSlide(r, 0);
+  drawExtraItemChart($("#itemDash canvas"), r);
+  boardItem = { item: r.item, history: d.history, label: `${basisName(r)} ${r.unit}당` };
+  renderBoard();
+  renderForecast(d.forecast, d.history, r.unit);
+  $("#forecastCard .fc-reasons h4")?.insertAdjacentHTML("afterend",
+    `<p class="muted fc-extra-note">경매 자료(반입량)가 없어 농산물보다 이유가 적은 추정이에요 · 출처 ${esc(r.source)}</p>`);
+  renderGradeTable(r.grade_table);
+}
+
+// 등급별 도매 경락가 표 (한우 · 돼지만, 재료 페이지에만 — 대시보드에는 넣지 않음)
+// 등급마다 가격 막대 · 물량 막대로 한눈에, 아래에는 "지금 소매가 vs 같은 등급 경락가" 막대 두 줄
+function renderGradeTable(t) {
+  $("#gradeTable")?.remove();
+  if (!t || !t.rows?.length) return;
+  const pig = t.rows.some((x) => x.all_price != null);
+  const maxP = Math.max(...t.rows.map((x) => Math.max(x.price || 0, x.all_price || 0)));
+  const maxC = Math.max(1, ...t.rows.map((x) => x.count || 0));
+  const bar = (v, max, cls) => (v ? `<span class="g-bar ${cls}"><i style="width:${Math.max(3, (v / max) * 100).toFixed(1)}%"></i></span>` : "");
+  const unitCnt = pig ? "마리" : "상자";
+  const r = t.retail;
+  const times = r && t.compare_price ? r.price / t.compare_price : null;
+  const cmpMax = r ? Math.max(r.price, t.compare_price || 0) : 0;
+  $("#priceBoard").insertAdjacentHTML("beforebegin", `
+    <section class="card grade-table" id="gradeTable">
+      <div class="grade-head"><h3>등급별 도매 경락가</h3>
+        <p class="muted">${esc(t.market)} · ${mmdd(t.date)} 경매 · kg당 · ${esc(t.note)}${pig ? " · 회색 막대는 전국 평균" : ""}</p></div>
+      <table class="g-table">
+        <thead><tr><th>등급</th><th>경락가 (kg당)</th><th>물량</th></tr></thead>
+        <tbody>${t.rows.map((x) => `<tr class="${x.grade === t.compare_grade ? "on" : ""}">
+          <th scope="row">${esc(x.grade)}${x.grade === t.compare_grade ? "<small>소매와 같은 등급</small>" : ""}</th>
+          <td><div class="g-cell">${bar(x.price, maxP, "price")}<b>${x.price ? won(x.price) : "-"}</b></div>
+            ${pig && x.all_price ? `<div class="g-cell all">${bar(x.all_price, maxP, "all")}<span>전국 ${won(x.all_price)}</span></div>` : ""}</td>
+          <td><div class="g-cell">${bar(x.count, maxC, "count")}<span>${x.count ? `${Math.round(x.count).toLocaleString("ko-KR")}${unitCnt}` : "-"}</span></div></td>
+        </tr>`).join("")}</tbody>
+      </table>
+      ${r && t.compare_price ? `<div class="g-compare">
+        <p><b>사장님이 사는 값(소매)은 도매 경락가의 ${times.toFixed(1)}배</b>예요</p>
+        <div class="g-cell">${bar(r.price, cmpMax, "retail")}<span>대구 소매 평균 · ${esc(r.name)} <b>${won(r.price)}/kg</b></span></div>
+        <div class="g-cell">${bar(t.compare_price, cmpMax, "price")}<span>${esc(t.market)} 경락가 · ${esc(t.compare_name)} <b>${won(t.compare_price)}/kg</b></span></div>
+        ${pig ? `<p class="muted small">돼지는 부위 경매가 없어 통째(도체) 값과 견줬어요. 부위값과 직접 같지는 않아요.</p>` : ""}
+      </div>` : ""}
+      <p class="muted small">출처 ${esc(t.source)}</p>
+    </section>`);
 }
 
 function renderItemGoods() {
@@ -470,7 +707,7 @@ function renderBoard() {
   $("#priceBoard").innerHTML = `
     <div class="board-head">
       <div>
-        <p class="board-label">${esc(d.item)} · 도매 kg당 · ${mmdd(last.date)} 기준</p>
+        <p class="board-label">${esc(d.item)} · ${esc(d.label || "도매 kg당")} · ${mmdd(last.date)} 기준</p>
         <p class="board-now"><b>${number(last.kg_price)}<small>원</small></b>
           ${change == null ? "" : `<span><strong class="${cls(change)}">${arrow(change)} ${boardSigned(change)}</strong> 직전 거래일${prev ? `(${mmdd(prev.date)})` : ""} 대비</span>`}</p>
       </div>
@@ -504,7 +741,7 @@ $("#priceBoard").addEventListener("click", (e) => {
   renderBoard();
 });
 
-function renderForecast(f, history = []) {
+function renderForecast(f, history = [], unit = "kg") {
   if (!f || f.error) { $("#forecastCard").innerHTML = ""; return; }
   const v = verdict(f);
   const big = (x) => Math.abs(x.effect_pct) >= 0.1;
@@ -519,7 +756,7 @@ function renderForecast(f, history = []) {
       <p class="tip">${esc(f.suggestion)}</p>
       ${fcSpark(history, lo, hi)}
       <div class="fc-range">
-        <div><small>지금 (kg당)</small><b>${won(f.base_kg_price)}</b></div>
+        <div><small>지금 (${esc(unit)}당)</small><b>${won(f.base_kg_price)}</b></div>
         <i aria-hidden="true">→</i>
         <div><small>7일 뒤 예상</small><b>${won(lo)} ~ ${won(hi)}</b></div>
       </div>
@@ -1114,22 +1351,28 @@ const martChange = (v) => (v == null ? "" : v > 0
   : `<span class="mart-chg">2주 전과 같아요</span>`);
 
 // 최저가 회사의 온라인몰 검색 결과로 가는 바로가기 (그 회사에 몰이 없으면 몰 있는 회사 중 가장 싼 곳)
-const martShop = (s) => (!s ? "" : `<a class="mart-shop" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer"
-    title="${esc(s.chain)} 매장가 기준이에요. 온라인몰 가격은 다를 수 있어요">
-    ${s.lowest ? "" : `<small>온라인몰 있는 곳 중 가장 싼 ${esc(s.chain)} ${won(s.price)}</small>`}${esc(s.mall)}에서 보기 →</a>`);
+// 온라인몰 바로가기 버튼 (새 창)
+const EXT_ICON = '<svg class="ext" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>';
+const martShop = (s) => (!s ? "" : `<div class="mart-shop-row"><a class="mart-shop" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer"
+    title="${esc(s.mall)}로 가요 · ${esc(s.chain)} 매장가 기준이라 온라인몰 가격은 다를 수 있어요"><span class="mart-go">최저가 바로가기${EXT_ICON}</span></a></div>`);
+
+// 품목 이름을 두 줄로: '쇠고기 등심' / '(1등급, 100g)' — 괄호가 없으면 한 줄
+// 원래 자료에 무게가 없는 품목은 통째로 파는 단위를 적어 줌
+const MART_UNIT = { "양배추": "(1통)", "애호박": "(1개)" };
+function martName(name) {
+  const m = name.match(/^(.+?)\s*(\(.*\))$/);
+  const [base, spec] = m ? [m[1], m[2]] : [name, MART_UNIT[name]];
+  return `<span class="mart-name">${esc(base)}</span>${spec ? `<small class="mart-spec">${esc(spec)}</small>` : ""}`;
+}
 
 function martCard(x) {
   const one = x.chains.length === 1;   // 한 회사에서만 조사된 재료는 비교 없이
-  const sub = [one ? "" : `보통 ${won(x.typical)}`, x.daegu ? `대구 매장 ${won(x.daegu.price)}` : ""].filter(Boolean).join(" · ");
   return `<article class="mart-item">
-    <p class="mart-cat">${esc(x.category)}</p>
-    <h3>${esc(x.name)}</h3>
-    <p class="mart-low"><small>${one ? "파는 곳" : "가장 싼 곳"} · ${esc(x.low_chain)}</small><b>${won(x.low)}</b></p>
-    <p class="mart-sub">${sub || "한 회사에서만 조사됐어요"}</p>
+    <h3 title="${esc(x.name)}">${martName(x.name)}</h3>
+    <p class="mart-low"><b>${won(x.low)}</b></p>
     ${martShop(x.shop)}
-    ${martChange(x.change_pct) || `<span class="mart-chg">2주 전 값 없음</span>`}
-    ${one ? `<p class="mart-chains-none">회사별 비교 없음</p>` : `<details class="mart-chains"><summary>회사별 가격 ${x.chains.length}곳</summary>
-      <ul>${x.chains.map((c) => `<li><span>${esc(c.chain)}<small>${esc(c.channel)}</small></span><b>${won(c.price)}</b>${
+    ${one ? `<div class="mart-chains" aria-hidden="true"></div>` : `<details class="mart-chains"><summary>회사별 가격</summary>
+      <ul>${x.chains.map((c) => `<li${c.price === x.low ? ' class="mart-min"' : ""}><span>${esc(c.chain)}</span><b>${won(c.price)}</b>${
         c.change_pct ? `<em class="${c.change_pct > 0 ? "mart-up" : "mart-down"}">${pct(c.change_pct)}</em>` : "<em></em>"}</li>`).join("")}</ul>
     </details>`}
   </article>`;
@@ -1201,6 +1444,8 @@ async function loadContext() {
 // ---------------------------------------------------------------
 const chatEl = $("#chat"), body = $("#chatBody");
 const history = [];   // 지난 대화 (서버가 기억하지 않으므로 화면이 보관해서 매번 보냄)
+// 대화 기록용 묶음 번호: 이 창에서 나눈 대화끼리만 묶음 (가게 · 로그인 정보와 연결하지 않음, 새로 고침하면 바뀜)
+const chatSession = (crypto.randomUUID && crypto.randomUUID()) || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 function md(text) {
   // 굵게 · 목록 · 줄바꿈만 지원하는 간단한 변환
@@ -1363,7 +1608,7 @@ async function send(text) {
   typing.classList.add("typing");
   try {
     const r = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text, history }) });
+      body: JSON.stringify({ message: text, history, session: chatSession }) });
     const d = await r.json();
     typing.remove();
     addMsg("bot", d.reply);
@@ -1390,10 +1635,21 @@ function markHit(text, word) {
   return `${esc(text.slice(0, at))}<mark>${esc(text.slice(at, end))}</mark>${esc(text.slice(end))}`;
 }
 
+// 이름에 없지만 사장님이 흔히 쓰는 말 ("소고기" → 한우 등심, "달걀" → 계란)
+const SEARCH_WORDS = {
+  "한우 등심": "소고기", "한우 양지": "소고기 국거리", "돼지고기 앞다리": "돼지 제육 찌개용", "돼지고기 삼겹살": "돼지 오겹",
+  "닭고기": "생닭 닭볶음탕", "계란": "달걀", "새우젓": "젓갈", "멸치액젓": "젓갈 액젓",
+  "명태": "동태 생태", "새우": "흰다리",
+};
+
 function findAll(word) {
   const key = squash(word);
-  const items = overview.filter((r) => squash(r.item).includes(key))
-    .map((r) => ({ name: r.item, note: r.wholesale_kg ? `도매 kg당 ${won(r.wholesale_kg)}` : "" }));
+  const items = [
+    ...overview.filter((r) => squash(r.item).includes(key))
+      .map((r) => ({ name: r.item, note: r.wholesale_kg ? `${kindOf(r)} · 도매 kg당 ${won(r.wholesale_kg)}` : kindOf(r) })),
+    ...extraList().filter((r) => r.price && squash(`${r.item} ${SEARCH_WORDS[r.item] || ""}`).includes(key))
+      .map((r) => ({ name: r.item, note: `${r.group} · ${basisName(r)} ${won(r.price)}/${r.unit}` })),
+  ];
   const seen = new Set();
   const goods = Object.values(shop).flat().filter((g) => {
     if (seen.has(g.url) || !squash(g.name).includes(key)) return false;
@@ -1425,7 +1681,7 @@ function setupSearch(searchInput, searchList, idp) {
     const hit = (h, i) => `<a class="search-hit" id="${idp}${i}" role="option" aria-selected="false" href="${h.url ? esc(h.url) : `/?item=${encodeURIComponent(h.name)}`}"
       ${h.url ? 'target="_blank" rel="noopener"' : ""}><span>${markHit(h.name, word)}</span><small>${esc(h.note)}</small></a>`;
     searchList.innerHTML = searchHits.length
-      ? (items.length ? `<p class="search-group">야채 시세 ${items.length}개</p>${items.map((h, i) => hit(h, i)).join("")}` : "")
+      ? (items.length ? `<p class="search-group">재료 시세 ${items.length}개</p>${items.map((h, i) => hit(h, i)).join("")}` : "")
         + (goods.length ? `<p class="search-group">식봄 상품 ${goods.length}개</p>${goods.map((h, i) => hit(h, items.length + i)).join("")}` : "")
       : `<p class="search-empty">${overview.length ? `'${esc(word)}'이(가) 들어간 재료나 상품이 없어요` : "시세를 불러오는 중이에요"}</p>`;
     searchList.hidden = false;
@@ -1469,11 +1725,8 @@ function setupSearch(searchInput, searchList, idp) {
   return { goFirst };
 }
 
-setupSearch($("#searchInput"), $("#searchList"), "hit");
-if ($("#heroSearchInput")) {
-  const heroSearch = setupSearch($("#heroSearchInput"), $("#heroSearchList"), "heroHit");
-  $("#heroSearchBtn").addEventListener("click", heroSearch.goFirst);
-}
+const topSearch = setupSearch($("#searchInput"), $("#searchList"), "hit");
+$("#searchBtn").addEventListener("click", topSearch.goFirst);
 
 // ---------------------------------------------------------------
 // 알림톡 시연: 세그먼트별 메시지 (실제 발송 없음). 시세 문장은 오늘 값, 나머지는 예시 문장
@@ -1541,6 +1794,7 @@ $("#talk").addEventListener("click", (e) => {
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#talk").hidden) closeTalk(); });
 
 loadOverview();
+loadExtra();   // 육류 · 수산물: 탭 · 검색 · 재료 페이지(/?item=삼겹살)에서 씀
 loadProducts();
 loadMyItems();
 if (STORE_VIEW) {
@@ -1564,6 +1818,9 @@ if (STORE_VIEW) {
 if (location.hash === "#chat") openChat();   // 주소 끝에 #chat 을 붙이면 채팅창이 열린 채로 시작
 if (location.hash === "#talk") openTalk();   // 주소 끝에 #talk 을 붙이면 알림톡 시연이 열린 채로 시작
 if (location.hash === "#rise") setTimeout(() => goSlide(1, "instant"), 4000);   // 시연용: 첫 야채 대시보드부터
+if (location.hash === "#fruit") setBoardTab("과일");   // 시연용: 과일 탭이 열린 채로
+if (location.hash === "#sea") setBoardTab("수산물");   // 시연용: 수산물 탭이 열린 채로
+if (location.hash === "#meat") setBoardTab("육류");    // 시연용: 육류 탭이 열린 채로
 
 // ---------------------------------------------------------------
 // 영수증 한 장 자세히 (사진 + 품목) — '최근 영수증' 목록 · 마이페이지 '나의 영수증'에서 엶
@@ -1627,10 +1884,10 @@ $("#receiptModalClose").onclick = closeReceipt;
 $("#receiptModal").onclick = (e) => { if (e.target.id === "receiptModal") closeReceipt(); };
 
 // ---------------------------------------------------------------
-// 마이페이지 (시연: 로그인했다고 치고 시연용 가게 계정)
+// 마이페이지 (시연: 로그인했다고 치고 시연용 가게 계정): 첫 화면 내 정보 · 나의 영수증 · 설정(알림 · 권한) · 계정
 // ---------------------------------------------------------------
 const ME = { name: "달서구 한식당 사장님", store: "살피 한식당", place: "대구 달서구", type: "한식 · 40석", email: "demo@salpi.example" };
-if (STORE_VIEW) $("#storeName").textContent = `마이페이지 · ${ME.store}`;
+if (STORE_VIEW) $("#storeName").textContent = `나의 가게 · ${ME.store}`;
 
 function openMypage(view = "home") {
   $("#mypage").classList.add("open");
@@ -1647,7 +1904,7 @@ function closeMypage() {
 async function renderMypage(view) {
   const box = $("#mypageBody");
   $("#mypageBack").hidden = view === "home";
-  $("#mypageTitle").textContent = view === "home" ? "설정" : "나의 영수증";
+  $("#mypageTitle").textContent = { home: "마이페이지", receipts: "나의 영수증", settings: "설정" }[view];
   if (view === "receipts") {
     box.innerHTML = `<p class="muted">불러오는 중이에요</p>`;
     try {
@@ -1659,25 +1916,17 @@ async function renderMypage(view) {
     } catch (e) { box.innerHTML = `<p class="rc-warn">${esc(e.message)}</p>`; }
     return;
   }
-  const prefs = alertPrefs();
-  box.innerHTML = `
-    <section class="my-card profile">
-      <img src="/static/img/owner_face.png" alt="">
-      <div><b>${esc(ME.name)}</b><small>${esc(ME.email)}</small></div>
-    </section>
-    <section class="my-card">
-      <h4>내 정보</h4>
-      <dl><dt>지역</dt><dd>${esc(ME.place)}</dd><dt>업종</dt><dd>${esc(ME.type)}</dd></dl>
-      <a class="my-link" href="/?page=store"><span>마이페이지 (우리 가게)</span><i>›</i></a>
-      <button class="my-link" data-view="receipts"><span>나의 영수증</span><i>›</i></button>
-    </section>
+  if (view === "settings") {
+    // 설정: 알림 설정 · 권한 설정
+    const prefs = alertPrefs();
+    box.innerHTML = `
     <section class="my-card">
       <h4>알림 설정</h4>
       <p class="muted small">켜 둔 알림은 살피가 챗봇 창으로 보내 드려요.</p>
       <label class="toggle-row">
         <span><b>내 메뉴 재료만</b><small>${myItems
           ? `내 메뉴에 들어가는 ${esc(overview.filter((r) => myItems.has(r.item)).map((r) => r.item).join(" · ") || "재료")}만 알려 드려요`
-          : "메뉴를 불러오지 못해 모든 야채를 알려 드려요"}</small></span>
+          : "메뉴를 불러오지 못해 모든 농산물을 알려 드려요"}</small></span>
         <input type="checkbox" class="switch" data-pref="mine" ${prefs.mine ? "checked" : ""}></label>
       ${ALERT_TYPES.map(([k, title, desc]) => `<label class="toggle-row">
         <span><b>${title}</b><small>${desc}</small></span>
@@ -1688,14 +1937,30 @@ async function renderMypage(view) {
       <p class="muted small">영수증을 카메라로 찍거나, 창을 닫아 둬도 시세 알림을 받으려면 권한이 필요해요.</p>
       <div class="toggle-row"><span><b>카메라</b><small id="camState">확인하는 중</small></span><span id="camAct"></span></div>
       <div class="toggle-row"><span><b>브라우저 알림</b><small id="notiState">확인하는 중</small></span><span id="notiAct"></span></div>
+    </section>`;
+    showCameraPerm();
+    showNotiPerm();
+    return;
+  }
+  box.innerHTML = `
+    <section class="my-card profile">
+      <img src="/static/img/owner_face.png" alt="">
+      <div><b>${esc(ME.name)}</b><small>${esc(ME.email)}</small></div>
+    </section>
+    <section class="my-card">
+      <h4>내 정보</h4>
+      <dl><dt>지역</dt><dd>${esc(ME.place)}</dd><dt>업종</dt><dd>${esc(ME.type)}</dd></dl>
+      <a class="my-link" href="/?page=store"><span>나의 가게</span><i>›</i></a>
+      <button class="my-link" data-view="receipts"><span>나의 영수증</span><i>›</i></button>
+    </section>
+    <section class="my-card">
+      <button class="my-link" type="button" data-view="settings"><span>설정 <small class="muted">알림 · 권한</small></span><i>›</i></button>
     </section>
     <section class="my-card my-account">
       <button class="my-link" type="button" data-account="logout"><span>로그아웃</span><i>›</i></button>
       <button class="my-link danger" type="button" data-account="leave"><span>회원탈퇴</span><i>›</i></button>
       <p class="muted small" id="accountNote" hidden>로그인 · 회원가입 기능이 생기면 쓸 수 있어요.</p>
     </section>`;
-  showCameraPerm();
-  showNotiPerm();
 }
 
 // 브라우저 알림 권한: 허용하면 새 시세 알림을 화면 밖(작업 표시줄 · 휴대폰 알림)으로도 띄움
@@ -1757,10 +2022,10 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeRec
 // ---------------------------------------------------------------
 const ALERT_PREFS_KEY = "salpi_alert_prefs", ALERT_READ_KEY = "salpi_alert_read";
 const ALERT_TYPES = [
-  ["all", "모든 시세가 오르고 내릴 때", "지난주보다 3% 넘게 움직인 야채를 알려 드려요"],
-  ["up", "값이 오를 때만", "지난주보다 10% 넘게 오른 야채"],
-  ["down", "값이 내렸을 때만", "지난주보다 10% 넘게 내린 야채"],
-  ["unusual", "평소랑 다를 때만", "하루 사이에 평소보다 크게 움직인 야채"],
+  ["all", "모든 시세가 오르고 내릴 때", "지난주보다 3% 넘게 움직인 농산물을 알려 드려요"],
+  ["up", "값이 오를 때만", "지난주보다 10% 넘게 오른 농산물"],
+  ["down", "값이 내렸을 때만", "지난주보다 10% 넘게 내린 농산물"],
+  ["unusual", "평소랑 다를 때만", "하루 사이에 평소보다 크게 움직인 농산물"],
   ["weekly", "주 1회 대시보드 리포트", "한 주 시세를 한 번에 정리해 드려요"],
 ];
 const DEFAULT_PREFS = { mine: true, all: false, up: true, down: false, unusual: true, weekly: true };
@@ -1790,7 +2055,9 @@ function buildAlerts() {
   const day = overview.map((r) => r.wholesale_date).filter(Boolean).sort().at(-1) || "";
   // '내 메뉴 재료만'을 켜면 우리 가게 메뉴에 들어가는 야채만 알림
   const mine = prefs.mine && myItems;
-  const pool = mine ? overview.filter((r) => myItems.has(r.item)) : overview;
+  // 야채 · 과일 중 요즘 거래되는 것만 (제철이 아니라 거래가 드문 과일은 알림에서 뺌)
+  const live = overview.filter((r) => r.wholesale_kg && (r.history || []).length >= 8);
+  const pool = mine ? live.filter((r) => myItems.has(r.item)) : live;
   const tag = mmdd(day);
   const out = [], seen = new Set();
   const push = (id, text, title, item) => { if (!seen.has(id)) { seen.add(id); out.push({ id: `${day}|${id}`, text, title, item, day }); } };
@@ -1822,13 +2089,13 @@ function buildAlerts() {
   }
   if (prefs.weekly && day) {
     const d = new Date(day), monday = new Date(d - ((d.getDay() + 6) % 7) * 864e5).toISOString().slice(0, 10);
-    const ups = overview.filter((r) => ch(r) >= 3), downs = overview.filter((r) => ch(r) <= -3), rise = overview.filter((r) => expOf(r) >= 2);
-    const top = [...overview].sort((a, b) => ch(b) - ch(a));
+    const ups = live.filter((r) => ch(r) >= 3), downs = live.filter((r) => ch(r) <= -3), rise = live.filter((r) => expOf(r) >= 2);
+    const top = [...live].sort((a, b) => ch(b) - ch(a));
     out.push({ id: `week|${monday}`, title: `이번 주 살피 리포트 (${mmdd(monday)} 주)`, item: null, day,
       text: `사장님, **이번 주 살피 리포트**예요 (${mmdd(monday)} 주).\n`
-      + `- 지난주보다 오른 야채 ${ups.length}개 · 내린 야채 ${downs.length}개\n`
-      + `- 가장 많이 오른 야채: ${top[0].item} ${pct(ch(top[0]))}\n`
-      + `- 가장 많이 내린 야채: ${top.at(-1).item} ${pct(ch(top.at(-1)))}\n`
+      + `- 지난주보다 오른 농산물 ${ups.length}개 · 내린 농산물 ${downs.length}개\n`
+      + `- 가장 많이 오른 농산물: ${top[0].item} ${pct(ch(top[0]))}\n`
+      + `- 가장 많이 내린 농산물: ${top.at(-1).item} ${pct(ch(top.at(-1)))}\n`
       + `- 다음 주 오를 가능성: ${rise.length}개${rise.length ? ` (${rise.sort((a, b) => expOf(b) - expOf(a)).slice(0, 3).map((r) => r.item).join(", ")} 등)` : ""}\n`
       + (mine && pool.length ? `- 내 메뉴 재료: ${pool.map((r) => `${r.item} ${pct(ch(r))}`).join(", ")}\n` : "")
       + "자세한 건 위의 시세 대시보드에서 보세요." });
@@ -1903,7 +2170,7 @@ $("#bellPanel").onclick = (e) => {
   e.stopPropagation();
   const a = e.target.closest("[data-aid]");
   if (a) { toggleBell(false); return goToAlert(a.dataset.aid); }
-  if (e.target.closest("[data-open-settings]")) { toggleBell(false); openMypage(); }
+  if (e.target.closest("[data-open-settings]")) { toggleBell(false); openMypage("settings"); }
 };
 $("#bellReadAll").onclick = () => markAlertsRead();
 document.addEventListener("click", () => toggleBell(false));
@@ -1968,3 +2235,7 @@ $("#eventCard").onclick = (e) => {
   const b = e.target.closest("[data-event]");
   if (b) openEvent(b.dataset.event);
 };
+
+// 시연용 주소: 마이페이지 코드 · 알림 설정 값이 모두 읽힌 뒤에 열어야 해서 파일 맨 끝에 둠
+if (location.hash === "#my") openMypage();               // 시연용: 마이페이지가 열린 채로
+if (location.hash === "#settings") openMypage("settings");   // 시연용: 마이페이지 › 설정(알림 · 권한)이 열린 채로

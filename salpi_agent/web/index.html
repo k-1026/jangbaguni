@@ -7,7 +7,7 @@
   <link rel="icon" href="/static/img/salpi_face.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=69">
+  <link rel="stylesheet" href="/static/style.css?v=119">
 </head>
 <body>
 
@@ -22,19 +22,20 @@
     </nav>
     <div class="search" role="search">
       <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
-      <input id="searchInput" type="search" role="combobox" autocomplete="off" placeholder="재료 · 상품 검색" aria-label="재료와 상품 검색"
+      <input id="searchInput" type="search" role="combobox" autocomplete="off" placeholder="어떤 식재료를 찾으세요?" aria-label="재료와 상품 검색"
              aria-autocomplete="list" aria-expanded="false" aria-controls="searchList">
+      <button id="searchBtn" class="search-btn" type="button" aria-label="검색"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button>
       <div class="search-list" id="searchList" role="listbox" aria-label="검색 결과" hidden></div>
     </div>
     <div class="top-actions">
-      <!-- 마이페이지(가게): 사장님 로그인 시 내일 준비 · 메뉴별 원가율 · 영수증 분석 (시연: 로그인했다고 치고 기본 계정) -->
-      <a class="store-btn" id="storeBtn" href="/?page=store"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h16v10H4z"/><path d="M3 10l2-5h14l2 5"/><path d="M10 20v-5h4v5"/></svg><span>마이페이지</span></a>
+      <!-- 나의 가게: 사장님 로그인 시 내일 준비 · 메뉴별 원가율 · 영수증 분석 (시연: 로그인했다고 치고 기본 계정) -->
+      <a class="store-btn" id="storeBtn" href="/?page=store"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h16v10H4z"/><path d="M3 10l2-5h14l2 5"/><path d="M10 20v-5h4v5"/></svg><span>나의 가게</span></a>
       <button class="icon-btn" id="bellBtn" aria-label="알림 모아 보기" aria-expanded="false" title="알림"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2Z"/></svg><span class="count" id="bellCount" hidden></span></button>
       <div class="bell-panel" id="bellPanel" hidden>
         <div class="bell-head"><b>알림</b><button id="bellReadAll">모두 읽음</button></div>
         <ul class="bell-list" id="bellList"></ul>
       </div>
-      <button class="icon-btn set-btn" id="meBtn" aria-label="설정" title="설정"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M19.14 12.94a7.5 7.5 0 0 0 .05-.94 7.5 7.5 0 0 0-.05-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.03 7.03 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 13.9 2.5h-3.8a.5.5 0 0 0-.49.42l-.36 2.54c-.59.24-1.13.56-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.71 8.98a.5.5 0 0 0 .12.64l2.03 1.58a7.5 7.5 0 0 0 0 1.88l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.39.3.6.22l2.39-.96c.5.38 1.04.7 1.63.94l.36 2.54c.04.24.25.42.49.42h3.8c.24 0 .45-.18.49-.42l.36-2.54c.59-.24 1.13-.56 1.63-.94l2.39.96c.22.08.47 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7Z"/></svg></button>
+      <button class="me-btn" id="meBtn" aria-label="마이페이지"><img src="/static/img/owner_face.png" alt=""><span>마이페이지</span></button>
     </div>
   </div>
 </header>
@@ -55,14 +56,6 @@
         <div class="summary" id="summary">
           <div class="chip skeleton"></div><div class="chip skeleton"></div><div class="chip skeleton"></div>
         </div>
-        <!-- 첫 화면 검색: 위쪽 메뉴 검색창과 같은 결과 -->
-        <div class="search hero-search" role="search">
-          <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
-          <input id="heroSearchInput" type="search" role="combobox" autocomplete="off" placeholder="재료 · 상품 검색" aria-label="재료 시세 검색"
-                 aria-autocomplete="list" aria-expanded="false" aria-controls="heroSearchList">
-          <button id="heroSearchBtn" type="button">검색</button>
-          <div class="search-list" id="heroSearchList" role="listbox" aria-label="검색 결과" hidden></div>
-        </div>
         <!-- 식자재 구매는 식봄으로 연결만 (살피는 팔지 않음) -->
         <a class="buy-link" href="https://www.foodspring.co.kr" target="_blank" rel="noopener">
           <span><b>식자재 구매 바로가기</b><small>식봄에서 오늘 필요한 식자재를 사요</small></span>
@@ -72,8 +65,17 @@
 
       <div class="hero-board">
         <div class="slider-head">
-          <div class="slider-title"><span class="basis" id="basis"></span></div>
-          <div class="slider-nav">
+          <div class="slider-title">
+            <!-- 시세 종류 탭: 누르면 아래 슬라이드가 그 종류로 바뀜 -->
+            <div class="board-tabs" id="boardTabs" role="tablist" aria-label="시세 종류">
+              <button type="button" role="tab" data-tab="야채" aria-selected="true"><small>농산물</small>야채</button>
+              <button type="button" role="tab" data-tab="과일" aria-selected="false"><small>농산물</small>과일</button>
+              <button type="button" role="tab" data-tab="수산물" aria-selected="false">수산물</button>
+              <button type="button" role="tab" data-tab="육류" aria-selected="false">육류</button>
+            </div>
+            <span class="basis" id="basis"></span>
+          </div>
+          <div class="slider-nav" id="sliderNav">
             <button id="prevSlide" aria-label="이전">‹</button>
             <span class="slide-count" id="dots"></span>
             <button id="nextSlide" aria-label="다음">›</button>
@@ -81,7 +83,7 @@
           </div>
         </div>
         <div class="slider" id="slider">
-          <!-- app.js가 채움: 1장 전체 야채 → 2장부터 야채별 대시보드(오를 가능성 높은 순) -->
+          <!-- app.js가 채움: 1장 전체 비교 막대 → 2장부터 품목별 대시보드 (농산물은 오를 가능성 높은 순, 수산물 · 육류는 1주 변화 큰 순) -->
           <article class="slide card loading-card">
             <div class="spinner"></div>
             <b>새벽 시세를 받아 오는 중이에요</b>
@@ -107,9 +109,9 @@
     </div>
   </section>
 
-  <!-- 마이페이지(가게) (/?page=store): 사장님 로그인 시에만 보이는 세 가지 -->
+  <!-- 나의 가게 페이지 (/?page=store): 사장님 로그인 시에만 보이는 세 가지 -->
   <section class="wrap section store-only store-head">
-    <h1 id="storeName">마이페이지</h1>
+    <h1 id="storeName">나의 가게</h1>
     <p class="muted">우리 가게 판매 기록과 영수증으로 내일 준비 · 원가율을 살펴봐요</p>
   </section>
 
@@ -181,7 +183,7 @@
   </section>
 
   <footer class="wrap footer">
-    출처: aT 전국 공영도매시장 정산정보 · aT 일별 도·소매 가격정보(KAMIS) · 기상청 ASOS(대구 143) · 한국천문연구원 특일정보 · 한국관광공사 국문관광정보(대구) · 한국소비자원 생필품 가격 정보(참가격) · 식봄 검색 결과<br>
+    출처: aT 전국 공영도매시장 정산정보 · aT 일별 도·소매 가격정보(KAMIS, 수산물 · 육류 포함) · 기상청 ASOS(대구 143) · 한국천문연구원 특일정보 · 한국관광공사 국문관광정보(대구) · 한국소비자원 생필품 가격 정보(참가격) · 식봄 검색 결과<br>
     예측은 최근 시세 흐름 · 반입량 · 날씨 · 공휴일 · 행사를 더한 규칙 기반 추정이에요.
   </footer>
 </main>
@@ -195,12 +197,12 @@
   </button>
 </div>
 
-<!-- 설정 (시연: 로그인했다고 치고 시연용 가게 계정으로 보여 줌) -->
+<!-- 마이페이지 (시연: 로그인했다고 치고 시연용 가게 계정으로 보여 줌) -->
 <div class="backdrop" id="backdrop" hidden></div>
 <aside class="drawer" id="mypage" aria-hidden="true">
   <div class="drawer-head">
     <button class="drawer-back" id="mypageBack" hidden aria-label="뒤로">‹</button>
-    <b id="mypageTitle">설정</b>
+    <b id="mypageTitle">마이페이지</b>
     <button class="drawer-close" id="mypageClose" aria-label="닫기">×</button>
   </div>
   <div class="drawer-body" id="mypageBody"></div>
@@ -249,6 +251,7 @@
     <input id="chatText" autocomplete="off" placeholder="예: 대파 다음 주에 오를까?">
     <button type="submit">보내기</button>
   </form>
+  <p class="chat-note">더 좋은 답을 위해 질문과 답을 저장해요. 전화번호 같은 개인정보는 적지 말아 주세요.</p>
 </aside>
 
 <!-- 알림톡 시연: 실제 발송 없이 세그먼트별 메시지를 카톡 대화처럼 보여 줌 -->
@@ -266,6 +269,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="/static/app.js?v=69"></script>
+<script src="/static/app.js?v=119"></script>
 </body>
 </html>

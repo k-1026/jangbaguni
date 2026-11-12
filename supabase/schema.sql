@@ -386,3 +386,73 @@ begin
     using (purchase_id in (select p.id from purchases p join stores s on s.id = p.store_id where s.owner_id = auth.uid()))
     with check (purchase_id in (select p.id from purchases p join stores s on s.id = p.store_id where s.owner_id = auth.uid()));
 end $$;
+
+-- =========================================================
+-- F. 예측 기록 · 채점 · 식봄 판매가 기록 (2026-11-12)
+--    서버가 하루 한 번 저장 (salpi_agent/forecast_log.py). 서버의 Secret key로만 읽고 씀 → 화면 공개 정책 없음
+--    근거: plan/forecast/1112_forecast_validation_agent.md 4절 · 1112_forecast_backtest_results.md 9절
+-- =========================================================
+
+-- 그날 화면에 나간 7일 예측 그대로 (나중에 바꾸지 않음) + 7일 뒤 채점 결과
+create table if not exists forecast_log (
+  run_date            date not null,                       -- 예측을 저장한 날 (한국 날짜)
+  item                text not null,                       -- 재료 이름 (화면 이름 그대로: 양파 · 사과 · 한우 등심 …)
+  kind                text not null,                       -- 야채 · 과일 · 수산물 · 육류
+  base_date           date not null,                       -- 예측의 기준이 된 마지막 시세 날짜
+  base_price          numeric not null,                    -- 그날 가격 (unit 당)
+  unit                text not null default 'kg',
+  expected_change_pct numeric not null,                    -- 다음 7일 예상 변화율 (%)
+  range_low           numeric,                             -- 예상 범위 (unit 당 가격)
+  range_high          numeric,
+  direction           text not null check (direction in ('up', 'flat', 'down')),   -- ±2% 기준 (화면 문구와 같음)
+  factors             jsonb,                               -- 이유별 영향 [{"factor": "4주 평균과의 차이", "effect_pct": -1.2}, …]
+  formula_version     text not null,                       -- 공식 버전 (analysis.FORMULA_VERSION). 버전별로 따로 채점
+  -- 아래는 7일 뒤 채점할 때 채움
+  actual_date         date,                                -- 실제 비교한 날짜 (base_date + 7일 이후 첫 시세 날짜)
+  actual_price        numeric,
+  actual_change_pct   numeric,
+  in_range            boolean,                             -- 실제 가격이 예상 범위 안이었나
+  direction_hit       boolean,                             -- 오를 · 유지 · 내릴 문구가 맞았나
+  scored_at           timestamptz,
+  created_at          timestamptz not null default now(),
+  primary key (run_date, item)
+);
+create index if not exists forecast_log_unscored on forecast_log (base_date) where actual_price is null;
+alter table forecast_log enable row level security;
+
+-- 식봄 판매가 (재료별 상품) 하루 한 번: 도매 시세보다 며칠 늦게 따라가는지 비교용
+create table if not exists price_snapshots (
+  snap_date      date not null,
+  source         text not null default '식봄',
+  item           text not null,                            -- 살피 재료 이름
+  product_name   text not null,
+  url            text not null,
+  sale_price     numeric not null,
+  original_price numeric,
+  kg             numeric,                                  -- 상품 무게 (이름 · 규격에서 읽음, 없으면 빈칸)
+  price_per_kg   numeric,
+  created_at     timestamptz not null default now(),
+  primary key (snap_date, source, url)
+);
+create index if not exists price_snapshots_item on price_snapshots (item, snap_date);
+alter table price_snapshots enable row level security;
+
+-- =========================================================
+-- G. 살피 챗봇 대화 기록 (2026-11-12)
+--    서버가 질문마다 저장 (salpi_agent/chat_log.py). 서버의 Secret key로만 읽고 씀 → 화면 공개 정책 없음
+--    가게 · 로그인 정보와 묶지 않음. 전화번호 · 이메일 등은 저장 전에 가림. 채팅창에 저장한다고 안내함
+-- =========================================================
+create table if not exists chat_logs (
+  id          bigint generated always as identity primary key,
+  created_at  timestamptz not null default now(),
+  session_id  text,                                         -- 같은 채팅창의 대화 묶음 (화면이 만든 임의 번호, 새로 고침하면 바뀜)
+  turn        int not null default 0,                       -- 그 묶음에서 몇 번째 질문인지 (0부터)
+  question    text not null,
+  reply       text,
+  tools       text[] not null default '{}',                 -- 살피가 부른 도구 이름 (예: forecast_item_price)
+  model       text,                                         -- 답한 AI 모델 (바쁘면 다른 모델로 넘어감)
+  ms          int,                                          -- 답이 나오기까지 걸린 시간 (1/1000초)
+  status      text not null check (status in ('ok', 'busy', 'error', 'nokey'))
+);
+create index if not exists chat_logs_time on chat_logs (created_at desc);
+alter table chat_logs enable row level security;

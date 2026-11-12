@@ -5,6 +5,7 @@ cache/ 폴더에 저장해 두고 다시 부르지 않는다 (API 호출 횟수 
 """
 
 import json
+import xml.etree.ElementTree as ET
 import os
 import threading
 import time
@@ -45,6 +46,48 @@ ITEMS = {
     "시금치":   {"ctgry": "200", "item": "213", "vrty": None, "sale_name": "시금치", "sale_sub": None},
     "토마토":   {"ctgry": "200", "item": "225", "vrty": None, "sale_name": "토마토", "sale_sub": None},
     "가지":     {"ctgry": "200", "item": "251", "vrty": None, "sale_name": "가지",   "sale_sub": None},
+    # 과일 (kind: 과일): 야채와 같은 길 — 북부도매시장 경락가 · 반입량 · 7일 예측, 소매는 KAMIS 대구 상품 등급
+    # 코드 근거: data/raw/1112 합본(대구) + 1109_5y 정산정보 품종 이름 (2026-11-12). retail_grd: 소매 등급 코드가 '04'(상품)가 아닌 품목
+    "사과":     {"kind": "과일", "ctgry": "400", "item": "411", "vrty": "05", "sale_name": "사과",   "sale_sub": None},   # 소매는 후지
+    "배":       {"kind": "과일", "ctgry": "400", "item": "412", "vrty": "01", "sale_name": "배",     "sale_sub": None},   # 소매는 신고
+    "감귤":     {"kind": "과일", "ctgry": "400", "item": "415", "vrty": None, "sale_name": "감귤",   "sale_sub": None, "retail_grd": "15"},  # M과
+    "포도":     {"kind": "과일", "ctgry": "400", "item": "414", "vrty": "12", "sale_name": "포도",   "sale_sub": "샤인", "retail_grd": "24"},  # 샤인머스켓 L과
+    "단감":     {"kind": "과일", "ctgry": "400", "item": "416", "vrty": "00", "sale_name": "단감",   "sale_sub": None},
+    "바나나":   {"kind": "과일", "ctgry": "400", "item": "418", "vrty": "02", "sale_name": "바나나", "sale_sub": None},   # 수입
+    "딸기":     {"kind": "과일", "ctgry": "200", "item": "226", "vrty": "00", "sale_name": "딸기",   "sale_sub": "설향"},  # 산딸기 제외
+    "수박":     {"kind": "과일", "ctgry": "200", "item": "221", "vrty": "00", "sale_name": "수박",   "sale_sub": None},   # 소매는 1통
+    "참외":     {"kind": "과일", "ctgry": "200", "item": "222", "vrty": "00", "sale_name": "참외",   "sale_sub": None},
+    "키위":     {"kind": "과일", "ctgry": "400", "item": "419", "vrty": None, "sale_name": "참다래(키위)", "sale_sub": None},
+    "레몬":     {"kind": "과일", "ctgry": "400", "item": "424", "vrty": "00", "sale_name": "레몬",   "sale_sub": "레몬"},  # 라임 제외
+}
+kind_of = lambda name: ITEMS[name].get("kind", "야채")   # 농산물 안에서 야채 · 과일 구분
+
+# 육류 · 수산물: 대구 북부도매시장 정산정보(경매)에는 없어서 aT 일별 도·소매가(perDay, KAMIS 조사)만 씀
+# → 경매 반입량이 없으니 7일 예측은 하지 않고 시세 변화만 보여 줌. ITEMS와 섞지 않음
+# se: 소매 / 중도매, grd: 쓸 등급 코드(None이면 전부 평균)
+# 이름은 menu_cost.REFERENCE_PRICES 이름과 같게 둠 (메뉴 원가 계산에서 그대로 바꿔 씀)
+# 코드 근거: perDay 대구 응답으로 품목 · 품종 · 단위 확인 (2026-11-12)
+# 육류는 KAMIS에 대구 · 전국 모두 소매가만 있음 (도매는 경매 경락가뿐) → 대시보드는 사장님이 실제로 사는 부위별 소매가
+# 경락가(협신식품)는 예측 이유(먼저 움직이는 가격 · 경매 물량)와 재료 페이지 등급표에만 씀 (EKAPE_LINKS)
+EXTRA_ITEMS = {
+    "한우 등심":          {"group": "육류", "ctgry": "500", "item": "4301", "vrty": "22", "se": "소매", "grd": "3"},  # 1등급 100g
+    "한우 양지":          {"group": "육류", "ctgry": "500", "item": "4301", "vrty": "40", "se": "소매", "grd": "3"},  # 1등급 100g (국거리)
+    "수입 소고기 갈비살": {"group": "육류", "ctgry": "500", "item": "4401", "vrty": "37", "se": "소매", "grd": "1"},  # 미국산 100g
+    "돼지고기 앞다리": {"group": "육류",   "ctgry": "500", "item": "4304", "vrty": "25", "se": "소매",   "grd": None},  # 100g
+    "돼지고기 삼겹살": {"group": "육류",   "ctgry": "500", "item": "4304", "vrty": "27", "se": "소매",   "grd": None},  # 100g
+    "닭고기":          {"group": "육류",   "ctgry": "500", "item": "9901", "vrty": "99", "se": "소매",   "grd": None},  # 육계 1kg
+    "계란":            {"group": "육류",   "ctgry": "500", "item": "9903", "vrty": "23", "se": "소매",   "grd": "1"},   # XL 30구 일반란
+    "고등어":          {"group": "수산물", "ctgry": "600", "item": "611",  "vrty": "02", "se": "중도매", "grd": None},  # 냉동, 북부도매 10kg
+    "새우젓":          {"group": "수산물", "ctgry": "600", "item": "650",  "vrty": "00", "se": "소매",   "grd": None},  # 1kg
+    # 중도매가는 대구 북부도매시장, 등급이 여러 개면 하나로 고정 (등급이 빠진 날 값이 튀지 않게)
+    "갈치":            {"group": "수산물", "ctgry": "600", "item": "613",  "vrty": "02", "se": "중도매", "grd": "21"},  # 냉동 中, kg
+    "명태":            {"group": "수산물", "ctgry": "600", "item": "615",  "vrty": "02", "se": "중도매", "grd": "21"},  # 냉동 中, 20kg
+    "굴":              {"group": "수산물", "ctgry": "600", "item": "644",  "vrty": "00", "se": "중도매", "grd": None},  # kg
+    "홍합":            {"group": "수산물", "ctgry": "600", "item": "658",  "vrty": "02", "se": "중도매", "grd": None},  # 안깐홍합, kg
+    "새우":            {"group": "수산물", "ctgry": "600", "item": "654",  "vrty": "01", "se": "중도매", "grd": None},  # 흰다리(수입), 2kg
+    "멸치액젓":        {"group": "수산물", "ctgry": "600", "item": "651",  "vrty": "00", "se": "소매",   "grd": None},  # 1kg
+    # 오징어(냉동) · 마른멸치 · 김 · 마른미역은 뺌 (2026-11-12): 북부도매 조사값이 몇 달씩 같은 값이라 시세 · 예측이 의미 없음
+    #   (2020~2025 대구 도매 조사에서 값이 바뀐 날 1~9%, 같은 값 최장 120~280일). 오징어볶음 원가는 참고 단가로 계산
 }
 
 FOODSPRING_SEARCH = "https://www.foodspring.co.kr/search/all"
@@ -157,7 +200,7 @@ def sale_days(days):
 # ---------------------------------------------------------------
 
 def perday_prices(item_name, days=35):
-    cfg = ITEMS[item_name]
+    cfg = ITEMS.get(item_name) or EXTRA_ITEMS[item_name]
     start, end = date.today() - timedelta(days), date.today()
 
     def fetch():
@@ -330,3 +373,85 @@ def holidays_between(start, end):
 
 def holidays(days_ahead=30):
     return holidays_between(date.today(), date.today() + timedelta(days_ahead))
+
+
+# ---------------------------------------------------------------
+# 축산물품질평가원 축산물경락가격정보: 대구 협신식품 경매가 (육류 예측의 '먼저 움직이는 가격' · '경매 물량')
+#   beefGrade: 소고기 부위별(등심 · 양지 …) 등급별 경락가 kg당 · 상자 수 (abattCd 로 시장 지정)
+#   pigGrade : 돼지 도체 등급별 경락가 kg당 · 마릿수 (시장별 값이 c_<코드>Amt · c_<코드>Cnt 칸으로 한꺼번에 옴)
+# 하루치씩 불러야 날짜별 값이 나옴 (기간을 넣으면 그 기간 평균 하나). 요청마다 하루 1,000번 한도
+# → 주말(경매 없음)은 부르지 않고, 지난 날짜는 한 번 받으면 영구 보관
+# ---------------------------------------------------------------
+
+EKAPE_MARKET = "0302"   # 협신식품 (대구 북구 축산물 도매시장)
+EKAPE_MARKET_NAME = "협신식품(대구)"
+# 육류 소매 품목 → 참고할 경락가. 한우는 같은 부위 1등급(hanAvg_2), 돼지는 부위 경매가 없어 도체(등외 제외 평균)
+EKAPE_LINKS = {
+    "한우 등심":       {"op": "beefGrade", "cut": "등심", "price": "hanAvg_2", "count": "hanBoxCnt", "what": "한우 등심 1등급", "count_unit": "상자"},
+    "한우 양지":       {"op": "beefGrade", "cut": "양지", "price": "hanAvg_2", "count": "hanBoxCnt", "what": "한우 양지 1등급", "count_unit": "상자"},
+    "돼지고기 앞다리": {"op": "pigGrade", "grade": "등외제외", "what": "돼지 도체(등외 제외 평균)", "count_unit": "마리"},
+    "돼지고기 삼겹살": {"op": "pigGrade", "grade": "등외제외", "what": "돼지 도체(등외 제외 평균)", "count_unit": "마리"},
+}
+BEEF_GRADES = [("1++", "0"), ("1+", "1"), ("1", "2"), ("2", "3"), ("3", "4")]   # 등급 → hanAvg_<n> · han_<n>Cnt
+PIG_GRADES = ["1+", "1", "2", "등외"]
+
+
+def _ekape_get(op, day, **params):
+    """XML 응답 → item 목록. 실패하면 키가 보이지 않는 오류 문장으로."""
+    url = f"{os.getenv('EKAPE_ENDPOINT', 'http://data.ekape.or.kr/openapi-data/service/user/grade').rstrip('/')}/auct/{op}"
+    ymd = day.strftime("%Y%m%d")
+    params = {"serviceKey": _key("EKAPE_API_KEY"), "startYmd": ymd, "endYmd": ymd, **params}
+    for attempt in range(4):
+        try:
+            with _api_slots:
+                r = requests.get(url, params=params, timeout=40)
+            r.raise_for_status()
+            root = ET.fromstring(r.content)
+            code = root.findtext(".//resultCode")
+            if code not in (None, "00"):
+                raise ApiError(f"축산물품질평가원 {op} 오류 ({code} {root.findtext('.//resultMsg')})")
+            return [{c.tag: c.text for c in it} for it in root.iter("item")]
+        except ApiError:
+            raise
+        except (requests.RequestException, ET.ParseError) as e:
+            if attempt == 3:
+                code = getattr(getattr(e, "response", None), "status_code", None) or type(e).__name__
+                raise ApiError(f"축산물품질평가원 {op} 호출 실패 ({code})") from None
+            time.sleep(2 ** (attempt + 1))
+
+
+def _num(v):
+    try:
+        return float(v) if v not in (None, "", "0") else None
+    except ValueError:
+        return None
+
+
+def _fetch_ekape_day(day):
+    """하루치: {"beef": {부위: {price_<칸>, count}}, "pig": {등급: {price, count, all_price, all_count}}}"""
+    beef = {}
+    for x in _ekape_get("beefGrade", day, abattCd=EKAPE_MARKET):
+        cut = x.get("cutmeatName")
+        if cut in ("등심", "양지"):
+            beef[cut] = {k: _num(v) for k, v in x.items() if k.startswith(("hanAvg", "hanBoxCnt", "han_"))}
+    pig = {}
+    for x in _ekape_get("pigGrade", day):
+        pig[x.get("gradeNm")] = {"price": _num(x.get(f"c_{EKAPE_MARKET}Amt")), "count": _num(x.get(f"c_{EKAPE_MARKET}Cnt")),
+                                 "all_price": _num(x.get("CTotAmt")), "all_count": _num(x.get("CTotCnt"))}
+    return {"beef": beef, "pig": pig}
+
+
+def ekape_day(day):
+    recent = (date.today() - day).days <= 2   # 최근 이틀은 늦게 올라오는 값이 있어 3시간마다 갱신
+    return _cached(f"ekape2_{day.isoformat()}", 3 if recent else None, lambda: _fetch_ekape_day(day))
+
+
+def ekape_days(days=35):
+    """오늘부터 거꾸로 days일 중 평일만 {날짜: 하루치}. 키가 없으면 빈 값 (재료 페이지 등급표만 빠짐)."""
+    if not os.getenv("EKAPE_API_KEY", "").strip():
+        return {}
+    dates = [d for d in (date.today() - timedelta(n) for n in range(days)) if d.weekday() < 5]
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        results = pool.map(ekape_day, dates)
+    return dict(zip(dates, results))
+

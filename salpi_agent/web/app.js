@@ -1371,7 +1371,7 @@ function martCard(x) {
     <h3 title="${esc(x.name)}">${martName(x.name)}</h3>
     <p class="mart-low"><b>${won(x.low)}</b></p>
     ${martShop(x.shop)}
-    ${one ? `<div class="mart-chains" aria-hidden="true"></div>` : `<details class="mart-chains"><summary>회사별 가격</summary>
+    ${one ? `<div class="mart-chains" aria-hidden="true"></div>` : `<details class="mart-chains"><summary>판매처별 가격</summary>
       <ul>${x.chains.map((c) => `<li${c.price === x.low ? ' class="mart-min"' : ""}><span>${esc(c.chain)}</span><b>${won(c.price)}</b>${
         c.change_pct ? `<em class="${c.change_pct > 0 ? "mart-up" : "mart-down"}">${pct(c.change_pct)}</em>` : "<em></em>"}</li>`).join("")}</ul>
     </details>`}

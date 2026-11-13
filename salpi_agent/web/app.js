@@ -1798,7 +1798,7 @@ loadProducts();
 loadMyItems();
 if (STORE_VIEW) {
   const storeReady = Promise.allSettled([loadDemand(), loadCosts()]);
-  // 위쪽 메뉴 '영수증 분석'(/?page=store#receipt): 열자마자 영수증 분석 칸으로 이동하고,
+  // 첫 화면 영수증 분석 체험 칸(/?page=store#receipt): 열자마자 영수증 분석 칸으로 이동하고,
   // 위 칸(내일 준비 · 원가율)이 늦게 채워져 길어지는 동안에도 그 자리에 머무름 (사용자가 직접 스크롤하면 멈춤)
   if (location.hash === "#receipt") {
     const toReceipt = () => $("#receipt").scrollIntoView({ block: "start" });

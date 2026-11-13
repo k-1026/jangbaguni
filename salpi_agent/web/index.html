@@ -7,7 +7,7 @@
   <link rel="icon" href="/static/img/salpi_face.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=119">
+  <link rel="stylesheet" href="/static/style.css?v=171">
 </head>
 <body>
 
@@ -18,7 +18,6 @@
       <a href="/#dashboard">시세 대시보드</a>
       <a href="/#mart">대형마트 판매가</a>
       <a href="/#context">시세 영향 정보</a>
-      <a href="/?page=store#receipt">영수증 분석</a>
     </nav>
     <div class="search" role="search">
       <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
@@ -35,7 +34,7 @@
         <div class="bell-head"><b>알림</b><button id="bellReadAll">모두 읽음</button></div>
         <ul class="bell-list" id="bellList"></ul>
       </div>
-      <button class="me-btn" id="meBtn" aria-label="마이페이지"><img src="/static/img/owner_face.png" alt=""><span>마이페이지</span></button>
+      <button class="me-btn" id="meBtn" aria-label="마이페이지" title="마이페이지"><svg class="me-avatar" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="20" fill="#DBDBDB"/><circle cx="20" cy="15.5" r="7" fill="#fff"/><path d="M6.5 34.6C9.1 28.4 14.1 25 20 25s10.9 3.4 13.5 9.6A19.9 19.9 0 0 1 20 40a19.9 19.9 0 0 1-13.5-5.4z" fill="#fff"/></svg></button>
     </div>
   </div>
 </header>
@@ -44,32 +43,39 @@
   <!-- 첫 화면: 왼쪽 살피 · 오른쪽 시세 대시보드(옆으로 넘기면 오를 재료 카드) -->
   <section class="hero home-only" id="dashboard">
     <div class="wrap hero-inner">
+      <!-- 왼쪽: 살피 인사 · 오른/내린 야채(누르면 목록) · 식자재 구매 바로가기 · 영수증 분석 체험 -->
       <div class="hero-text">
-        <p class="eyebrow">대구 북부도매시장(매천시장) 새벽 시세</p>
         <div class="hero-title">
-          <img class="hero-salpi" src="/static/img/salpi_pointer.png" alt="지시봉으로 시세를 가리키는 살피">
+          <img class="hero-salpi" src="/static/img/salpi_think.png" alt="이마에 손을 얹고 시세를 살피는 살피">
           <div class="hero-copy">
             <h1>사장님, 오늘 시세<br>살피가 먼저 살펴왔어요</h1>
             <p class="hero-sub">날짜 · 날씨 · 공휴일 · 대구 행사까지 함께 보고<br>오를 재료와 기다릴 재료를 알려 드려요.</p>
           </div>
         </div>
         <div class="summary" id="summary">
-          <div class="chip skeleton"></div><div class="chip skeleton"></div><div class="chip skeleton"></div>
+          <div class="chip skeleton"></div><div class="chip skeleton"></div>
         </div>
         <!-- 식자재 구매는 식봄으로 연결만 (살피는 팔지 않음) -->
         <a class="buy-link" href="https://www.foodspring.co.kr" target="_blank" rel="noopener">
           <span><b>식자재 구매 바로가기</b><small>식봄에서 오늘 필요한 식자재를 사요</small></span>
           <i aria-hidden="true">→</i>
         </a>
+        <!-- 영수증 분석 체험: 나의 가게 페이지의 영수증 분석 칸으로 이동 -->
+        <a class="buy-link receipt-link" href="/?page=store#receipt">
+          <span class="receipt-emoji" aria-hidden="true">🧾</span>
+          <span class="receipt-text"><b>영수증 분석 체험해보기</b><small>메뉴 한 그릇, 얼마 남는지 아세요?<br>영수증 한 장 찍으면 메뉴 원가율이 바로 나와요</small></span>
+          <i aria-hidden="true">→</i>
+        </a>
       </div>
 
+      <!-- 오른쪽: 시세 대시보드 -->
       <div class="hero-board">
         <div class="slider-head">
           <div class="slider-title">
             <!-- 시세 종류 탭: 누르면 아래 슬라이드가 그 종류로 바뀜 -->
             <div class="board-tabs" id="boardTabs" role="tablist" aria-label="시세 종류">
-              <button type="button" role="tab" data-tab="야채" aria-selected="true"><small>농산물</small>야채</button>
-              <button type="button" role="tab" data-tab="과일" aria-selected="false"><small>농산물</small>과일</button>
+              <button type="button" role="tab" data-tab="야채" aria-selected="true">야채</button>
+              <button type="button" role="tab" data-tab="과일" aria-selected="false">과일</button>
               <button type="button" role="tab" data-tab="수산물" aria-selected="false">수산물</button>
               <button type="button" role="tab" data-tab="육류" aria-selected="false">육류</button>
             </div>
@@ -145,7 +151,7 @@
     <div class="card" id="receiptCard">
       <div id="receiptStart">
         <div class="upload-btns">
-          <button class="upload-btn" id="cameraBtn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>카메라로 찍기</button>
+          <button class="upload-btn" id="cameraBtn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>카메라</button>
           <label class="upload-btn"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-5-5-9 8"/></svg>사진 · PDF 고르기<input type="file" id="receiptFile" accept="image/*,application/pdf,.pdf" hidden></label>
         </div>
         <!-- 예시 영수증: 시연용이라 평소엔 접어 둠 -->
@@ -269,6 +275,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="/static/app.js?v=119"></script>
+<script src="/static/app.js?v=124"></script>
 </body>
 </html>

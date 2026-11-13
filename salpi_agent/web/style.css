@@ -171,12 +171,12 @@ button.chip:hover { background: #F7FAF3; }
 /* 창 높이에 맞춤: 위 메뉴 · 제목을 뺀 만큼 (최소 380px, 최대 600px) */
 .slide { flex: 0 0 100%; color: var(--ink); height: clamp(380px, calc(100vh - 186px), 600px); display: flex; flex-direction: column; }
 
-/* 시세 종류 탭 (야채 · 과일 · 수산물 · 육류): 흰 알약, 고른 탭은 주황 */
+/* 시세 종류 탭 (야채 · 과일 · 수산물 · 육류): 흰 알약, 고른 탭은 브랜드 초록 */
 .board-tabs { display: flex; gap: 2px; padding: 4px; border-radius: 999px; background: var(--hero-card); border: 1px solid var(--hero-line); }
 .board-tabs button { border: 0; border-radius: 999px; padding: 7px 16px; background: transparent; color: var(--hero-soft);
   font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: background .15s, color .15s; }
 .board-tabs button:hover { background: var(--surface-variant); color: var(--ink); }
-.board-tabs button[aria-selected="true"] { background: var(--accent); color: #fff; }
+.board-tabs button[aria-selected="true"] { background: var(--primary); color: #fff; }   /* 고른 탭: 살피 브랜드 초록 */
 .board-tabs button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .board-tabs button small { font-size: 10px; font-weight: 500; opacity: .75; margin-right: 3px; }
 

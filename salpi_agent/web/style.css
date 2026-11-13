@@ -694,8 +694,8 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .buy-link { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 22px;
   border-radius: var(--radius); background: var(--hero-card, var(--primary)); border: 1px solid var(--hero-line, transparent); color: var(--ink); text-decoration: none;
   transition: background .15s; }
-.buy-link b { display: block; font-size: 21px; font-weight: 800; color: var(--primary); }
-.buy-link small { display: block; margin-top: 4px; color: var(--muted); font-size: 14px; }
+.buy-link b { display: block; font-size: 21px; font-weight: 800; color: #2E2300; }   /* 영수증 체험 칸과 같은 글자색 */
+.buy-link small { display: block; margin-top: 4px; color: #5C4A00; font-size: 14px; }
 .buy-link i { font-style: normal; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex: none;
   font-size: 22px; font-weight: 700; color: var(--primary); background: var(--hero-card, var(--surface)); box-shadow: var(--neu-out, none); transition: box-shadow .15s, transform .15s; }
 .buy-link:hover { background: #F7FAF3; }

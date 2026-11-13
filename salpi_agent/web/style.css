@@ -110,6 +110,9 @@ button { font: inherit; cursor: pointer; }
 /* 대시보드 아래 한 줄 띠: 흰 바탕 하나에 '지난주 대비 야채 시세 | 오른 야채 8개 ▾ | 내린 야채 3개 ▾ … 식자재 구매 바로가기'
    색은 숫자(빨강 · 청록)와 바로가기 버튼(초록)만. 칸을 누르면 띠 안에서 아래로 야채 목록 */
 .hero-mid { display: flex; align-items: flex-start; gap: 12px; padding: 8px 8px 8px 22px; background: var(--surface); border-radius: var(--radius); box-shadow: var(--e1); }
+/* 띠는 따로 떨어진 칸이 아니라 대시보드 카드 아래에 이어 붙임: 위 간격 없애고, 대시보드 아래 모서리 · 띠 위 모서리를 각지게, 사이에 얇은 선 */
+.hero-board + .hero-mid { margin-top: -20px; border-top: 1px solid var(--outline-variant); border-radius: 0 0 20px 20px; }
+.hero-board .slide.card { border-radius: 20px 20px 0 0; }
 .summary-panel { flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: 14px; }
 .summary-title { margin: 0; line-height: 48px; white-space: nowrap; color: var(--muted); font-size: 14px; font-weight: 700; }
 .summary { flex: 1; min-width: 0; display: grid; grid-template-columns: auto auto 1fr; column-gap: 14px; margin: 0; }
@@ -700,10 +703,13 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
   font-size: 24px; font-weight: 700; color: var(--primary); background: #fff; }
 .buy-link:hover { background: var(--primary-hover); box-shadow: var(--e2); }
 .buy-link:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
-.hero-mid .buy-link { flex: none; height: 48px; gap: 14px; padding: 0 8px 0 20px; border-radius: 999px; box-shadow: none; }
-.hero-mid .buy-link b { font-size: 15px; line-height: 1.2; }
-.hero-mid .buy-link small { margin-top: 1px; font-size: 12px; line-height: 1.2; }
-.hero-mid .buy-link i { width: 34px; height: 34px; font-size: 17px; }
+/* 띠 안 식자재 바로가기: 칸 없이 초록 굵은 글자 + 화살표만 (설명 글은 숨김, 화면 읽기용 이름은 남음) */
+.hero-mid .buy-link { flex: none; height: 48px; gap: 6px; padding: 0 12px; border-radius: 10px; background: transparent; box-shadow: none; color: var(--primary); }
+.hero-mid .buy-link b { font-size: 17px; font-weight: 700; line-height: 1.2; color: var(--primary); }
+.hero-mid .buy-link small { display: none; }
+.hero-mid .buy-link i { width: auto; height: auto; background: none; font-size: 20px; font-weight: 700; color: var(--primary); transition: transform .15s; }
+.hero-mid .buy-link:hover { background: var(--primary-container); box-shadow: none; }
+.hero-mid .buy-link:hover i { transform: translateX(3px); }
 .receipt-link { background: #FFF2C2; color: #2E2300; gap: 14px; padding: 20px 22px; border: 1px solid #FFE08A; }
 .receipt-link .receipt-emoji { flex: none; display: grid; place-items: center; width: 56px; height: 56px; font-size: 46px; line-height: 1; }   /* 영수증 그림만 크게 (뒤 흰 바탕 없음) */
 .receipt-link .receipt-text { flex: 1; min-width: 0; }

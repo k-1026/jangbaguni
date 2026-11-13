@@ -93,11 +93,11 @@ button { font: inherit; cursor: pointer; }
 /* 첫 화면: 연한 초록 바탕 위에 3줄
    1줄 살피 인사(한 줄) + 영수증 분석 체험 · 2줄 오른 · 내린 야채 + 식자재 구매 바로가기 · 3줄 시세 대시보드
    1 · 2줄 오른쪽 칸은 폭을 같게 맞춰 세로로 가지런하게 */
-.hero { --side: 400px; background: var(--hero-bg); color: var(--ink); overflow: hidden; scroll-margin-top: 64px; }
+.hero { --hero-side: 470px; background: var(--hero-bg); color: var(--ink); overflow: hidden; scroll-margin-top: 64px; }
 .hero .wrap { max-width: 1320px; }
 .hero-inner { display: flex; flex-direction: column; gap: 20px; padding-top: 28px; padding-bottom: 36px; }
 .hero-inner > * { min-width: 0; }
-.hero-row { display: grid; grid-template-columns: minmax(0, 1fr) var(--side); gap: 20px; align-items: stretch; }
+.hero-row { display: grid; grid-template-columns: minmax(0, 1fr) var(--hero-side); gap: 20px; align-items: stretch; }
 .hero-row > * { min-width: 0; }
 .hero-text { display: flex; flex-direction: column; justify-content: center; }
 .hero-title { display: flex; align-items: center; gap: 16px; margin: 0; }
@@ -705,10 +705,10 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .hero-mid .buy-link small { margin-top: 1px; font-size: 12px; line-height: 1.2; }
 .hero-mid .buy-link i { width: 34px; height: 34px; font-size: 17px; }
 .receipt-link { background: #FFF2C2; color: #2E2300; gap: 14px; padding: 20px 22px; border: 1px solid #FFE08A; }
-.receipt-link .receipt-emoji { flex: none; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 14px; background: #fff; font-size: 32px; line-height: 1; }
+.receipt-link .receipt-emoji { flex: none; display: grid; place-items: center; width: 56px; height: 56px; font-size: 46px; line-height: 1; }   /* 영수증 그림만 크게 (뒤 흰 바탕 없음) */
 .receipt-link .receipt-text { flex: 1; min-width: 0; }
 .receipt-link b { font-size: 20px; color: #2E2300; }
-.receipt-link small { color: #5C4A00; font-size: 13.5px; font-weight: 500; line-height: 1.5; }
+.receipt-link small { color: #5C4A00; font-size: 13.5px; font-weight: 500; line-height: 1.5; white-space: nowrap; }   /* 한 문장은 한 줄에 */
 .receipt-link i { color: #2E2300; background: #FFD84D; }
 .receipt-link:hover { background: #FFEBA6; }
 
@@ -860,10 +860,10 @@ a.my-link { color: inherit; text-decoration: none; }
 #mart .mart-all b { color: #fff; }
 
 @media (max-width: 1200px) {
-  .hero { --side: 340px; }
   .hero h1 { font-size: 28px; }
 }
 @media (max-width: 900px) {
+  .receipt-link small { white-space: normal; }
   .hero-row { grid-template-columns: minmax(0, 1fr); }
   .hero-mid { flex-direction: column; align-items: stretch; padding: 12px; }
   .summary-panel { flex-direction: column; gap: 4px; }

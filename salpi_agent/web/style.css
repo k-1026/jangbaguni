@@ -105,7 +105,7 @@ button { font: inherit; cursor: pointer; }
 .hero h1 { font-size: 34px; line-height: 1.3; margin: 0 0 6px; font-weight: 700; color: var(--on-primary-container); letter-spacing: -.5px; }
 .hero-sub { color: var(--muted); margin: 0; font-size: 15px; }
 /* 살피: 인사 왼쪽, 지시봉이 오른쪽 글자를 가리킴 */
-.hero-salpi { flex: none; width: 116px; margin: 0 0 0 -8px; pointer-events: none; }
+.hero-salpi { flex: none; width: 96px; margin: 0 4px 0 0; pointer-events: none; }   /* 이마에 손을 얹고 살피는 포즈 */
 
 /* 대시보드 아래 한 줄 띠: 흰 바탕 하나에 '지난주 대비 야채 시세 | 오른 야채 8개 ▾ | 내린 야채 3개 ▾ … 식자재 구매 바로가기'
    색은 숫자(빨강 · 청록)와 바로가기 버튼(초록)만. 칸을 누르면 띠 안에서 아래로 야채 목록 */
@@ -909,7 +909,7 @@ a.my-link { color: inherit; text-decoration: none; }
   .logo img { height: 38px; }
   .hero h1 { font-size: 23px; }
   .hero-sub { font-size: 13px; }
-  .hero-salpi { width: 96px; }
+  .hero-salpi { width: 76px; }
   .hero-title { gap: 10px; }
   .summary { grid-template-columns: 1fr 1fr; }
   .chip { justify-content: center; }

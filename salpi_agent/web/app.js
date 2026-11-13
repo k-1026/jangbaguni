@@ -1399,8 +1399,7 @@ function renderMart() {
 async function loadMart() {
   try { mart = await getJSON("/api/mart"); }
   catch (e) { $("#martBasis").textContent = "대형마트 판매가를 불러오지 못했어요"; $("#martGrid").innerHTML = `<p class="muted">${esc(e.message)}</p>`; return; }
-  const up = mart.items.filter((x) => x.change_pct > 0).length;
-  $("#martBasis").textContent = `한국소비자원 참가격 · ${mmdd(mart.date)} 조사 (2주마다) · 음식 재료 ${mart.items.length}개 중 2주 새 오른 것 ${up}개 · 바로가기는 그 마트 온라인몰 검색 결과(온라인 가격은 매장가와 다를 수 있어요)`;
+  $("#martBasis").textContent = "한국소비자원 참가격";
   renderMart();
 }
 $("#martFilter").onclick = (e) => {

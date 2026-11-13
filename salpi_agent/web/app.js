@@ -1371,9 +1371,8 @@ function martCard(x) {
     <h3 title="${esc(x.name)}">${martName(x.name)}</h3>
     <p class="mart-low"><b>${won(x.low)}</b></p>
     ${martShop(x.shop)}
-    ${one ? `<div class="mart-chains" aria-hidden="true"></div>` : `<details class="mart-chains"><summary>회사별 가격</summary>
-      <ul>${x.chains.map((c) => `<li${c.price === x.low ? ' class="mart-min"' : ""}><span>${esc(c.chain)}</span><b>${won(c.price)}</b>${
-        c.change_pct ? `<em class="${c.change_pct > 0 ? "mart-up" : "mart-down"}">${pct(c.change_pct)}</em>` : "<em></em>"}</li>`).join("")}</ul>
+    ${one ? `<div class="mart-chains" aria-hidden="true"></div>` : `<details class="mart-chains"><summary>판매처별 가격</summary>
+      <ul>${x.chains.map((c) => `<li${c.price === x.low ? ' class="mart-min"' : ""}><span>${esc(c.chain)}</span><b>${won(c.price)}</b></li>`).join("")}</ul>
     </details>`}
   </article>`;
 }
@@ -1399,8 +1398,7 @@ function renderMart() {
 async function loadMart() {
   try { mart = await getJSON("/api/mart"); }
   catch (e) { $("#martBasis").textContent = "대형마트 판매가를 불러오지 못했어요"; $("#martGrid").innerHTML = `<p class="muted">${esc(e.message)}</p>`; return; }
-  const up = mart.items.filter((x) => x.change_pct > 0).length;
-  $("#martBasis").textContent = `한국소비자원 참가격 · ${mmdd(mart.date)} 조사 (2주마다) · 음식 재료 ${mart.items.length}개 중 2주 새 오른 것 ${up}개 · 바로가기는 그 마트 온라인몰 검색 결과(온라인 가격은 매장가와 다를 수 있어요)`;
+  $("#martBasis").textContent = "한국소비자원 참가격";
   renderMart();
 }
 $("#martFilter").onclick = (e) => {
@@ -1799,7 +1797,7 @@ loadProducts();
 loadMyItems();
 if (STORE_VIEW) {
   const storeReady = Promise.allSettled([loadDemand(), loadCosts()]);
-  // 위쪽 메뉴 '영수증 분석'(/?page=store#receipt): 열자마자 영수증 분석 칸으로 이동하고,
+  // 첫 화면 영수증 분석 체험 칸(/?page=store#receipt): 열자마자 영수증 분석 칸으로 이동하고,
   // 위 칸(내일 준비 · 원가율)이 늦게 채워져 길어지는 동안에도 그 자리에 머무름 (사용자가 직접 스크롤하면 멈춤)
   if (location.hash === "#receipt") {
     const toReceipt = () => $("#receipt").scrollIntoView({ block: "start" });

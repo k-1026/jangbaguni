@@ -720,9 +720,8 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .icon-btn .count, .fab-count { position: absolute; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--up); color: #fff;
   font-size: 12px; font-weight: 900; line-height: 20px; text-align: center; box-shadow: 0 0 0 2px #fff; }
 .icon-btn .count { top: -4px; right: -6px; }
-.me-btn { display: flex; align-items: center; gap: 6px; border: 1px solid var(--border); background: #fff; border-radius: 999px; padding: 3px 12px 3px 4px;
-  font-size: 14px; font-weight: 700; color: var(--ink); }
-.me-btn img { width: 32px; height: 32px; border-radius: 50%; background: #F0EDE6; object-fit: cover; }
+.me-btn { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; padding: 0; border: 1px solid var(--border); background: #fff; border-radius: 50%; overflow: hidden; }   /* 알림 칸처럼 동그라미 · 글자 없이 프로필만 */
+.me-avatar { display: block; width: 100%; height: 100%; }   /* 기본 프로필(사람 모양) */
 .me-btn:hover { border-color: var(--accent); }
 /* 살피 캐릭터 위 안 읽은 알림 개수 */
 .fab-count { top: -6px; right: -6px; min-width: 26px; height: 26px; line-height: 26px; font-size: 14px; z-index: 1; box-shadow: 0 0 0 3px #fff, 0 3px 8px rgba(0,0,0,.25); }
@@ -900,7 +899,7 @@ a.my-link { color: inherit; text-decoration: none; }
   .top-actions { margin-left: auto; }
   .me-btn span, .store-btn span { display: none; }
   .store-btn { padding: 8px; }
-  .me-btn { padding: 3px; }
+  .me-btn { padding: 0; }
   .logo img { height: 38px; }
   .hero h1 { font-size: 24px; }
   .hero-sub { font-size: 13px; }

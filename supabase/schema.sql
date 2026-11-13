@@ -436,3 +436,23 @@ create table if not exists price_snapshots (
 );
 create index if not exists price_snapshots_item on price_snapshots (item, snap_date);
 alter table price_snapshots enable row level security;
+
+-- =========================================================
+-- G. 살피 챗봇 대화 기록 (2026-11-12)
+--    서버가 질문마다 저장 (salpi_agent/chat_log.py). 서버의 Secret key로만 읽고 씀 → 화면 공개 정책 없음
+--    가게 · 로그인 정보와 묶지 않음. 전화번호 · 이메일 등은 저장 전에 가림. 채팅창에 저장한다고 안내함
+-- =========================================================
+create table if not exists chat_logs (
+  id          bigint generated always as identity primary key,
+  created_at  timestamptz not null default now(),
+  session_id  text,                                         -- 같은 채팅창의 대화 묶음 (화면이 만든 임의 번호, 새로 고침하면 바뀜)
+  turn        int not null default 0,                       -- 그 묶음에서 몇 번째 질문인지 (0부터)
+  question    text not null,
+  reply       text,
+  tools       text[] not null default '{}',                 -- 살피가 부른 도구 이름 (예: forecast_item_price)
+  model       text,                                         -- 답한 AI 모델 (바쁘면 다른 모델로 넘어감)
+  ms          int,                                          -- 답이 나오기까지 걸린 시간 (1/1000초)
+  status      text not null check (status in ('ok', 'busy', 'error', 'nokey'))
+);
+create index if not exists chat_logs_time on chat_logs (created_at desc);
+alter table chat_logs enable row level security;

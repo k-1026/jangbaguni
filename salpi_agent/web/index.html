@@ -7,7 +7,7 @@
   <link rel="icon" href="/static/img/salpi_face.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=134">
+  <link rel="stylesheet" href="/static/style.css?v=135">
 </head>
 <body>
 
@@ -44,27 +44,37 @@
   <!-- 첫 화면: 왼쪽 살피 · 오른쪽 시세 대시보드(옆으로 넘기면 오를 재료 카드) -->
   <section class="hero home-only" id="dashboard">
     <div class="wrap hero-inner">
-      <div class="hero-text">
-        <p class="eyebrow">대구 북부도매시장(매천시장) 새벽 시세</p>
-        <div class="hero-title">
-          <img class="hero-salpi" src="/static/img/salpi_pointer.png" alt="지시봉으로 시세를 가리키는 살피">
-          <div class="hero-copy">
-            <h1>사장님, 오늘 시세<br>살피가 먼저 살펴왔어요</h1>
-            <p class="hero-sub">날짜 · 날씨 · 공휴일 · 대구 행사까지 함께 보고<br>오를 재료와 기다릴 재료를 알려 드려요.</p>
+      <!-- 1줄: 왼쪽 살피 인사(한 줄) · 오른쪽 영수증 분석 체험 -->
+      <div class="hero-row hero-top">
+        <div class="hero-text">
+          <p class="eyebrow">대구 북부도매시장(매천시장) 새벽 시세</p>
+          <div class="hero-title">
+            <img class="hero-salpi" src="/static/img/salpi_pointer.png" alt="지시봉으로 시세를 가리키는 살피">
+            <div class="hero-copy">
+              <h1>사장님, 오늘 시세 살피가 먼저 살펴왔어요</h1>
+              <p class="hero-sub">날짜 · 날씨 · 공휴일 · 대구 행사까지 함께 보고 오를 재료와 기다릴 재료를 알려 드려요.</p>
+            </div>
           </div>
         </div>
-        <div class="summary" id="summary">
-          <div class="chip skeleton"></div><div class="chip skeleton"></div><div class="chip skeleton"></div>
-        </div>
-        <!-- 식자재 구매는 식봄으로 연결만 (살피는 팔지 않음) -->
-        <a class="buy-link" href="https://www.foodspring.co.kr" target="_blank" rel="noopener">
-          <span><b>식자재 구매 바로가기</b><small>식봄에서 오늘 필요한 식자재를 사요</small></span>
-          <i aria-hidden="true">→</i>
-        </a>
         <!-- 영수증 분석 체험: 나의 가게 페이지의 영수증 분석 칸으로 이동 -->
         <a class="buy-link receipt-link" href="/?page=store#receipt">
           <span class="receipt-emoji" aria-hidden="true">🧾</span>
           <span class="receipt-text"><b>영수증 분석 체험해보기</b><small>메뉴 한 그릇, 얼마 남는지 아세요?<br>영수증 한 장 찍으면 메뉴 원가율이 바로 나와요</small></span>
+          <i aria-hidden="true">→</i>
+        </a>
+      </div>
+
+      <!-- 2줄: 왼쪽 오른 · 내린 야채(누르면 목록) · 오른쪽 식자재 구매 바로가기 -->
+      <div class="hero-row hero-mid">
+        <div class="summary-panel">
+          <p class="summary-title">지난주 대비 야채 시세</p>
+          <div class="summary" id="summary">
+            <div class="chip skeleton"></div><div class="chip skeleton"></div>
+          </div>
+        </div>
+        <!-- 식자재 구매는 식봄으로 연결만 (살피는 팔지 않음) -->
+        <a class="buy-link" href="https://www.foodspring.co.kr" target="_blank" rel="noopener">
+          <span><b>식자재 구매 바로가기</b><small>식봄에서 오늘 필요한 식자재를 사요</small></span>
           <i aria-hidden="true">→</i>
         </a>
       </div>
@@ -275,6 +285,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="/static/app.js?v=119"></script>
+<script src="/static/app.js?v=120"></script>
 </body>
 </html>

@@ -72,8 +72,8 @@ async function loadOverview(attempt = 1) {
   };
   const chip = (key, tone, count, label) => `<button class="chip ${tone}" type="button" data-list="${key}" aria-expanded="false" aria-controls="summaryList-${key}"><b>${count}개</b><small>${label}</small><i class="chip-caret" aria-hidden="true"><svg viewBox="0 0 12 12"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></i></button>`;
   $("#summary").innerHTML = `
-    ${chip("up", "up", up.length, "지난주보다 <em>오른</em> 야채")}
-    ${chip("down", "down", down.length, "지난주보다 <em>내린</em> 야채")}`;
+    ${chip("up", "up", up.length, "<em>오른</em> 야채")}
+    ${chip("down", "down", down.length, "<em>내린</em> 야채")}`;
 
   if (PRODUCE(boardTab)) renderSlides();
   deliverAlerts();

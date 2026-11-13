@@ -90,41 +90,52 @@ button { font: inherit; cursor: pointer; }
 .search-empty { margin: 0; padding: 12px 8px; color: var(--muted); font-size: 14px; }
 @media (max-width: 520px) { .search input { padding: 0 44px 0 14px; font-size: 14px; } }
 
-/* 첫 화면: 연한 초록 바탕 + 흰 카드 */
-.hero { background: var(--hero-bg); color: var(--ink); overflow: hidden; scroll-margin-top: 64px; }
-.hero .wrap { max-width: 1720px; }
-.hero-inner { display: grid; grid-template-columns: 500px minmax(0, 1fr); gap: 36px; padding-top: 28px; padding-bottom: 32px; }
+/* 첫 화면: 연한 초록 바탕 위에 3줄
+   1줄 살피 인사(한 줄) + 영수증 분석 체험 · 2줄 오른 · 내린 야채 + 식자재 구매 바로가기 · 3줄 시세 대시보드
+   1 · 2줄 오른쪽 칸은 폭을 같게 맞춰 세로로 가지런하게 */
+.hero { --side: 400px; background: var(--hero-bg); color: var(--ink); overflow: hidden; scroll-margin-top: 64px; }
+.hero .wrap { max-width: 1320px; }
+.hero-inner { display: flex; flex-direction: column; gap: 20px; padding-top: 28px; padding-bottom: 36px; }
 .hero-inner > * { min-width: 0; }
-.hero-text { position: relative; display: flex; flex-direction: column; }
-.eyebrow { align-self: flex-start; margin: 0 0 8px; padding: 4px 12px; border-radius: 999px; background: var(--surface); color: var(--primary);
+.hero-row { display: grid; grid-template-columns: minmax(0, 1fr) var(--side); gap: 20px; align-items: stretch; }
+.hero-row > * { min-width: 0; }
+.hero-text { display: flex; flex-direction: column; justify-content: center; }
+.eyebrow { align-self: flex-start; margin: 0 0 6px; padding: 5px 12px; border-radius: 999px; background: var(--surface); color: var(--primary);
   font-weight: 700; font-size: 13px; box-shadow: var(--e1); }
-.hero-title { display: flex; align-items: center; gap: 18px; margin: 10px 0 22px; }
+.hero-title { display: flex; align-items: center; gap: 16px; margin: 0; }
 .hero-copy { min-width: 0; }
-.hero h1 { font-size: 30px; line-height: 1.35; margin: 0 0 10px; font-weight: 700; color: var(--on-primary-container); letter-spacing: -.3px; }
-.hero-sub { color: var(--muted); margin: 0; }
-.summary { display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; margin: 6px 0 -16px; }   /* 줄 간격은 칸 아래 여백으로 (접힌 목록이 간격을 더 만들지 않게) */
-.summary > .chip { margin-bottom: 16px; }
-/* 요약 칸: 흰 카드, 숫자만 색으로 */
-.chip { width: 100%; background: var(--surface); border: 0; border-radius: var(--radius); padding: 18px 20px; color: var(--ink); text-align: left;
-  box-shadow: var(--e1); transition: box-shadow .15s, background .15s; }
-button.chip:hover { box-shadow: var(--e2); }
-.chip[aria-expanded="true"] { background: var(--primary-container); box-shadow: none; }
+.hero h1 { font-size: 34px; line-height: 1.3; margin: 0 0 6px; font-weight: 700; color: var(--on-primary-container); letter-spacing: -.5px; }
+.hero-sub { color: var(--muted); margin: 0; font-size: 15px; }
+/* 살피: 인사 왼쪽, 지시봉이 오른쪽 글자를 가리킴 */
+.hero-salpi { flex: none; width: 116px; margin: 0 0 0 -8px; pointer-events: none; }
+
+/* 오른 · 내린 야채 판: 흰 카드 안에 두 칸, 누르면 아래로 야채 목록 */
+.summary-panel { background: var(--surface); border-radius: var(--radius); padding: 18px 22px 20px; box-shadow: var(--e1); }
+.summary-title { margin: 0 0 12px; color: var(--muted); font-size: 14px; font-weight: 700; }
+.summary { display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px; margin: 0 0 -12px; }   /* 줄 간격은 칸 아래 여백으로 (접힌 목록이 간격을 더 만들지 않게) */
+.summary > .chip { margin-bottom: 12px; }
+/* 칸: '오른 야채  8개' 처럼 이름 → 숫자 순서, 오른쪽에 펼치기 꺾쇠 */
+.chip { width: 100%; display: flex; align-items: baseline; gap: 12px; background: var(--surface-variant); border: 1px solid transparent; border-radius: 12px;
+  padding: 14px 20px; color: var(--ink); text-align: left; transition: background .15s, border-color .15s; }
+button.chip:hover { background: #E9EEE6; }
+.chip[aria-expanded="true"] { background: var(--surface); border-color: var(--primary); }
 .chip:focus-visible, .summary-list button:focus-visible, .slider-nav button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
-.chip b { display: block; font-size: 26px; line-height: 1.25; font-weight: 700; }
-.chip small { display: block; margin-top: 2px; color: var(--muted); font-size: 15px; }
+.chip small { order: 1; display: block; color: var(--ink); font-size: 18px; font-weight: 500; }
 .chip small em { font-style: normal; font-weight: 700; }
+.chip b { order: 2; display: block; font-size: 34px; line-height: 1.15; font-weight: 700; }
 .chip.up b, .chip.up em { color: var(--up); } .chip.down b, .chip.down em { color: var(--down); } .chip.warn b, .chip.warn em { color: var(--warn); }
+.chip.skeleton { display: block; height: 66px; }
 /* 펼치기 표시: 오른쪽 꺾쇠 · 펼치면 위로 뒤집힘 */
 .chip[data-list] { position: relative; padding-right: 58px; }
-.chip-caret { position: absolute; right: 18px; top: 50%; width: 30px; height: 30px; margin-top: -15px; border-radius: 50%; display: grid; place-items: center;
-  background: var(--surface-variant); color: var(--muted); transition: transform .25s; }
+.chip-caret { position: absolute; right: 16px; top: 50%; width: 30px; height: 30px; margin-top: -15px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--surface); color: var(--muted); transition: transform .25s; }
 .chip-caret svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .chip.up .chip-caret { color: var(--up); } .chip.down .chip-caret { color: var(--down); }
-.chip[aria-expanded="true"] .chip-caret { transform: rotate(180deg); background: var(--surface); }
+.chip[aria-expanded="true"] .chip-caret { transform: rotate(180deg); background: var(--primary-container); }
 /* 목록은 칸(오른 · 내린) 줄 바로 아래 */
 .summary > .chip { order: 1; }
 .summary > .summary-list { order: 2; grid-column: 1 / -1; margin: 0 -8px; }
-.summary > .summary-list.open { margin: -8px -8px 16px; }
+.summary > .summary-list.open { margin: -6px -8px 12px; }
 /* 요약 칸을 누르면 펼쳐지는 야채 목록 */
 .summary-list { display: grid; grid-template-rows: 0fr; margin: 0 -8px; opacity: 0;
   transition: grid-template-rows .45s cubic-bezier(.2,.8,.2,1), opacity .3s ease, margin .45s cubic-bezier(.2,.8,.2,1); }
@@ -136,10 +147,8 @@ button.chip:hover { box-shadow: var(--e2); }
 .summary-list button:hover { background: var(--surface-variant); }
 .summary-list .rise { color: var(--up); font-weight: 700; } .summary-list .fall { color: var(--down); font-weight: 700; }
 .summary-list p { margin: 0; color: var(--muted); font-size: 14px; }
-.skeleton { height: 86px; animation: pulse 1.2s infinite; }
+.skeleton { animation: pulse 1.2s infinite; }
 @keyframes pulse { 50% { opacity: .5; } }
-/* 살피: 제목 두 줄 왼쪽, 원본 방향(지시봉이 오른쪽 글자를 가리킴) */
-.hero-salpi { flex: none; width: 150px; margin: 0 0 0 -6px; pointer-events: none; }
 
 /* 오른쪽 대시보드 슬라이드 */
 .hero-board { display: flex; flex-direction: column; gap: 8px; }
@@ -685,23 +694,23 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .product .per { font-size: 12px; color: var(--muted); }
 .product .salpi { font-size: 12px; border-radius: 6px; padding: 3px 7px; align-self: flex-start; }
 
-/* 첫 화면: 식자재 구매 바로가기 · 영수증 분석 체험 (색 있는 큰 카드, 올리면 살짝 그림자) */
-.buy-link { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 20px; padding: 22px 26px;
+/* 첫 화면: 영수증 분석 체험(노랑) · 식자재 구매 바로가기(초록) — 색 있는 큰 카드, 올리면 살짝 그림자 */
+.buy-link { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px 24px;
   border-radius: var(--radius); background: var(--primary); color: #fff; text-decoration: none; box-shadow: var(--e1);
   transition: box-shadow .15s, background .15s; }
-.buy-link b { display: block; font-size: 21px; font-weight: 700; color: #fff; }
-.buy-link small { color: #E2F0D2; font-size: 14px; }
-.buy-link i { font-style: normal; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex: none;
+.buy-link b { display: block; font-size: 22px; font-weight: 700; color: #fff; }
+.buy-link small { display: block; margin-top: 4px; color: #E2F0D2; font-size: 14px; }
+.buy-link i { font-style: normal; width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex: none;
   font-size: 24px; font-weight: 700; color: var(--primary); background: #fff; }
 .buy-link:hover { background: var(--primary-hover); box-shadow: var(--e2); }
 .buy-link:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
-.receipt-link { margin-top: 14px; background: #FFF4CC; color: #2E2300; gap: 12px; padding: 20px 22px; }
-.receipt-link .receipt-emoji { flex: none; font-size: 40px; line-height: 1; }
+.receipt-link { background: #FFF2C2; color: #2E2300; gap: 14px; padding: 20px 22px; border: 1px solid #FFE08A; }
+.receipt-link .receipt-emoji { flex: none; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 14px; background: #fff; font-size: 32px; line-height: 1; }
 .receipt-link .receipt-text { flex: 1; min-width: 0; }
-.receipt-link b { font-size: 21px; color: #2E2300; }
-.receipt-link small { display: block; white-space: nowrap; margin-top: 6px; color: #5C4A00; font-size: 14px; font-weight: 500; line-height: 1.5; }
+.receipt-link b { font-size: 20px; color: #2E2300; }
+.receipt-link small { color: #5C4A00; font-size: 13.5px; font-weight: 500; line-height: 1.5; }
 .receipt-link i { color: #2E2300; background: #FFD84D; }
-.receipt-link:hover { background: #FFEDB0; }
+.receipt-link:hover { background: #FFEBA6; }
 
 /* 위쪽 오른쪽: 알림 · 마이페이지 (테두리 없는 동그라미, 올리면 연한 바탕) */
 .top-actions { position: relative; display: flex; align-items: center; gap: 8px; margin-left: 4px; }
@@ -851,7 +860,11 @@ a.my-link { color: inherit; text-decoration: none; }
 #mart .mart-all b { color: #fff; }
 
 @media (max-width: 1200px) {
-  .hero-inner { grid-template-columns: 1fr; position: relative; }
+  .hero { --side: 340px; }
+  .hero h1 { font-size: 28px; }
+}
+@media (max-width: 900px) {
+  .hero-row { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 1000px) {
   .grid { grid-template-columns: repeat(3, 1fr); }
@@ -894,9 +907,12 @@ a.my-link { color: inherit; text-decoration: none; }
   .hero-sub { font-size: 13px; }
   .hero-salpi { width: 96px; }
   .hero-title { gap: 10px; }
-  .chip { padding: 12px 14px; }
-  .chip b { font-size: 19px; }
-  .chip small { font-size: 14px; }
+  .chip { padding: 12px 14px; gap: 8px; }
+  .chip b { font-size: 26px; }
+  .chip small { font-size: 15px; }
+  .summary-panel { padding: 16px; }
+  .summary { column-gap: 10px; }
+  .buy-link b { font-size: 19px; }
   .chip[data-list] { padding-right: 46px; } .chip-caret { right: 12px; width: 26px; height: 26px; margin-top: -13px; }
   .fc-strip { padding-right: 104px; }
   .fc-strip .say { display: none; }

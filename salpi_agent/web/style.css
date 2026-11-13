@@ -109,40 +109,38 @@ button { font: inherit; cursor: pointer; }
 /* 살피: 인사 왼쪽, 지시봉이 오른쪽 글자를 가리킴 */
 .hero-salpi { flex: none; width: 116px; margin: 0 0 0 -8px; pointer-events: none; }
 
-/* 오른 · 내린 야채 판: 흰 카드 안에 두 칸, 누르면 아래로 야채 목록 */
-.summary-panel { background: var(--surface); border-radius: var(--radius); padding: 18px 22px 20px; box-shadow: var(--e1); }
-.summary-title { margin: 0 0 12px; color: var(--muted); font-size: 14px; font-weight: 700; }
-.summary { display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px; margin: 0 0 -12px; }   /* 줄 간격은 칸 아래 여백으로 (접힌 목록이 간격을 더 만들지 않게) */
-.summary > .chip { margin-bottom: 12px; }
-/* 칸: '오른 야채  8개' 처럼 이름 → 숫자 순서, 오른쪽에 펼치기 꺾쇠 */
-.chip { width: 100%; display: flex; align-items: baseline; gap: 12px; background: var(--surface-variant); border: 1px solid transparent; border-radius: 12px;
-  padding: 14px 20px; color: var(--ink); text-align: left; transition: background .15s, border-color .15s; }
-button.chip:hover { background: #E9EEE6; }
-.chip[aria-expanded="true"] { background: var(--surface); border-color: var(--primary); }
+/* 대시보드 아래 한 줄 띠: 흰 바탕 하나에 '지난주 대비 야채 시세 | 오른 야채 8개 ▾ | 내린 야채 3개 ▾ … 식자재 구매 바로가기'
+   색은 숫자(빨강 · 청록)와 바로가기 버튼(초록)만. 칸을 누르면 띠 안에서 아래로 야채 목록 */
+.hero-mid { display: flex; align-items: flex-start; gap: 12px; padding: 8px 8px 8px 22px; background: var(--surface); border-radius: var(--radius); box-shadow: var(--e1); }
+.summary-panel { flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: 14px; }
+.summary-title { margin: 0; line-height: 48px; white-space: nowrap; color: var(--muted); font-size: 14px; font-weight: 700; }
+.summary { flex: 1; min-width: 0; display: grid; grid-template-columns: auto auto 1fr; column-gap: 14px; margin: 0; }
+/* 칸: 글자 버튼처럼 (바탕 없음), 올리거나 펼치면 연한 회색 */
+.chip { position: relative; display: inline-flex; align-items: center; gap: 8px; height: 48px; padding: 0 10px 0 12px; border: 0; border-radius: 10px;
+  background: transparent; color: var(--ink); text-align: left; white-space: nowrap; transition: background .15s; }
+button.chip:hover, .chip[aria-expanded="true"] { background: var(--surface-variant); }
 .chip:focus-visible, .summary-list button:focus-visible, .slider-nav button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
-.chip small { order: 1; display: block; color: var(--ink); font-size: 18px; font-weight: 500; }
-.chip small em { font-style: normal; font-weight: 700; }
-.chip b { order: 2; display: block; font-size: 34px; line-height: 1.15; font-weight: 700; }
-.chip.up b, .chip.up em { color: var(--up); } .chip.down b, .chip.down em { color: var(--down); } .chip.warn b, .chip.warn em { color: var(--warn); }
-.chip.skeleton { display: block; height: 66px; }
-/* 펼치기 표시: 오른쪽 꺾쇠 · 펼치면 위로 뒤집힘 */
-.chip[data-list] { position: relative; padding-right: 58px; }
-.chip-caret { position: absolute; right: 16px; top: 50%; width: 30px; height: 30px; margin-top: -15px; border-radius: 50%; display: grid; place-items: center;
-  background: var(--surface); color: var(--muted); transition: transform .25s; }
-.chip-caret svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.chip.up .chip-caret { color: var(--up); } .chip.down .chip-caret { color: var(--down); }
-.chip[aria-expanded="true"] .chip-caret { transform: rotate(180deg); background: var(--primary-container); }
-/* 목록은 칸(오른 · 내린) 줄 바로 아래 */
+.chip small { order: 1; font-size: 16px; font-weight: 500; color: var(--ink); }
+.chip small em { font-style: normal; }
+.chip b { order: 2; font-size: 24px; line-height: 1; font-weight: 700; }
+.chip.up b { color: var(--up); } .chip.down b { color: var(--down); } .chip.warn b { color: var(--warn); }
+.summary > .chip + .chip::before { content: ""; position: absolute; left: -8px; top: 14px; bottom: 14px; width: 1px; background: var(--outline); }   /* 두 칸 사이 세로선 */
+.chip.skeleton { width: 150px; background: var(--surface-variant); }
+/* 펼치기 표시: 숫자 옆 작은 꺾쇠 · 펼치면 위로 뒤집힘 */
+.chip-caret { order: 3; display: grid; place-items: center; width: 20px; height: 20px; color: var(--muted); transition: transform .25s; }
+.chip-caret svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.chip[aria-expanded="true"] .chip-caret { transform: rotate(180deg); }
+/* 목록은 칸 줄 바로 아래, 띠 폭 전체 */
 .summary > .chip { order: 1; }
 .summary > .summary-list { order: 2; grid-column: 1 / -1; margin: 0 -8px; }
-.summary > .summary-list.open { margin: -6px -8px 12px; }
+.summary > .summary-list.open { margin: 2px -8px 6px; }
 /* 요약 칸을 누르면 펼쳐지는 야채 목록 */
 .summary-list { display: grid; grid-template-rows: 0fr; margin: 0 -8px; opacity: 0;
   transition: grid-template-rows .45s cubic-bezier(.2,.8,.2,1), opacity .3s ease, margin .45s cubic-bezier(.2,.8,.2,1); }
-.summary-list.open { grid-template-rows: 1fr; margin-top: 10px; opacity: 1; }
+.summary-list.open { grid-template-rows: 1fr; opacity: 1; }
 .summary-clip { min-height: 0; overflow: hidden; }
 .summary-inner { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px; }
-.summary-list button { border: 1px solid var(--outline); border-radius: 8px; padding: 6px 12px; background: var(--surface); color: var(--ink); font-size: 14px;
+.summary-list button { border: 1px solid var(--outline-variant); border-radius: 8px; padding: 6px 12px; background: var(--surface); color: var(--ink); font-size: 14px;
   transition: background .15s; }
 .summary-list button:hover { background: var(--surface-variant); }
 .summary-list .rise { color: var(--up); font-weight: 700; } .summary-list .fall { color: var(--down); font-weight: 700; }
@@ -704,6 +702,10 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
   font-size: 24px; font-weight: 700; color: var(--primary); background: #fff; }
 .buy-link:hover { background: var(--primary-hover); box-shadow: var(--e2); }
 .buy-link:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+.hero-mid .buy-link { flex: none; height: 48px; gap: 14px; padding: 0 8px 0 20px; border-radius: 999px; box-shadow: none; }
+.hero-mid .buy-link b { font-size: 15px; line-height: 1.2; }
+.hero-mid .buy-link small { margin-top: 1px; font-size: 12px; line-height: 1.2; }
+.hero-mid .buy-link i { width: 34px; height: 34px; font-size: 17px; }
 .receipt-link { background: #FFF2C2; color: #2E2300; gap: 14px; padding: 20px 22px; border: 1px solid #FFE08A; }
 .receipt-link .receipt-emoji { flex: none; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 14px; background: #fff; font-size: 32px; line-height: 1; }
 .receipt-link .receipt-text { flex: 1; min-width: 0; }
@@ -865,6 +867,10 @@ a.my-link { color: inherit; text-decoration: none; }
 }
 @media (max-width: 900px) {
   .hero-row { grid-template-columns: minmax(0, 1fr); }
+  .hero-mid { flex-direction: column; align-items: stretch; padding: 12px; }
+  .summary-panel { flex-direction: column; gap: 4px; }
+  .summary-title { line-height: 1.4; padding-left: 4px; }
+  .hero-mid .buy-link { padding: 0 8px 0 18px; }
 }
 @media (max-width: 1000px) {
   .grid { grid-template-columns: repeat(3, 1fr); }
@@ -907,13 +913,8 @@ a.my-link { color: inherit; text-decoration: none; }
   .hero-sub { font-size: 13px; }
   .hero-salpi { width: 96px; }
   .hero-title { gap: 10px; }
-  .chip { padding: 12px 14px; gap: 8px; }
-  .chip b { font-size: 26px; }
-  .chip small { font-size: 15px; }
-  .summary-panel { padding: 16px; }
-  .summary { column-gap: 10px; }
-  .buy-link b { font-size: 19px; }
-  .chip[data-list] { padding-right: 46px; } .chip-caret { right: 12px; width: 26px; height: 26px; margin-top: -13px; }
+  .summary { grid-template-columns: 1fr 1fr; }
+  .chip { justify-content: center; }
   .fc-strip { padding-right: 104px; }
   .fc-strip .say { display: none; }
   .summary { max-width: none; }

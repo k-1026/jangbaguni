@@ -652,7 +652,7 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .cost-verdict { padding: 2px 10px; border-radius: 999px; background: var(--tone-bg); color: var(--tone); font-size: 13px; font-weight: 700; }
 .cost-change { margin-left: 8px; font-size: 15px; font-weight: 700; vertical-align: middle; }
 .cost-change.up { color: var(--up); } .cost-change.down { color: var(--down); }
-.cost-note { margin: 10px 0 0; font-size: 13px; color: var(--muted); }
+.cost-note { margin-left: 8px; font-size: 13px; color: var(--muted); white-space: nowrap; }   /* 제목 옆 설명 뒤에 붙는 참고 안내 */
 .cost-tips { margin: 12px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
 .cost-tips li { position: relative; padding-left: 20px; font-size: 14px; color: var(--muted); line-height: 1.5; }
 .cost-tips li::before { content: "💡"; position: absolute; left: 0; top: 0; font-size: 13px; }

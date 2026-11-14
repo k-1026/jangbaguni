@@ -1200,7 +1200,6 @@ function renderCosts(r, withChange) {
           <div><dt>1인분 재료비</dt><dd>${won(m.cost_per_serving)}</dd></div>
           <div><dt>남는 금액</dt><dd>${won(m.margin)}</dd></div>
         </dl>
-        <p class="cost-note">ⓘ 인건비 · 임대료 등은 빼지 않은 금액이에요.</p>
         ${m.swap ? `<div class="cost-swap">
           <b class="swap-title">대체 재료 제안</b>
           <p class="swap-pair"><span class="swap-from">${esc(m.swap.from)}</span><i aria-label="대신">→</i><span class="swap-to">${esc(m.swap.to)}</span></p>

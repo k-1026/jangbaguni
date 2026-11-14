@@ -1185,40 +1185,31 @@ const ratioCls = (v) => (v == null ? "" : v > 35 ? "up" : v > 30 ? "warnc" : "do
 function renderCosts(r, withChange) {
   const T = r.target_ratio_pct;
   $("#costCard").innerHTML = `
-    <p class="cost-guide">원가율은 <b>한 그릇 값에서 재료비가 차지하는 몫</b>이에요. 낮을수록 한 그릇 팔 때 남는 돈이 많아요.
-      식당은 보통 <b>${T}% 아래</b>면 괜찮은 편이에요.</p>
+    <p class="cost-guide"><b>원가율</b> = 한 그릇 값 중 <b>재료비가 차지하는 몫</b>이에요. <b>낮을수록 많이 남아요.</b> 보통 <b>${T}% 아래</b>면 괜찮아요.</p>
     <div class="cost-cards">${r.menus.map((m) => {
       const v = m.cost_ratio_pct;
       const ch = withChange && m.change_pt
-        ? `<small class="${m.change_pt > 0 ? "up" : "down"}">${m.change_pt > 0 ? "▲" : "▼"} ${Math.abs(m.change_pt)}%p</small>` : "";
+        ? `<small class="cost-change ${m.change_pt > 0 ? "up" : "down"}">${m.change_pt > 0 ? "▲" : "▼"} ${Math.abs(m.change_pt)}%p</small>` : "";
       const tone = { up: "high", warnc: "tight", down: "ok" }[ratioCls(v)] || "";   // 높음 · 빠듯 · 충분
+      // 한 줄에 숫자 넷: 원가율(크게 · 색) | 판매가 | 1인분 재료비 | 남는 금액
       return `<article class="cost-card ${tone}">
-        <div class="cost-left">
-          <b>${esc(m.menu)}</b>
-          <strong>${v ?? "-"}<em>%</em></strong>
-          <span class="cost-verdict">${esc(m.verdict)}</span>${ch}
-        </div>
-        <div class="cost-right">
-          ${v == null ? "" : `<p class="ratio-label"><span><i class="k-cost"></i>재료비</span><span><i class="k-keep"></i>남는 돈</span><small>판매가 ${won(m.price)}을 100으로 볼 때</small></p>
-          <div class="split-bar" role="img" aria-label="판매가 ${won(m.price)} 중 재료비 ${v}%, 남는 돈 ${+(100 - v).toFixed(1)}%">
-            <i class="part-cost" style="width:${Math.max(4, Math.min(100, v))}%">${v}%</i>
-            <i class="part-keep">남는 돈 ${+(100 - v).toFixed(1)}%</i>
-          </div>`}
-          <dl class="cost-nums">
-            <div><dt>판매가</dt><dd>${won(m.price)}</dd></div>
-            <div><dt>1인분 재료비</dt><dd>${won(m.cost_per_serving)}</dd></div>
-            <div><dt>남는 돈</dt><dd>${won(m.margin)}</dd></div>
-          </dl>
-          ${m.swap ? `<div class="cost-swap">
-            <p class="swap-title">🔄 대체 재료 추천</p>
-            <p class="swap-pair"><span class="swap-from">${esc(m.swap.from)}</span><i aria-label="에서">→</i><span class="swap-to">${esc(m.swap.to)}</span></p>
-            <p class="swap-reason">${esc(m.swap.reason)}</p>
-          </div>` : ""}
-          ${(() => {   // 대체 재료 상자에 들어간 문장은 빼고 나머지(오른 재료 · 판매가 제안)만 💡로
-            const rest = m.swap ? m.tips.filter((t) => t !== m.swap.reason && !t.startsWith(`${m.swap.from} 일부를`)) : m.tips;
-            return rest.length ? `<ul class="cost-tips">${rest.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : "";
-          })()}
-        </div>
+        <h3 class="cost-menu">${esc(m.menu)}</h3>
+        <dl class="cost-stats">
+          <div class="cost-main"><dt>원가율 <span class="cost-verdict">${esc(m.verdict)}</span></dt><dd>${v ?? "-"}<em>%</em>${ch}</dd></div>
+          <div><dt>판매가</dt><dd>${won(m.price)}</dd></div>
+          <div><dt>1인분 재료비</dt><dd>${won(m.cost_per_serving)}</dd></div>
+          <div><dt>남는 금액</dt><dd>${won(m.margin)}</dd></div>
+        </dl>
+        <p class="cost-note">ⓘ 인건비 · 임대료 등은 빼지 않은 금액이에요.</p>
+        ${m.swap ? `<div class="cost-swap">
+          <b class="swap-title">대체 재료 제안</b>
+          <p class="swap-pair"><span class="swap-from">${esc(m.swap.from)}</span><i aria-label="대신">→</i><span class="swap-to">${esc(m.swap.to)}</span></p>
+          <p class="swap-reason">${esc(m.swap.reason)}</p>
+        </div>` : ""}
+        ${(() => {   // 대체 재료 칸에 들어간 문장은 빼고 나머지(오른 재료 · 판매가 제안)만 💡로
+          const rest = m.swap ? m.tips.filter((t) => t !== m.swap.reason && !t.startsWith(`${m.swap.from} 일부를`)) : m.tips;
+          return rest.length ? `<ul class="cost-tips">${rest.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : "";
+        })()}
       </article>`;
     }).join("")}</div>
     <p class="muted small">${esc(r.method)}. 레시피에 주재료만 들어 있어 실제보다 원가율이 조금 낮게 나와요.</p>`;

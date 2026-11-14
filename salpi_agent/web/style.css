@@ -634,45 +634,47 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .btn:disabled { opacity: .6; cursor: wait; }
 .rc-warn { background: #FFF3CC; color: #6b5200; border-radius: 8px; padding: 8px 10px; font-size: 13px; }
 .ok { background: #DDF3EA; color: #0f5e47; border-radius: 8px; padding: 8px 10px; font-size: 14px; font-weight: 700; }
-/* 메뉴별 원가율 카드: 왼쪽 원가율 숫자 · 오른쪽 막대(목표선) · 판매가 · 재료비 · 남는 돈 · 제안 */
-.cost-guide { margin: -4px 0 14px; font-size: 13px; line-height: 1.6; color: var(--muted); }
+/* 메뉴별 원가율 카드 (구글 스타일 · 어르신도 한눈에): 메뉴 이름 → 숫자 넷 한 줄(세로 선으로 구분) → 대체 재료 제안 띠 */
+.cost-guide { margin: -4px 0 16px; font-size: 15px; line-height: 1.6; color: var(--muted); }
 .cost-guide b { color: var(--ink); }
-.ratio-label { display: flex; align-items: center; gap: 12px; margin: 0 0 6px; font-size: 12px; color: var(--muted); }
-.ratio-label span { display: inline-flex; align-items: center; gap: 5px; }
-.ratio-label i { width: 10px; height: 10px; border-radius: 3px; }
-.ratio-label i.k-cost { background: var(--tone); } .ratio-label i.k-keep { background: #DDF3EA; border: 1px solid #A9DCC6; }
-.ratio-label small { margin-left: auto; color: var(--muted); }
-.split-bar { display: flex; height: 26px; margin-bottom: 12px; border-radius: 8px; overflow: hidden; font-size: 11.5px; font-weight: 700; }
-.split-bar i { display: flex; align-items: center; padding: 0 8px; font-style: normal; white-space: nowrap; overflow: hidden; }
-.split-bar .part-cost { flex: none; background: var(--tone); color: #fff; }
-.split-bar .part-keep { flex: 1; justify-content: flex-end; background: #DDF3EA; color: #0f5e47; }
-.cost-cards { display: flex; flex-direction: column; gap: 12px; }
-.cost-card { --tone: var(--down); --tone-bg: #E6F5EF; display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 18px; padding: 12px;
-  border-radius: 16px; background: var(--surface); border: 1px solid var(--outline-variant); color: var(--ink); }
+.cost-cards { display: flex; flex-direction: column; gap: 16px; }
+.cost-card { --tone: var(--down); --tone-bg: #E6F5EF; padding: 20px 24px; border-radius: 16px; background: var(--surface);
+  border: 1px solid var(--outline-variant); color: var(--ink); }
 .cost-card.tight { --tone: #B57A00; --tone-bg: #FFF6D9; } .cost-card.high { --tone: var(--up); --tone-bg: #FFF0EE; }
-.cost-left { padding: 12px 14px; border-radius: 12px; background: var(--tone-bg); }
-.cost-right { padding: 6px 6px 4px 0; }
-.cost-left b { display: block; font-size: 16px; }
-.cost-left strong { display: block; margin: 2px 0; font-size: 34px; line-height: 1.1; font-weight: 700; color: var(--tone); }
-.cost-left strong em { font-style: normal; font-size: 18px; margin-left: 1px; }
-.cost-verdict { display: inline-block; padding: 2px 10px; border-radius: 999px; background: #fff; color: var(--tone); font-size: 12px; font-weight: 700; }
-.cost-left small { display: block; margin-top: 4px; font-size: 12px; font-weight: 700; }
-.cost-left small.up { color: var(--up); } .cost-left small.down { color: var(--down); }
-.cost-nums { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; }
-.cost-nums div { padding: 8px 10px; border-radius: 10px; background: var(--surface-variant); }
-.cost-nums dt { font-size: 12px; color: var(--muted); } .cost-nums dd { margin: 0; font-size: 15px; font-weight: 700; color: var(--ink); }
-.cost-tips { margin: 10px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
-.cost-tips li { position: relative; padding-left: 16px; font-size: 13px; color: var(--muted); line-height: 1.5; }
-.cost-tips li::before { content: "💡"; position: absolute; left: 0; top: 0; font-size: 11px; }
-/* 대체 재료 추천: 오른 재료(빨강) → 바꿀 재료(초록) */
-.cost-swap { margin-top: 12px; padding: 12px 16px; border-radius: 12px; background: #F1F7F3; }
-.swap-title { margin: 0 0 6px; font-size: 13px; font-weight: 700; color: #3E4A44; }
-.swap-pair { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
-.swap-pair span { padding: 5px 12px; border-radius: 8px; font-size: 15px; font-weight: 700; }
-.swap-from { color: #C63A2B; background: #FDECEA; }
-.swap-to { color: #0F7A58; background: #E2F5EC; }
-.swap-pair i { font-style: normal; font-size: 18px; font-weight: 700; color: #7A8A84; }
-.swap-reason { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
+.cost-menu { margin: 0 0 14px; font-size: 24px; font-weight: 700; line-height: 1.3; }
+.cost-stats { display: grid; grid-template-columns: 1.3fr 1fr 1fr 1fr; margin: 0; }
+.cost-stats > div { padding: 0 20px; border-left: 1px solid var(--outline-variant); min-width: 0; }
+.cost-stats > div:first-child { padding-left: 0; border-left: 0; }
+.cost-stats dt { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; font-size: 15px; font-weight: 700; color: var(--muted); }
+.cost-stats dd { margin: 0; font-size: 30px; font-weight: 700; line-height: 1.25; color: var(--ink); white-space: nowrap; }
+.cost-main dd { font-size: 46px; line-height: 1.1; color: var(--tone); }
+.cost-main dd em { font-style: normal; font-size: 28px; margin-left: 2px; }
+.cost-verdict { padding: 2px 10px; border-radius: 999px; background: var(--tone-bg); color: var(--tone); font-size: 13px; font-weight: 700; }
+.cost-change { margin-left: 8px; font-size: 15px; font-weight: 700; vertical-align: middle; }
+.cost-change.up { color: var(--up); } .cost-change.down { color: var(--down); }
+.cost-note { margin: 10px 0 0; font-size: 13px; color: var(--muted); }
+.cost-tips { margin: 12px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.cost-tips li { position: relative; padding-left: 20px; font-size: 14px; color: var(--muted); line-height: 1.5; }
+.cost-tips li::before { content: "💡"; position: absolute; left: 0; top: 0; font-size: 13px; }
+/* 대체 재료 제안: 연한 띠 한 줄 — 제목 | 오른 재료 → 바꿀 재료 | 이유 */
+.cost-swap { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 16px; margin-top: 16px; padding: 14px 18px; border-radius: 12px; background: var(--primary-container); }
+.swap-title { font-size: 16px; color: var(--primary); white-space: nowrap; }
+.swap-pair { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding-left: 16px; border-left: 1px solid rgba(0,0,0,.15); }
+.swap-pair span { font-size: 17px; font-weight: 700; }
+.swap-from { color: var(--ink); }
+.swap-to { color: var(--primary); }
+.swap-pair i { font-style: normal; font-size: 18px; font-weight: 700; color: var(--ink); }
+.swap-reason { flex: 1 1 220px; margin: 0; padding-left: 16px; border-left: 1px solid rgba(0,0,0,.15); font-size: 14px; color: var(--muted); }
+/* 화면이 좁으면 숫자 넷을 2줄 × 2칸으로 */
+@media (max-width: 760px) {
+  .cost-card { padding: 16px; }
+  .cost-stats { grid-template-columns: 1fr 1fr; gap: 14px 0; }
+  .cost-stats > div:nth-child(odd) { padding-left: 0; border-left: 0; }
+  .cost-stats > div:nth-child(even) { padding-right: 0; }
+  .cost-stats dd { font-size: 24px; }
+  .cost-main dd { font-size: 36px; }
+  .swap-pair, .swap-reason { padding-left: 0; border-left: 0; }
+}
 #receiptList { margin-top: 18px; }
 .sub-h { font-size: 15px; margin: 16px 0 6px; }
 .receipt-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; }
@@ -894,8 +896,6 @@ a.my-link { color: inherit; text-decoration: none; }
   .wrap { padding: 0 16px; }
   .nav { display: none; }
   .demand-grid, #store .order-grid, .reason-grid { grid-template-columns: minmax(0, 1fr); }
-  .cost-card { grid-template-columns: 1fr; gap: 10px; }
-  .cost-nums { grid-template-columns: 1fr 1fr 1fr; }
   .item-head { flex-direction: column; align-items: stretch; text-align: center; padding: 20px; }
   .item-shop { text-align: center; }
   .board { padding: 18px 16px; }

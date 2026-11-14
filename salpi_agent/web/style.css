@@ -658,11 +658,11 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .cost-tips li::before { content: "💡"; position: absolute; left: 0; top: 0; font-size: 13px; }
 /* 대체 재료 제안: 연한 띠 한 줄 — 제목 | 오른 재료 → 바꿀 재료 | 이유 */
 .cost-swap { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 16px; margin-top: 16px; padding: 14px 18px; border-radius: 12px; background: var(--primary-container); }
-.swap-title { font-size: 16px; color: var(--primary); white-space: nowrap; }
-.swap-pair { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding-left: 16px; border-left: 1px solid rgba(0,0,0,.15); }
+.swap-title { align-self: stretch; display: flex; align-items: center; margin: -14px 0 -14px -18px; padding: 0 18px; border: 2.5px solid var(--primary); border-radius: 12px; font-size: 16px; color: var(--primary); white-space: nowrap; }   /* 띠 왼쪽 칸에 꽉 맞는 테두리 */
+.swap-pair { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .swap-pair span { font-size: 17px; font-weight: 700; }
 .swap-from { color: var(--ink); }
-.swap-to { color: var(--primary); }
+.swap-to { color: #1A4FB8; font-size: 18px; font-weight: 900; }   /* 바꿀 재료: 진한 파랑으로 눈에 띄게 (초록 띠 위에서도 잘 읽힘) */
 .swap-pair i { font-style: normal; font-size: 18px; font-weight: 700; color: var(--ink); }
 .swap-reason { flex: 1 1 220px; margin: 0; padding-left: 16px; border-left: 1px solid rgba(0,0,0,.15); font-size: 14px; color: var(--muted); }
 /* 화면이 좁으면 숫자 넷을 2줄 × 2칸으로 */

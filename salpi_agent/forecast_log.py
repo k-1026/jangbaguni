@@ -71,9 +71,15 @@ def _histories(veg_rows, extra_rows):
 
 def score(veg_rows, extra_rows):
     """기준 날짜에서 7일이 지난, 아직 채점 안 한 예측을 채점. 채점한 줄 수를 돌려줌."""
-    due = supabase_db.select("forecast_log", actual_price="is.null", base_date=f"lte.{(today() - timedelta(7)).isoformat()}",
-                             select="run_date,item,base_date,base_price,range_low,range_high,direction")
     hist, done = _histories(veg_rows, extra_rows), 0
+    starts = [date.fromisoformat(h[0][0]) for h in hist.values() if h]
+    if not starts:
+        return 0
+    # 대시보드 기록(4~5주)보다 오래된 예측은 7일 뒤 시세가 없어 채점할 수 없음 → 매번 다시 찾지 않게 뺌
+    oldest = min(starts) - timedelta(7)
+    due = supabase_db.select("forecast_log", actual_price="is.null",
+                             **{"and": f"(base_date.gte.{oldest.isoformat()},base_date.lte.{(today() - timedelta(7)).isoformat()})"},
+                             select="run_date,item,base_date,base_price,range_low,range_high,direction")
     for row in due:
         target = date.fromisoformat(row["base_date"]) + timedelta(7)
         hit = next(((d, p) for d, p in hist.get(row["item"], []) if target <= date.fromisoformat(d) <= target + timedelta(LOOK_AHEAD)), None)

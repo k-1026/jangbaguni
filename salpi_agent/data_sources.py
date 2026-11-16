@@ -10,7 +10,7 @@ import os
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import requests
@@ -21,6 +21,14 @@ load_dotenv(ROOT.parent / ".env")   # 내 컴퓨터용. Vercel에서는 프로�
 # Vercel은 /tmp 에만 파일을 쓸 수 있음 (서버가 새로 켜지면 비워짐)
 CACHE_DIR = Path("/tmp/salpi_cache") if os.getenv("VERCEL") else ROOT / "cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+KST = timezone(timedelta(hours=9))
+
+
+def kst_today():
+    """한국 날짜. Vercel 서버는 영국 시간이라 date.today() 를 쓰면 한국 새벽 0~9시에 하루 밀림."""
+    return datetime.now(KST).date()
+
 
 DAEGU_MARKET = os.getenv("AT_WHSL_MRKT_CD", "220001")   # 대구 북부도매시장(매천시장)
 DAEGU_SGG = os.getenv("AT_PERDAY_SGG_CD", "2200")       # perDay 대구 지역 코드
@@ -183,13 +191,13 @@ def _fetch_sale_day(day):
 
 def sale_day(day):
     """하루치 정산 결과 (휴장일은 빈 목록)."""
-    recent = (date.today() - day).days <= 2   # 최근 이틀은 늦게 올라오는 값이 있어 3시간마다 갱신
+    recent = (kst_today() - day).days <= 2   # 최근 이틀은 늦게 올라오는 값이 있어 3시간마다 갱신
     return _cached(f"sale_{day.isoformat()}", 3 if recent else None, lambda: _fetch_sale_day(day))
 
 
 def sale_days(days):
     """오늘부터 거꾸로 days일치 정산 결과를 {날짜: rows}로."""
-    dates = [date.today() - timedelta(d) for d in range(days)]
+    dates = [kst_today() - timedelta(d) for d in range(days)]
     with ThreadPoolExecutor(max_workers=4) as pool:       # 공공데이터포털은 한꺼번에 많이 부르면 429로 막음
         results = pool.map(sale_day, dates)
     return dict(zip(dates, results))
@@ -201,7 +209,7 @@ def sale_days(days):
 
 def perday_prices(item_name, days=35):
     cfg = ITEMS.get(item_name) or EXTRA_ITEMS[item_name]
-    start, end = date.today() - timedelta(days), date.today()
+    start, end = kst_today() - timedelta(days), kst_today()
 
     def fetch():
         url = os.getenv("AT_PERDAY_ENDPOINT", "https://apis.data.go.kr/B552845/perDay") + "/price"
@@ -225,7 +233,7 @@ def perday_prices(item_name, days=35):
 # ---------------------------------------------------------------
 
 def weather_days(days=21):
-    end = date.today() - timedelta(1)
+    end = kst_today() - timedelta(1)
     start = end - timedelta(days - 1)
 
     def fetch():
@@ -255,7 +263,7 @@ def weather_days(days=21):
 
 def _events_raw():
     """오늘 기준 60일 전부터 시작한 대구 행사 전부 (12시간마다 갱신)."""
-    today = date.today()
+    today = kst_today()
 
     def fetch():
         url = os.getenv("KTO_TOUR_ENDPOINT", "https://apis.data.go.kr/B551011/KorService2") + "/searchFestival2"
@@ -277,12 +285,12 @@ def events_between(start, end):
 
 
 def daegu_events(days_ahead=14):
-    return events_between(date.today(), date.today() + timedelta(days_ahead))
+    return events_between(kst_today(), kst_today() + timedelta(days_ahead))
 
 
 def month_events():
     """오늘부터 이달 말일까지 열리는 행사 (이미 끝난 행사는 뺌)."""
-    today = date.today()
+    today = kst_today()
     month_end = (today.replace(day=28) + timedelta(4)).replace(day=1) - timedelta(1)
     return events_between(today, month_end)
 
@@ -372,7 +380,7 @@ def holidays_between(start, end):
 
 
 def holidays(days_ahead=30):
-    return holidays_between(date.today(), date.today() + timedelta(days_ahead))
+    return holidays_between(kst_today(), kst_today() + timedelta(days_ahead))
 
 
 # ---------------------------------------------------------------
@@ -442,7 +450,7 @@ def _fetch_ekape_day(day):
 
 
 def ekape_day(day):
-    recent = (date.today() - day).days <= 2   # 최근 이틀은 늦게 올라오는 값이 있어 3시간마다 갱신
+    recent = (kst_today() - day).days <= 2   # 최근 이틀은 늦게 올라오는 값이 있어 3시간마다 갱신
     return _cached(f"ekape2_{day.isoformat()}", 3 if recent else None, lambda: _fetch_ekape_day(day))
 
 
@@ -450,7 +458,7 @@ def ekape_days(days=35):
     """오늘부터 거꾸로 days일 중 평일만 {날짜: 하루치}. 키가 없으면 빈 값 (재료 페이지 등급표만 빠짐)."""
     if not os.getenv("EKAPE_API_KEY", "").strip():
         return {}
-    dates = [d for d in (date.today() - timedelta(n) for n in range(days)) if d.weekday() < 5]
+    dates = [d for d in (kst_today() - timedelta(n) for n in range(days)) if d.weekday() < 5]
     with ThreadPoolExecutor(max_workers=3) as pool:
         results = pool.map(ekape_day, dates)
     return dict(zip(dates, results))

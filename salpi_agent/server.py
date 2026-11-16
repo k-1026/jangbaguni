@@ -21,8 +21,10 @@ import analysis
 import chat_log
 import demand
 import forecast_log
+import forecast_model
 import foodspring
 import mart_price
+import menus
 import receipts
 import supabase_db
 from agent import SalpiAgent
@@ -168,8 +170,23 @@ def _daily(job):
 
 @app.post("/api/jobs/daily")
 def daily_jobs():
-    """예약 실행용: 예측 저장 · 채점 · 식봄 판매가 저장을 바로 실행하고 결과 수를 돌려줌."""
+    """예약 실행용: 예측 저장 · 채점 · 식봄 판매가 저장을 바로 실행하고 결과 수를 돌려줌.
+    새벽 학습(learner.py)이 끝난 뒤 불리므로, 새 모델을 바로 읽고 예측을 다시 계산한 뒤 저장."""
+    forecast_model.reset()
+    with _memo_lock:
+        _memo.pop("overview", None)
     return _guard(lambda: {**_run_forecast_job(), **_run_shop_job()})
+
+
+@app.get("/api/model")
+def model_status(days: int = 14):
+    """AI 예측 모델: 종류별 지금 모델(버전 · 지표 3개 · 화면 사용 여부)과 최근 매일 학습 기록 (AI 진단 · 실험 · 교체)."""
+    def build():
+        now = {k: {"version": m.blob["version"], "trained_at": m.blob["trained_at"], "features": m.features,
+                   "metrics": m.blob["metrics"], "formula_metrics": m.blob["formula_metrics"], "test_period": m.blob["test_period"]}
+               for k, m in forecast_model.models().items()}
+        return {"on_screen": now, "history": forecast_model.history()[: max(1, min(days, 60)) * 2]}
+    return _guard(lambda: memo(f"model:{days}", build, ttl=600))
 
 
 @app.get("/api/forecast-score")
@@ -299,6 +316,40 @@ def receipt_edit(purchase_id: int, body: ReceiptEdit):
 def my_items():
     """우리 가게 메뉴에 들어가는 재료 (알림 '내 메뉴 재료만'). 메뉴가 자주 바뀌지 않아 10분 보관."""
     return _receipt_guard(lambda: memo("my_items", lambda: receipts.my_ingredients(supabase_db.DEMO_STORE), ttl=600))
+
+
+class MenuIn(BaseModel):
+    name: str = ""
+    price: int | None = None
+    recipe: list[dict] = []
+
+
+def _menu_changed(result):
+    """메뉴를 바꾸면 '내 메뉴 재료' 보관값을 비우고, 화면이 다시 그릴 원가율을 함께 돌려줌."""
+    _memo.pop("my_items", None)
+    return {**result, **receipts.cost_report(supabase_db.DEMO_STORE), "receipts": receipts.recent(supabase_db.DEMO_STORE)}
+
+
+@app.get("/api/menus")
+def menu_list():
+    """메뉴 입력 창용: 재료 목록(최근 영수증 단가) · 메뉴(레시피 포함) · 자주 쓰는 메뉴 틀."""
+    return _receipt_guard(lambda: menus.editor_data(supabase_db.DEMO_STORE))
+
+
+@app.post("/api/menus")
+def menu_add(body: MenuIn):
+    return _receipt_guard(lambda: _menu_changed(menus.save(supabase_db.DEMO_STORE, None, body.model_dump())))
+
+
+@app.put("/api/menus/{menu_id}")
+def menu_edit(menu_id: int, body: MenuIn):
+    return _receipt_guard(lambda: _menu_changed(menus.save(supabase_db.DEMO_STORE, menu_id, body.model_dump())))
+
+
+@app.post("/api/menus/{menu_id}/stop")
+def menu_stop(menu_id: int):
+    """판매 중지 (메뉴를 지우면 판매 기록까지 지워져서 지우지 않음)."""
+    return _receipt_guard(lambda: _menu_changed(menus.stop(supabase_db.DEMO_STORE, menu_id)))
 
 
 @app.get("/api/receipts")

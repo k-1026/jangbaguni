@@ -1,0 +1,60 @@
+# 매일 새벽 AI 시세 예측 학습 (시세 검증 담당) → 실제 사이트에 오늘 예측 저장 · 채점
+# - 한국 시간 매일 06:00: salpi_agent/learner.py 가 어제까지 자료로 다시 학습 → 시험 → AI가 고른 실험 2개 → 더 나으면 교체
+#   → 모델을 Supabase 보관함(models/forecast/)에 올림
+# - 월요일에는 13개 기법 품목별 재시합(method_match.py)도 돌려 결과를 보관함 matching.json 에 저장
+# - 이어서 실제 사이트의 /api/jobs/daily 를 불러, 새 모델로 오늘 예측을 저장하고 7일 지난 예측을 채점 (아무도 안 들어온 날도 빠지지 않음)
+# - GitHub 예약 실행은 기본 작업 공간(main)에 있는 이 파일로만 돌고, 몰리는 시간에 몇 분~수십 분 늦을 수 있음
+# - 직접 돌리기: Actions 탭 → "매일 새벽 AI 예측 학습" → Run workflow (이때는 13개 기법 재시합도 같이 돌아감)
+# - 저장소 Secrets 필요: AT_SALE_API_KEY · KMA_ASOS_API_KEY · SUPABASE_URL · SUPABASE_SECRET_KEY · GEMINI_API_KEY
+name: 매일 새벽 AI 예측 학습
+
+on:
+  schedule:
+    - cron: "0 21 * * *"   # GitHub 시간(UTC) 21:00 = 한국 시간 다음 날 06:00, 매일
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily-learn
+  cancel-in-progress: false
+
+jobs:
+  learn:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      SITE_URL: https://jangbaguni-ten.vercel.app
+      PYTHONIOENCODING: utf-8
+      AT_SALE_API_KEY: ${{ secrets.AT_SALE_API_KEY }}
+      KMA_ASOS_API_KEY: ${{ secrets.KMA_ASOS_API_KEY }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 학습에 필요한 것 설치
+        run: pip install numpy requests python-dotenv google-genai
+
+      - name: 다시 학습 · 시험 · 교체 · 보관함에 올리기
+        working-directory: salpi_agent
+        run: python learner.py
+
+      - name: 13개 기법 품목별 재시합 (월요일 · 직접 돌릴 때)
+        working-directory: salpi_agent
+        run: |
+          if [ "$(TZ=Asia/Seoul date +%u)" = "1" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            python method_match.py --save
+          else
+            echo "월요일에만 돌아요"
+          fi
+
+      - name: 실제 사이트에 오늘 예측 저장 · 채점
+        if: always()   # 학습이 실패해도 어제 모델(또는 고정 공식)로 기록은 남김
+        run: curl -fsS -X POST --max-time 280 "$SITE_URL/api/jobs/daily"

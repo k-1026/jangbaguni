@@ -19,12 +19,184 @@ if (ITEM) {
   document.body.classList.add("item-view");
   $("#itemPage").hidden = false;
 }
+// 로그인 상태: 지금은 브라우저에만 기억함 (서버 로그인 · 카카오 연결 전 임시)
+// '로그인 상태 유지'를 켜면 브라우저를 닫아도 유지(localStorage), 끄면 창을 닫으면 풀림(sessionStorage)
+const LOGIN_KEY = "salpi_login";
+function readLogin() {
+  try { return JSON.parse(localStorage.getItem(LOGIN_KEY) || sessionStorage.getItem(LOGIN_KEY) || "null"); } catch (e) { return null; }
+}
+function saveLogin(user, keep) {
+  try {
+    (keep ? localStorage : sessionStorage).setItem(LOGIN_KEY, JSON.stringify(user));
+    return true;
+  } catch (e) { return false; }
+}
+// 로그아웃: 기억해 둔 로그인 상태를 지우고 첫 화면으로 (나의 가게처럼 로그인이 필요한 페이지에 남지 않게)
+function logout() {
+  try { localStorage.removeItem(LOGIN_KEY); sessionStorage.removeItem(LOGIN_KEY); } catch (e) {}
+  location.replace("/");
+}
+// 탈퇴 뒤 첫 화면에서 한 번만 인사
+const BYE_KEY = "salpi_bye";
+try {
+  if (sessionStorage.getItem(BYE_KEY)) {
+    sessionStorage.removeItem(BYE_KEY);
+    const t = document.createElement("div");
+    t.className = "bye-toast";
+    t.setAttribute("role", "status");
+    t.textContent = "탈퇴했어요. 그동안 이용해 주셔서 감사해요";
+    document.body.append(t);
+    setTimeout(() => t.remove(), 4000);
+  }
+} catch (e) {}
+const SIGNED_IN = !!readLogin();
+const PAGE = new URLSearchParams(location.search).get("page");
+// 로그인 뒤 돌아갈 곳: 우리 사이트 안 주소(/ 로 시작)만 받음
+const safeNext = (u) => (u && u.startsWith("/") && !u.startsWith("//") ? u : "/");
+const LOGIN_NEXT = safeNext(new URLSearchParams(location.search).get("next"));
+const LOGIN_URL = `/?page=login&next=${encodeURIComponent(location.pathname + location.search + location.hash)}`;   // 로그인 뒤 지금 페이지로 돌아옴
+const goLogin = () => location.assign(LOGIN_URL);
+// 로그인 안 하고 나의 가게로 바로 들어오면 로그인 페이지로, 이미 로그인했는데 로그인 · 회원가입 페이지면 원래 가려던 곳으로
+const AUTH_PAGE = !ITEM && (PAGE === "login" || PAGE === "signup");
+if (!ITEM && PAGE === "store" && !SIGNED_IN) location.replace(LOGIN_URL);
+if (AUTH_PAGE && SIGNED_IN) location.replace(LOGIN_NEXT);
+const LOGIN_VIEW = AUTH_PAGE && !SIGNED_IN && PAGE === "login";
+const SIGNUP_VIEW = AUTH_PAGE && !SIGNED_IN && PAGE === "signup";
+const AUTH_VIEW = LOGIN_VIEW || SIGNUP_VIEW;   // 무늬 바탕 카드 페이지 (첫 화면 칸들은 숨김)
+if (AUTH_VIEW) {
+  document.body.classList.add("auth-view", LOGIN_VIEW ? "login-view" : "signup-view");
+  document.title = `${LOGIN_VIEW ? "로그인" : "회원가입"} · 살피`;
+}
 // 나의 가게 페이지(/?page=store): 내일 준비 · 메뉴별 원가율 · 영수증 분석은 사장님 로그인 시에만
-// 로그인(카카오)은 아직 없어서 시연에서는 기본 계정으로 로그인한 것으로 봄
-const SIGNED_IN = true;
-const STORE_VIEW = !ITEM && SIGNED_IN && new URLSearchParams(location.search).get("page") === "store";
+const STORE_VIEW = !ITEM && SIGNED_IN && PAGE === "store";
 if (STORE_VIEW) document.body.classList.add("store-view");
-$("#storeBtn").hidden = !SIGNED_IN;
+// 위쪽 버튼: 로그인 전에는 [로그인]만, 로그인 후에는 나의 가게 · 알림 · 마이페이지
+$("#storeBtn").hidden = $("#bellBtn").hidden = $("#meBtn").hidden = !SIGNED_IN;
+$("#loginBtn").hidden = SIGNED_IN || AUTH_VIEW;
+$("#loginBtn").href = LOGIN_URL;
+
+// 로그인 · 회원가입 카드에서 같이 쓰는 것: 안내 한 줄, 비밀번호 보기 눈 버튼, 아직 연결 전인 버튼(data-soon)
+function authMsg(box) {
+  return (text) => { box.textContent = text; box.hidden = !text; };
+}
+function eyeToggle(btn, input) {
+  btn.onclick = () => {
+    const show = input.type === "password";
+    input.type = show ? "text" : "password";
+    btn.setAttribute("aria-pressed", String(show));
+    btn.setAttribute("aria-label", show ? "비밀번호 숨기기" : "비밀번호 보기");
+  };
+}
+function soonButtons(form, msg) {
+  form.addEventListener("click", (e) => {
+    const s = e.target.closest("[data-soon]");
+    if (!s) return;
+    e.preventDefault();
+    msg(`${s.dataset.soon}은(는) 곧 연결돼요.`);
+  });
+}
+// 로그인 ↔ 회원가입을 오가도 원래 가려던 곳(next)은 그대로
+const authLink = (page) => `/?page=${page}&next=${encodeURIComponent(LOGIN_NEXT)}`;
+
+// 로그인 페이지
+if (LOGIN_VIEW) {
+  const msg = authMsg($("#loginMsg"));
+  eyeToggle($("#loginEye"), $("#loginPw"));
+  soonButtons($("#loginForm"), msg);   // 간편 로그인 · 아이디 찾기 · 비밀번호 찾기는 아직 연결 전
+  $("#loginToSignup").href = authLink("signup");
+  $("#loginForm").onsubmit = (e) => {
+    e.preventDefault();
+    const id = $("#loginId").value.trim(), pw = $("#loginPw").value;
+    if (!id) { msg("아이디 또는 휴대폰 번호를 입력해 주세요."); $("#loginId").focus(); return; }
+    if (!pw) { msg("비밀번호를 입력해 주세요."); $("#loginPw").focus(); return; }
+    // 임시: 서버 확인 전이라 아이디 · 비밀번호를 넣으면 로그인한 것으로 봄 (비밀번호는 저장하지 않음)
+    if (!saveLogin({ id, at: Date.now() }, $("#loginKeep").checked)) { msg("이 브라우저에서는 로그인 상태를 기억할 수 없어요."); return; }
+    location.replace(LOGIN_NEXT);
+  };
+  $("#loginId").focus();
+}
+
+// 회원가입 페이지
+if (SIGNUP_VIEW) {
+  const msg = authMsg($("#signupMsg"));
+  const fail = (text, el) => { msg(text); el?.focus(); };
+  eyeToggle($("#suEye"), $("#suPw"));
+  soonButtons($("#signupForm"), msg);   // 카카오 · 네이버 · 구글 가입은 아직 연결 전
+  $("#signupToLogin").href = authLink("login");
+
+  // 휴대폰 인증: 번호를 바꾸면 인증을 다시 받아야 함
+  let verified = false, left = 0, tick = null;
+  const phoneDigits = () => $("#suPhone").value.replace(/\D/g, "");
+  const resetCode = () => {
+    verified = false;
+    clearInterval(tick);
+    $("#suCodeBox").hidden = true;
+    $("#suSend").textContent = "인증번호 받기";
+  };
+  $("#suPhone").oninput = () => {
+    const d = phoneDigits().slice(0, 11);   // 숫자만 넣어도 010-1234-5678 모양으로
+    $("#suPhone").value = d.length > 7 ? `${d.slice(0, 3)}-${d.slice(3, d.length - 4)}-${d.slice(-4)}` : d.length > 3 ? `${d.slice(0, 3)}-${d.slice(3)}` : d;
+    resetCode();
+  };
+  const showTimer = () => { $("#suTimer").textContent = `${String(Math.floor(left / 60)).padStart(2, "0")}:${String(left % 60).padStart(2, "0")}`; };
+  $("#suSend").onclick = () => {
+    if (!/^01\d{8,9}$/.test(phoneDigits())) return fail("휴대폰 번호를 확인해 주세요.", $("#suPhone"));
+    msg("");
+    resetCode();
+    $("#suCodeBox").hidden = false;
+    $("#suCodeOk").hidden = true;
+    $("#suCode").value = "";
+    $("#suCode").disabled = $("#suVerify").disabled = false;
+    $("#suSend").textContent = "다시 받기";
+    left = 180;
+    showTimer();
+    tick = setInterval(() => { left = Math.max(0, left - 1); showTimer(); if (!left) clearInterval(tick); }, 1000);
+    $("#suCode").focus();
+  };
+  $("#suVerify").onclick = () => {
+    if (!left) return fail("인증 시간이 지났어요. 인증번호를 다시 받아 주세요.");
+    if (!/^\d{6}$/.test($("#suCode").value)) return fail("인증번호 6자리를 입력해 주세요.", $("#suCode"));
+    // 임시: 문자 보내기가 아직 연결 전이라 6자리를 넣으면 인증된 것으로 봄
+    verified = true;
+    clearInterval(tick);
+    msg("");
+    $("#suCodeOk").hidden = false;
+    $("#suCode").disabled = $("#suVerify").disabled = true;
+  };
+
+  // 비밀번호 확인: 두 칸이 같은지 바로 알려 줌
+  const pwHint = () => {
+    const a = $("#suPw").value, b = $("#suPw2").value, h = $("#suPwHint");
+    h.hidden = !b;
+    h.textContent = a === b ? "비밀번호가 같아요" : "비밀번호가 달라요";
+    h.classList.toggle("ok", a === b);
+  };
+  $("#suPw").oninput = $("#suPw2").oninput = pwHint;
+
+  // 약관: 전체 동의 ↔ 각 항목
+  const terms = [...document.querySelectorAll(".su-term")];
+  $("#suAll").onchange = () => terms.forEach((t) => { t.checked = $("#suAll").checked; });
+  terms.forEach((t) => { t.onchange = () => { $("#suAll").checked = terms.every((x) => x.checked); }; });
+
+  $("#signupForm").onsubmit = (e) => {
+    e.preventDefault();
+    const name = $("#suName").value.trim(), id = $("#suId").value.trim(), pw = $("#suPw").value, store = $("#suStore").value.trim();
+    const gu = $("#suGu").value;   // 대구 구 · 군만 받음 (살피는 대구 시세 서비스)
+    const place = ["대구", gu, $("#suPlaceMore").value.trim()].filter(Boolean).join(" ");
+    if (!name) return fail("이름을 입력해 주세요.", $("#suName"));
+    if (!verified) return fail("휴대폰 번호를 인증해 주세요.", $("#suPhone"));
+    if (!/^[A-Za-z0-9_]{4,}$/.test(id)) return fail("아이디는 영문 · 숫자 4자 이상으로 정해 주세요.", $("#suId"));
+    if (pw.length < 8 || !/[A-Za-z]/.test(pw) || !/\d/.test(pw)) return fail("비밀번호는 영문 · 숫자를 섞어 8자 이상으로 정해 주세요.", $("#suPw"));
+    if (pw !== $("#suPw2").value) return fail("비밀번호가 서로 달라요.", $("#suPw2"));
+    if (!store) return fail("가게 이름을 입력해 주세요.", $("#suStore"));
+    if (!gu) return fail("가게가 있는 구 · 군을 골라 주세요.", $("#suGu"));
+    if (terms.some((t) => t.dataset.required !== undefined && !t.checked)) return fail("필수 약관에 동의해 주세요.");
+    // 임시: 서버 가입 전이라 가입하면 바로 로그인한 것으로 봄 (비밀번호 · 휴대폰 번호는 저장하지 않음)
+    if (!saveLogin({ id, name, store, place, alarm: $("#suAlarm").checked, at: Date.now() }, true)) return fail("이 브라우저에서는 로그인 상태를 기억할 수 없어요.");
+    location.replace(LOGIN_NEXT);
+  };
+  $("#suName").focus();
+}
 
 async function getJSON(url) {
   const r = await fetch(url);
@@ -136,6 +308,11 @@ function plainReason(factors, kind) {
   if (top.factor.startsWith("날씨")) return "최근 날씨 영향이 있어요";
   if (top.factor.includes("공휴일")) return "공휴일을 앞두고 있어요";
   if (top.factor.includes("평균과의 차이")) return `${top.factor.split(" ")[0]} 평균보다 ${sign > 0 ? "싸서 올라올" : "비싸서 내려올"} 수 있어요`;
+  // 아래는 AI 학습 모델의 이유 (forecast_model.GROUPS)
+  if (top.factor.startsWith("계절")) return `해마다 이맘때 ${sign > 0 ? "오르는" : "내리는"} 때예요`;
+  if (top.factor.includes("명절")) return "설 · 추석을 앞두고 있어요";
+  if (top.factor.startsWith("최근 값 흐름")) return `최근 값 흐름을 보면 ${sign > 0 ? "오를" : "내릴"} 수 있어요`;
+  if (top.factor.startsWith("품목 특성")) return `이 품목은 요즘 ${sign > 0 ? "오르는" : "내리는"} 편이에요`;
   return "대구 행사가 많아요";
 }
 
@@ -1185,43 +1362,35 @@ const ratioCls = (v) => (v == null ? "" : v > 35 ? "up" : v > 30 ? "warnc" : "do
 function renderCosts(r, withChange) {
   const T = r.target_ratio_pct;
   $("#costCard").innerHTML = `
-    <p class="cost-guide">원가율은 <b>한 그릇 값에서 재료비가 차지하는 몫</b>이에요. 낮을수록 한 그릇 팔 때 남는 돈이 많아요.
-      식당은 보통 <b>${T}% 아래</b>면 괜찮은 편이에요.</p>
+    <p class="cost-guide"><b>원가율</b> = 판매가 중 <b>재료비 비율</b>. 보통 <b>${T}% 아래</b>면 괜찮아요.</p>
     <div class="cost-cards">${r.menus.map((m) => {
       const v = m.cost_ratio_pct;
       const ch = withChange && m.change_pt
-        ? `<small class="${m.change_pt > 0 ? "up" : "down"}">${m.change_pt > 0 ? "▲" : "▼"} ${Math.abs(m.change_pt)}%p</small>` : "";
+        ? `<small class="cost-change ${m.change_pt > 0 ? "up" : "down"}">${m.change_pt > 0 ? "▲" : "▼"} ${Math.abs(m.change_pt)}%p</small>` : "";
       const tone = { up: "high", warnc: "tight", down: "ok" }[ratioCls(v)] || "";   // 높음 · 빠듯 · 충분
+      // 한 줄에 숫자 넷: 원가율(크게 · 색) | 판매가 | 1인분 재료비 | 남는 금액
       return `<article class="cost-card ${tone}">
-        <div class="cost-left">
-          <b>${esc(m.menu)}</b>
-          <strong>${v ?? "-"}<em>%</em></strong>
-          <span class="cost-verdict">${esc(m.verdict)}</span>${ch}
-        </div>
-        <div class="cost-right">
-          ${v == null ? "" : `<p class="ratio-label"><span><i class="k-cost"></i>재료비</span><span><i class="k-keep"></i>남는 돈</span><small>판매가 ${won(m.price)}을 100으로 볼 때</small></p>
-          <div class="split-bar" role="img" aria-label="판매가 ${won(m.price)} 중 재료비 ${v}%, 남는 돈 ${+(100 - v).toFixed(1)}%">
-            <i class="part-cost" style="width:${Math.max(4, Math.min(100, v))}%">${v}%</i>
-            <i class="part-keep">남는 돈 ${+(100 - v).toFixed(1)}%</i>
-          </div>`}
-          <dl class="cost-nums">
-            <div><dt>판매가</dt><dd>${won(m.price)}</dd></div>
-            <div><dt>1인분 재료비</dt><dd>${won(m.cost_per_serving)}</dd></div>
-            <div><dt>남는 돈</dt><dd>${won(m.margin)}</dd></div>
-          </dl>
-          ${m.swap ? `<div class="cost-swap">
-            <p class="swap-title">🔄 대체 재료 추천</p>
-            <p class="swap-pair"><span class="swap-from">${esc(m.swap.from)}</span><i aria-label="에서">→</i><span class="swap-to">${esc(m.swap.to)}</span></p>
-            <p class="swap-reason">${esc(m.swap.reason)}</p>
-          </div>` : ""}
-          ${(() => {   // 대체 재료 상자에 들어간 문장은 빼고 나머지(오른 재료 · 판매가 제안)만 💡로
-            const rest = m.swap ? m.tips.filter((t) => t !== m.swap.reason && !t.startsWith(`${m.swap.from} 일부를`)) : m.tips;
-            return rest.length ? `<ul class="cost-tips">${rest.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : "";
-          })()}
-        </div>
+        <div class="cost-menu-row"><h3 class="cost-menu">${esc(m.menu)}</h3>
+          <button class="btn cost-edit" type="button" data-mid="${m.menu_id}">✎ 수정</button></div>
+        <dl class="cost-stats">
+          <div class="cost-main"><dt>원가율 <span class="cost-verdict">${esc(m.verdict)}</span></dt><dd>${v ?? "-"}<em>%</em>${ch}</dd></div>
+          <div><dt>판매가</dt><dd>${won(m.price)}</dd></div>
+          <div><dt>1인분 재료비</dt><dd>${won(m.cost_per_serving)}</dd></div>
+          <div><dt>남는 금액</dt><dd>${won(m.margin)}</dd></div>
+        </dl>
+        ${m.swap ? `<div class="cost-swap">
+          <b class="swap-title">대체 재료 제안</b>
+          <div class="swap-body">
+            <div class="swap-main">
+              <p class="swap-pair"><span class="swap-from">${esc(m.swap.from)}</span><i aria-label="대신">→</i><span class="swap-to">${esc(m.swap.to)}</span></p>
+              <p class="swap-reason">💡 ${esc(m.swap.reason)}</p>
+            </div>
+            <p class="swap-calc">${esc(m.swap.from)} ${m.swap.share_pct}%를 바꾸면 1인분 <b>${won(m.swap.saving_per_serving)}</b> 아껴요 · 원가율 ${m.cost_ratio_pct}% → <b>${m.swap.new_ratio_pct}%</b> · 남는 돈 ${won(m.margin)} → <b>${won(m.swap.new_margin)}</b></p>
+          </div>
+        </div>` : ""}
       </article>`;
     }).join("")}</div>
-    <p class="muted small">${esc(r.method)}. 레시피에 주재료만 들어 있어 실제보다 원가율이 조금 낮게 나와요.</p>`;
+    <p class="muted small">레시피에 주재료만 들어 있어 실제보다 원가율이 조금 낮게 나와요.</p>`;
 }
 
 function receiptList(list) {
@@ -1240,6 +1409,155 @@ async function loadCosts(full = true) {
     if (full) $("#costCard").innerHTML = `<p class="muted">원가율을 불러오지 못했어요. ${esc(e.message)}</p>`;
   }
 }
+
+// ---------------------------------------------------------------
+// 메뉴 고치기 · 추가: 카드마다 [수정], 제목 옆 [+ 메뉴 추가] — 둘 다 같은 입력 창
+// 저장하면 Supabase(팀 공용 데이터)에 바로 반영됨. 메뉴는 지우지 않고 '판매 중지'만 (판매 기록 보존)
+// ---------------------------------------------------------------
+let menuData = null;   // { items(재료 · 최근 영수증 단가), menus(레시피 포함), templates(자주 쓰는 메뉴) }
+const menuItem = (id) => menuData.items.find((i) => i.id === +id);
+// kg 재료는 g로 보여 주고 받음 (0.02kg보다 20g이 읽기 쉬움)
+const qtyUnit = (it) => (!it ? "" : it.unit === "kg" ? "g" : it.unit);
+const showQty = (it, q) => (it && it.unit === "kg" ? +(q * 1000).toFixed(1) : +(+q).toFixed(3));
+const saveQty = (it, v) => (it && it.unit === "kg" ? v / 1000 : v);
+
+async function openMenuEditor(menuId) {
+  const modal = $("#menuModal"), box = $("#menuModalBody");
+  box.innerHTML = `<div class="reading"><div class="spinner"></div><b>메뉴를 불러오는 중이에요</b></div>`;
+  modal.hidden = false;
+  try { menuData = await getJSON("/api/menus"); }
+  catch (e) { box.innerHTML = `<p class="rc-warn">${esc(e.message)}</p>`; return; }
+  menuForm(menuId ? menuData.menus.find((x) => x.id === +menuId) : null);
+}
+
+function itemOptions(sel) {
+  const groups = {};
+  for (const i of menuData.items) (groups[i.category] ||= []).push(i);
+  return `<option value="">재료 선택</option>` + Object.entries(groups).map(([g, list]) => `<optgroup label="${esc(g)}">${
+    list.map((i) => `<option value="${i.id}"${i.id === sel ? " selected" : ""}>${esc(i.name)}</option>`).join("")}</optgroup>`).join("");
+}
+
+const recipeRow = (r = {}) => `<li class="mf-row" data-loss="${r.loss || 0}">
+  <select class="mf-item" aria-label="재료">${itemOptions(r.item_id)}</select>
+  <span class="mf-amount"><input class="mf-qty" type="number" inputmode="decimal" min="0" step="any" aria-label="1인분 양"
+    value="${r.qty != null ? showQty(menuItem(r.item_id), r.qty) : ""}"><span class="mf-unit"></span></span>
+  <small class="mf-noprice" hidden>영수증 가격 없음</small>
+  <button type="button" class="mf-del" aria-label="이 재료 빼기">✕</button></li>`;
+
+function menuForm(m) {
+  const add = !m;
+  const onSale = new Set(menuData.menus.filter((x) => x.active).map((x) => x.name));
+  const tpl = menuData.templates.filter((t) => !onSale.has(t.name));
+  const box = $("#menuModalBody");
+  box.innerHTML = `<h3>${add ? "메뉴 추가" : `${esc(m.name)} 고치기`}</h3>
+    <p class="muted small">고치는 대로 아래에 원가율이 바로 계산돼요. [저장]을 눌러야 반영돼요.</p>
+    ${add && tpl.length ? `<div class="mf-tpl"><b>자주 쓰는 메뉴에서 선택</b>
+      <div>${tpl.map((t) => `<button type="button" class="btn" data-tpl="${esc(t.name)}">${esc(t.name)}</button>`).join("")}</div>
+      <small>누르면 1인분 재료가 채워져요. 우리 가게에 맞게 양만 고쳐 주세요.</small></div>` : ""}
+    <form class="menu-form" id="menuForm" novalidate>
+      <label class="mf-field mf-price"><span>판매가</span><span><input id="mfPrice" type="number" inputmode="numeric" min="100" step="100"
+        value="${m ? m.price : ""}" placeholder="예: 9000"> 원</span></label>
+      <label class="mf-field"><span>메뉴 이름</span><input id="mfName" maxlength="30" value="${m ? esc(m.name) : ""}" placeholder="예: 김치찌개"></label>
+      <div class="mf-field"><span>1인분 재료</span>
+        <ul class="mf-rows" id="mfRows">${(m ? m.recipe : [{}]).map(recipeRow).join("")}</ul>
+        <button type="button" class="btn mf-add" id="mfAddRow">+ 재료 추가</button></div>
+      <div class="mf-preview" id="mfPreview" aria-live="polite"></div>
+      <p class="rc-warn" id="mfMsg" hidden></p>
+      <div class="mf-actions">
+        ${add ? "" : `<button type="button" class="btn mf-stop" id="mfStop">판매 중지</button>`}
+        <button type="button" class="btn" id="mfCancel">취소</button>
+        <button type="submit" class="btn primary" id="mfSave">저장</button>
+      </div>
+    </form>`;
+  const rows = $("#mfRows");
+  menuCalc();
+  box.querySelector(".mf-tpl")?.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-tpl]");
+    if (!b) return;
+    const t = menuData.templates.find((x) => x.name === b.dataset.tpl);
+    $("#mfName").value = t.name;
+    rows.innerHTML = t.recipe.map(recipeRow).join("");
+    menuCalc();
+    $("#mfPrice").focus();
+  });
+  $("#mfAddRow").onclick = () => { rows.insertAdjacentHTML("beforeend", recipeRow()); rows.lastElementChild.querySelector("select").focus(); menuCalc(); };
+  rows.onclick = (e) => { if (e.target.closest(".mf-del")) { e.target.closest(".mf-row").remove(); menuCalc(); } };
+  $("#menuForm").oninput = menuCalc;
+  $("#mfCancel").onclick = closeMenu;
+  if (!add) $("#mfStop").onclick = () => stopMenu(m);
+  $("#menuForm").onsubmit = async (e) => {
+    e.preventDefault();
+    const recipe = [...rows.querySelectorAll(".mf-row")].map((li) => {
+      const it = menuItem(li.querySelector(".mf-item").value), v = parseFloat(li.querySelector(".mf-qty").value);
+      return it && v > 0 ? { item_id: it.id, qty: saveQty(it, v) } : null;
+    }).filter(Boolean);
+    const btn = $("#mfSave"), msg = $("#mfMsg");
+    btn.disabled = true; btn.textContent = "저장하는 중"; msg.hidden = true;
+    try {
+      const r = await sendJSON(add ? "/api/menus" : `/api/menus/${m.id}`, add ? "POST" : "PUT",
+        { name: $("#mfName").value.trim(), price: parseInt($("#mfPrice").value, 10) || null, recipe });
+      closeMenu();
+      afterMenuChange(r, add ? `'${r.name}' 메뉴를 추가했어요.` : `'${r.name}' 메뉴를 고쳤어요.`);
+    } catch (err) {
+      msg.textContent = err.message; msg.hidden = false;
+      btn.disabled = false; btn.textContent = "저장";
+    }
+  };
+}
+
+// 원가율 미리 보기: 재료마다 최근 영수증 단가 × 1인분 양 (화면의 메뉴별 원가율과 같은 계산)
+function menuCalc() {
+  const price = parseInt($("#mfPrice").value, 10) || 0;
+  let cost = 0, n = 0;
+  const unknown = [];
+  for (const li of $("#mfRows").querySelectorAll(".mf-row")) {
+    const it = menuItem(li.querySelector(".mf-item").value), v = parseFloat(li.querySelector(".mf-qty").value);
+    li.querySelector(".mf-unit").textContent = qtyUnit(it);
+    li.querySelector(".mf-noprice").hidden = !it || it.price != null;
+    if (!it || !(v > 0)) continue;
+    if (it.price == null) { unknown.push(it.name); continue; }
+    cost += saveQty(it, v) / (1 - +li.dataset.loss) * it.price;
+    n++;
+  }
+  const ratio = price && n ? +(cost / price * 100).toFixed(1) : null;
+  const tone = { up: "high", warnc: "tight", down: "ok" }[ratioCls(ratio)] || "";
+  $("#mfPreview").className = `mf-preview ${tone}`;
+  $("#mfPreview").innerHTML = ratio == null
+    ? `<span class="muted">판매가와 재료를 넣으면 원가율이 계산돼요</span>`
+    : `<span>원가율 <b class="mf-ratio">${ratio}%</b></span><span>1인분 재료비 <b>${won(cost)}</b></span><span>남는 금액 <b>${won(price - cost)}</b></span>
+       ${unknown.length ? `<small>${unknown.map(esc).join(", ")}은(는) 영수증 가격이 없어 빠졌어요</small>` : ""}`;
+}
+
+async function stopMenu(m) {
+  if (!confirm(`'${m.name}'을(를) 판매 중지할까요?\n\n원가율 · 내일 준비 목록에서 빠지고, 지금까지의 판매 기록은 그대로 남아요.\n나중에 같은 이름으로 추가하면 다시 판매돼요.`)) return;
+  const btn = $("#mfStop");
+  btn.disabled = true;
+  try {
+    const r = await sendJSON(`/api/menus/${m.id}/stop`, "POST");
+    closeMenu();
+    afterMenuChange(r, `'${r.name}' 메뉴를 판매 중지했어요. 판매 기록은 남아 있어요.`);
+  } catch (err) {
+    $("#mfMsg").textContent = err.message; $("#mfMsg").hidden = false;
+    btn.disabled = false;
+  }
+}
+
+function afterMenuChange(r, text) {
+  renderCosts(r, false);
+  $("#costCard").insertAdjacentHTML("afterbegin", `<p class="ok">${esc(text)}</p>`);
+  $("#receiptList").innerHTML = receiptList(r.receipts);
+  loadMyItems();
+  loadDemand();
+}
+
+const closeMenu = () => { $("#menuModal").hidden = true; };
+$("#menuModalClose").onclick = closeMenu;
+$("#menuModal").onclick = (e) => { if (e.target.id === "menuModal") closeMenu(); };
+$("#menuAddBtn").onclick = () => openMenuEditor(null);
+$("#costCard").addEventListener("click", (e) => {
+  const b = e.target.closest(".cost-edit");
+  if (b) openMenuEditor(b.dataset.mid);
+});
 
 $("#demoReceipts").innerHTML = DEMO_RECEIPTS.map(([f, label]) =>
   `<button data-f="${f}"><img src="/receipts_demo/${f}.png" alt="" loading="lazy"><span>${label}</span></button>`).join("");
@@ -1809,7 +2127,7 @@ if (STORE_VIEW) {
     keep.observe($("#store")); keep.observe($("#costs"));
     storeReady.then(() => setTimeout(() => { follow = false; keep.disconnect(); }, 5000));   // 다 그려진 뒤 5초 동안 늦게 바뀌는 칸 크기도 따라감
   }
-} else if (!ITEM) {
+} else if (!ITEM && !AUTH_VIEW) {
   loadContext();
   loadMart();
 }
@@ -1888,6 +2206,7 @@ const ME = { name: "달서구 한식당 사장님", store: "살피 한식당", p
 if (STORE_VIEW) $("#storeName").textContent = `나의 가게 · ${ME.store}`;
 
 function openMypage(view = "home") {
+  if (!SIGNED_IN) return goLogin();   // 마이페이지는 로그인한 사장님만
   $("#mypage").classList.add("open");
   $("#mypage").setAttribute("aria-hidden", "false");
   $("#backdrop").hidden = false;
@@ -1957,7 +2276,6 @@ async function renderMypage(view) {
     <section class="my-card my-account">
       <button class="my-link" type="button" data-account="logout"><span>로그아웃</span><i>›</i></button>
       <button class="my-link danger" type="button" data-account="leave"><span>회원탈퇴</span><i>›</i></button>
-      <p class="muted small" id="accountNote" hidden>로그인 · 회원가입 기능이 생기면 쓸 수 있어요.</p>
     </section>`;
 }
 
@@ -1998,7 +2316,9 @@ $("#mypageClose").onclick = closeMypage;
 $("#mypageBack").onclick = () => renderMypage("home");
 $("#backdrop").onclick = closeMypage;
 $("#mypageBody").onclick = (e) => {
-  if (e.target.closest("[data-account]")) { $("#accountNote").hidden = false; return; }   // 로그인 기능이 생기면 연결
+  const acc = e.target.closest("[data-account]");
+  if (acc?.dataset.account === "logout") return logout();
+  if (acc?.dataset.account === "leave") return openLeave();
   const v = e.target.closest("[data-view]");
   if (v) return renderMypage(v.dataset.view);
   const r = e.target.closest("[data-rid]");
@@ -2012,7 +2332,31 @@ $("#mypageBody").onchange = (e) => {
   store(ALERT_PREFS_KEY, prefs);
   deliverAlerts();
 };
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeReceipt(); closeMypage(); closeEvent(); closeCamera(); } });
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  if (!$("#leaveModal").hidden) return closeLeave();   // 탈퇴 팝업만 닫고 마이페이지는 그대로
+  closeReceipt(); closeMypage(); closeEvent(); closeCamera();
+});
+
+// 회원탈퇴: 한 번 더 묻는 팝업 → '안내를 확인했어요'에 체크해야 [탈퇴하기]가 눌림
+// 탈퇴하면 이 브라우저의 로그인 상태 · 알림 설정을 지우고 첫 화면으로 (임시: 서버 계정이 생기면 가게 정보 · 영수증도 서버에서 지움)
+function openLeave() {
+  $("#leaveAgree").checked = false;
+  $("#leaveOk").disabled = true;
+  $("#leaveModal").hidden = false;
+  $("#leaveCancel").focus();
+}
+function closeLeave() { $("#leaveModal").hidden = true; }
+$("#leaveAgree").onchange = () => { $("#leaveOk").disabled = !$("#leaveAgree").checked; };
+$("#leaveCancel").onclick = closeLeave;
+$("#leaveModal").onclick = (e) => { if (e.target === e.currentTarget) closeLeave(); };   // 바깥을 누르면 취소
+$("#leaveOk").onclick = () => {
+  try {
+    [ALERT_PREFS_KEY, ALERT_READ_KEY].forEach((k) => localStorage.removeItem(k));
+    sessionStorage.setItem(BYE_KEY, "1");   // 첫 화면에서 인사 한 번
+  } catch (err) {}
+  logout();
+};
 
 // ---------------------------------------------------------------
 // 시세 알림: 켜 둔 종류만 살피 말투로 챗봇 창에 보냄 (규칙으로 만든 문장, 숫자는 대시보드 시세 그대로)

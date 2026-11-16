@@ -7,7 +7,7 @@
   <link rel="icon" href="/static/img/salpi_face.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=192">
+  <link rel="stylesheet" href="/static/style.css?v=198">
 </head>
 <body>
 
@@ -27,7 +27,9 @@
       <div class="search-list" id="searchList" role="listbox" aria-label="검색 결과" hidden></div>
     </div>
     <div class="top-actions">
-      <!-- 나의 가게: 사장님 로그인 시 내일 준비 · 메뉴별 원가율 · 영수증 분석 (시연: 로그인했다고 치고 기본 계정) -->
+      <!-- 로그인 전: [로그인] 버튼만 / 로그인 후: 나의 가게 · 알림 · 마이페이지 -->
+      <a class="login-btn" id="loginBtn" href="/?page=login" hidden>로그인</a>
+      <!-- 나의 가게: 사장님 로그인 시 내일 준비 · 메뉴별 원가율 · 영수증 분석 -->
       <a class="store-btn" id="storeBtn" href="/?page=store" title="나의 가게"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h16v10H4z"/><path d="M3 10l2-5h14l2 5"/><path d="M10 20v-5h4v5"/></svg><span>나의 가게</span></a>
       <button class="icon-btn" id="bellBtn" aria-label="알림 모아 보기" aria-expanded="false" title="알림"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 21h4"/></svg><span class="count" id="bellCount" hidden></span></button>
       <div class="bell-panel" id="bellPanel" hidden>
@@ -113,6 +115,139 @@
         <div class="grid" id="itemGoods"></div>
       </div>
     </div>
+  </section>
+
+  <!-- 로그인 페이지 (/?page=login): 무늬 바탕 가운데 로그인 카드 -->
+  <section class="login-only login-page" id="login">
+    <form class="login-card" id="loginForm" novalidate>
+      <h1>로그인</h1>
+      <label class="login-label" for="loginId">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>
+        아이디 (또는 휴대폰 번호)
+      </label>
+      <input class="login-input" id="loginId" name="id" autocomplete="username" placeholder="예: 010-1234-5678 또는 아이디">
+      <label class="login-label" for="loginPw">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+        비밀번호
+      </label>
+      <div class="login-pw">
+        <input class="login-input" id="loginPw" name="password" type="password" autocomplete="current-password" placeholder="비밀번호를 입력하세요">
+        <button class="login-eye" id="loginEye" type="button" aria-label="비밀번호 보기" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+      <div class="login-row">
+        <label class="login-keep"><input type="checkbox" id="loginKeep" checked> 로그인 상태 유지</label>
+        <div class="login-links">
+          <a href="#" data-soon="아이디 찾기">아이디 찾기</a><i>|</i><a href="#" data-soon="비밀번호 찾기">비밀번호 찾기</a><i>|</i><a href="/?page=signup" class="join" id="loginToSignup">회원가입</a>
+        </div>
+      </div>
+      <p class="login-msg" id="loginMsg" role="alert" hidden></p>
+      <button class="login-submit" type="submit">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/><path d="M3 12h11"/><path d="M10 8l4 4-4 4"/></svg>
+        로그인
+      </button>
+      <div class="login-or"><span>또는 간편 로그인</span></div>
+      <button class="login-social kakao" type="button" data-soon="카카오 로그인">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4C6.9 4 3 7.2 3 11.1c0 2.5 1.6 4.6 4 5.9l-.9 3.3c-.1.3.3.5.5.3l3.9-2.6c.5.1 1 .1 1.5.1 5.1 0 9-3.2 9-7.1S17.1 4 12 4z"/></svg>
+        카카오로 3초 만에 시작하기
+      </button>
+      <button class="login-social naver" type="button" data-soon="네이버 로그인">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.6 12.8 8.1 2H2v20h6.4V11.2L15.9 22H22V2h-6.4z"/></svg>
+        네이버 아이디로 로그인
+      </button>
+      <button class="login-social google" type="button" data-soon="Google 로그인">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="#4285F4" d="M22.5 12.3c0-.8-.1-1.5-.2-2.2H12v4.2h5.9c-.3 1.4-1 2.5-2.2 3.3v2.7h3.6c2-1.9 3.2-4.7 3.2-8z"/>
+          <path fill="#34A853" d="M12 23c3 0 5.5-1 7.3-2.7l-3.6-2.7c-1 .7-2.2 1.1-3.7 1.1-2.9 0-5.3-1.9-6.2-4.5H2.1v2.8C3.9 20.6 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.8 14.2c-.2-.7-.4-1.4-.4-2.2s.1-1.5.4-2.2V7H2.1C1.4 8.5 1 10.2 1 12s.4 3.5 1.1 5l3.7-2.8z"/>
+          <path fill="#EA4335" d="M12 5.4c1.6 0 3.1.6 4.2 1.6l3.2-3.2C17.5 2.1 15 1 12 1 7.7 1 3.9 3.4 2.1 7l3.7 2.8c.9-2.6 3.3-4.4 6.2-4.4z"/>
+        </svg>
+        Google 계정으로 로그인
+      </button>
+    </form>
+  </section>
+
+  <!-- 회원가입 페이지 (/?page=signup): 로그인과 같은 무늬 바탕 · 같은 카드 -->
+  <section class="signup-only login-page" id="signup">
+    <form class="login-card signup-card" id="signupForm" novalidate>
+      <h1>회원가입</h1>
+      <button class="login-social kakao" type="button" data-soon="카카오 가입">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4C6.9 4 3 7.2 3 11.1c0 2.5 1.6 4.6 4 5.9l-.9 3.3c-.1.3.3.5.5.3l3.9-2.6c.5.1 1 .1 1.5.1 5.1 0 9-3.2 9-7.1S17.1 4 12 4z"/></svg>
+        카카오로 3초 만에 시작하기
+      </button>
+      <button class="login-social naver" type="button" data-soon="네이버 가입">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.6 12.8 8.1 2H2v20h6.4V11.2L15.9 22H22V2h-6.4z"/></svg>
+        네이버 아이디로 가입하기
+      </button>
+      <button class="login-social google" type="button" data-soon="Google 가입">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="#4285F4" d="M22.5 12.3c0-.8-.1-1.5-.2-2.2H12v4.2h5.9c-.3 1.4-1 2.5-2.2 3.3v2.7h3.6c2-1.9 3.2-4.7 3.2-8z"/>
+          <path fill="#34A853" d="M12 23c3 0 5.5-1 7.3-2.7l-3.6-2.7c-1 .7-2.2 1.1-3.7 1.1-2.9 0-5.3-1.9-6.2-4.5H2.1v2.8C3.9 20.6 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.8 14.2c-.2-.7-.4-1.4-.4-2.2s.1-1.5.4-2.2V7H2.1C1.4 8.5 1 10.2 1 12s.4 3.5 1.1 5l3.7-2.8z"/>
+          <path fill="#EA4335" d="M12 5.4c1.6 0 3.1.6 4.2 1.6l3.2-3.2C17.5 2.1 15 1 12 1 7.7 1 3.9 3.4 2.1 7l3.7 2.8c.9-2.6 3.3-4.4 6.2-4.4z"/>
+        </svg>
+        구글 계정으로 가입하기
+      </button>
+      <div class="login-or"><span>또는 직접 가입</span></div>
+
+      <h2 class="signup-sec">사장님 정보</h2>
+      <label class="login-label" for="suName">이름</label>
+      <input class="login-input" id="suName" autocomplete="name" placeholder="홍길동">
+      <label class="login-label" for="suPhone">휴대폰 번호</label>
+      <div class="signup-inline">
+        <input class="login-input" id="suPhone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="13" placeholder="010-1234-5678">
+        <button class="signup-side" id="suSend" type="button">인증번호 받기</button>
+      </div>
+      <div class="signup-code" id="suCodeBox" hidden>
+        <div class="signup-code-head"><label for="suCode">인증번호 6자리</label><b id="suTimer">03:00</b></div>
+        <div class="signup-inline">
+          <input class="login-input" id="suCode" inputmode="numeric" maxlength="6" autocomplete="one-time-code">
+          <button class="signup-side dark" id="suVerify" type="button">확인</button>
+        </div>
+        <p class="signup-hint ok" id="suCodeOk" hidden>인증됐어요</p>
+      </div>
+
+      <h2 class="signup-sec">로그인 정보</h2>
+      <label class="login-label" for="suId">아이디 <small>영문 · 숫자 4자 이상</small></label>
+      <input class="login-input" id="suId" autocomplete="username" autocapitalize="off">
+      <label class="login-label" for="suPw">비밀번호 <small>영문 · 숫자 섞어 8자 이상</small></label>
+      <div class="login-pw">
+        <input class="login-input" id="suPw" type="password" autocomplete="new-password">
+        <button class="login-eye" id="suEye" type="button" aria-label="비밀번호 보기" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+      <label class="login-label" for="suPw2">비밀번호 확인</label>
+      <input class="login-input" id="suPw2" type="password" autocomplete="new-password">
+      <p class="signup-hint" id="suPwHint" hidden></p>
+
+      <h2 class="signup-sec">가게 정보</h2>
+      <label class="login-label" for="suStore">가게 이름</label>
+      <input class="login-input" id="suStore" autocomplete="organization" placeholder="예: 서문골 손칼국수">
+      <label class="login-label" for="suGu">가게 위치 <small>대구만 가입할 수 있어요</small></label>
+      <div class="signup-inline">
+        <span class="signup-city">대구</span>
+        <select class="login-input" id="suGu">
+          <option value="">구 · 군 선택</option>
+          <option>중구</option><option>동구</option><option>서구</option><option>남구</option><option>북구</option>
+          <option>수성구</option><option>달서구</option><option>달성군</option><option>군위군</option>
+        </select>
+      </div>
+      <input class="login-input" id="suPlaceMore" autocomplete="street-address" placeholder="나머지 주소 (선택) 예: 큰장로26길 45">
+
+      <h2 class="signup-sec">약관 동의</h2>
+      <div class="signup-terms">
+        <label class="signup-all"><input type="checkbox" id="suAll"> 전체 동의</label>
+        <label><input type="checkbox" class="su-term" data-required> [필수] 이용약관 동의</label>
+        <label><input type="checkbox" class="su-term" data-required> [필수] 개인정보 수집 · 이용 동의</label>
+        <label><input type="checkbox" class="su-term" id="suAlarm"> [선택] 카카오톡 시세 알림 받기</label>
+      </div>
+
+      <p class="login-msg" id="signupMsg" role="alert" hidden></p>
+      <button class="login-submit" type="submit">가입하기</button>
+      <p class="signup-foot">이미 계정이 있나요? <a href="/?page=login" id="signupToLogin">로그인</a></p>
+    </form>
   </section>
 
   <!-- 나의 가게 페이지 (/?page=store): 사장님 로그인 시에만 보이는 세 가지 -->
@@ -240,6 +375,23 @@
   </div>
 </div>
 
+<!-- 회원탈퇴 확인 (마이페이지 › 회원탈퇴) -->
+<div class="modal" id="leaveModal" hidden>
+  <div class="modal-box leave-box" role="alertdialog" aria-modal="true" aria-labelledby="leaveTitle" aria-describedby="leaveDesc">
+    <h3 id="leaveTitle">정말 탈퇴할까요?</h3>
+    <p id="leaveDesc">탈퇴하면 아래 정보가 모두 지워지고 되돌릴 수 없어요.</p>
+    <ul class="leave-list">
+      <li>가게 정보 · 메뉴 · 원가율</li>
+      <li>영수증 기록 · 알림 설정</li>
+    </ul>
+    <label class="leave-check"><input type="checkbox" id="leaveAgree"> 안내를 확인했어요</label>
+    <div class="leave-actions">
+      <button class="leave-cancel" id="leaveCancel" type="button">취소</button>
+      <button class="leave-ok" id="leaveOk" type="button" disabled>탈퇴하기</button>
+    </div>
+  </div>
+</div>
+
 <!-- 메뉴 고치기 · 추가 (메뉴별 원가율 [수정] · [+ 메뉴 추가]) -->
 <div class="modal" id="menuModal" hidden>
   <div class="modal-box menu-box" role="dialog" aria-label="메뉴 고치기 · 추가">
@@ -284,6 +436,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="/static/app.js?v=135"></script>
+<script src="/static/app.js?v=140"></script>
 </body>
 </html>

@@ -43,35 +43,54 @@ const safeNext = (u) => (u && u.startsWith("/") && !u.startsWith("//") ? u : "/"
 const LOGIN_NEXT = safeNext(new URLSearchParams(location.search).get("next"));
 const LOGIN_URL = `/?page=login&next=${encodeURIComponent(location.pathname + location.search + location.hash)}`;   // 로그인 뒤 지금 페이지로 돌아옴
 const goLogin = () => location.assign(LOGIN_URL);
-// 로그인 안 하고 나의 가게로 바로 들어오면 로그인 페이지로, 이미 로그인했는데 로그인 페이지면 원래 가려던 곳으로
+// 로그인 안 하고 나의 가게로 바로 들어오면 로그인 페이지로, 이미 로그인했는데 로그인 · 회원가입 페이지면 원래 가려던 곳으로
+const AUTH_PAGE = !ITEM && (PAGE === "login" || PAGE === "signup");
 if (!ITEM && PAGE === "store" && !SIGNED_IN) location.replace(LOGIN_URL);
-if (!ITEM && PAGE === "login" && SIGNED_IN) location.replace(LOGIN_NEXT);
-const LOGIN_VIEW = !ITEM && PAGE === "login" && !SIGNED_IN;
-if (LOGIN_VIEW) { document.body.classList.add("login-view"); document.title = "로그인 · 살피"; }
+if (AUTH_PAGE && SIGNED_IN) location.replace(LOGIN_NEXT);
+const LOGIN_VIEW = AUTH_PAGE && !SIGNED_IN && PAGE === "login";
+const SIGNUP_VIEW = AUTH_PAGE && !SIGNED_IN && PAGE === "signup";
+const AUTH_VIEW = LOGIN_VIEW || SIGNUP_VIEW;   // 무늬 바탕 카드 페이지 (첫 화면 칸들은 숨김)
+if (AUTH_VIEW) {
+  document.body.classList.add("auth-view", LOGIN_VIEW ? "login-view" : "signup-view");
+  document.title = `${LOGIN_VIEW ? "로그인" : "회원가입"} · 살피`;
+}
 // 나의 가게 페이지(/?page=store): 내일 준비 · 메뉴별 원가율 · 영수증 분석은 사장님 로그인 시에만
 const STORE_VIEW = !ITEM && SIGNED_IN && PAGE === "store";
 if (STORE_VIEW) document.body.classList.add("store-view");
 // 위쪽 버튼: 로그인 전에는 [로그인]만, 로그인 후에는 나의 가게 · 알림 · 마이페이지
 $("#storeBtn").hidden = $("#bellBtn").hidden = $("#meBtn").hidden = !SIGNED_IN;
-$("#loginBtn").hidden = SIGNED_IN || LOGIN_VIEW;
+$("#loginBtn").hidden = SIGNED_IN || AUTH_VIEW;
 $("#loginBtn").href = LOGIN_URL;
 
-// 로그인 페이지
-if (LOGIN_VIEW) {
-  const msg = (text) => { $("#loginMsg").textContent = text; $("#loginMsg").hidden = !text; };
-  $("#loginEye").onclick = () => {
-    const show = $("#loginPw").type === "password";
-    $("#loginPw").type = show ? "text" : "password";
-    $("#loginEye").setAttribute("aria-pressed", String(show));
-    $("#loginEye").setAttribute("aria-label", show ? "비밀번호 숨기기" : "비밀번호 보기");
+// 로그인 · 회원가입 카드에서 같이 쓰는 것: 안내 한 줄, 비밀번호 보기 눈 버튼, 아직 연결 전인 버튼(data-soon)
+function authMsg(box) {
+  return (text) => { box.textContent = text; box.hidden = !text; };
+}
+function eyeToggle(btn, input) {
+  btn.onclick = () => {
+    const show = input.type === "password";
+    input.type = show ? "text" : "password";
+    btn.setAttribute("aria-pressed", String(show));
+    btn.setAttribute("aria-label", show ? "비밀번호 숨기기" : "비밀번호 보기");
   };
-  // 간편 로그인 · 아이디 찾기 · 회원가입은 아직 연결 전
-  $("#loginForm").addEventListener("click", (e) => {
+}
+function soonButtons(form, msg) {
+  form.addEventListener("click", (e) => {
     const s = e.target.closest("[data-soon]");
     if (!s) return;
     e.preventDefault();
     msg(`${s.dataset.soon}은(는) 곧 연결돼요.`);
   });
+}
+// 로그인 ↔ 회원가입을 오가도 원래 가려던 곳(next)은 그대로
+const authLink = (page) => `/?page=${page}&next=${encodeURIComponent(LOGIN_NEXT)}`;
+
+// 로그인 페이지
+if (LOGIN_VIEW) {
+  const msg = authMsg($("#loginMsg"));
+  eyeToggle($("#loginEye"), $("#loginPw"));
+  soonButtons($("#loginForm"), msg);   // 간편 로그인 · 아이디 찾기 · 비밀번호 찾기는 아직 연결 전
+  $("#loginToSignup").href = authLink("signup");
   $("#loginForm").onsubmit = (e) => {
     e.preventDefault();
     const id = $("#loginId").value.trim(), pw = $("#loginPw").value;
@@ -82,6 +101,88 @@ if (LOGIN_VIEW) {
     location.replace(LOGIN_NEXT);
   };
   $("#loginId").focus();
+}
+
+// 회원가입 페이지
+if (SIGNUP_VIEW) {
+  const msg = authMsg($("#signupMsg"));
+  const fail = (text, el) => { msg(text); el?.focus(); };
+  eyeToggle($("#suEye"), $("#suPw"));
+  soonButtons($("#signupForm"), msg);   // 카카오 · 네이버 · 구글 가입은 아직 연결 전
+  $("#signupToLogin").href = authLink("login");
+
+  // 휴대폰 인증: 번호를 바꾸면 인증을 다시 받아야 함
+  let verified = false, left = 0, tick = null;
+  const phoneDigits = () => $("#suPhone").value.replace(/\D/g, "");
+  const resetCode = () => {
+    verified = false;
+    clearInterval(tick);
+    $("#suCodeBox").hidden = true;
+    $("#suSend").textContent = "인증번호 받기";
+  };
+  $("#suPhone").oninput = () => {
+    const d = phoneDigits().slice(0, 11);   // 숫자만 넣어도 010-1234-5678 모양으로
+    $("#suPhone").value = d.length > 7 ? `${d.slice(0, 3)}-${d.slice(3, d.length - 4)}-${d.slice(-4)}` : d.length > 3 ? `${d.slice(0, 3)}-${d.slice(3)}` : d;
+    resetCode();
+  };
+  const showTimer = () => { $("#suTimer").textContent = `${String(Math.floor(left / 60)).padStart(2, "0")}:${String(left % 60).padStart(2, "0")}`; };
+  $("#suSend").onclick = () => {
+    if (!/^01\d{8,9}$/.test(phoneDigits())) return fail("휴대폰 번호를 확인해 주세요.", $("#suPhone"));
+    msg("");
+    resetCode();
+    $("#suCodeBox").hidden = false;
+    $("#suCodeOk").hidden = true;
+    $("#suCode").value = "";
+    $("#suCode").disabled = $("#suVerify").disabled = false;
+    $("#suSend").textContent = "다시 받기";
+    left = 180;
+    showTimer();
+    tick = setInterval(() => { left = Math.max(0, left - 1); showTimer(); if (!left) clearInterval(tick); }, 1000);
+    $("#suCode").focus();
+  };
+  $("#suVerify").onclick = () => {
+    if (!left) return fail("인증 시간이 지났어요. 인증번호를 다시 받아 주세요.");
+    if (!/^\d{6}$/.test($("#suCode").value)) return fail("인증번호 6자리를 입력해 주세요.", $("#suCode"));
+    // 임시: 문자 보내기가 아직 연결 전이라 6자리를 넣으면 인증된 것으로 봄
+    verified = true;
+    clearInterval(tick);
+    msg("");
+    $("#suCodeOk").hidden = false;
+    $("#suCode").disabled = $("#suVerify").disabled = true;
+  };
+
+  // 비밀번호 확인: 두 칸이 같은지 바로 알려 줌
+  const pwHint = () => {
+    const a = $("#suPw").value, b = $("#suPw2").value, h = $("#suPwHint");
+    h.hidden = !b;
+    h.textContent = a === b ? "비밀번호가 같아요" : "비밀번호가 달라요";
+    h.classList.toggle("ok", a === b);
+  };
+  $("#suPw").oninput = $("#suPw2").oninput = pwHint;
+
+  // 약관: 전체 동의 ↔ 각 항목
+  const terms = [...document.querySelectorAll(".su-term")];
+  $("#suAll").onchange = () => terms.forEach((t) => { t.checked = $("#suAll").checked; });
+  terms.forEach((t) => { t.onchange = () => { $("#suAll").checked = terms.every((x) => x.checked); }; });
+
+  $("#signupForm").onsubmit = (e) => {
+    e.preventDefault();
+    const name = $("#suName").value.trim(), id = $("#suId").value.trim(), pw = $("#suPw").value, store = $("#suStore").value.trim();
+    const gu = $("#suGu").value;   // 대구 구 · 군만 받음 (살피는 대구 시세 서비스)
+    const place = ["대구", gu, $("#suPlaceMore").value.trim()].filter(Boolean).join(" ");
+    if (!name) return fail("이름을 입력해 주세요.", $("#suName"));
+    if (!verified) return fail("휴대폰 번호를 인증해 주세요.", $("#suPhone"));
+    if (!/^[A-Za-z0-9_]{4,}$/.test(id)) return fail("아이디는 영문 · 숫자 4자 이상으로 정해 주세요.", $("#suId"));
+    if (pw.length < 8 || !/[A-Za-z]/.test(pw) || !/\d/.test(pw)) return fail("비밀번호는 영문 · 숫자를 섞어 8자 이상으로 정해 주세요.", $("#suPw"));
+    if (pw !== $("#suPw2").value) return fail("비밀번호가 서로 달라요.", $("#suPw2"));
+    if (!store) return fail("가게 이름을 입력해 주세요.", $("#suStore"));
+    if (!gu) return fail("가게가 있는 구 · 군을 골라 주세요.", $("#suGu"));
+    if (terms.some((t) => t.dataset.required !== undefined && !t.checked)) return fail("필수 약관에 동의해 주세요.");
+    // 임시: 서버 가입 전이라 가입하면 바로 로그인한 것으로 봄 (비밀번호 · 휴대폰 번호는 저장하지 않음)
+    if (!saveLogin({ id, name, store, place, alarm: $("#suAlarm").checked, at: Date.now() }, true)) return fail("이 브라우저에서는 로그인 상태를 기억할 수 없어요.");
+    location.replace(LOGIN_NEXT);
+  };
+  $("#suName").focus();
 }
 
 async function getJSON(url) {
@@ -2013,7 +2114,7 @@ if (STORE_VIEW) {
     keep.observe($("#store")); keep.observe($("#costs"));
     storeReady.then(() => setTimeout(() => { follow = false; keep.disconnect(); }, 5000));   // 다 그려진 뒤 5초 동안 늦게 바뀌는 칸 크기도 따라감
   }
-} else if (!ITEM && !LOGIN_VIEW) {
+} else if (!ITEM && !AUTH_VIEW) {
   loadContext();
   loadMart();
 }

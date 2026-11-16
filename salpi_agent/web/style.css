@@ -1012,12 +1012,12 @@ a.my-link { color: inherit; text-decoration: none; }
   font-size: 14px; font-weight: 700; text-decoration: none; white-space: nowrap; transition: background .15s; }
 .top-actions .login-btn:hover { background: var(--primary-hover); }
 
-.login-only { display: none; }
-body.login-view .home-only, body.login-view .store-only, body.login-view .footer, body.login-view .salpi-fab { display: none; }
-body.login-view { --login-deep: #1F4A00; }
-body.login-view main { background-color: #F4FBEA;
+.login-only, .signup-only { display: none; }
+body.auth-view .home-only, body.auth-view .store-only, body.auth-view .footer, body.auth-view .salpi-fab { display: none; }
+body.auth-view { --login-deep: #1F4A00; }
+body.auth-view main { background-color: #F4FBEA;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' fill='none' stroke='%23DDEBCB' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 26c0-8 6-12 12-12 0 8-5 12-12 12zm0 0 6-6'/%3E%3Cpath d='M54 42c-4 5-4 9 0 9s4-4 0-9z'/%3E%3Ccircle cx='54' cy='16' r='5'/%3E%3Cpath d='M12 56l4 4 6-8'/%3E%3C/svg%3E"); }
-body.login-view .login-only { display: flex; }
+body.login-view .login-only, body.signup-view .signup-only { display: flex; }
 .login-page { justify-content: center; align-items: flex-start; min-height: calc(100vh - 64px); padding: 28px 16px 56px; box-sizing: border-box; }
 .login-card { width: 100%; max-width: 360px; padding: 26px 24px; border-top: 5px solid var(--login-deep); border-radius: 10px; background: var(--surface);
   box-shadow: 0 10px 30px rgba(31, 74, 0, .12); }
@@ -1060,6 +1060,37 @@ body.login-view .login-only { display: flex; }
 .login-social.naver svg { width: 14px; height: 14px; fill: #fff; }
 .login-social.google { border: 1px solid var(--outline); background: var(--surface); color: var(--ink); }
 .login-social.google:hover { filter: none; background: var(--surface-variant); }
+
+/* 회원가입 (/?page=signup): 로그인 카드를 그대로 쓰고, 입력칸은 연한 초록으로 채움 */
+.signup-card { max-width: 400px; }
+.signup-card .login-social:first-of-type { margin-top: 0; }
+.signup-card .login-or { margin: 18px 0 6px; }
+.signup-card .login-input { background: #F3F7EE; border-color: transparent; }
+.signup-card .login-input:focus { background: var(--surface); border-color: var(--primary); }
+.signup-card .login-label small { margin-left: auto; color: var(--muted); font-size: 11px; font-weight: 500; }
+.signup-sec { margin: 22px 0 12px; padding-left: 8px; border-left: 4px solid var(--login-deep); font-size: 14px; font-weight: 900; line-height: 1.2; }
+.signup-inline { display: flex; gap: 6px; margin-bottom: 18px; }
+.signup-inline .login-input { flex: 1; min-width: 0; margin-bottom: 0; }
+.signup-city { flex: none; display: flex; align-items: center; padding: 0 14px; border-radius: 6px; background: #DDEACF; color: var(--on-primary-container); font-size: 14px; font-weight: 700; }
+.signup-card select.login-input { cursor: pointer; }
+.signup-side { flex: none; padding: 0 12px; border: 0; border-radius: 6px; background: #DDEACF; color: var(--on-primary-container); font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+.signup-side:hover { background: #CFE1BC; }
+.signup-side.dark { min-width: 56px; background: var(--login-deep); color: #fff; }
+.signup-side:disabled { opacity: .5; cursor: default; }
+.signup-code { margin: -8px 0 18px; padding: 12px; border-radius: 8px; background: #F3F7EE; }
+.signup-code-head { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; font-weight: 700; }
+.signup-code-head b { color: var(--warn); }
+.signup-code .signup-inline { margin-bottom: 0; }
+.signup-code .login-input { background: var(--surface); text-align: center; letter-spacing: 4px; font-weight: 700; }
+.signup-hint { margin: -10px 0 16px; color: var(--up); font-size: 12px; font-weight: 700; }
+.signup-hint.ok { color: var(--down); }
+.signup-code .signup-hint { margin: 8px 0 0; }
+.signup-terms { display: grid; gap: 10px; margin-bottom: 18px; padding: 14px; border-radius: 8px; background: #F3F7EE; font-size: 13px; }
+.signup-terms label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.signup-terms input { width: 17px; height: 17px; margin: 0; accent-color: var(--login-deep); }
+.signup-terms .signup-all { padding-bottom: 10px; border-bottom: 1px solid var(--outline-variant); font-size: 14px; font-weight: 700; }
+.signup-foot { margin: 14px 0 0; text-align: center; color: var(--muted); font-size: 12.5px; }
+.signup-foot a { margin-left: 4px; color: var(--login-deep); font-weight: 700; }
 @media (max-width: 760px) {
   .login-page { padding-top: 20px; }
   .login-card { padding: 22px 20px; }

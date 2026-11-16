@@ -1185,7 +1185,7 @@ const ratioCls = (v) => (v == null ? "" : v > 35 ? "up" : v > 30 ? "warnc" : "do
 function renderCosts(r, withChange) {
   const T = r.target_ratio_pct;
   $("#costCard").innerHTML = `
-    <p class="cost-guide"><b>원가율</b> = 한 그릇 값 중 <b>재료비가 차지하는 몫</b>이에요. <b>낮을수록 많이 남아요.</b> 보통 <b>${T}% 아래</b>면 괜찮아요.</p>
+    <p class="cost-guide"><b>원가율</b> = 판매가 중 <b>재료비 비율</b>. 보통 <b>${T}% 아래</b>면 괜찮아요.</p>
     <div class="cost-cards">${r.menus.map((m) => {
       const v = m.cost_ratio_pct;
       const ch = withChange && m.change_pt

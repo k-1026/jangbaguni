@@ -950,7 +950,15 @@ a.my-link { color: inherit; text-decoration: none; }
 }
 
 /* 메뉴 고치기 · 추가 창: 큰 글씨 · 큰 칸 (어르신도 쓰기 쉽게) */
-.menu-box { width: min(620px, 100%); }
+.menu-box { width: min(620px, 100%); padding: 0; overflow: hidden; }   /* 스크롤은 안쪽에서만 → 스크롤바가 모서리를 각지게 만들지 않음 */
+#menuModalBody { max-height: calc(100vh - 32px); overflow-y: auto; padding: 24px; }
+/* 메뉴 창 스크롤바: 챗봇처럼 화살표 없이 얇고 연하게, 위아래 끝은 둥근 모서리 안쪽에서 멈춤(잘리지 않게) */
+#menuModalBody::-webkit-scrollbar { width: 12px; }
+#menuModalBody::-webkit-scrollbar-button { display: none; height: 0; }
+#menuModalBody::-webkit-scrollbar-track { background: transparent; margin: 22px 0; }
+#menuModalBody::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, .15); border-radius: 999px; border: 3px solid transparent; background-clip: padding-box; }
+#menuModalBody::-webkit-scrollbar-thumb:hover { background-color: rgba(0, 0, 0, .25); }
+@supports not selector(::-webkit-scrollbar) { #menuModalBody { scrollbar-width: thin; scrollbar-color: rgba(0, 0, 0, .15) transparent; } }
 .mf-tpl { margin: 14px 0 4px; padding: 14px 16px; border-radius: 12px; background: var(--primary-container); }
 .mf-tpl b { display: block; margin-bottom: 8px; font-size: 15px; color: var(--primary); }
 .mf-tpl div { display: flex; flex-wrap: wrap; gap: 8px; }

@@ -136,6 +136,11 @@ function plainReason(factors, kind) {
   if (top.factor.startsWith("날씨")) return "최근 날씨 영향이 있어요";
   if (top.factor.includes("공휴일")) return "공휴일을 앞두고 있어요";
   if (top.factor.includes("평균과의 차이")) return `${top.factor.split(" ")[0]} 평균보다 ${sign > 0 ? "싸서 올라올" : "비싸서 내려올"} 수 있어요`;
+  // 아래는 AI 학습 모델의 이유 (forecast_model.GROUPS)
+  if (top.factor.startsWith("계절")) return `해마다 이맘때 ${sign > 0 ? "오르는" : "내리는"} 때예요`;
+  if (top.factor.includes("명절")) return "설 · 추석을 앞두고 있어요";
+  if (top.factor.startsWith("최근 값 흐름")) return `최근 값 흐름을 보면 ${sign > 0 ? "오를" : "내릴"} 수 있어요`;
+  if (top.factor.startsWith("품목 특성")) return `이 품목은 요즘 ${sign > 0 ? "오르는" : "내리는"} 편이에요`;
   return "대구 행사가 많아요";
 }
 

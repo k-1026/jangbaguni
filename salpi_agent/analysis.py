@@ -404,7 +404,7 @@ def forecast_item(item_name):
     else:
         direction, tip = "비슷할 가능성이 커요", "평소대로 사면 돼요"
     last = series[-1] if series else None
-    return {
+    out = {
         "item": item_name, "horizon": "다음 7일", "base_date": last["date"] if last else None,
         "base_kg_price": last["kg_price"] if last else None,
         "expected_change_pct": round(total, 1),
@@ -416,7 +416,38 @@ def forecast_item(item_name):
         "factors": factors,
         "method": "규칙 기반 추정(4주 평균과의 차이 · 반입량 · 날씨 · 공휴일 · 행사, 계수는 2021~2026 채점으로 정함)."
                   " 주산지 날씨와 수입량은 아직 반영하지 않음",
+        "version": FORMULA_VERSION,
     }
+    return _with_ai(out, item_name, series) if last else out
+
+
+def _with_ai(out, item_name, series):
+    """매일 학습하는 AI 모델이 있으면 예상 변화율 · 범위 · 이유를 모델 것으로 바꿈 (없거나 실패하면 고정 공식 그대로)."""
+    try:
+        import forecast_model
+        points = [(date.fromisoformat(p["date"]), p["kg_price"], p["volume_kg"]) for p in series]
+        weather = {date.fromisoformat(w["date"]): (w["rain_mm"], w["min_temp"], w["max_temp"]) for w in weather_days(35)}
+        ai = forecast_model.forecast(item_name, kind_of(item_name), points, weather, points[-1][0])
+    except Exception as e:
+        print(f"[AI 예측] {item_name} 실패, 고정 공식 사용: {e}", flush=True)
+        return out
+    if not ai:
+        return out
+    total, (lo, hi), base = ai["expected_change_pct"], ai["range_pct"], out["base_kg_price"]
+    if total >= 2:
+        direction, tip = "오를 가능성이 있어요", "필요한 양은 미리 사 두는 편이 나아요"
+    elif total <= -2:
+        direction, tip = "내릴 가능성이 있어요", "급하지 않으면 며칠 기다려 보세요"
+    else:
+        direction, tip = "비슷할 가능성이 커요", "평소대로 사면 돼요"
+    m = ai.get("metrics") or {}
+    return {**out, "expected_change_pct": total, "range_pct": [lo, hi],
+            "expected_kg_price_range": [round(base * (1 + lo / 100)), round(base * (1 + hi / 100))],
+            "direction": direction, "suggestion": tip, "factors": ai["factors"], "version": ai["version"],
+            "confidence": "보통" if hi - lo < 20 else "낮음",
+            "method": f"AI 학습 모델(부스팅, 매일 새벽 다시 학습). 최근 1년 시험: 정반대 {m.get('opposite_pct')}% · "
+                      f"평균 오차 {m.get('mae_pp')}%p · 범위 적중 {m.get('range_hit_pct')}%",
+            "model": {"version": ai["version"], "metrics": m}}
 
 
 # ---------------------------------------------------------------

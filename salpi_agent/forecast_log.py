@@ -3,7 +3,7 @@
 - record: 그날 화면에 나간 7일 예측을 그대로 저장. 같은 날 · 품목은 처음 저장한 값을 바꾸지 않음
 - score : 기준 날짜에서 7일이 지난 예측을 실제 가격과 비교해 채점 (범위 안? 방향 맞음?)
 - snapshot_shop: 식봄 재료별 상품 판매가를 하루 한 번 저장 (도매 시세보다 며칠 늦게 따라가는지 비교용)
-- scorecard: 최근 몇 주 채점 결과 요약 (화면 적중률 표시용)
+- scorecard: 최근 몇 주 채점 결과 요약 (화면 적중률 표시용, 품목 · 기준 날짜마다 한 번만 셈)
 
 모두 서버가 이미 계산한 대시보드 결과(/api/overview · /api/meat-seafood)를 받아 씀 → 시세 API를 더 부르지 않음.
 채점 기준은 backtest.py 와 같음: 방향 ±2%, 실제 = 기준 날짜 + 7일 이후 첫 시세 날짜(3일 안).
@@ -39,7 +39,7 @@ def _rows_for_log(veg_rows, extra_rows):
                     "base_price": f["base_kg_price"], "unit": "kg", "expected_change_pct": f["expected_change_pct"],
                     "range_low": lo, "range_high": hi, "direction": _direction(f["expected_change_pct"]),
                     "factors": [{"factor": x["factor"], "effect_pct": x["effect_pct"]} for x in f.get("factors", [])],
-                    "formula_version": FORMULA_VERSION})
+                    "formula_version": f.get("version") or FORMULA_VERSION})
     for r in extra_rows or []:
         f = r.get("forecast") or {}
         if f.get("error") or not f.get("base_price"):
@@ -49,7 +49,7 @@ def _rows_for_log(veg_rows, extra_rows):
                     "base_price": f["base_price"], "unit": f.get("unit") or "kg", "expected_change_pct": f["expected_change_pct"],
                     "range_low": lo, "range_high": hi, "direction": _direction(f["expected_change_pct"]),
                     "factors": [{"factor": x["factor"], "effect_pct": x["effect_pct"]} for x in f.get("factors", [])],
-                    "formula_version": FORMULA_VERSION})
+                    "formula_version": f.get("version") or FORMULA_VERSION})
     return out
 
 
@@ -115,7 +115,12 @@ def scorecard(weeks=4):
     """최근 weeks주 동안 채점된 예측 요약: 종류별 · 품목별 방향 적중 · 범위 적중 · 정반대 비율."""
     since = (today() - timedelta(weeks * 7)).isoformat()
     rows = supabase_db.select("forecast_log", actual_date=f"gte.{since}", direction_hit="not.is.null",
-                              select="item,kind,direction,actual_change_pct,direction_hit,in_range,formula_version")
+                              select="item,kind,base_date,run_date,direction,actual_change_pct,direction_hit,in_range,formula_version")
+    # 주말 · 휴장일에는 같은 기준 날짜로 만든 예측이 여러 날 저장됨 → 품목 · 기준 날짜마다 처음 저장한 것 하나만 셈
+    first = {}
+    for r in sorted(rows, key=lambda r: r["run_date"]):
+        first.setdefault((r["item"], r["base_date"]), r)
+    rows = list(first.values())
 
     def summary(group):
         n = len(group)

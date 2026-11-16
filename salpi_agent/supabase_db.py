@@ -122,6 +122,22 @@ def upload(bucket, path, data, content_type):
         raise ApiError(f"Supabase 사진 보관 실패 ({code})") from None
 
 
+def download(bucket, path):
+    """비공개 보관함 파일 읽기 → bytes. 파일이 없으면 None."""
+    base, headers = _base()
+    storage = base.replace("/rest/v1/", "/storage/v1/")
+    try:
+        r = requests.get(f"{storage}object/{bucket}/{path}", timeout=30,
+                         headers={"apikey": headers["apikey"], "Authorization": f"Bearer {headers['apikey']}"})
+        if r.status_code in (400, 404):   # 아직 없음
+            return None
+        r.raise_for_status()
+        return r.content
+    except requests.RequestException as e:
+        code = getattr(getattr(e, "response", None), "status_code", None) or type(e).__name__
+        raise ApiError(f"Supabase 보관함 읽기 실패 ({code})") from None
+
+
 def remove_file(path):
     """보관함 파일 지우기 (path = "보관함/경로"). 실패해도 영수증 지우기는 계속."""
     base, headers = _base()

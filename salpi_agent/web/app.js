@@ -1190,45 +1190,35 @@ const ratioCls = (v) => (v == null ? "" : v > 35 ? "up" : v > 30 ? "warnc" : "do
 function renderCosts(r, withChange) {
   const T = r.target_ratio_pct;
   $("#costCard").innerHTML = `
-    <p class="cost-guide">원가율은 <b>한 그릇 값에서 재료비가 차지하는 몫</b>이에요. 낮을수록 한 그릇 팔 때 남는 돈이 많아요.
-      식당은 보통 <b>${T}% 아래</b>면 괜찮은 편이에요.</p>
+    <p class="cost-guide"><b>원가율</b> = 판매가 중 <b>재료비 비율</b>. 보통 <b>${T}% 아래</b>면 괜찮아요.</p>
     <div class="cost-cards">${r.menus.map((m) => {
       const v = m.cost_ratio_pct;
       const ch = withChange && m.change_pt
-        ? `<small class="${m.change_pt > 0 ? "up" : "down"}">${m.change_pt > 0 ? "▲" : "▼"} ${Math.abs(m.change_pt)}%p</small>` : "";
+        ? `<small class="cost-change ${m.change_pt > 0 ? "up" : "down"}">${m.change_pt > 0 ? "▲" : "▼"} ${Math.abs(m.change_pt)}%p</small>` : "";
       const tone = { up: "high", warnc: "tight", down: "ok" }[ratioCls(v)] || "";   // 높음 · 빠듯 · 충분
+      // 한 줄에 숫자 넷: 원가율(크게 · 색) | 판매가 | 1인분 재료비 | 남는 금액
       return `<article class="cost-card ${tone}">
-        <div class="cost-left">
-          <b>${esc(m.menu)}</b>
-          <strong>${v ?? "-"}<em>%</em></strong>
-          <span class="cost-verdict">${esc(m.verdict)}</span>${ch}
-        </div>
-        <div class="cost-right">
-          ${v == null ? "" : `<p class="ratio-label"><span><i class="k-cost"></i>재료비</span><span><i class="k-keep"></i>남는 돈</span><small>판매가 ${won(m.price)}을 100으로 볼 때</small></p>
-          <div class="split-bar" role="img" aria-label="판매가 ${won(m.price)} 중 재료비 ${v}%, 남는 돈 ${+(100 - v).toFixed(1)}%">
-            <i class="part-cost" style="width:${Math.max(4, Math.min(100, v))}%">${v}%</i>
-            <i class="part-keep">남는 돈 ${+(100 - v).toFixed(1)}%</i>
-          </div>`}
-          <dl class="cost-nums">
-            <div><dt>판매가</dt><dd>${won(m.price)}</dd></div>
-            <div><dt>1인분 재료비</dt><dd>${won(m.cost_per_serving)}</dd></div>
-            <div><dt>남는 돈</dt><dd>${won(m.margin)}</dd></div>
-          </dl>
-          ${m.swap ? `<div class="cost-swap">
-            <p class="swap-title">🔄 대체 재료 추천</p>
-            <p class="swap-pair"><span class="swap-from">${esc(m.swap.from)}</span><i aria-label="에서">→</i><span class="swap-to">${esc(m.swap.to)}</span></p>
-            <p class="swap-reason">${esc(m.swap.reason)}</p>
+        <div class="cost-menu-row"><h3 class="cost-menu">${esc(m.menu)}</h3>
+          <button class="btn cost-edit" type="button" data-mid="${m.menu_id}">✎ 수정</button></div>
+        <dl class="cost-stats">
+          <div class="cost-main"><dt>원가율 <span class="cost-verdict">${esc(m.verdict)}</span></dt><dd>${v ?? "-"}<em>%</em>${ch}</dd></div>
+          <div><dt>판매가</dt><dd>${won(m.price)}</dd></div>
+          <div><dt>1인분 재료비</dt><dd>${won(m.cost_per_serving)}</dd></div>
+          <div><dt>남는 금액</dt><dd>${won(m.margin)}</dd></div>
+        </dl>
+        ${m.swap ? `<div class="cost-swap">
+          <b class="swap-title">대체 재료 제안</b>
+          <div class="swap-body">
+            <div class="swap-main">
+              <p class="swap-pair"><span class="swap-from">${esc(m.swap.from)}</span><i aria-label="대신">→</i><span class="swap-to">${esc(m.swap.to)}</span></p>
+              <p class="swap-reason">💡 ${esc(m.swap.reason)}</p>
+            </div>
             <p class="swap-calc">${esc(m.swap.from)} ${m.swap.share_pct}%를 바꾸면 1인분 <b>${won(m.swap.saving_per_serving)}</b> 아껴요 · 원가율 ${m.cost_ratio_pct}% → <b>${m.swap.new_ratio_pct}%</b> · 남는 돈 ${won(m.margin)} → <b>${won(m.swap.new_margin)}</b></p>
-            <p class="swap-basis muted small">${esc(m.swap.to)} ${won(m.swap.to_price)}/kg (${esc(m.swap.price_basis)}) · 다음 주 예상 ${esc(m.swap.from)} ${pct(m.swap.from_change_pct)} · ${esc(m.swap.to)} ${pct(m.swap.to_change_pct)} 기준으로 계산</p>
-          </div>` : ""}
-          ${(() => {   // 대체 재료 상자에 들어간 문장은 빼고 나머지(오른 재료 · 판매가 제안)만 💡로
-            const rest = m.swap ? m.tips.filter((t) => t !== m.swap.reason && !t.startsWith(`${m.swap.from} 절반을`)) : m.tips;
-            return rest.length ? `<ul class="cost-tips">${rest.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : "";
-          })()}
-        </div>
+          </div>
+        </div>` : ""}
       </article>`;
     }).join("")}</div>
-    <p class="muted small">${esc(r.method)}. 레시피에 주재료만 들어 있어 실제보다 원가율이 조금 낮게 나와요.</p>`;
+    <p class="muted small">레시피에 주재료만 들어 있어 실제보다 원가율이 조금 낮게 나와요.</p>`;
 }
 
 function receiptList(list) {
@@ -1247,6 +1237,155 @@ async function loadCosts(full = true) {
     if (full) $("#costCard").innerHTML = `<p class="muted">원가율을 불러오지 못했어요. ${esc(e.message)}</p>`;
   }
 }
+
+// ---------------------------------------------------------------
+// 메뉴 고치기 · 추가: 카드마다 [수정], 제목 옆 [+ 메뉴 추가] — 둘 다 같은 입력 창
+// 저장하면 Supabase(팀 공용 데이터)에 바로 반영됨. 메뉴는 지우지 않고 '판매 중지'만 (판매 기록 보존)
+// ---------------------------------------------------------------
+let menuData = null;   // { items(재료 · 최근 영수증 단가), menus(레시피 포함), templates(자주 쓰는 메뉴) }
+const menuItem = (id) => menuData.items.find((i) => i.id === +id);
+// kg 재료는 g로 보여 주고 받음 (0.02kg보다 20g이 읽기 쉬움)
+const qtyUnit = (it) => (!it ? "" : it.unit === "kg" ? "g" : it.unit);
+const showQty = (it, q) => (it && it.unit === "kg" ? +(q * 1000).toFixed(1) : +(+q).toFixed(3));
+const saveQty = (it, v) => (it && it.unit === "kg" ? v / 1000 : v);
+
+async function openMenuEditor(menuId) {
+  const modal = $("#menuModal"), box = $("#menuModalBody");
+  box.innerHTML = `<div class="reading"><div class="spinner"></div><b>메뉴를 불러오는 중이에요</b></div>`;
+  modal.hidden = false;
+  try { menuData = await getJSON("/api/menus"); }
+  catch (e) { box.innerHTML = `<p class="rc-warn">${esc(e.message)}</p>`; return; }
+  menuForm(menuId ? menuData.menus.find((x) => x.id === +menuId) : null);
+}
+
+function itemOptions(sel) {
+  const groups = {};
+  for (const i of menuData.items) (groups[i.category] ||= []).push(i);
+  return `<option value="">재료 선택</option>` + Object.entries(groups).map(([g, list]) => `<optgroup label="${esc(g)}">${
+    list.map((i) => `<option value="${i.id}"${i.id === sel ? " selected" : ""}>${esc(i.name)}</option>`).join("")}</optgroup>`).join("");
+}
+
+const recipeRow = (r = {}) => `<li class="mf-row" data-loss="${r.loss || 0}">
+  <select class="mf-item" aria-label="재료">${itemOptions(r.item_id)}</select>
+  <span class="mf-amount"><input class="mf-qty" type="number" inputmode="decimal" min="0" step="any" aria-label="1인분 양"
+    value="${r.qty != null ? showQty(menuItem(r.item_id), r.qty) : ""}"><span class="mf-unit"></span></span>
+  <small class="mf-noprice" hidden>영수증 가격 없음</small>
+  <button type="button" class="mf-del" aria-label="이 재료 빼기">✕</button></li>`;
+
+function menuForm(m) {
+  const add = !m;
+  const onSale = new Set(menuData.menus.filter((x) => x.active).map((x) => x.name));
+  const tpl = menuData.templates.filter((t) => !onSale.has(t.name));
+  const box = $("#menuModalBody");
+  box.innerHTML = `<h3>${add ? "메뉴 추가" : `${esc(m.name)} 고치기`}</h3>
+    <p class="muted small">고치는 대로 아래에 원가율이 바로 계산돼요. [저장]을 눌러야 반영돼요.</p>
+    ${add && tpl.length ? `<div class="mf-tpl"><b>자주 쓰는 메뉴에서 선택</b>
+      <div>${tpl.map((t) => `<button type="button" class="btn" data-tpl="${esc(t.name)}">${esc(t.name)}</button>`).join("")}</div>
+      <small>누르면 1인분 재료가 채워져요. 우리 가게에 맞게 양만 고쳐 주세요.</small></div>` : ""}
+    <form class="menu-form" id="menuForm" novalidate>
+      <label class="mf-field mf-price"><span>판매가</span><span><input id="mfPrice" type="number" inputmode="numeric" min="100" step="100"
+        value="${m ? m.price : ""}" placeholder="예: 9000"> 원</span></label>
+      <label class="mf-field"><span>메뉴 이름</span><input id="mfName" maxlength="30" value="${m ? esc(m.name) : ""}" placeholder="예: 김치찌개"></label>
+      <div class="mf-field"><span>1인분 재료</span>
+        <ul class="mf-rows" id="mfRows">${(m ? m.recipe : [{}]).map(recipeRow).join("")}</ul>
+        <button type="button" class="btn mf-add" id="mfAddRow">+ 재료 추가</button></div>
+      <div class="mf-preview" id="mfPreview" aria-live="polite"></div>
+      <p class="rc-warn" id="mfMsg" hidden></p>
+      <div class="mf-actions">
+        ${add ? "" : `<button type="button" class="btn mf-stop" id="mfStop">판매 중지</button>`}
+        <button type="button" class="btn" id="mfCancel">취소</button>
+        <button type="submit" class="btn primary" id="mfSave">저장</button>
+      </div>
+    </form>`;
+  const rows = $("#mfRows");
+  menuCalc();
+  box.querySelector(".mf-tpl")?.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-tpl]");
+    if (!b) return;
+    const t = menuData.templates.find((x) => x.name === b.dataset.tpl);
+    $("#mfName").value = t.name;
+    rows.innerHTML = t.recipe.map(recipeRow).join("");
+    menuCalc();
+    $("#mfPrice").focus();
+  });
+  $("#mfAddRow").onclick = () => { rows.insertAdjacentHTML("beforeend", recipeRow()); rows.lastElementChild.querySelector("select").focus(); menuCalc(); };
+  rows.onclick = (e) => { if (e.target.closest(".mf-del")) { e.target.closest(".mf-row").remove(); menuCalc(); } };
+  $("#menuForm").oninput = menuCalc;
+  $("#mfCancel").onclick = closeMenu;
+  if (!add) $("#mfStop").onclick = () => stopMenu(m);
+  $("#menuForm").onsubmit = async (e) => {
+    e.preventDefault();
+    const recipe = [...rows.querySelectorAll(".mf-row")].map((li) => {
+      const it = menuItem(li.querySelector(".mf-item").value), v = parseFloat(li.querySelector(".mf-qty").value);
+      return it && v > 0 ? { item_id: it.id, qty: saveQty(it, v) } : null;
+    }).filter(Boolean);
+    const btn = $("#mfSave"), msg = $("#mfMsg");
+    btn.disabled = true; btn.textContent = "저장하는 중"; msg.hidden = true;
+    try {
+      const r = await sendJSON(add ? "/api/menus" : `/api/menus/${m.id}`, add ? "POST" : "PUT",
+        { name: $("#mfName").value.trim(), price: parseInt($("#mfPrice").value, 10) || null, recipe });
+      closeMenu();
+      afterMenuChange(r, add ? `'${r.name}' 메뉴를 추가했어요.` : `'${r.name}' 메뉴를 고쳤어요.`);
+    } catch (err) {
+      msg.textContent = err.message; msg.hidden = false;
+      btn.disabled = false; btn.textContent = "저장";
+    }
+  };
+}
+
+// 원가율 미리 보기: 재료마다 최근 영수증 단가 × 1인분 양 (화면의 메뉴별 원가율과 같은 계산)
+function menuCalc() {
+  const price = parseInt($("#mfPrice").value, 10) || 0;
+  let cost = 0, n = 0;
+  const unknown = [];
+  for (const li of $("#mfRows").querySelectorAll(".mf-row")) {
+    const it = menuItem(li.querySelector(".mf-item").value), v = parseFloat(li.querySelector(".mf-qty").value);
+    li.querySelector(".mf-unit").textContent = qtyUnit(it);
+    li.querySelector(".mf-noprice").hidden = !it || it.price != null;
+    if (!it || !(v > 0)) continue;
+    if (it.price == null) { unknown.push(it.name); continue; }
+    cost += saveQty(it, v) / (1 - +li.dataset.loss) * it.price;
+    n++;
+  }
+  const ratio = price && n ? +(cost / price * 100).toFixed(1) : null;
+  const tone = { up: "high", warnc: "tight", down: "ok" }[ratioCls(ratio)] || "";
+  $("#mfPreview").className = `mf-preview ${tone}`;
+  $("#mfPreview").innerHTML = ratio == null
+    ? `<span class="muted">판매가와 재료를 넣으면 원가율이 계산돼요</span>`
+    : `<span>원가율 <b class="mf-ratio">${ratio}%</b></span><span>1인분 재료비 <b>${won(cost)}</b></span><span>남는 금액 <b>${won(price - cost)}</b></span>
+       ${unknown.length ? `<small>${unknown.map(esc).join(", ")}은(는) 영수증 가격이 없어 빠졌어요</small>` : ""}`;
+}
+
+async function stopMenu(m) {
+  if (!confirm(`'${m.name}'을(를) 판매 중지할까요?\n\n원가율 · 내일 준비 목록에서 빠지고, 지금까지의 판매 기록은 그대로 남아요.\n나중에 같은 이름으로 추가하면 다시 판매돼요.`)) return;
+  const btn = $("#mfStop");
+  btn.disabled = true;
+  try {
+    const r = await sendJSON(`/api/menus/${m.id}/stop`, "POST");
+    closeMenu();
+    afterMenuChange(r, `'${r.name}' 메뉴를 판매 중지했어요. 판매 기록은 남아 있어요.`);
+  } catch (err) {
+    $("#mfMsg").textContent = err.message; $("#mfMsg").hidden = false;
+    btn.disabled = false;
+  }
+}
+
+function afterMenuChange(r, text) {
+  renderCosts(r, false);
+  $("#costCard").insertAdjacentHTML("afterbegin", `<p class="ok">${esc(text)}</p>`);
+  $("#receiptList").innerHTML = receiptList(r.receipts);
+  loadMyItems();
+  loadDemand();
+}
+
+const closeMenu = () => { $("#menuModal").hidden = true; };
+$("#menuModalClose").onclick = closeMenu;
+$("#menuModal").onclick = (e) => { if (e.target.id === "menuModal") closeMenu(); };
+$("#menuAddBtn").onclick = () => openMenuEditor(null);
+$("#costCard").addEventListener("click", (e) => {
+  const b = e.target.closest(".cost-edit");
+  if (b) openMenuEditor(b.dataset.mid);
+});
 
 $("#demoReceipts").innerHTML = DEMO_RECEIPTS.map(([f, label]) =>
   `<button data-f="${f}"><img src="/receipts_demo/${f}.png" alt="" loading="lazy"><span>${label}</span></button>`).join("");

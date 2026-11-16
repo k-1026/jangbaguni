@@ -31,6 +31,11 @@ function saveLogin(user, keep) {
     return true;
   } catch (e) { return false; }
 }
+// 로그아웃: 기억해 둔 로그인 상태를 지우고 첫 화면으로 (나의 가게처럼 로그인이 필요한 페이지에 남지 않게)
+function logout() {
+  try { localStorage.removeItem(LOGIN_KEY); sessionStorage.removeItem(LOGIN_KEY); } catch (e) {}
+  location.replace("/");
+}
 const SIGNED_IN = !!readLogin();
 const PAGE = new URLSearchParams(location.search).get("page");
 // 로그인 뒤 돌아갈 곳: 우리 사이트 안 주소(/ 로 시작)만 받음
@@ -2157,7 +2162,7 @@ async function renderMypage(view) {
     <section class="my-card my-account">
       <button class="my-link" type="button" data-account="logout"><span>로그아웃</span><i>›</i></button>
       <button class="my-link danger" type="button" data-account="leave"><span>회원탈퇴</span><i>›</i></button>
-      <p class="muted small" id="accountNote" hidden>로그인 · 회원가입 기능이 생기면 쓸 수 있어요.</p>
+      <p class="muted small" id="accountNote" hidden>회원탈퇴는 곧 연결돼요.</p>
     </section>`;
 }
 
@@ -2198,7 +2203,9 @@ $("#mypageClose").onclick = closeMypage;
 $("#mypageBack").onclick = () => renderMypage("home");
 $("#backdrop").onclick = closeMypage;
 $("#mypageBody").onclick = (e) => {
-  if (e.target.closest("[data-account]")) { $("#accountNote").hidden = false; return; }   // 로그인 기능이 생기면 연결
+  const acc = e.target.closest("[data-account]");
+  if (acc?.dataset.account === "logout") return logout();
+  if (acc) { $("#accountNote").hidden = false; return; }   // 회원탈퇴는 다음에 연결
   const v = e.target.closest("[data-view]");
   if (v) return renderMypage(v.dataset.view);
   const r = e.target.closest("[data-rid]");

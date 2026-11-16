@@ -1194,7 +1194,7 @@ function renderCosts(r, withChange) {
       // 한 줄에 숫자 넷: 원가율(크게 · 색) | 판매가 | 1인분 재료비 | 남는 금액
       return `<article class="cost-card ${tone}">
         <div class="cost-menu-row"><h3 class="cost-menu">${esc(m.menu)}</h3>
-          <button class="btn cost-edit" type="button" data-mid="${m.menu_id}">수정</button></div>
+          <button class="btn cost-edit" type="button" data-mid="${m.menu_id}">✎ 수정</button></div>
         <dl class="cost-stats">
           <div class="cost-main"><dt>원가율 <span class="cost-verdict">${esc(m.verdict)}</span></dt><dd>${v ?? "-"}<em>%</em>${ch}</dd></div>
           <div><dt>판매가</dt><dd>${won(m.price)}</dd></div>

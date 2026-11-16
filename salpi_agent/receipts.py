@@ -205,7 +205,8 @@ def _price_history(store_id):
                        select="purchase_id,item_id,unit_price_base,id", order="id"):
         if r["item_id"] and r["unit_price_base"]:
             hist.setdefault(r["item_id"], []).append((purchases[r["purchase_id"]]["purchased_on"], float(r["unit_price_base"])))
-    return {k: sorted(v) for k, v in hist.items()}
+    # 날짜로만 정렬 (같은 날은 나중에 넣은 줄이 뒤) → 마지막 값이 원가율 뷰(v_latest_purchase_price)의 최근 단가와 같음
+    return {k: sorted(v, key=lambda x: x[0]) for k, v in hist.items()}
 
 
 def cost_report(store_id=db.DEMO_STORE):

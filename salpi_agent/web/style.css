@@ -1018,80 +1018,82 @@ body.auth-view { --login-deep: #1F4A00; }
 body.auth-view main { background-color: #F4FBEA;
   background-image: url("/static/img/auth_pattern.svg"); background-size: 240px; }   /* 과일 · 야채 · 수산물 · 장바구니 연한 선 그림 */
 body.login-view .login-only, body.signup-view .signup-only { display: flex; }
-.login-page { justify-content: center; align-items: flex-start; min-height: calc(100vh - 64px); padding: 28px 16px 56px; box-sizing: border-box; }
-.login-card { width: 100%; max-width: 360px; padding: 26px 24px; border-top: 5px solid var(--login-deep); border-radius: 10px; background: var(--surface);
-  box-shadow: 0 10px 30px rgba(31, 74, 0, .12); }
-.login-card h1 { margin: 0 0 18px; text-align: center; font-size: 19px; font-weight: 900; }
-.login-label { display: flex; align-items: center; gap: 4px; margin: 0 0 8px; font-size: 12.5px; font-weight: 700; }
-.login-label svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.login-input { width: 100%; box-sizing: border-box; height: 40px; margin-bottom: 18px; padding: 0 14px; border: 1px solid var(--outline-variant); border-radius: 6px;
-  background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; }
+.login-page { justify-content: center; align-items: flex-start; min-height: calc(100vh - 64px); padding: 40px 16px 72px; box-sizing: border-box; }
+/* 카드: 사이트 본문 글자(15px)에 맞춘 크기 · 넉넉한 여백 */
+.login-card { width: 100%; max-width: 420px; padding: 36px 34px 34px; border-top: 6px solid var(--login-deep); border-radius: 14px; background: var(--surface);
+  box-shadow: 0 14px 40px rgba(31, 74, 0, .12); box-sizing: border-box; }
+.login-card h1 { margin: 0 0 26px; text-align: center; font-size: 23px; font-weight: 900; }
+.login-label { display: flex; align-items: center; gap: 5px; margin: 0 0 8px; font-size: 14px; font-weight: 700; }
+.login-label svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.login-input { width: 100%; box-sizing: border-box; height: 48px; margin-bottom: 20px; padding: 0 16px; border: 1px solid var(--outline-variant); border-radius: 8px;
+  background: var(--surface); color: var(--ink); font: inherit; font-size: 15px; }
 .login-input::placeholder { color: #9AA39C; }
 .login-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-container); }
 .login-pw { position: relative; }
-.login-pw .login-input { padding-right: 44px; }
-.login-eye { position: absolute; top: 4px; right: 4px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
-  border: 0; border-radius: 6px; background: none; color: var(--muted); }
+.login-pw .login-input { padding-right: 50px; }
+.login-eye { position: absolute; top: 6px; right: 6px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+  border: 0; border-radius: 8px; background: none; color: var(--muted); }
 .login-eye:hover { background: var(--surface-variant); }
 .login-eye[aria-pressed="true"] { color: var(--primary); }
-.login-eye svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
-.login-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap; margin: 2px 0 18px; font-size: 11.5px; font-weight: 700; white-space: nowrap; }
-.login-keep { display: flex; align-items: center; gap: 6px; cursor: pointer; }
-.login-keep input { width: 17px; height: 17px; margin: 0; accent-color: var(--login-deep); }
-.login-links { display: flex; align-items: center; gap: 5px; }
+.login-eye svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
+.login-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 0 0 22px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+.login-keep { display: flex; align-items: center; gap: 7px; cursor: pointer; }
+.login-keep input { width: 19px; height: 19px; margin: 0; accent-color: var(--login-deep); }
+.login-links { display: flex; align-items: center; gap: 6px; }
 .login-links a { color: var(--ink); text-decoration: none; }
 .login-links a:hover { text-decoration: underline; }
 .login-links i { font-style: normal; color: var(--outline); }
 .login-links .join { color: #A3540C; }
-.login-msg { margin: -6px 0 12px; padding: 8px 12px; border-radius: 6px; background: #FFF0EE; color: var(--up); font-size: 12.5px; }
-.login-submit, .login-social { width: 100%; height: 40px; display: flex; align-items: center; justify-content: center; gap: 8px;
-  border-radius: 6px; font-size: 13.5px; font-weight: 700; transition: filter .15s, background .15s; }
-.login-submit { height: 42px; border: 0; background: var(--login-deep); color: #fff; font-size: 14.5px; }
+.login-msg { margin: -8px 0 14px; padding: 10px 14px; border-radius: 8px; background: #FFF0EE; color: var(--up); font-size: 14px; }
+.login-submit, .login-social { width: 100%; height: 48px; display: flex; align-items: center; justify-content: center; gap: 9px;
+  border-radius: 8px; font-size: 15px; font-weight: 700; transition: filter .15s, background .15s; }
+.login-submit { height: 52px; border: 0; background: var(--login-deep); color: #fff; font-size: 16px; }
 .login-submit:hover { background: #173A00; }
-.login-submit svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.login-or { display: flex; align-items: center; gap: 12px; margin: 14px 0 12px; color: var(--muted); font-size: 11.5px; font-weight: 500; }
+.login-submit svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.login-or { display: flex; align-items: center; gap: 14px; margin: 20px 0 14px; color: var(--muted); font-size: 13px; font-weight: 500; }
 .login-or::before, .login-or::after { content: ""; flex: 1; height: 1px; background: var(--outline-variant); }
-.login-social { margin-top: 8px; border: 0; }
+.login-social { margin-top: 10px; border: 0; }
 .login-social:hover { filter: brightness(.96); }
-.login-social svg { width: 17px; height: 17px; }
+.login-social svg { width: 19px; height: 19px; }
 .login-social.kakao { background: #FEE500; color: #191919; }
 .login-social.kakao svg { fill: #191919; }
 .login-social.naver { background: #03C75A; color: #fff; }
-.login-social.naver svg { width: 14px; height: 14px; fill: #fff; }
+.login-social.naver svg { width: 15px; height: 15px; fill: #fff; }
 .login-social.google { border: 1px solid var(--outline); background: var(--surface); color: var(--ink); }
 .login-social.google:hover { filter: none; background: var(--surface-variant); }
 
-/* 회원가입 (/?page=signup): 로그인 카드를 그대로 쓰고, 입력칸은 연한 초록으로 채움 */
-.signup-card { max-width: 400px; }
+/* 회원가입 (/?page=signup): 로그인 카드를 그대로 쓰고, 칸이 많아 조금 더 넓게 · 입력칸은 연한 초록으로 채움 */
+.signup-card { max-width: 460px; }
 .signup-card .login-social:first-of-type { margin-top: 0; }
-.signup-card .login-or { margin: 18px 0 6px; }
+.signup-card .login-or { margin: 22px 0 8px; }
 .signup-card .login-input { background: #F3F7EE; border-color: transparent; }
 .signup-card .login-input:focus { background: var(--surface); border-color: var(--primary); }
-.signup-card .login-label small { margin-left: auto; color: var(--muted); font-size: 11px; font-weight: 500; }
-.signup-sec { margin: 22px 0 12px; padding-left: 8px; border-left: 4px solid var(--login-deep); font-size: 14px; font-weight: 900; line-height: 1.2; }
-.signup-inline { display: flex; gap: 6px; margin-bottom: 18px; }
+.signup-card .login-label small { margin-left: auto; color: var(--muted); font-size: 12.5px; font-weight: 500; }
+.signup-sec { margin: 30px 0 14px; padding-left: 10px; border-left: 4px solid var(--login-deep); font-size: 16px; font-weight: 900; line-height: 1.2; }
+.signup-inline { display: flex; gap: 8px; margin-bottom: 20px; }
 .signup-inline .login-input { flex: 1; min-width: 0; margin-bottom: 0; }
-.signup-city { flex: none; display: flex; align-items: center; padding: 0 14px; border-radius: 6px; background: #DDEACF; color: var(--on-primary-container); font-size: 14px; font-weight: 700; }
+.signup-city { flex: none; display: flex; align-items: center; padding: 0 18px; border-radius: 8px; background: #DDEACF; color: var(--on-primary-container); font-size: 15px; font-weight: 700; }
 .signup-card select.login-input { cursor: pointer; }
-.signup-side { flex: none; padding: 0 12px; border: 0; border-radius: 6px; background: #DDEACF; color: var(--on-primary-container); font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+.signup-side { flex: none; padding: 0 16px; border: 0; border-radius: 8px; background: #DDEACF; color: var(--on-primary-container); font-size: 14px; font-weight: 700; white-space: nowrap; }
 .signup-side:hover { background: #CFE1BC; }
-.signup-side.dark { min-width: 56px; background: var(--login-deep); color: #fff; }
+.signup-side.dark { min-width: 64px; background: var(--login-deep); color: #fff; }
 .signup-side:disabled { opacity: .5; cursor: default; }
-.signup-code { margin: -8px 0 18px; padding: 12px; border-radius: 8px; background: #F3F7EE; }
-.signup-code-head { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; font-weight: 700; }
+.signup-code { margin: -8px 0 20px; padding: 14px; border-radius: 10px; background: #F3F7EE; }
+.signup-code-head { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 13.5px; font-weight: 700; }
 .signup-code-head b { color: var(--warn); }
 .signup-code .signup-inline { margin-bottom: 0; }
-.signup-code .login-input { background: var(--surface); text-align: center; letter-spacing: 4px; font-weight: 700; }
-.signup-hint { margin: -10px 0 16px; color: var(--up); font-size: 12px; font-weight: 700; }
+.signup-code .login-input { background: var(--surface); text-align: center; letter-spacing: 5px; font-weight: 700; font-size: 17px; }
+.signup-hint { margin: -12px 0 18px; color: var(--up); font-size: 13.5px; font-weight: 700; }
 .signup-hint.ok { color: var(--down); }
-.signup-code .signup-hint { margin: 8px 0 0; }
-.signup-terms { display: grid; gap: 10px; margin-bottom: 18px; padding: 14px; border-radius: 8px; background: #F3F7EE; font-size: 13px; }
-.signup-terms label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
-.signup-terms input { width: 17px; height: 17px; margin: 0; accent-color: var(--login-deep); }
-.signup-terms .signup-all { padding-bottom: 10px; border-bottom: 1px solid var(--outline-variant); font-size: 14px; font-weight: 700; }
-.signup-foot { margin: 14px 0 0; text-align: center; color: var(--muted); font-size: 12.5px; }
+.signup-code .signup-hint { margin: 10px 0 0; }
+.signup-terms { display: grid; gap: 12px; margin-bottom: 22px; padding: 18px; border-radius: 10px; background: #F3F7EE; font-size: 14.5px; }
+.signup-terms label { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.signup-terms input { width: 19px; height: 19px; margin: 0; accent-color: var(--login-deep); }
+.signup-terms .signup-all { padding-bottom: 12px; border-bottom: 1px solid var(--outline-variant); font-size: 15.5px; font-weight: 700; }
+.signup-foot { margin: 18px 0 0; text-align: center; color: var(--muted); font-size: 14px; }
 .signup-foot a { margin-left: 4px; color: var(--login-deep); font-weight: 700; }
 @media (max-width: 760px) {
-  .login-page { padding-top: 20px; }
-  .login-card { padding: 22px 20px; }
+  .login-page { padding: 20px 12px 48px; }
+  .login-card { padding: 28px 20px; }
+  .login-card h1 { font-size: 21px; margin-bottom: 20px; }
 }

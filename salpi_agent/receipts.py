@@ -25,8 +25,10 @@ MODELS = [os.getenv("GEMINI_MODEL", "gemini-3.5-flash")] + [
     if m.strip()]
 TARGET_RATIO = 30   # 목표 원가율(%)
 # 대체 재료 후보 (값이 오르면 검토해 볼 만한 것만, 판단은 사장님이)
-SUBSTITUTES = {"양파": "양배추", "대파": "쪽파 · 양파", "애호박": "감자 · 무", "돼지고기 앞다리": "돼지고기 뒷다리",
-               "청양고추": "건고추 · 고춧가루", "감자": "무"}
+# 바꿨을 때 원가 · 마진을 계산할 수 있는 것만 둠: ① 같은 무게로 바꿔 넣을 수 있고 (생채소 ↔ 생채소) ② 가격을 알 수 있음 (도매 시세 or 우리 가게 영수증)
+#   뺀 것 (11/16): 쪽파 · 돼지고기 뒷다리 = 가격 자료 없음 / 청양고추 → 건고추 · 고춧가루 = 생것과 마른 것이라 같은 무게로 못 바꿈
+SUBSTITUTES = {"양파": ["양배추"], "대파": ["양파"], "애호박": ["감자", "무"], "감자": ["무"]}
+SWAP_SHARE = 0.5   # 오른 재료의 절반을 바꿨을 때로 계산 (전부 바꾸면 맛이 달라짐)
 
 
 def _norm(s):
@@ -205,7 +207,54 @@ def _price_history(store_id):
                        select="purchase_id,item_id,unit_price_base,id", order="id"):
         if r["item_id"] and r["unit_price_base"]:
             hist.setdefault(r["item_id"], []).append((purchases[r["purchase_id"]]["purchased_on"], float(r["unit_price_base"])))
-    return {k: sorted(v) for k, v in hist.items()}
+    # 날짜로만 정렬 (같은 날은 나중에 넣은 줄이 뒤) → 마지막 값이 원가율 뷰(v_latest_purchase_price)의 최근 단가와 같음
+    return {k: sorted(v, key=lambda x: x[0]) for k, v in hist.items()}
+
+
+def _wholesale(name, cache):
+    """도매 시세(kg당)와 다음 7일 예측. 시세가 없는 재료면 None."""
+    if name not in cache:
+        cache[name] = None
+        try:
+            import analysis
+            if name in analysis.ITEMS:
+                f = analysis.forecast_item(name)
+                if f.get("base_kg_price"):
+                    cache[name] = f
+        except Exception as e:   # 시세 API 문제 → 그 후보만 건너뜀
+            print(f"[대체 재료] {name} 시세 실패: {e}", flush=True)
+    return cache[name]
+
+
+def _swap(riser, per, cost, price, store_price, cache):
+    """오른 재료의 절반을 후보로 바꿨을 때 가장 많이 아끼는 것 (다음 주 예상 가격 기준).
+    후보 가격을 모르거나 · 안 아껴지거나 · 후보가 오른 재료보다 더 오를 예정이면 뺌."""
+    best = None
+    fr = _wholesale(riser["item"], cache)
+    from_next = riser["latest_price"] * (1 + (fr["expected_change_pct"] if fr else 0) / 100)
+    for to in SUBSTITUTES.get(riser["item"], []):
+        fc = _wholesale(to, cache)
+        if not fc:
+            continue
+        if fr and fc["expected_change_pct"] >= fr["expected_change_pct"]:   # 대체 재료가 더 오를 예정이면 바꿔도 소용없음
+            continue
+        if to in store_price:
+            to_price, basis = store_price[to], "우리 가게 영수증 단가"
+        elif fr:   # 영수증 단가와 도매가는 수준이 달라서, 두 재료의 도매가 비율로 우리 가게 단가를 환산 (같은 기준끼리 비교)
+            to_price, basis = riser["latest_price"] * fc["base_kg_price"] / fr["base_kg_price"], "도매 시세 비율로 환산"
+        else:
+            continue
+        to_next = to_price * (1 + fc["expected_change_pct"] / 100)
+        saving = per * SWAP_SHARE * (from_next - to_next)
+        if saving < 10 or (best and saving <= best["saving_per_serving"]):
+            continue
+        new_cost = cost - saving
+        best = {"from": riser["item"], "to": to, "share_pct": round(SWAP_SHARE * 100), "price_basis": basis,
+                "from_price": riser["latest_price"], "to_price": round(to_price), "saving_per_serving": round(saving),
+                "new_cost": round(new_cost), "new_ratio_pct": round(new_cost / price * 100, 1) if price else None,
+                "new_margin": round(price - new_cost), "to_outlook": fc["direction"], "to_change_pct": fc["expected_change_pct"],
+                "from_change_pct": fr["expected_change_pct"] if fr else None, "basis_note": "다음 주 예상 가격으로 계산"}
+    return best
 
 
 def cost_report(store_id=db.DEMO_STORE):
@@ -213,7 +262,9 @@ def cost_report(store_id=db.DEMO_STORE):
     recipes = db.select("recipe_items", menu_id=f"in.({','.join(str(m['menu_id']) for m in menus) or 0})",
                         select="menu_id,item_id,qty_per_serving,loss_rate,items(name,base_unit)")
     hist = _price_history(store_id)
-    out = []
+    names = {i["id"]: i["name"] for i in _items()}
+    store_price = {names[k]: v[-1][1] for k, v in hist.items() if k in names}   # 재료 이름 → 우리 가게 최근 영수증 단가
+    cache, out = {}, []
     for m in menus:
         ratio = float(m["cost_ratio_pct"]) if m["cost_ratio_pct"] is not None else None
         cost = float(m["cost_per_serving"] or 0)
@@ -226,10 +277,10 @@ def cost_report(store_id=db.DEMO_STORE):
                 parts.append({"item": r["items"]["name"], "unit": r["items"]["base_unit"], "cost": round(per * last),
                               "first_price": round(first), "latest_price": round(last), "since": h[0][0], "latest_date": h[-1][0],
                               "change_pct": round((last / first - 1) * 100, 1) if first else None,
-                              "cost_up": round(per * (last - first))})   # 1인분 재료비가 얼마나 늘었나(원)
+                              "cost_up": round(per * (last - first)), "_per": per})   # 1인분 재료비가 얼마나 늘었나(원)
         parts.sort(key=lambda p: -p["cost"])
-        riser = max(parts, key=lambda p: p["cost_up"], default=None)
-        riser = riser if riser and riser["cost_up"] >= 30 else None   # 1인분 30원 미만은 알릴 만큼 아님
+        risers = sorted((p for p in parts if p["cost_up"] >= 30), key=lambda p: -p["cost_up"])   # 1인분 30원 미만은 알릴 만큼 아님
+        riser = risers[0] if risers else None
         if ratio is None:
             verdict = "가격 모름"
         elif ratio <= TARGET_RATIO:
@@ -240,18 +291,25 @@ def cost_report(store_id=db.DEMO_STORE):
             verdict = "높아요"
         # 순서: 대체 재료 추천 → 그 이유(오른 재료) → 판매가 제안
         tips, swap = [], None
+        why = lambda r: (f"{_josa(r['item'], '이', '가')} {r['since'][5:].replace('-', '/')} 이후 {r['change_pct']:+.0f}% 올라 "
+                         f"1인분 재료비가 {r['cost_up']:,}원 늘었어요")
+        # 많이 오른 재료부터: 바꿨을 때 원가를 계산할 수 있는 대체 재료가 있는 첫 재료 (화면의 '대체 재료 추천' 상자)
+        for r in risers:
+            if (ratio or 0) > TARGET_RATIO or (r["change_pct"] or 0) >= 20:
+                swap = _swap(r, r["_per"], cost, m["price"], store_price, cache)
+                if swap:
+                    swap["reason"] = why(r)
+                    tips.append(f"{r['item']} 절반을 {_josa(swap['to'], '으로', '로')} 바꾸면 1인분 {swap['saving_per_serving']:,}원 아껴 "
+                                f"원가율 {ratio}% → {swap['new_ratio_pct']}%예요")
+                    break
         if riser:
-            reason = (f"{_josa(riser['item'], '이', '가')} {riser['since'][5:].replace('-', '/')} 이후 {riser['change_pct']:+.0f}% 올라 "
-                      f"1인분 재료비가 {riser['cost_up']:,}원 늘었어요")
-            if riser["item"] in SUBSTITUTES and ((ratio or 0) > TARGET_RATIO or (riser["change_pct"] or 0) >= 20):
-                tips.append(f"{riser['item']} 일부를 {_josa(SUBSTITUTES[riser['item']], '으로', '로')} 바꾸는 걸 검토해 보세요")
-                swap = {"from": riser["item"], "to": SUBSTITUTES[riser["item"]], "reason": reason}   # 화면의 '대체 재료 추천' 상자
-            tips.append(reason)
+            tips.append(why(riser))
         if ratio is not None and ratio > TARGET_RATIO:
             tips.append(f"판매가를 {math.ceil(cost / (TARGET_RATIO / 100) / 500) * 500:,}원으로 올리면 원가율 {TARGET_RATIO}% 안쪽이에요")
         out.append({"menu_id": m["menu_id"], "menu": m["menu_name"], "price": m["price"], "cost_per_serving": round(cost),
                     "cost_ratio_pct": ratio, "margin": round(m["price"] - cost), "verdict": verdict,
-                    "items_without_price": m["items_without_price"], "top_items": parts[:3], "riser": riser, "tips": tips, "swap": swap})
+                    "items_without_price": m["items_without_price"], "top_items": [{k: v for k, v in p.items() if k != "_per"} for p in parts[:3]],
+                    "riser": {k: v for k, v in riser.items() if k != "_per"} if riser else None, "tips": tips, "swap": swap})
     return {"target_ratio_pct": TARGET_RATIO, "menus": out,
             "method": "재료마다 가장 최근 영수증 단가 × 1인분 양(손질 손실 포함). 판매가 제안은 500원 단위 올림"}
 

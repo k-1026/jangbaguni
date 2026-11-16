@@ -664,8 +664,14 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .menu-add-btn { margin-left: auto; padding: 9px 18px; font-size: 15px; white-space: nowrap; }
 #costCard > .ok { margin: 0 0 14px; }
 /* 대체 재료 제안: 연한 띠 한 줄 — 제목 | 오른 재료 → 바꿀 재료 | 이유 */
-.cost-swap { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 16px; margin-top: 16px; padding: 14px 18px; border-radius: 12px; background: var(--primary-container); }
+.cost-swap { display: flex; align-items: stretch; gap: 16px; margin-top: 16px; padding: 14px 18px; border-radius: 12px; background: var(--primary-container); }
 .swap-title { align-self: stretch; display: flex; align-items: center; margin: -14px 0 -14px -18px; padding: 0 18px; border: 2.5px solid var(--primary); border-radius: 12px; font-size: 16px; color: var(--primary); white-space: nowrap; }   /* 띠 왼쪽 칸에 꽉 맞는 테두리 */
+/* 띠 오른쪽: 첫 줄(재료 → 재료 | 💡 이유) + 아끼는 금액 · 계산 기준 줄 (제목 칸은 띠 높이 전체에 꽉 맞게) */
+.swap-body { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+.swap-main { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 16px; }
+.swap-calc { margin: 0; font-size: 15px; color: var(--ink); }
+.swap-calc b { color: var(--primary); }
+.swap-basis { margin: 0; }
 .swap-pair { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .swap-pair span { font-size: 17px; font-weight: 700; }
 .swap-from { color: var(--ink); }
@@ -681,6 +687,8 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
   .cost-stats dd { font-size: 24px; }
   .cost-main dd { font-size: 36px; }
   .swap-pair, .swap-reason { padding-left: 0; border-left: 0; }
+  .cost-swap { flex-direction: column; gap: 10px; }
+  .swap-title { margin: -14px -18px 0; padding: 8px 18px; justify-content: center; }
 }
 #receiptList { margin-top: 18px; }
 .sub-h { font-size: 15px; margin: 16px 0 6px; }

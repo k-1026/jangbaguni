@@ -136,6 +136,11 @@ function plainReason(factors, kind) {
   if (top.factor.startsWith("날씨")) return "최근 날씨 영향이 있어요";
   if (top.factor.includes("공휴일")) return "공휴일을 앞두고 있어요";
   if (top.factor.includes("평균과의 차이")) return `${top.factor.split(" ")[0]} 평균보다 ${sign > 0 ? "싸서 올라올" : "비싸서 내려올"} 수 있어요`;
+  // 아래는 AI 학습 모델의 이유 (forecast_model.GROUPS)
+  if (top.factor.startsWith("계절")) return `해마다 이맘때 ${sign > 0 ? "오르는" : "내리는"} 때예요`;
+  if (top.factor.includes("명절")) return "설 · 추석을 앞두고 있어요";
+  if (top.factor.startsWith("최근 값 흐름")) return `최근 값 흐름을 보면 ${sign > 0 ? "오를" : "내릴"} 수 있어요`;
+  if (top.factor.startsWith("품목 특성")) return `이 품목은 요즘 ${sign > 0 ? "오르는" : "내리는"} 편이에요`;
   return "대구 행사가 많아요";
 }
 
@@ -1203,11 +1208,17 @@ function renderCosts(r, withChange) {
         </dl>
         ${m.swap ? `<div class="cost-swap">
           <b class="swap-title">대체 재료 제안</b>
-          <p class="swap-pair"><span class="swap-from">${esc(m.swap.from)}</span><i aria-label="대신">→</i><span class="swap-to">${esc(m.swap.to)}</span></p>
-          <p class="swap-reason">💡 ${esc(m.swap.reason)}</p>
+          <div class="swap-body">
+            <div class="swap-main">
+              <p class="swap-pair"><span class="swap-from">${esc(m.swap.from)}</span><i aria-label="대신">→</i><span class="swap-to">${esc(m.swap.to)}</span></p>
+              <p class="swap-reason">💡 ${esc(m.swap.reason)}</p>
+            </div>
+            <p class="swap-calc">${esc(m.swap.from)} ${m.swap.share_pct}%를 바꾸면 1인분 <b>${won(m.swap.saving_per_serving)}</b> 아껴요 · 원가율 ${m.cost_ratio_pct}% → <b>${m.swap.new_ratio_pct}%</b> · 남는 돈 ${won(m.margin)} → <b>${won(m.swap.new_margin)}</b></p>
+            <p class="swap-basis muted small">${esc(m.swap.to)} ${won(m.swap.to_price)}/kg (${esc(m.swap.price_basis)}) · 다음 주 예상 ${esc(m.swap.from)} ${pct(m.swap.from_change_pct)} · ${esc(m.swap.to)} ${pct(m.swap.to_change_pct)} 기준으로 계산</p>
+          </div>
         </div>` : ""}
         ${(() => {   // 대체 재료 칸에 들어간 문장은 빼고 나머지(오른 재료 · 판매가 제안)만 💡로
-          const rest = m.swap ? m.tips.filter((t) => t !== m.swap.reason && !t.startsWith(`${m.swap.from} 일부를`)) : m.tips;
+          const rest = m.swap ? m.tips.filter((t) => t !== m.swap.reason && !t.startsWith(`${m.swap.from} 절반을`)) : m.tips;
           return rest.length ? `<ul class="cost-tips">${rest.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : "";
         })()}
       </article>`;

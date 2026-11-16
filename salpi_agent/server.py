@@ -21,6 +21,7 @@ import analysis
 import chat_log
 import demand
 import forecast_log
+import forecast_model
 import foodspring
 import mart_price
 import menus
@@ -169,8 +170,23 @@ def _daily(job):
 
 @app.post("/api/jobs/daily")
 def daily_jobs():
-    """예약 실행용: 예측 저장 · 채점 · 식봄 판매가 저장을 바로 실행하고 결과 수를 돌려줌."""
+    """예약 실행용: 예측 저장 · 채점 · 식봄 판매가 저장을 바로 실행하고 결과 수를 돌려줌.
+    새벽 학습(learner.py)이 끝난 뒤 불리므로, 새 모델을 바로 읽고 예측을 다시 계산한 뒤 저장."""
+    forecast_model.reset()
+    with _memo_lock:
+        _memo.pop("overview", None)
     return _guard(lambda: {**_run_forecast_job(), **_run_shop_job()})
+
+
+@app.get("/api/model")
+def model_status(days: int = 14):
+    """AI 예측 모델: 종류별 지금 모델(버전 · 지표 3개 · 화면 사용 여부)과 최근 매일 학습 기록 (AI 진단 · 실험 · 교체)."""
+    def build():
+        now = {k: {"version": m.blob["version"], "trained_at": m.blob["trained_at"], "features": m.features,
+                   "metrics": m.blob["metrics"], "formula_metrics": m.blob["formula_metrics"], "test_period": m.blob["test_period"]}
+               for k, m in forecast_model.models().items()}
+        return {"on_screen": now, "history": forecast_model.history()[: max(1, min(days, 60)) * 2]}
+    return _guard(lambda: memo(f"model:{days}", build, ttl=600))
 
 
 @app.get("/api/forecast-score")

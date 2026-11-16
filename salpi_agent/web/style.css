@@ -642,7 +642,7 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .cost-card { --tone: var(--down); --tone-bg: #E6F5EF; padding: 20px 24px; border-radius: 16px; background: var(--surface);
   border: 1px solid var(--outline-variant); color: var(--ink); }
 .cost-card.tight { --tone: #B57A00; --tone-bg: #FFF6D9; } .cost-card.high { --tone: var(--up); --tone-bg: #FFF0EE; }
-.cost-menu { margin: 0 0 14px; font-size: 24px; font-weight: 700; line-height: 1.3; }
+.cost-menu { margin: 0; font-size: 24px; font-weight: 700; line-height: 1.3; }
 .cost-stats { display: grid; grid-template-columns: 1.3fr 1fr 1fr 1fr; margin: 0; }
 .cost-stats > div { padding: 0 20px; border-left: 1px solid var(--outline-variant); min-width: 0; }
 .cost-stats > div:first-child { padding-left: 0; border-left: 0; }
@@ -657,6 +657,12 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .cost-tips { margin: 12px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
 .cost-tips li { position: relative; padding-left: 20px; font-size: 14px; color: var(--muted); line-height: 1.5; }
 .cost-tips li::before { content: "💡"; position: absolute; left: 0; top: 0; font-size: 13px; }
+/* 메뉴 이름 줄: 이름 왼쪽 · [수정] 오른쪽 */
+.cost-menu-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.cost-edit { padding: 7px 18px; font-size: 15px; color: var(--primary); border-color: var(--primary); }
+.cost-edit:hover { background: var(--primary-container); }
+.menu-add-btn { margin-left: auto; padding: 9px 18px; font-size: 15px; white-space: nowrap; }
+#costCard > .ok { margin: 0 0 14px; }
 /* 대체 재료 제안: 연한 띠 한 줄 — 제목 | 오른 재료 → 바꿀 재료 | 이유 */
 .cost-swap { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 16px; margin-top: 16px; padding: 14px 18px; border-radius: 12px; background: var(--primary-container); }
 .swap-title { align-self: stretch; display: flex; align-items: center; margin: -14px 0 -14px -18px; padding: 0 18px; border: 2.5px solid var(--primary); border-radius: 12px; font-size: 16px; color: var(--primary); white-space: nowrap; }   /* 띠 왼쪽 칸에 꽉 맞는 테두리 */
@@ -941,4 +947,44 @@ a.my-link { color: inherit; text-decoration: none; }
 @media (prefers-reduced-motion: reduce) {
   .summary-list, .fab-x, .chip-caret { transition: none; }
   .salpi-fab.has-alert .fab-count { animation: none; }
+}
+
+/* 메뉴 고치기 · 추가 창: 큰 글씨 · 큰 칸 (어르신도 쓰기 쉽게) */
+.menu-box { width: min(620px, 100%); }
+.mf-tpl { margin: 14px 0 4px; padding: 14px 16px; border-radius: 12px; background: var(--primary-container); }
+.mf-tpl b { display: block; margin-bottom: 8px; font-size: 15px; color: var(--primary); }
+.mf-tpl div { display: flex; flex-wrap: wrap; gap: 8px; }
+.mf-tpl .btn { padding: 7px 16px; font-size: 15px; }
+.mf-tpl small { display: block; margin-top: 8px; font-size: 13px; color: var(--muted); }
+.menu-form { display: flex; flex-direction: column; gap: 16px; margin-top: 16px; }
+.mf-field { display: flex; flex-direction: column; gap: 6px; }
+.mf-field > span:first-child { font-size: 15px; font-weight: 700; color: var(--muted); }
+.menu-form input, .menu-form select { height: 46px; padding: 0 12px; border: 1px solid var(--outline); border-radius: 10px; background: var(--surface);
+  font: inherit; font-size: 17px; color: var(--ink); min-width: 0; }
+.menu-form input:focus, .menu-form select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-container); }
+.mf-price > span:last-child { display: flex; align-items: center; gap: 8px; font-size: 18px; font-weight: 700; }
+.mf-price input { width: 180px; height: 54px; font-size: 26px; font-weight: 700; }   /* 가장 자주 고치는 판매가는 크게 */
+.mf-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.mf-row { display: grid; grid-template-columns: minmax(0, 1fr) 130px 44px; align-items: center; gap: 8px; }
+.mf-amount { display: flex; align-items: center; gap: 6px; }
+.mf-amount input { width: 90px; text-align: right; }
+.mf-unit { width: 24px; font-size: 16px; color: var(--muted); }
+.mf-noprice { grid-column: 1 / -1; margin-top: -4px; font-size: 13px; color: #B57A00; }
+.mf-noprice[hidden] { display: none; }
+.mf-del { width: 44px; height: 44px; border: 0; border-radius: 50%; background: none; font-size: 18px; color: var(--muted); cursor: pointer; }
+.mf-del:hover { background: var(--surface-variant); color: var(--up); }
+.mf-add { align-self: flex-start; padding: 8px 16px; font-size: 15px; }
+.mf-preview { --tone: var(--down); display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 20px; padding: 14px 16px; border-radius: 12px;
+  background: var(--surface-variant); font-size: 15px; }
+.mf-preview.tight { --tone: #B57A00; } .mf-preview.high { --tone: var(--up); }
+.mf-preview b { font-size: 18px; } .mf-preview .mf-ratio { font-size: 26px; color: var(--tone); }
+.mf-preview small { flex-basis: 100%; font-size: 13px; color: #B57A00; }
+.mf-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.mf-actions .btn { padding: 11px 22px; font-size: 16px; }
+.mf-stop { margin-right: auto; color: var(--up); border-color: #F0B8B2; }
+.mf-stop:hover { background: #FFF0EE; }
+@media (max-width: 760px) {
+  .mf-row { grid-template-columns: minmax(0, 1fr) 120px 40px; }
+  .mf-price input { width: 150px; }
+  .mf-actions .btn { padding: 10px 16px; }
 }

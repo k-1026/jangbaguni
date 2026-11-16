@@ -19,12 +19,65 @@ if (ITEM) {
   document.body.classList.add("item-view");
   $("#itemPage").hidden = false;
 }
+// 로그인 상태: 지금은 브라우저에만 기억함 (서버 로그인 · 카카오 연결 전 임시)
+// '로그인 상태 유지'를 켜면 브라우저를 닫아도 유지(localStorage), 끄면 창을 닫으면 풀림(sessionStorage)
+const LOGIN_KEY = "salpi_login";
+function readLogin() {
+  try { return JSON.parse(localStorage.getItem(LOGIN_KEY) || sessionStorage.getItem(LOGIN_KEY) || "null"); } catch (e) { return null; }
+}
+function saveLogin(user, keep) {
+  try {
+    (keep ? localStorage : sessionStorage).setItem(LOGIN_KEY, JSON.stringify(user));
+    return true;
+  } catch (e) { return false; }
+}
+const SIGNED_IN = !!readLogin();
+const PAGE = new URLSearchParams(location.search).get("page");
+// 로그인 뒤 돌아갈 곳: 우리 사이트 안 주소(/ 로 시작)만 받음
+const safeNext = (u) => (u && u.startsWith("/") && !u.startsWith("//") ? u : "/");
+const LOGIN_NEXT = safeNext(new URLSearchParams(location.search).get("next"));
+const LOGIN_URL = `/?page=login&next=${encodeURIComponent(location.pathname + location.search + location.hash)}`;   // 로그인 뒤 지금 페이지로 돌아옴
+const goLogin = () => location.assign(LOGIN_URL);
+// 로그인 안 하고 나의 가게로 바로 들어오면 로그인 페이지로, 이미 로그인했는데 로그인 페이지면 원래 가려던 곳으로
+if (!ITEM && PAGE === "store" && !SIGNED_IN) location.replace(LOGIN_URL);
+if (!ITEM && PAGE === "login" && SIGNED_IN) location.replace(LOGIN_NEXT);
+const LOGIN_VIEW = !ITEM && PAGE === "login" && !SIGNED_IN;
+if (LOGIN_VIEW) { document.body.classList.add("login-view"); document.title = "로그인 · 살피"; }
 // 나의 가게 페이지(/?page=store): 내일 준비 · 메뉴별 원가율 · 영수증 분석은 사장님 로그인 시에만
-// 로그인(카카오)은 아직 없어서 시연에서는 기본 계정으로 로그인한 것으로 봄
-const SIGNED_IN = true;
-const STORE_VIEW = !ITEM && SIGNED_IN && new URLSearchParams(location.search).get("page") === "store";
+const STORE_VIEW = !ITEM && SIGNED_IN && PAGE === "store";
 if (STORE_VIEW) document.body.classList.add("store-view");
-$("#storeBtn").hidden = !SIGNED_IN;
+// 위쪽 버튼: 로그인 전에는 [로그인]만, 로그인 후에는 나의 가게 · 알림 · 마이페이지
+$("#storeBtn").hidden = $("#bellBtn").hidden = $("#meBtn").hidden = !SIGNED_IN;
+$("#loginBtn").hidden = SIGNED_IN || LOGIN_VIEW;
+$("#loginBtn").href = LOGIN_URL;
+
+// 로그인 페이지
+if (LOGIN_VIEW) {
+  const msg = (text) => { $("#loginMsg").textContent = text; $("#loginMsg").hidden = !text; };
+  $("#loginEye").onclick = () => {
+    const show = $("#loginPw").type === "password";
+    $("#loginPw").type = show ? "text" : "password";
+    $("#loginEye").setAttribute("aria-pressed", String(show));
+    $("#loginEye").setAttribute("aria-label", show ? "비밀번호 숨기기" : "비밀번호 보기");
+  };
+  // 간편 로그인 · 아이디 찾기 · 회원가입은 아직 연결 전
+  $("#loginForm").addEventListener("click", (e) => {
+    const s = e.target.closest("[data-soon]");
+    if (!s) return;
+    e.preventDefault();
+    msg(`${s.dataset.soon}은(는) 곧 연결돼요.`);
+  });
+  $("#loginForm").onsubmit = (e) => {
+    e.preventDefault();
+    const id = $("#loginId").value.trim(), pw = $("#loginPw").value;
+    if (!id) { msg("아이디 또는 휴대폰 번호를 입력해 주세요."); $("#loginId").focus(); return; }
+    if (!pw) { msg("비밀번호를 입력해 주세요."); $("#loginPw").focus(); return; }
+    // 임시: 서버 확인 전이라 아이디 · 비밀번호를 넣으면 로그인한 것으로 봄 (비밀번호는 저장하지 않음)
+    if (!saveLogin({ id, at: Date.now() }, $("#loginKeep").checked)) { msg("이 브라우저에서는 로그인 상태를 기억할 수 없어요."); return; }
+    location.replace(LOGIN_NEXT);
+  };
+  $("#loginId").focus();
+}
 
 async function getJSON(url) {
   const r = await fetch(url);
@@ -1955,7 +2008,7 @@ if (STORE_VIEW) {
     keep.observe($("#store")); keep.observe($("#costs"));
     storeReady.then(() => setTimeout(() => { follow = false; keep.disconnect(); }, 5000));   // 다 그려진 뒤 5초 동안 늦게 바뀌는 칸 크기도 따라감
   }
-} else if (!ITEM) {
+} else if (!ITEM && !LOGIN_VIEW) {
   loadContext();
   loadMart();
 }
@@ -2034,6 +2087,7 @@ const ME = { name: "달서구 한식당 사장님", store: "살피 한식당", p
 if (STORE_VIEW) $("#storeName").textContent = `나의 가게 · ${ME.store}`;
 
 function openMypage(view = "home") {
+  if (!SIGNED_IN) return goLogin();   // 마이페이지는 로그인한 사장님만
   $("#mypage").classList.add("open");
   $("#mypage").setAttribute("aria-hidden", "false");
   $("#backdrop").hidden = false;

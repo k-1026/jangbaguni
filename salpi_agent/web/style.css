@@ -670,8 +670,7 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .swap-body { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
 .swap-main { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 16px; }
 .swap-calc { margin: 0; font-size: 15px; color: var(--ink); }
-.swap-calc b { color: var(--primary); }
-.swap-basis { margin: 0; }
+.swap-calc b { color: #1A4FB8; }   /* 바뀌는 금액 · 원가율 · 남는 돈: 진한 파랑 */
 .swap-pair { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .swap-pair span { font-size: 17px; font-weight: 700; }
 .swap-from { color: var(--ink); }

@@ -1214,13 +1214,8 @@ function renderCosts(r, withChange) {
               <p class="swap-reason">💡 ${esc(m.swap.reason)}</p>
             </div>
             <p class="swap-calc">${esc(m.swap.from)} ${m.swap.share_pct}%를 바꾸면 1인분 <b>${won(m.swap.saving_per_serving)}</b> 아껴요 · 원가율 ${m.cost_ratio_pct}% → <b>${m.swap.new_ratio_pct}%</b> · 남는 돈 ${won(m.margin)} → <b>${won(m.swap.new_margin)}</b></p>
-            <p class="swap-basis muted small">${esc(m.swap.to)} ${won(m.swap.to_price)}/kg (${esc(m.swap.price_basis)}) · 다음 주 예상 ${esc(m.swap.from)} ${pct(m.swap.from_change_pct)} · ${esc(m.swap.to)} ${pct(m.swap.to_change_pct)} 기준으로 계산</p>
           </div>
         </div>` : ""}
-        ${(() => {   // 대체 재료 칸에 들어간 문장은 빼고 나머지(오른 재료 · 판매가 제안)만 💡로
-          const rest = m.swap ? m.tips.filter((t) => t !== m.swap.reason && !t.startsWith(`${m.swap.from} 절반을`)) : m.tips;
-          return rest.length ? `<ul class="cost-tips">${rest.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : "";
-        })()}
       </article>`;
     }).join("")}</div>
     <p class="muted small">레시피에 주재료만 들어 있어 실제보다 원가율이 조금 낮게 나와요.</p>`;

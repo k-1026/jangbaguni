@@ -1097,3 +1097,24 @@ body.login-view .login-only, body.signup-view .signup-only { display: flex; }
   .login-card { padding: 28px 20px; }
   .login-card h1 { font-size: 21px; margin-bottom: 20px; }
 }
+
+/* 회원탈퇴 확인 팝업: 취소는 눈에 띄는 초록, 탈퇴하기는 빨간 글씨 (체크해야 눌림) */
+.modal-box.leave-box { width: min(420px, 100%); padding: 30px 30px 24px; border-radius: 18px; text-align: center; }
+.leave-box h3 { margin: 0 0 10px; font-size: 21px; font-weight: 900; }
+.leave-box p { margin: 0 0 14px; color: var(--muted); font-size: 15px; word-break: keep-all; }
+.leave-list { margin: 0 0 18px; padding: 14px 18px; border-radius: 10px; background: #FFF4F2; list-style: none; text-align: left; font-size: 14.5px; font-weight: 700; }
+.leave-list li + li { margin-top: 6px; }
+.leave-list li::before { content: "·"; margin-right: 8px; color: var(--up); }
+.leave-check { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 20px; font-size: 15px; font-weight: 700; cursor: pointer; }
+.leave-check input { width: 19px; height: 19px; margin: 0; accent-color: var(--up); }
+.leave-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.leave-actions button { height: 50px; border-radius: 10px; font-size: 16px; font-weight: 700; }
+.leave-cancel { border: 0; background: #1F4A00; color: #fff; }
+.leave-cancel:hover { background: #173A00; }
+.leave-ok { border: 1px solid var(--outline); background: var(--surface); color: var(--up); }
+.leave-ok:hover:not(:disabled) { background: #FFF0EE; border-color: var(--up); }
+.leave-ok:disabled { opacity: .45; cursor: not-allowed; }
+/* 탈퇴 뒤 첫 화면 인사 */
+.bye-toast { position: fixed; left: 50%; top: 84px; z-index: 80; transform: translateX(-50%); padding: 12px 22px; border-radius: 999px;
+  background: var(--ink); color: #fff; font-size: 15px; font-weight: 700; box-shadow: var(--e3); white-space: nowrap; animation: bye-in .25s ease-out; }
+@keyframes bye-in { from { opacity: 0; transform: translate(-50%, -8px); } }

@@ -36,6 +36,19 @@ function logout() {
   try { localStorage.removeItem(LOGIN_KEY); sessionStorage.removeItem(LOGIN_KEY); } catch (e) {}
   location.replace("/");
 }
+// 탈퇴 뒤 첫 화면에서 한 번만 인사
+const BYE_KEY = "salpi_bye";
+try {
+  if (sessionStorage.getItem(BYE_KEY)) {
+    sessionStorage.removeItem(BYE_KEY);
+    const t = document.createElement("div");
+    t.className = "bye-toast";
+    t.setAttribute("role", "status");
+    t.textContent = "탈퇴했어요. 그동안 이용해 주셔서 감사해요";
+    document.body.append(t);
+    setTimeout(() => t.remove(), 4000);
+  }
+} catch (e) {}
 const SIGNED_IN = !!readLogin();
 const PAGE = new URLSearchParams(location.search).get("page");
 // 로그인 뒤 돌아갈 곳: 우리 사이트 안 주소(/ 로 시작)만 받음
@@ -2263,7 +2276,6 @@ async function renderMypage(view) {
     <section class="my-card my-account">
       <button class="my-link" type="button" data-account="logout"><span>로그아웃</span><i>›</i></button>
       <button class="my-link danger" type="button" data-account="leave"><span>회원탈퇴</span><i>›</i></button>
-      <p class="muted small" id="accountNote" hidden>회원탈퇴는 곧 연결돼요.</p>
     </section>`;
 }
 
@@ -2306,7 +2318,7 @@ $("#backdrop").onclick = closeMypage;
 $("#mypageBody").onclick = (e) => {
   const acc = e.target.closest("[data-account]");
   if (acc?.dataset.account === "logout") return logout();
-  if (acc) { $("#accountNote").hidden = false; return; }   // 회원탈퇴는 다음에 연결
+  if (acc?.dataset.account === "leave") return openLeave();
   const v = e.target.closest("[data-view]");
   if (v) return renderMypage(v.dataset.view);
   const r = e.target.closest("[data-rid]");
@@ -2320,7 +2332,31 @@ $("#mypageBody").onchange = (e) => {
   store(ALERT_PREFS_KEY, prefs);
   deliverAlerts();
 };
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeReceipt(); closeMypage(); closeEvent(); closeCamera(); } });
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  if (!$("#leaveModal").hidden) return closeLeave();   // 탈퇴 팝업만 닫고 마이페이지는 그대로
+  closeReceipt(); closeMypage(); closeEvent(); closeCamera();
+});
+
+// 회원탈퇴: 한 번 더 묻는 팝업 → '안내를 확인했어요'에 체크해야 [탈퇴하기]가 눌림
+// 탈퇴하면 이 브라우저의 로그인 상태 · 알림 설정을 지우고 첫 화면으로 (임시: 서버 계정이 생기면 가게 정보 · 영수증도 서버에서 지움)
+function openLeave() {
+  $("#leaveAgree").checked = false;
+  $("#leaveOk").disabled = true;
+  $("#leaveModal").hidden = false;
+  $("#leaveCancel").focus();
+}
+function closeLeave() { $("#leaveModal").hidden = true; }
+$("#leaveAgree").onchange = () => { $("#leaveOk").disabled = !$("#leaveAgree").checked; };
+$("#leaveCancel").onclick = closeLeave;
+$("#leaveModal").onclick = (e) => { if (e.target === e.currentTarget) closeLeave(); };   // 바깥을 누르면 취소
+$("#leaveOk").onclick = () => {
+  try {
+    [ALERT_PREFS_KEY, ALERT_READ_KEY].forEach((k) => localStorage.removeItem(k));
+    sessionStorage.setItem(BYE_KEY, "1");   // 첫 화면에서 인사 한 번
+  } catch (err) {}
+  logout();
+};
 
 // ---------------------------------------------------------------
 // 시세 알림: 켜 둔 종류만 살피 말투로 챗봇 창에 보냄 (규칙으로 만든 문장, 숫자는 대시보드 시세 그대로)

@@ -75,7 +75,7 @@ class GBDT:
         if split is None:
             r = resid[idx]
             val = np.median(r) if self.objective == "l1" else r.sum() / (len(r) + self.l2)
-            return ("leaf", float(val))
+            return ("leaf", float(val), int(len(idx)))   # 잎 값 · 학습 건수 (건수는 요인별 기여도 계산용)
         f, left_bins = split
         mask = np.isin(Bn[idx, f], list(left_bins))
         return ("node", f, left_bins, self._grow(Bn, g, resid, idx[mask], depth + 1, feats),
@@ -132,6 +132,17 @@ class GBDT:
         for t in self.trees:
             out += self.learning_rate * self._apply(t, Bn)
         return out
+
+    def export(self):
+        """학습 결과를 JSON으로 저장할 수 있는 모양으로 (forecast_model.py 가 numpy 없이 읽어서 예측).
+        나무 마디: 잎 = [값, 건수], 갈림 = [요인 번호, 왼쪽으로 가는 칸 목록, 왼쪽, 오른쪽]"""
+        def node(t):
+            if t[0] == "leaf":
+                return [round(t[1], 6), t[2]]
+            return [int(t[1]), sorted(int(b) for b in t[2]), node(t[3]), node(t[4])]
+        return {"init": self.init, "learning_rate": self.learning_rate,
+                "edges": [None if e is None else [float(v) for v in e] for e in self.binner.edges],
+                "cat_cols": sorted(int(c) for c in self.binner.cat_cols), "trees": [node(t) for t in self.trees]}
 
     def importance(self, n_features):
         """요인별로 몇 번 나누는 데 쓰였나 (간단한 중요도)."""

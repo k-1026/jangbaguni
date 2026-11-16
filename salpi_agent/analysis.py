@@ -8,7 +8,7 @@ import statistics
 from datetime import date, timedelta
 
 from data_sources import (kind_of, BEEF_GRADES, EKAPE_LINKS, EKAPE_MARKET_NAME, EXTRA_ITEMS, PIG_GRADES, ITEMS, daegu_events, ekape_days,
-                          events_between, foodspring_url, holidays, holidays_between, perday_prices, sale_days,
+                          events_between, foodspring_url, holidays, holidays_between, kst_today, perday_prices, sale_days,
                           weather_days)
 
 FLAT_BAND = 3.0  # ±3% 안쪽은 '비슷함'으로 본다
@@ -187,7 +187,7 @@ def _with_context(series, rain=True, days=40):
     """날짜마다 그날 비 · 공휴일 · 대구 행사를 붙임 (야채 대시보드와 같은 칸)."""
     if not series:
         return series
-    start, end = date.fromisoformat(series[0]["date"]), date.today()
+    start, end = date.fromisoformat(series[0]["date"]), kst_today()
     try:
         weather = {w["date"]: w for w in weather_days(days)} if rain else {}
         hols = {f"{h['date'][:4]}-{h['date'][4:6]}-{h['date'][6:]}": h["name"] for h in holidays_between(start, end)}
@@ -495,7 +495,7 @@ def item_detail(item_name, days=28):
     if item_name not in ITEMS:
         return {"error": f"'{item_name}'은(는) 아직 지원하지 않아요"}
     series = wholesale_series(item_name, days)
-    start, end = date.today() - timedelta(days), date.today()
+    start, end = kst_today() - timedelta(days), kst_today()
     weather = {w["date"]: w for w in weather_days(35)}
     hols = {f"{h['date'][:4]}-{h['date'][4:6]}-{h['date'][6:]}": h["name"] for h in holidays_between(start, end)}
     events = events_between(start, end)

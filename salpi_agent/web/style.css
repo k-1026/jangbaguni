@@ -1016,7 +1016,7 @@ a.my-link { color: inherit; text-decoration: none; }
 body.auth-view .home-only, body.auth-view .store-only, body.auth-view .footer, body.auth-view .salpi-fab { display: none; }
 body.auth-view { --login-deep: #1F4A00; }
 body.auth-view main { background-color: #F4FBEA;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' fill='none' stroke='%23DDEBCB' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 26c0-8 6-12 12-12 0 8-5 12-12 12zm0 0 6-6'/%3E%3Cpath d='M54 42c-4 5-4 9 0 9s4-4 0-9z'/%3E%3Ccircle cx='54' cy='16' r='5'/%3E%3Cpath d='M12 56l4 4 6-8'/%3E%3C/svg%3E"); }
+  background-image: url("/static/img/auth_pattern.svg"); background-size: 240px; }   /* 과일 · 야채 · 수산물 · 장바구니 연한 선 그림 */
 body.login-view .login-only, body.signup-view .signup-only { display: flex; }
 .login-page { justify-content: center; align-items: flex-start; min-height: calc(100vh - 64px); padding: 28px 16px 56px; box-sizing: border-box; }
 .login-card { width: 100%; max-width: 360px; padding: 26px 24px; border-top: 5px solid var(--login-deep); border-radius: 10px; background: var(--surface);

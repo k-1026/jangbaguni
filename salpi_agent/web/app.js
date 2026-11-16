@@ -1212,7 +1212,7 @@ function renderCosts(r, withChange) {
         })()}
       </article>`;
     }).join("")}</div>
-    <p class="muted small">${esc(r.method)}. 레시피에 주재료만 들어 있어 실제보다 원가율이 조금 낮게 나와요.</p>`;
+    <p class="muted small">레시피에 주재료만 들어 있어 실제보다 원가율이 조금 낮게 나와요.</p>`;
 }
 
 function receiptList(list) {

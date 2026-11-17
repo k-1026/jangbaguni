@@ -12,12 +12,13 @@ from pathlib import Path
 
 from datetime import date
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 import analysis
+import auth
 import chat_log
 import demand
 import forecast_log
@@ -360,6 +361,101 @@ def receipt_list():
 @app.delete("/api/receipt/{purchase_id}")
 def receipt_delete(purchase_id: int):
     return _receipt_guard(lambda: receipts.remove(supabase_db.DEMO_STORE, purchase_id))
+
+
+# ---------------------------------------------------------------
+# 사장님 계정: 회원가입 · 로그인 · 로그인 유지 · 로그아웃 · 탈퇴 (auth.py, Supabase 로그인)
+# 로그인 표는 화면이 보관하고 'Authorization: Bearer <표>' 로 보냄
+# ---------------------------------------------------------------
+
+
+class SignupIn(BaseModel):
+    name: str = ""
+    phone: str = ""
+    login_id: str = ""
+    password: str = ""
+    store: str = ""
+    district: str = ""     # 대구 구 · 군
+    place: str = ""        # 나머지 주소 (선택)
+    alarm: bool = False    # 알림 받기 (선택 약관)
+    terms_ok: bool = False
+
+
+class LoginIn(BaseModel):
+    id: str = ""           # 아이디 또는 휴대폰 번호
+    password: str = ""
+
+
+class RefreshIn(BaseModel):
+    refresh_token: str = ""
+
+
+class StoreSetupIn(BaseModel):
+    name: str = ""
+    store: str = ""
+    district: str = ""
+    place: str = ""
+    alarm: bool = False
+    terms_ok: bool = False
+
+
+def _bearer(authorization):
+    return (authorization or "").removeprefix("Bearer ").strip()
+
+
+def _auth(fn):
+    try:
+        return fn()
+    except auth.AuthError as e:
+        raise HTTPException(e.status, str(e))
+    except (ApiKeyMissing, ApiError) as e:
+        raise HTTPException(503, f"{e}. 잠시 뒤 다시 해 주세요.")
+
+
+@app.post("/api/auth/signup")
+def auth_signup(body: SignupIn):
+    return _auth(lambda: auth.signup(body.model_dump()))
+
+
+@app.post("/api/auth/login")
+def auth_login(body: LoginIn):
+    return _auth(lambda: auth.login(body.id, body.password))
+
+
+@app.post("/api/auth/refresh")
+def auth_refresh(body: RefreshIn):
+    return _auth(lambda: auth.refresh(body.refresh_token))
+
+
+@app.get("/api/auth/kakao")
+def auth_kakao(request: Request, next: str = "/"):
+    """카카오 로그인 화면으로 보냄 (돌아올 곳 = 지금 사이트 주소)."""
+    proto = request.headers.get("x-forwarded-proto") or request.url.scheme
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+    return _auth(lambda: RedirectResponse(auth.kakao_url(f"{proto}://{host}", next), status_code=302))
+
+
+@app.post("/api/auth/store")
+def auth_store(body: StoreSetupIn, authorization: str | None = Header(None)):
+    """카카오로 처음 온 사장님의 가게 · 약관 한 번 받기."""
+    return _auth(lambda: {"user": auth.setup_store(_bearer(authorization), body.model_dump())})
+
+
+@app.get("/api/auth/me")
+def auth_me(authorization: str | None = Header(None)):
+    return _auth(lambda: auth.me(_bearer(authorization)))
+
+
+@app.post("/api/auth/logout")
+def auth_logout(authorization: str | None = Header(None)):
+    _auth(lambda: auth.logout(_bearer(authorization)))
+    return {"ok": True}
+
+
+@app.delete("/api/auth/me")
+def auth_withdraw(authorization: str | None = Header(None)):
+    _auth(lambda: auth.withdraw(_bearer(authorization)))
+    return {"ok": True}
 
 
 # ---------------------------------------------------------------

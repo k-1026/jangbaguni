@@ -63,6 +63,21 @@
  ]}
 ```
 - kg당 가격 순, **산 값보다 싼 곳만**. `affiliate: true` 면 "제휴" 표시, `retail: true` 면 "소매가" 표시
+- ✅ 서버 있음 (11/17, `salpi_agent/cheaper.py`). 위 칸에 더해 오는 것:
+
+```json
+{"item": "양파", "unit": "kg", "paid_per_unit": 2300, "paid_source": "최근 영수증", "paid_date": "2026-11-04", "paid_approx": false,
+ "sellers": [{"name": "식봄 · 피양파 (국내산, 250g내외/개, 15Kg/망)", "price_per_unit": 1199, "approx": false,
+              "url": "https://www.foodspring.co.kr/goods/detail/737331", "affiliate": false, "retail": false,
+              "pack_price": 17990, "pack": "15kg", "free_delivery": null, "note": null, "saving_per_unit": 1101, "saving_pct": 47.9}],
+ "checked": 4, "skipped_unknown_unit": 0, "data_date": "2026-11-17", "message": null}
+```
+- `paid_source`: `최근 영수증` → 없으면 `대구 소매 평균(KAMIS)` → `?paid=2300` 으로 주면 `직접 입력`
+- `approx: true` 면 "약 ○원/kg" (포기 · 개 · 단을 환산표로 바꾼 값, `note`에 근거). 환산이 들어간 비교는 **10% 넘게 쌀 때만** 넣음
+- `pack_price` · `pack`: 실제 파는 묶음 값 (예: 15kg 17,990원) — 대용량은 다 못 쓸 수 있으니 함께 보여 주기
+- `data_date`: `null` 이면 지금 받은 식봄 값, 날짜면 그날 저장한 값 (식봄이 자동 접속을 막을 때) → "11/17 기준" 표시
+- 판매처는 지금 식봄만 (대형마트 참가격에는 야채 · 과일이 없음). 쿠팡 · 네이버는 가격 받기(R8) 뒤에 추가
+- 지원 품목이 아니거나 식봄을 못 받으면 `sellers: []` + `message`
 
 ## 4. 재고 — `GET /api/inventory` · `PUT /api/inventory/{item_id}`
 
@@ -99,11 +114,15 @@
 
 ```json
 "weather_forecast": [
-  {"date": "2026-11-17", "min": 9, "max": 16, "rain_pct_am": 20, "rain_pct_pm": 30, "sky": "구름많음", "source": "단기"},
-  {"date": "2026-11-21", "min": -2, "max": 6, "rain_pct_am": 10, "rain_pct_pm": 10, "sky": "맑음", "source": "중기"}
+  {"date": "2026-11-17", "min": 9, "max": 16, "rain_pct_am": 30, "rain_pct_pm": 60, "sky": "비", "sky_am": "흐림", "sky_pm": "비", "source": "단기"},
+  {"date": "2026-11-21", "min": -3, "max": 5, "rain_pct_am": 10, "rain_pct_pm": 10, "sky": "맑음", "sky_am": "맑음", "sky_pm": "맑음", "source": "중기"}
 ]
 ```
-- 오늘 ~ 3일 뒤 = 기상청 단기예보 (격자 nx 89 · ny 90), 4 ~ 7일 뒤 = 중기예보 (육상 11H10000 · 기온 11H10701). 키: `.env` `KMA_VILAGE_*` · `KMA_MID_*`
+- 오늘 ~ 3일 뒤 = 기상청 단기예보 (격자 nx 89 · ny 90), 4 ~ 6일 뒤 = 중기예보 (육상 11H10000 · 기온 11H10701). 키: `.env` `KMA_VILAGE_*` · `KMA_MID_*`
+- ✅ 서버 있음 (11/17). 오늘부터 7일, 날짜 순
+- `sky` = 오전 · 오후 중 더 궂은 쪽 (맑음 < 구름많음 < 흐림 < 비 · 눈). 오전 · 오후 따로 쓰려면 `sky_am` · `sky_pm`
+- 중기예보 하늘은 "구름많고 비"처럼 길게 올 수 있음. 값이 없으면 `null`
+- 예보를 못 받으면 `weather_forecast: []` (나머지 날씨 · 공휴일 · 행사는 그대로 옴) → 화면은 "예보를 불러오지 못했어요"
 
 ## 9. AI 예측 성적 카드 — `GET /api/model` (있음)
 

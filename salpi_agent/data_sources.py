@@ -258,6 +258,134 @@ def weather_days(days=21):
 
 
 # ---------------------------------------------------------------
+# 기상청 예보 (대구, 오늘부터 7일): 앞쪽은 단기예보, 단기예보에 없는 날은 중기예보
+# ---------------------------------------------------------------
+
+DAEGU_NX, DAEGU_NY = os.getenv("KMA_VILAGE_NX", "89"), os.getenv("KMA_VILAGE_NY", "90")   # 대구 중구 격자
+SKY_WORD = {"1": "맑음", "3": "구름많음", "4": "흐림"}
+PTY_WORD = {"1": "비", "2": "비/눈", "3": "눈", "4": "소나기"}
+
+
+def _sky_rank(word):
+    """더 궂은 날씨일수록 큰 수 (오전 · 오후 중 궂은 쪽을 그날 대표로)."""
+    word = word or ""
+    return 3 if any(w in word for w in ("비", "눈", "소나기")) else 2 if "흐" in word else 1 if "구름" in word else 0
+
+
+def _worse(am, pm):
+    return max((am, pm), key=_sky_rank) if am and pm else am or pm
+
+
+def _vilage_base(now):
+    """단기예보 발표 시각. 오늘 최저기온이 들어 있는 02시 발표를 씀 (02:15 전이면 전날 23시 발표)."""
+    if now.hour * 60 + now.minute >= 2 * 60 + 15:
+        return now.strftime("%Y%m%d"), "0200"
+    return (now - timedelta(1)).strftime("%Y%m%d"), "2300"
+
+
+def _mid_base(now):
+    """중기예보 발표 시각: 하루 두 번 06시 · 18시 (10분 여유)."""
+    minutes = now.hour * 60 + now.minute
+    if minutes >= 18 * 60 + 10:
+        return now.replace(hour=18, minute=0)
+    if minutes >= 6 * 60 + 10:
+        return now.replace(hour=6, minute=0)
+    return (now - timedelta(1)).replace(hour=18, minute=0)
+
+
+def _vilage_days(now):
+    base_date, base_time = _vilage_base(now)
+
+    def fetch():
+        url = os.getenv("KMA_VILAGE_ENDPOINT", "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0") + "/getVilageFcst"
+        body = _get_json(url, {"dataType": "JSON", "pageNo": 1, "numOfRows": 2000, "base_date": base_date,
+                               "base_time": base_time, "nx": DAEGU_NX, "ny": DAEGU_NY}, "KMA_VILAGE_API_KEY")["response"]["body"]
+        hours = {}
+        for r in _items(body):
+            hours.setdefault(r["fcstDate"], {}).setdefault(r["fcstTime"], {})[r["category"]] = r["fcstValue"]
+        out = []
+        for d, by_hour in sorted(hours.items()):
+            def num(cat, pick):
+                vals = []
+                for v in by_hour.values():
+                    try:
+                        vals.append(float(v[cat]))
+                    except (KeyError, ValueError):
+                        pass
+                return pick(vals) if vals else None
+
+            def half(am):
+                part = {t: v for t, v in by_hour.items() if (t < "1200") == am}
+                pop = [int(v["POP"]) for v in part.values() if v.get("POP", "").isdigit()]
+                rain = [PTY_WORD[v["PTY"]] for v in part.values() if v.get("PTY") in PTY_WORD]
+                sky = [SKY_WORD[v["SKY"]] for v in part.values() if v.get("SKY") in SKY_WORD]
+                word = max(set(rain), key=rain.count) if len(rain) >= 2 else (max(set(sky), key=sky.count) if sky else None)
+                return (max(pop) if pop else None), word
+
+            lo = num("TMN", min) if any("TMN" in v for v in by_hour.values()) else num("TMP", min)
+            hi = num("TMX", max) if any("TMX" in v for v in by_hour.values()) else num("TMP", max)
+            pop_am, sky_am = half(True)
+            pop_pm, sky_pm = half(False)
+            # 마지막 날처럼 몇 시간만 있는 날은 버리고 중기예보로 채움 (3일 뒤부터는 3시간 간격이라 오전 · 오후 각 3개 이상이면 씀)
+            if sum(t < "1200" for t in by_hour) < 3 or sum(t >= "1200" for t in by_hour) < 3:
+                continue
+            out.append({"date": f"{d[:4]}-{d[4:6]}-{d[6:]}", "min": None if lo is None else round(lo),
+                        "max": None if hi is None else round(hi), "rain_pct_am": pop_am, "rain_pct_pm": pop_pm,
+                        "sky": _worse(sky_am, sky_pm), "sky_am": sky_am, "sky_pm": sky_pm, "source": "단기"})
+        return out
+
+    return _cached(f"fcst_vilage_{base_date}{base_time}", 3, fetch)
+
+
+def _mid_days(now):
+    tm = _mid_base(now)
+    tm_fc = tm.strftime("%Y%m%d%H%M")
+
+    def fetch():
+        url = os.getenv("KMA_MID_ENDPOINT", "https://apis.data.go.kr/1360000/MidFcstInfoService")
+        common = {"dataType": "JSON", "pageNo": 1, "numOfRows": 10, "tmFc": tm_fc}
+        land = _items(_get_json(url + "/getMidLandFcst", {**common, "regId": os.getenv("KMA_MID_LAND_REG_ID", "11H10000")},
+                                "KMA_MID_API_KEY")["response"]["body"])
+        ta = _items(_get_json(url + "/getMidTa", {**common, "regId": os.getenv("KMA_MID_TA_REG_ID", "11H10701")},
+                              "KMA_MID_API_KEY")["response"]["body"])
+        land, ta = (land or [{}])[0], (ta or [{}])[0]
+        out = []
+        for n in range(4, 11):
+            am_pm = n <= 7   # 4~7일 뒤는 오전 · 오후 따로, 8~10일 뒤는 하루 하나
+            sky_am = land.get(f"wf{n}Am") if am_pm else land.get(f"wf{n}")
+            sky_pm = land.get(f"wf{n}Pm") if am_pm else land.get(f"wf{n}")
+            pop_am = land.get(f"rnSt{n}Am") if am_pm else land.get(f"rnSt{n}")
+            pop_pm = land.get(f"rnSt{n}Pm") if am_pm else land.get(f"rnSt{n}")
+            if sky_am is None and ta.get(f"taMin{n}") is None:
+                continue
+            out.append({"date": (tm.date() + timedelta(n)).isoformat(), "min": ta.get(f"taMin{n}"), "max": ta.get(f"taMax{n}"),
+                        "rain_pct_am": pop_am, "rain_pct_pm": pop_pm, "sky": _worse(sky_am, sky_pm),
+                        "sky_am": sky_am, "sky_pm": sky_pm, "source": "중기"})
+        return out
+
+    return _cached(f"fcst_mid_{tm_fc}", 6, fetch)
+
+
+def weather_forecast(days=7):
+    """오늘부터 days일 예보. 날짜마다 최저 · 최고 기온, 오전 · 오후 강수확률(%), 하늘(오전 · 오후 중 궂은 쪽), 출처(단기 · 중기).
+    단기예보가 실패해도 중기예보만으로, 중기예보가 실패해도 단기예보만으로 돌려줌 (둘 다 실패하면 오류)."""
+    now = datetime.now(KST)
+    today = now.date()
+    want = {(today + timedelta(k)).isoformat() for k in range(days)}
+    by_date, errors = {}, []
+    for fetch in (_mid_days, _vilage_days):   # 단기예보가 더 정확해서 나중에 덮어씀
+        try:
+            for d in fetch(now):
+                if d["date"] in want:
+                    by_date[d["date"]] = d
+        except (ApiKeyMissing, ApiError) as e:
+            errors.append(e)
+    if not by_date and errors:
+        raise errors[0]
+    return [by_date[d] for d in sorted(by_date)]
+
+
+# ---------------------------------------------------------------
 # 한국관광공사 행사·축제 (대구)
 # ---------------------------------------------------------------
 

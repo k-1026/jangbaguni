@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>살피 워크플로우 관제</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* 살피 워크플로우 관제
+   할 일 데이터는 이 파일에 없음 → 열 때마다 GitHub dev 브랜치 README.md 를 읽어 그림.
+   README(= Issue #86 체크)가 바뀌어 dev 에 합쳐지면 이 화면도 자동으로 바뀜.
+   레이아웃: 1600×900(16:9) 고정 화면을 창 너비에 맞춰 통째로 줄이고 늘림. */
+:root{
+  --bg:#0f1a1f; --panel:#15242b; --panel2:#1c2f37; --line:#2b444e; --fg:#e7eef0; --mute:#93a9b1;
+  --accent:#e2b26a; --done:#5cc3a0; --doing:#e2b26a; --todo:#718992; --late:#ef7f6b;
+  --sans:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.fit{width:100%;max-width:1600px;margin:0 auto;position:relative;overflow:hidden}
+.stage{position:absolute;left:0;top:0;width:1600px;height:900px;transform-origin:0 0;
+  background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:18px 20px;
+  display:grid;grid-template-rows:52px 300px 1fr;gap:14px;font-size:14px;line-height:1.4}
+/* 넘치는 목록: 아래를 흐리게 해서 스크롤된다는 걸 보여 줌 */
+.fade{-webkit-mask-image:linear-gradient(#000 calc(100% - 26px),transparent);mask-image:linear-gradient(#000 calc(100% - 26px),transparent);padding-bottom:20px!important}
+.toast{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--accent);border-radius:8px;padding:8px 16px;font-size:13px;z-index:6;white-space:nowrap}
+.toast.err{border-color:var(--late);color:var(--late)}
+.checks li.busy{opacity:.5}
+.person li{grid-template-columns:15px 40px 1fr!important;align-items:start}
+.person li input{margin:2px 0 0;width:13px;height:13px;accent-color:var(--accent);cursor:pointer}
+button{font:inherit;color:inherit}
+/* 머리 */
+.top{display:flex;align-items:center;gap:22px;border-bottom:1px solid var(--line)}
+.brand{font-weight:700;font-size:24px;white-space:nowrap}
+.brand span{color:var(--accent)}
+.sub{color:var(--mute);font-size:13px;white-space:nowrap}
+.legend{display:flex;gap:14px;color:var(--mute);font-size:12px;white-space:nowrap}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
+.kpis{margin-left:auto;display:flex;gap:26px}
+.kpi{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1}
+.kpi b{font-family:var(--mono);font-size:21px;font-variant-numeric:tabular-nums}
+.kpi small{color:var(--mute);font-size:11px;margin-top:3px}
+.kpi.dd b{color:var(--accent)}
+/* 지도 */
+.map{display:grid;grid-template-columns:34px 1fr 340px;gap:14px;min-height:0}
+.lanelabels{display:grid;grid-template-rows:1fr 1fr;gap:12px}
+.lanelabels div{writing-mode:vertical-rl;display:flex;align-items:center;justify-content:center;border:1px dashed var(--line);border-radius:8px;color:var(--mute);font-size:13px;letter-spacing:.3em}
+.lanes{display:grid;grid-template-rows:1fr 1fr;gap:12px;min-height:0}
+.lane{display:grid;grid-template-columns:repeat(6,1fr);gap:20px;min-height:0}
+.node{position:relative;background:var(--panel);border:1px solid var(--line);border-top:4px solid var(--c);border-radius:8px;
+  padding:10px 11px 9px;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:3px;min-width:0}
+.node:hover{background:var(--panel2)}
+.node:focus-visible,.goalbox:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.node.sel{background:var(--panel2);box-shadow:inset 0 0 0 1px var(--c)}
+.done{--c:var(--done)} .doing{--c:var(--doing)} .todo{--c:var(--todo)}
+.node .no{font-family:var(--mono);color:var(--mute);font-size:11px}
+.node .t{font-weight:700;font-size:15.5px;line-height:1.3;word-break:keep-all}
+.node .p{color:var(--mute);font-size:12px;font-family:var(--mono)}
+.node .s{margin-top:auto;font-size:12px;color:var(--c);font-weight:600}
+.bar{height:4px;background:var(--line);border-radius:4px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--c)}
+.node:not(.last)::after{content:"";position:absolute;right:-20px;top:50%;width:18px;height:1px;background:var(--mute)}
+.node:not(.last)::before{content:"";position:absolute;right:-20px;top:calc(50% - 4px);border:4px solid transparent;border-left:5px solid var(--mute);border-right:0}
+.gap{border:1px dashed var(--line);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--mute);font-size:12px;text-align:center;padding:8px;word-break:keep-all}
+/* 발표 체크리스트 */
+.goalbox{background:var(--panel2);border:1px solid var(--accent);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-height:0;cursor:pointer}
+.goalbox.sel{box-shadow:inset 0 0 0 1px var(--accent)}
+.goalhead{display:flex;align-items:baseline;gap:8px}
+.goalhead h3{margin:0;font-size:19px;color:var(--accent)}
+.goalhead span{color:var(--mute);font-size:12px}
+.checks{list-style:none;margin:0;padding:0 4px 0 0;display:flex;flex-direction:column;gap:2px;overflow-y:auto;min-height:0;flex:1}
+.checks li label{display:grid;grid-template-columns:18px 42px 1fr;gap:6px;align-items:start;font-size:13px;padding:4px 2px;border-bottom:1px solid var(--line);cursor:pointer;word-break:keep-all}
+.checks input{margin:2px 0 0;accent-color:var(--accent);width:15px;height:15px;cursor:pointer}
+.checks .d{font-family:var(--mono);font-size:11.5px;color:var(--mute);padding-top:1px}
+.checks li.ok .txt{color:var(--mute);text-decoration:line-through}
+.checks li.mine .txt{color:var(--accent)}
+.checks li.over .d{color:var(--late)}
+.note{font-size:11.5px;color:var(--mute);border-top:1px solid var(--line);padding-top:6px}
+.note a{color:var(--accent)}
+/* 아래 */
+.bottom{display:grid;grid-template-columns:1.4fr 1fr;gap:14px;min-height:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 16px;display:flex;flex-direction:column;gap:8px;min-height:0}
+.ph{display:flex;align-items:baseline;gap:10px}
+.ph h2{margin:0;font-size:17px}
+.ph span{color:var(--mute);font-size:12px}
+.tl{position:relative;height:96px;margin:0 46px;flex:none}
+.tl .rail,.tl .fill,.dot,.now{translate:0 6px}
+.tl .rail,.tl .fill{position:absolute;left:0;top:40px;height:4px;border-radius:4px;background:var(--line)}
+.tl .rail{right:0}
+.tl .fill{background:var(--accent)}
+.ms{position:absolute;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;width:110px;text-align:center;font-size:12px;line-height:1.25}
+.ms.up{bottom:52px}
+.ms.dn{top:54px}
+.ms .d{font-family:var(--mono);font-size:11px;color:var(--mute)}
+.dot{position:absolute;top:36px;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:var(--panel);border:2px solid var(--mute)}
+.dot.past{background:var(--accent);border-color:var(--accent)}
+.dot.key{border-color:var(--accent);width:14px;height:14px;margin-left:-7px;top:35px}
+.now{position:absolute;top:30px;height:24px;width:2px;margin-left:-1px;background:var(--late)}
+.detail{display:grid;grid-template-columns:1fr 1.25fr;gap:18px;border-top:1px solid var(--line);padding-top:8px;min-height:0;flex:1}
+.detail>div{min-height:0;display:flex;flex-direction:column;gap:5px}
+.dtitle{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.dtitle b{font-size:16px}
+.chip{font-size:11px;padding:1px 8px;border-radius:99px;border:1px solid var(--c);color:var(--c);font-weight:600}
+.owner{color:var(--mute);font-size:12px}
+.detail h4{margin:4px 0 0;font-size:12px;color:var(--mute);font-weight:600}
+.detail ul{margin:0;padding-left:16px;display:flex;flex-direction:column;gap:3px;font-size:13px;overflow-y:auto;min-height:0}
+.detail code{font-family:var(--mono);font-size:12px;color:var(--accent);word-break:break-all}
+.detail .dl{font-family:var(--mono);font-size:11.5px;color:var(--mute);margin-right:6px}
+.detail .dl.over{color:var(--late)}
+.people{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:8px;min-height:0;flex:1}
+.person{background:var(--panel2);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:4px;min-height:0}
+.person header{display:flex;justify-content:space-between;align-items:baseline}
+.person header b{font-size:14.5px}
+.person header span{color:var(--mute);font-size:11px}
+.person ul{list-style:none;margin:0;padding:0 4px 0 0;display:flex;flex-direction:column;gap:3px;overflow-y:auto;min-height:0}
+.person li{display:grid;grid-template-columns:40px 1fr;gap:7px;font-size:12.5px;line-height:1.35;word-break:keep-all}
+.person li.guess .t{color:#c3d1d6}
+.due{font-family:var(--mono);font-size:11px;text-align:center;border-radius:4px;padding:1px 0;background:var(--panel);color:var(--mute);align-self:start}
+.due.today{background:var(--late);color:#1a0f0c;font-weight:600}
+.due.soon{color:var(--accent)}
+.due.over{color:var(--late);box-shadow:inset 0 0 0 1px var(--late);background:transparent}
+.foot{color:var(--mute);font-size:11px;display:flex;justify-content:space-between;gap:10px}
+.foot a{color:var(--accent)}
+.status{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:var(--mute);font-size:15px;background:var(--bg);border-radius:10px;text-align:center;padding:40px}
+.status b{color:var(--fg);font-size:18px}
+::-webkit-scrollbar{width:6px} ::-webkit-scrollbar-thumb{background:var(--line);border-radius:6px}
+@media (prefers-reduced-motion:no-preference){.bar>i{transition:width .5s ease}}
+</style>
+</head>
+<body>
+<div class="fit" id="fit">
+<div class="stage" id="stage">
+  <div class="top">
+    <div class="brand"><span>살피</span> 워크플로우 관제</div>
+    <div class="sub">장바구니 팀 · README 일정 자동 반영</div>
+    <div class="legend"><span><i style="background:var(--done)"></i>완료</span><span><i style="background:var(--doing)"></i>진행 중</span><span><i style="background:var(--todo)"></i>예정</span><span><i style="background:var(--late)"></i>오늘 · 지남</span></div>
+    <div class="kpis">
+      <div class="kpi"><b id="kToday">-</b><small>오늘</small></div>
+      <div class="kpi"><b id="kDone">-</b><small>끝난 할 일</small></div>
+      <div class="kpi"><b id="kLate">-</b><small>오늘 · 지난 마감</small></div>
+      <div class="kpi dd"><b id="kDday">-</b><small>최종 발표</small></div>
+    </div>
+  </div>
+
+  <div class="map">
+    <div class="lanelabels"><div>기획 · 근거</div><div>만들기</div></div>
+    <div class="lanes"><div class="lane" id="laneA"></div><div class="lane" id="laneB"></div></div>
+    <div class="goalbox" id="goal" role="button" tabindex="0">
+      <div class="goalhead"><h3>발표 · 문서</h3><span id="goalCount"></span></div>
+      <ul class="checks" id="checks"></ul>
+      <div class="note" id="checkNote">체크 칸을 누르면 <a href="https://github.com/k-1026/jangbaguni/issues/86" target="_blank" rel="noopener">Issue #86</a>이 열려요. 거기서 체크하면 1~2분 안에 이 화면과 README에 반영돼요.</div>
+    </div>
+  </div>
+
+  <div class="bottom">
+    <section class="panel">
+      <div class="ph"><h2>진행 방향</h2><span>11/16 → 12/4 · 위 단계를 누르면 아래에 자료 위치와 남은 할 일이 나와요</span></div>
+      <div class="tl" id="tl"></div>
+      <div class="detail" id="detail"></div>
+    </section>
+    <section class="panel">
+      <div class="ph"><h2>해야 할 일</h2><span>사람별 · 마감 빠른 순 · 흐린 글씨는 역할 기준 추정</span></div>
+      <div class="people" id="people"></div>
+      <div class="foot"><span id="src">불러오는 중…</span><a href="https://github.com/k-1026/jangbaguni/issues/86" target="_blank" rel="noopener">체크하러 가기 ↗</a></div>
+    </section>
+  </div>
+  <div class="status" id="status"><b>일정 불러오는 중…</b><span>GitHub Issue #86 · README 일정표를 읽고 있어요</span></div>
+  <div class="toast" id="toast" hidden></div>
+</div>
+</div>
+
+<!-- 미리보기용 README 사본 자리 (저장소 파일에서는 비워 둠) -->
+<script id="readme-snapshot" type="text/plain"></script>
+
+<script>
+/* ───── 고정 정보: 단계 이름 · 기간 · 자료 위치 (할 일 아님) ───── */
+const REPO = "k-1026/jangbaguni", BRANCH = "dev", YEAR = 2026;
+const README_URL = `https://raw.githubusercontent.com/${REPO}/${BRANCH}/README.md`;
+const ISSUE_NO = 86, ISSUE_API = `https://api.github.com/repos/${REPO}/issues/${ISSUE_NO}`;
+const ISSUE_PAGE = `https://github.com/${REPO}/issues/${ISSUE_NO}`;
+const CAT = {front:"🖥️", back:"⚙️", ai:"🧠", doc:"📝"};
+
+// match(item) → 이 단계의 할 일인지. fixed:"done" 은 지난 단계(README 할 일 없음)
+const STAGES = {
+  A:[
+    {id:"a1",t:"주제 · 기업 리서치",p:"10/27–11/5",fixed:"done",out:["plan/proposal/1028_topic_pitch.md","research/industry_food/업체선정.md","research/company/cj_freshway/"],
+      result:["대구 도매시장 시세 예측 주제 확정","CJ프레시웨이 리서치 · 밸류체인 맵"]},
+    {id:"a2",t:"고객 이해",p:"11/8–11/9",fixed:"done",out:["plan/journey/","data/simulation/"],
+      result:["고객 여정 지도 · 페르소나 10명","페인포인트 Top 3"]},
+    {id:"a3",t:"VOC · 방향 전환",p:"11/11–11/12",fixed:"done",out:["plan/bm/1112_voc_analysis.md","plan/presentation/1112_changes_and_flow.md"],
+      result:["VOC 333장 → 원가 고민 59%","시세 예측 → 원가 관리 중심으로 전환"]},
+    {id:"a4",t:"BM · 시장 · 경쟁사",p:"11/12–11/18",own:"윤가언",out:["plan/bm/1112_bm_canvas.md","plan/bm/1113_시장규모시트.md","plan/bm/1113_경쟁사비교.md","plan/bm/1113_포지셔닝맵.md"],
+      match:it=>/구독료|시장 규모|수수료|판매처 연결 방향|업체 선정|의향|BM/.test(it.text)},
+    {id:"a5",t:"유저플로우 · AI 파이프라인",p:"11/12–11/19",own:"이성이",out:["plan/bm/1112_user_flow.md","plan/bm/1112_agent_pipeline.md","plan/presentation/살피_유저플로우_v2.png"],
+      match:it=>/플로우|파이프라인/.test(it.text)},
+    {id:"a6",t:"기획서 · 제안서",p:"11/20–11/27",own:"윤가언 · 이하영",last:true,out:["plan/1116_final_sprint_plan.md (6-6절)"],
+      match:it=>/기획서|제안서|spec|흐름도|캔버스|레드팀|크로스 리뷰|To-Be|SNS/.test(it.text)},
+  ],
+  B:[
+    {id:"b1",t:"프로토타입 (웹 v1)",p:"11/3–11/6",fixed:"done",out:["salpi_agent/","salpi_agent/web/","supabase/schema.sql"],
+      result:["시세 대시보드 · 챗봇 · 영수증 OCR","Supabase · Vercel 배포"]},
+    {id:"b2",t:"AI 예측 · 자료",p:"11/12–11/26",own:"이하영 · 윤가언",out:["plan/forecast/1116_self_learning_forecast.md","salpi_agent/learner.py · gbdt.py","data/raw/"],
+      match:it=>it.cats.includes("ai") && !/검증|정확도|시차|정답표/.test(it.text)},
+    {id:"b3",t:"화면 · 서버 기능",p:"11/16–11/27",own:"이성이 · 이하영",out:["plan/1116_api_contract.md","salpi_agent/web/","salpi_agent/*.py"],
+      match:it=>(it.cats.includes("front")||it.cats.includes("back")) && !/시연|점검|녹화|측정|비교표/.test(it.text)},
+    {id:"b4",t:"검증",p:"11/18–12/1",own:"윤가언 · 이하영",out:["plan/1116_final_sprint_plan.md (6-2절)","plan/forecast/1112_forecast_log.md"],
+      match:it=>/검증|정확도|시차|정답표|측정|비교표|실전 채점/.test(it.text)},
+    {id:"b5",t:"시연 점검 · 녹화",p:"11/27–12/2",own:"팀",last:true,out:["시연 순서: 로그인 → 영수증 → 원가율 40% → 3가지 제안 → 더 싼 곳 → 재고 · 발주 → 알림 → 유료 잠금"],
+      match:it=>/시연|녹화|점검|버그/.test(it.text)},
+  ]
+};
+const GOAL = {id:"goal",t:"발표 · 문서",p:"11/17–12/4",own:"팀 전체",out:["plan/presentation/","plan/presentation/1113_feedback_todo.md"],
+  match:it=>it.cats.includes("doc") || it.cats.length===0};
+const MILESTONES = [["11/17","PPT git","up"],["11/19","중간 발표","dn",1],["11/20","PPT 14시","up"],["11/26","기획 · 제안서","dn"],
+  ["11/27","기능 완성","up",1],["12/1","기능 마감","dn"],["12/2","시연 녹화","up"],["12/4","최종 발표","dn",1]];
+const PEOPLE = ["이하영","이성이","윤가언","팀"];
+const ROLE = {"이하영":"서버 · AI 학습","이성이":"화면 · 그림 · 영상","윤가언":"자료 · 검증 · 문서","팀":"발표 · 회의 · 같이"};
+
+/* ───── 날짜 ───── */
+const DAY = 864e5;
+const toDate = md => {const [m,d]=md.split("/").map(Number); return new Date(YEAR,m-1,d)};
+// 한국 날짜 기준 "오늘". 그릴 때마다 다시 계산 → 켜 둔 채 자정이 지나도 바뀜
+const kstToday = ()=>{const s=new Date().toLocaleDateString("en-CA",{timeZone:"Asia/Seoul"}).split("-").map(Number);return new Date(s[0],s[1]-1,s[2])};
+let today = kstToday();
+const dd = md => Math.round((toDate(md)-today)/DAY);
+const esc = s => s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ───── README 읽기 ───── */
+function parse(md){
+  const a = md.indexOf("<!-- 일정:시작"), b = md.indexOf("## ✅ 완료한 일");
+  const body = md.slice(a<0?0:a, b<0?md.length:b);
+  const items = []; let date=null, cats=[];
+  for (const raw of body.split(/\r?\n/)){
+    const line = raw.trim();
+    const h = line.match(/^###\s+(\d{1,2}\/\d{1,2})/);
+    if (h){date=h[1]; cats=[]; continue}
+    if (/^##\s/.test(line)){date=null; cats=[]; continue}
+    const c = line.match(/^\*\*(.+)\*\*$/);
+    if (c && !/^\s*-/.test(line)){cats=Object.keys(CAT).filter(k=>c[1].includes(CAT[k])); continue}
+    const t = line.match(/^-\s*\[( |x|X)\]\s*(.+)$/);
+    if (t && date){
+      let text = t[2];
+      const who = (text.match(/이하영|이성이|윤가언/g)||[]);
+      text = text.replace(/\s*[—–-]?\s*[(（]\s*(이하영|이성이|윤가언)\s*[)）]\s*/g," ")
+                 .replace(/\*\*|`/g,"").replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]\u{FE0F}?/gu,"").replace(/\s+/g," ").trim().replace(/[-—]\s*$/,"").trim();
+      items.push({date, cats:[...cats], text, done:t[1]!==" ", who:[...new Set(who)], raw});
+    }
+  }
+  return items;
+}
+function owners(it){
+  if (it.who.length) return {names:it.who, guess:false};
+  if (it.cats.includes("front") && it.cats.includes("back")) return {names:["이성이","이하영"],guess:true};
+  if (it.cats.includes("front")) return {names:["이성이"],guess:true};
+  if (it.cats.includes("back")) return {names:["이하영"],guess:true};
+  if (it.cats.includes("ai")) return {names:[/학습|모델|채점|실험|예측|세그먼트|군집|발주량/.test(it.text)?"이하영":"윤가언"],guess:true};
+  return {names:["팀"],guess:true};
+}
+
+/* ───── 그리기 ───── */
+let ITEMS=[], selected=null, SOURCE="";
+
+const ghHeaders=()=>({Accept:"application/vnd.github+json"});
+let toastTimer;
+function toast(msg,err){
+  const t=document.getElementById("toast"); t.textContent=msg; t.className="toast"+(err?" err":""); t.hidden=false;
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.hidden=true, err?6000:3500);
+}
+
+/* ───── 체크 칸 → Issue #86 열기 (거기서 체크 → 1~2분 안에 이 화면 · README 반영) ───── */
+function toggle(it){
+  renderAll();   // 칸은 Issue 상태 그대로 되돌림
+  const a=document.createElement("a"); a.href=ISSUE_PAGE; a.target="_blank"; a.rel="noopener"; a.click();
+  toast(`Issue #${ISSUE_NO}에서 "${it.text.slice(0,24)}${it.text.length>24?"…":""}"를 체크해 주세요 · 1~2분 안에 여기 반영돼요`);
+}
+
+function stageStat(s){
+  if (s.fixed) return {status:"done",items:[],done:0,total:0,pct:100};
+  const items = ITEMS.filter(s.match), done = items.filter(i=>i.done).length, total=items.length;
+  const started = items.some(i=>i.done || dd(i.date)<=0);
+  const status = total && done===total ? "done" : started ? "doing" : "todo";
+  return {status,items,done,total,pct:total?Math.round(done/total*100):0};
+}
+const sname = {done:"완료",doing:"진행 중",todo:"예정"};
+
+function renderMap(){
+  [["A","laneA","기획"],["B","laneB","만들기"]].forEach(([k,id,lab])=>{
+    const lane=document.getElementById(id); lane.innerHTML="";
+    STAGES[k].forEach((s,i)=>{
+      const st=stageStat(s), b=document.createElement("button");
+      b.type="button"; b.className=`node ${st.status}${s.last?" last":""}`; b.id="n-"+s.id;
+      const cnt = s.fixed ? "완료" : `${sname[st.status]} · ${st.done}/${st.total}`;
+      b.innerHTML=`<span class="no">${lab} ${i+1}</span><span class="t">${s.t}</span><span class="p">${s.p}</span><span class="s">${cnt}</span><span class="bar"><i style="width:${st.pct}%"></i></span>`;
+      b.onclick=()=>select(s); lane.appendChild(b);
+    });
+    if (k==="B"){const g=document.createElement("div"); g.className="gap"; g.textContent="12/1 기능 추가 마감 · 12/3은 코드 수정 없이 리허설만"; lane.appendChild(g)}
+  });
+}
+function renderChecks(){
+  const list = ITEMS.filter(GOAL.match).sort((a,b)=>toDate(a.date)-toDate(b.date));
+  const ul=document.getElementById("checks"), keep=ul.scrollTop; ul.innerHTML="";
+  list.forEach((it,i)=>{
+    const x=dd(it.date), li=document.createElement("li");
+    li.className = (it.done?"ok":(x<0?"over":"")) + (it.busy?" busy":"");
+    li.innerHTML=`<label><input type="checkbox" id="chk-${i}" ${it.done?"checked":""} ${it.busy?"disabled":""}><span class="d">${it.date}</span><span class="txt">${esc(it.text)}</span></label>`;
+    li.querySelector("input").onchange=()=>toggle(it);
+    li.onclick=e=>e.stopPropagation();
+    ul.appendChild(li);
+  });
+  const done=list.filter(i=>i.done).length;
+  document.getElementById("goalCount").textContent=`팀 완료 ${done}/${list.length}`;
+  if (keep){ul.scrollTop=keep; return}
+  // 오늘 이후 첫 미완료 항목이 보이게
+  const first=[...ul.children].findIndex((li,i)=>!list[i].done && dd(list[i].date)>=-1);
+  if (first>2) ul.scrollTop = ul.children[first-1].offsetTop - ul.offsetTop;
+}
+function renderTimeline(){
+  const tl=document.getElementById("tl"), s=toDate("11/16"), e=toDate("12/4"), pos=d=>Math.max(0,Math.min(1,(d-s)/(e-s)))*100;
+  let h=`<div class="rail"></div><div class="fill" style="width:${pos(today)}%"></div>`;
+  MILESTONES.forEach(([md,l,side,key])=>{
+    const p=pos(toDate(md)), past=toDate(md)<today;
+    h+=`<span class="dot${past?" past":""}${key?" key":""}" style="left:${p}%"></span>`;
+    h+= side==="up" ? `<div class="ms up" style="left:${p}%"><span>${l}</span><span class="d">${md}</span></div>`
+                    : `<div class="ms dn" style="left:${p}%"><span class="d">${md}</span><span>${l}</span></div>`;
+  });
+  h+=`<span class="now" style="left:${pos(today)}%" title="오늘"></span>`;
+  tl.innerHTML=h;
+}
+function renderPeople(){
+  const box=document.getElementById("people"); box.innerHTML="";
+  PEOPLE.forEach(p=>{
+    const rows=ITEMS.filter(it=>!it.done).map(it=>({it,o:owners(it)})).filter(r=>r.o.names.includes(p))
+      .sort((a,b)=>toDate(a.it.date)-toDate(b.it.date));
+    const c=document.createElement("div"); c.className="person";
+    c.innerHTML=`<header><b>${p==="팀"?"팀 전체":p}</b><span>${ROLE[p]} · 남은 ${rows.length}</span></header><ul>${rows.map(({it,o},j)=>{
+      const x=dd(it.date), cls=x<0?"over":x===0?"today":x<=2?"soon":"", lab=x<0?"지남":x===0?"오늘":it.date;
+      return `<li class="${o.guess?"guess":""}${it.busy?" busy":""}"><input type="checkbox" id="p-${p}-${j}" aria-label="끝냄 표시" ${it.busy?"disabled checked":""}><span class="due ${cls}">${lab}</span><span class="t">${esc(it.text)}</span></li>`}).join("")}</ul>`;
+    c.querySelectorAll("input").forEach((inp,j)=>inp.onchange=()=>toggle(rows[j].it));
+    box.appendChild(c);
+  });
+}
+function markFades(){
+  document.querySelectorAll(".checks,.person ul,.detail ul").forEach(el=>{
+    const upd=()=>el.classList.toggle("fade", el.scrollHeight-el.scrollTop-el.clientHeight>4);
+    if(!el._f){el.addEventListener("scroll",upd);el._f=1}
+    el.classList.remove("fade"); upd();
+  });
+}
+function select(s){
+  selected=s;
+  document.querySelectorAll(".node.sel,.goalbox.sel").forEach(x=>x.classList.remove("sel"));
+  (s.id==="goal"?document.getElementById("goal"):document.getElementById("n-"+s.id))?.classList.add("sel");
+  const st=s.fixed?{status:"done",items:[]}:stageStat(s);
+  const open=st.items.filter(i=>!i.done).sort((a,b)=>toDate(a.date)-toDate(b.date));
+  const right = s.fixed ? `<h4>결과</h4><ul>${s.result.map(r=>`<li>${r}</li>`).join("")}</ul>`
+    : `<h4>남은 할 일 ${open.length}개 (README 기준)</h4><ul>${open.length?open.map(i=>{const x=dd(i.date);return `<li><span class="dl${x<0?" over":""}">${x<0?"지남 ":""}${i.date}</span>${esc(i.text)}</li>`}).join(""):"<li>남은 일 없음</li>"}</ul>`;
+  document.getElementById("detail").innerHTML=`
+    <div><div class="dtitle"><b>${s.t}</b><span class="chip ${st.status}">${sname[st.status]}</span></div>
+      <span class="owner">${s.p} · 담당 ${s.own||"팀"}</span>
+      <h4>자료 위치</h4><ul>${s.out.map(o=>/\//.test(o)&&!/→/.test(o)?`<li><code>${o}</code></li>`:`<li>${o}</li>`).join("")}</ul></div>
+    <div>${right}</div>`;
+  requestAnimationFrame(markFades);
+}
+function renderAll(srcLabel=SOURCE){
+  SOURCE=srcLabel; today=kstToday();
+  renderMap(); renderChecks(); renderTimeline(); renderPeople();
+  requestAnimationFrame(markFades);
+  const all=ITEMS.length, done=ITEMS.filter(i=>i.done).length, late=ITEMS.filter(i=>!i.done&&dd(i.date)<=0).length;
+  document.getElementById("kToday").textContent=`${today.getMonth()+1}/${today.getDate()}`;
+  document.getElementById("kDone").textContent=`${done}/${all}`;
+  document.getElementById("kLate").textContent=late;
+  const d=dd("12/4"); document.getElementById("kDday").textContent=d>0?`D-${d}`:d===0?"D-DAY":"끝";
+  document.getElementById("src").textContent=srcLabel;
+  const allStages=[...STAGES.A,...STAGES.B];
+  select(selected || allStages.find(s=>!s.fixed && stageStat(s).items.some(i=>!i.done && dd(i.date)<=0)) || GOAL);
+  document.getElementById("status").hidden=true;
+}
+
+/* ───── 불러오기: GitHub 최신 README → 실패하면 사본 ───── */
+async function load(){
+  const now=new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit",timeZone:"Asia/Seoul"});
+  if(ITEMS.some(i=>i.busy)) return;          // 체크 저장 중에는 덮어쓰지 않음
+  try{
+    // 1순위: Issue #86 본문 (체크하는 순간 바로 바뀜) → 2순위: dev README
+    let text="", label="";
+    try{
+      const r=await fetch(ISSUE_API,{headers:ghHeaders(),cache:"no-store"});
+      if(!r.ok) throw 0;
+      const j=await r.json(); if(j.state!=="open"||!j.body) throw 0;
+      text=j.body; label=`GitHub Issue #${ISSUE_NO} · ${now} 기준 · 2분마다 새로고침`;
+    }catch(_){
+      const r=await fetch(README_URL+"?t="+Date.now(),{cache:"no-store"});
+      if(!r.ok) throw new Error(r.status);
+      text=await r.text(); label=`GitHub ${BRANCH} README · ${now} 기준 · 2분마다 새로고침`;
+    }
+    ITEMS=parse(text);
+    if(!ITEMS.length) throw new Error("empty");
+    renderAll(label);
+  }catch(e){
+    const snap=document.getElementById("readme-snapshot").textContent.trim();
+    if(snap){ITEMS=parse(snap); renderAll("미리보기: 저장된 README 사본 (GitHub에 연결 못 함)")}
+    else if(!ITEMS.length){
+      const s=document.getElementById("status");
+      s.innerHTML="<b>README를 불러오지 못했어요</b><span>인터넷 연결을 확인하고 새로고침해 주세요</span>"; s.hidden=false;
+    }
+  }
+}
+document.getElementById("goal").addEventListener("click",()=>select(GOAL));
+document.getElementById("goal").addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();select(GOAL)}});
+
+/* ───── 16:9 맞추기 ───── */
+function fit(){
+  const f=document.getElementById("fit"), k=f.clientWidth/1600;
+  document.getElementById("stage").style.transform=`scale(${k})`;
+  f.style.height=(900*k)+"px";
+}
+addEventListener("resize",fit); fit();
+load(); setInterval(load,2*60*1000);
+// 자정(한국 시간)이 지나면 다시 그려서 "오늘" · 지남 · D-day · 달력 위치를 바꿈
+let lastDay=kstToday().getTime();
+setInterval(()=>{const t=kstToday().getTime(); if(t!==lastDay){lastDay=t; if(ITEMS.length) renderAll(); load()}},60*1000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden) load()});
+</script>
+</body>
+</html>

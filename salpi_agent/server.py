@@ -28,7 +28,7 @@ import menus
 import receipts
 import supabase_db
 from agent import SalpiAgent
-from data_sources import ITEMS, ApiError, ApiKeyMissing, event_detail, holidays, month_events
+from data_sources import ITEMS, ApiError, ApiKeyMissing, event_detail, holidays, month_events, weather_forecast
 
 ROOT = Path(__file__).resolve().parent
 WEB = ROOT / "web"
@@ -94,7 +94,7 @@ def index():
 # 키 확인용: 값은 절대 보내지 않고 "넣었는지"만 알려 줌 (Vercel 환경 변수 확인)
 KEY_NAMES = ["AT_SALE_API_KEY", "AT_PERDAY_API_KEY", "AT_REALTIME_API_KEY", "KMA_ASOS_API_KEY", "KASI_SPCDE_API_KEY",
              "KTO_TOUR_API_KEY", "KAMIS_CERT_KEY", "KAMIS_CERT_ID", "GEMINI_API_KEY", "SUPABASE_URL", "SUPABASE_SECRET_KEY",
-             "KCA_PRICE_API_KEY"]
+             "KCA_PRICE_API_KEY", "KMA_VILAGE_API_KEY", "KMA_MID_API_KEY"]
 
 
 @app.get("/api/health")
@@ -210,10 +210,19 @@ def mart():
     return _guard(lambda: memo("mart", mart_price.mart_prices, ttl=6 * 3600))
 
 
+def _forecast_or_empty():
+    """예보가 안 와도 지난 날씨 · 공휴일 · 행사는 보여 주도록 빈 목록으로."""
+    try:
+        return weather_forecast(7)
+    except (ApiKeyMissing, ApiError):
+        return []
+
+
 @app.get("/api/context")
 def context():
     return _guard(lambda: memo("context", lambda: {
-        "weather": analysis.weather_summary(7), "holidays": holidays(30), "events": month_events()}))
+        "weather": analysis.weather_summary(7), "weather_forecast": _forecast_or_empty(),
+        "holidays": holidays(30), "events": month_events()}))
 
 
 # ---------------------------------------------------------------

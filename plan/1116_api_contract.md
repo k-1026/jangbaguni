@@ -99,11 +99,15 @@
 
 ```json
 "weather_forecast": [
-  {"date": "2026-11-17", "min": 9, "max": 16, "rain_pct_am": 20, "rain_pct_pm": 30, "sky": "구름많음", "source": "단기"},
-  {"date": "2026-11-21", "min": -2, "max": 6, "rain_pct_am": 10, "rain_pct_pm": 10, "sky": "맑음", "source": "중기"}
+  {"date": "2026-11-17", "min": 9, "max": 16, "rain_pct_am": 30, "rain_pct_pm": 60, "sky": "비", "sky_am": "흐림", "sky_pm": "비", "source": "단기"},
+  {"date": "2026-11-21", "min": -3, "max": 5, "rain_pct_am": 10, "rain_pct_pm": 10, "sky": "맑음", "sky_am": "맑음", "sky_pm": "맑음", "source": "중기"}
 ]
 ```
-- 오늘 ~ 3일 뒤 = 기상청 단기예보 (격자 nx 89 · ny 90), 4 ~ 7일 뒤 = 중기예보 (육상 11H10000 · 기온 11H10701). 키: `.env` `KMA_VILAGE_*` · `KMA_MID_*`
+- 오늘 ~ 3일 뒤 = 기상청 단기예보 (격자 nx 89 · ny 90), 4 ~ 6일 뒤 = 중기예보 (육상 11H10000 · 기온 11H10701). 키: `.env` `KMA_VILAGE_*` · `KMA_MID_*`
+- ✅ 서버 있음 (11/17). 오늘부터 7일, 날짜 순
+- `sky` = 오전 · 오후 중 더 궂은 쪽 (맑음 < 구름많음 < 흐림 < 비 · 눈). 오전 · 오후 따로 쓰려면 `sky_am` · `sky_pm`
+- 중기예보 하늘은 "구름많고 비"처럼 길게 올 수 있음. 값이 없으면 `null`
+- 예보를 못 받으면 `weather_forecast: []` (나머지 날씨 · 공휴일 · 행사는 그대로 옴) → 화면은 "예보를 불러오지 못했어요"
 
 ## 9. AI 예측 성적 카드 — `GET /api/model` (있음)
 

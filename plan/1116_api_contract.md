@@ -63,6 +63,21 @@
  ]}
 ```
 - kg당 가격 순, **산 값보다 싼 곳만**. `affiliate: true` 면 "제휴" 표시, `retail: true` 면 "소매가" 표시
+- ✅ 서버 있음 (11/17, `salpi_agent/cheaper.py`). 위 칸에 더해 오는 것:
+
+```json
+{"item": "양파", "unit": "kg", "paid_per_unit": 2300, "paid_source": "최근 영수증", "paid_date": "2026-11-04", "paid_approx": false,
+ "sellers": [{"name": "식봄 · 피양파 (국내산, 250g내외/개, 15Kg/망)", "price_per_unit": 1199, "approx": false,
+              "url": "https://www.foodspring.co.kr/goods/detail/737331", "affiliate": false, "retail": false,
+              "pack_price": 17990, "pack": "15kg", "free_delivery": null, "note": null, "saving_per_unit": 1101, "saving_pct": 47.9}],
+ "checked": 4, "skipped_unknown_unit": 0, "data_date": "2026-11-17", "message": null}
+```
+- `paid_source`: `최근 영수증` → 없으면 `대구 소매 평균(KAMIS)` → `?paid=2300` 으로 주면 `직접 입력`
+- `approx: true` 면 "약 ○원/kg" (포기 · 개 · 단을 환산표로 바꾼 값, `note`에 근거). 환산이 들어간 비교는 **10% 넘게 쌀 때만** 넣음
+- `pack_price` · `pack`: 실제 파는 묶음 값 (예: 15kg 17,990원) — 대용량은 다 못 쓸 수 있으니 함께 보여 주기
+- `data_date`: `null` 이면 지금 받은 식봄 값, 날짜면 그날 저장한 값 (식봄이 자동 접속을 막을 때) → "11/17 기준" 표시
+- 판매처는 지금 식봄만 (대형마트 참가격에는 야채 · 과일이 없음). 쿠팡 · 네이버는 가격 받기(R8) 뒤에 추가
+- 지원 품목이 아니거나 식봄을 못 받으면 `sellers: []` + `message`
 
 ## 4. 재고 — `GET /api/inventory` · `PUT /api/inventory/{item_id}`
 

@@ -24,10 +24,19 @@ PIECE_KG = {
     "단감":   (0.225, f"{STD} 단감 L 200~250g 가운데"),
     "감귤":   (0.095, f"{STD} 온주밀감 M 83~106g 가운데 (KAMIS 소매 조사가 M과)"),
     "수박":   (8.5,  f"{STD} 수박 L 8~9kg 가운데"),
-    "애호박": (0.27, "검토 필요: 표준규격은 길이(cm)만 있음. 요리 계량 자료 270g · seed.sql 영수증 짝 0.3kg"),
-    "오이":   (0.15, "검토 필요: 표준규격에 무게 없음. 요리 계량 자료 150g"),
+    "애호박": (0.25, "식봄 '애호박(상, 1입)' 규격 0.25kg (11/17). 표준규격은 길이만 있음"),
+    "오이":   (0.2,  "식봄 '취청오이(상 5입 1Kg)' → 1개 200g (11/17). 표준규격에 무게 없음"),
     "가지":   (0.15, "검토 필요: 표준규격에 무게 없음. 요리 계량 자료 150g"),
     "레몬":   (0.12, "검토 필요: 표준규격 없음. 자료마다 100~150g"),
+    # 포장 단위(단 · 속): 파는 곳마다 다를 수 있어 상품명에 무게가 있으면 그 값을 먼저 씀
+    "대파":   (1.0,  "식봄 '흙대파(1단 1Kg)' · '10단/망 10kg' (11/17)"),
+    "시금치": (0.25, "식봄 '시금치 1단-약250g' (11/17)"),
+    "깻잎":   (0.02, "식봄 '깻잎 10속 200g' → 1속 20g (11/17)"),
+    # 낱개(식봄 규격의 개당 무게 범위 가운데)
+    "양파":   (0.22, "식봄 '180~230g/개' · '250g내외/개' (11/17)"),
+    "당근":   (0.25, "식봄 '세척당근 130~200g/개' · '3입내외 1Kg' (11/17)"),
+    "감자":   (0.15, "식봄 '80g이상/개(대)' ~ '180g이상/개(왕왕)' (11/17)"),
+    "토마토": (0.2,  "식봄 '3~4과 1Kg' · '5~7과 1Kg' (11/17)"),
 }
 
 # 1L 무게(kg). kg로 파는 액체를 L로 바꿀 때만 씀
@@ -41,7 +50,7 @@ DENSITY = {
     "식초":     (1.01, "검토 필요: 식초 비중 약 1.01"),
 }
 
-PIECE_WORDS = ("포기", "통", "개", "입", "과", "알", "구", "모", "마리", "단", "봉", "팩", "망", "박스", "상자")
+PIECE_WORDS = ("포기", "통", "개", "입", "과", "알", "구", "모", "마리", "단", "속", "봉", "팩", "망", "박스", "상자")
 _WEIGHT = {"kg": 1, "g": 0.001}
 _VOLUME = {"l": 1, "ml": 0.001}
 
@@ -104,20 +113,31 @@ def per_base_price(item, price, qty, unit):
     return {"price": round(float(price) / b["qty"]), "unit": b["unit"], "how": b["how"], "note": b["note"]}
 
 
-_PACK = re.compile(r"(\d+(?:\.\d+)?)\s*(kg|㎏|g|ml|㎖|l|ℓ|리터|포기|통|개|입|구|모|단|봉|팩|마리)"
+_PACK = re.compile(r"(\d+(?:\.\d+)?)\s*(kg|㎏|g|ml|㎖|l|ℓ|리터|포기|통|개|입|구|모|단|속|봉|팩|마리)(?![a-z])"
                    r"(?:\s*[x×*]\s*(\d+)\s*(?:개|봉|팩|입|통|ea)?)?", re.I)
+_PER_PIECE = re.compile(r"^\s*(이상|내외|미만)?\s*/\s*(개|과|입)")   # '80g이상/개' 같은 1개 무게 ('/EA'는 한 봉 전체라 해당 없음)
+_BARE_KG = re.compile(r"(^|[\s(_,])kg\s*(단위)?(?=[\s)_,]|$)", re.I)   # '흙당근(실속 KG)': 숫자 없이 kg → 1kg 단위로 팖
 
 
 def parse_pack(text):
-    """상품 이름 · 규격 글자에서 (양, 단위)를 읽음. '양파 15kg' → (15, 'kg'), '감자 500g×2봉' → (1000, 'g'),
-    '배추 3포기' → (3, '포기'). 무게 · 용량이 있으면 개수보다 우선. 못 읽으면 None."""
-    found = []
+    """상품 이름 · 규격 글자에서 전체 (양, 단위)를 읽음. 못 읽으면 None.
+    '양파 15kg' → (15, 'kg') · '감자 500g×2봉' → (1000, 'g') · '배추 3포기' → (3, '포기')
+    '감자 (대, 80g이상/개, 1Kg/EA)' → (1, 'Kg'): 1개 무게(○g/개)는 빼고, 무게 · 용량이 여럿이면 가장 큰 것
+    (예: '깻잎 20g내외*10단 200g' → 200g). 무게 · 용량이 없으면 처음 나온 개수."""
+    weights, counts = [], []
     for m in _PACK.finditer(text or ""):
         qty, unit, times = float(m.group(1)), m.group(2), m.group(3)
-        found.append((qty * (int(times) if times else 1), unit))
-    if not found:
-        return None
-    for qty, unit in found:
-        if _norm_unit(unit) in _WEIGHT or _norm_unit(unit) in _VOLUME:
-            return qty, unit
-    return found[0]
+        qty *= int(times) if times else 1
+        u = _norm_unit(unit)
+        if u in _WEIGHT or u in _VOLUME:
+            if _PER_PIECE.match(text[m.end():]):
+                continue
+            weights.append((qty * _WEIGHT.get(u, _VOLUME.get(u)), qty, unit))
+        else:
+            counts.append((qty, unit))
+    if weights:
+        _, qty, unit = max(weights)
+        return qty, unit
+    if counts:
+        return counts[0]
+    return (1.0, "kg") if _BARE_KG.search(text or "") else None

@@ -19,6 +19,7 @@ from pydantic import BaseModel
 
 import analysis
 import chat_log
+import cheaper as cheaper_sellers
 import demand
 import forecast_log
 import forecast_model
@@ -208,6 +209,14 @@ def event(content_id: str):
 def mart():
     """대형마트 판매가 (한국소비자원 참가격, 음식 재료만). 2주마다 조사돼서 6시간 보관."""
     return _guard(lambda: memo("mart", mart_price.mart_prices, ttl=6 * 3600))
+
+
+@app.get("/api/cheaper")
+def cheaper(item: str, paid: float | None = None):
+    """더 싼 판매처: 산 값(최근 영수증 · 없으면 대구 소매 평균)보다 기준 단위당 싼 식봄 상품, 싼 순서.
+    paid 를 주면 그 값과 비교 (예: /api/cheaper?item=양파&paid=2300). 10분 보관."""
+    return _guard(lambda: memo(f"cheaper:{item}:{paid}",
+                               lambda: cheaper_sellers.cheaper(item, paid, supabase_db.DEMO_STORE), ttl=600))
 
 
 def _forecast_or_empty():

@@ -1,0 +1,37 @@
+# 우리 부스팅(gbdt.py) vs 진짜 LightGBM · XGBoost 비교 — 같은 자료 · 같은 시험 기간 · 같은 지표
+# - compare/** 작업 공간에 올리면 바로 돌고, Actions 탭에서 직접 돌릴 수도 있음
+# - 결과: 실행 화면 요약표 + Supabase 보관함 models/forecast/lightgbm_compare.json
+# - 이 PC는 보안 정책으로 LightGBM 설치 파일이 막혀서, 깃허브 실행 컴퓨터에서 돌림
+name: LightGBM 비교
+
+on:
+  push:
+    branches: ["compare/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      PYTHONIOENCODING: utf-8
+      AT_SALE_API_KEY: ${{ secrets.AT_SALE_API_KEY }}
+      KMA_ASOS_API_KEY: ${{ secrets.KMA_ASOS_API_KEY }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 필요한 것 설치 (LightGBM · XGBoost 포함)
+        run: pip install numpy requests python-dotenv lightgbm xgboost
+
+      - name: 같은 자료로 비교
+        working-directory: salpi_agent
+        run: python lgbm_compare.py

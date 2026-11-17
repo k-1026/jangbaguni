@@ -34,15 +34,15 @@
 **⚙️ 백**
 - [ ] 원가율 기준 30% → 40%
 - [ ] 원가율 40% 넘으면 3가지 제안 (가격 조정 · 대체 재료 · 메뉴 제안) 서버
-- [ ] **로그인 · 로그아웃 서버** (실제 계정 확인 · 로그인 유지) — 화면은 됨
+- [x] **로그인 · 로그아웃 서버** (실제 계정 확인 · 로그인 유지) — 화면은 됨
 - [ ] **회원가입 · 탈퇴 서버** (사장님 · 가게 정보 저장 · 삭제) — 화면은 됨
 
 **🧠 AI · 데이터**
-- [ ] Actions → "매일 새벽 AI 예측 학습" 한 번 직접 돌려 보기
-- [ ] GitHub Secrets 5개 등록 (`AT_SALE_API_KEY` · `KMA_ASOS_API_KEY` · `SUPABASE_URL` · `SUPABASE_SECRET_KEY` · `GEMINI_API_KEY`)
-- [ ] 오늘 AI 모델 첫 예측 기록 확인 (사이트 한 번 열기 → `forecast_log` 에 `ai-` 버전 줄)
+- [x] Actions → "매일 새벽 AI 예측 학습" 한 번 직접 돌려 보기
+- [x] GitHub Secrets 5개 등록 (`AT_SALE_API_KEY` · `KMA_ASOS_API_KEY` · `SUPABASE_URL` · `SUPABASE_SECRET_KEY` · `GEMINI_API_KEY`)
+- [x] 오늘 AI 모델 첫 예측 기록 확인 (사이트 한 번 열기 → `forecast_log` 에 `ai-` 버전 줄)
 - [ ] Vercel 환경 변수에 예보 키 (`KMA_VILAGE_*` · `KMA_MID_*`)
-- [ ] 날씨 예보 받기 (단기 + 중기 → 앞으로 7일)
+- [x] 날씨 예보 받기 (단기 + 중기 → 앞으로 7일)
 - [ ] 단위 기준 정하기 (kg · 개 · 모)
 - [ ] "1개 = 몇 kg" 환산표 (배추 1포기 · 무 1개 · 양배추 1통 · 대파 1단 등, 출처 포함)
 

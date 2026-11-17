@@ -2286,10 +2286,22 @@ $("#receiptModalClose").onclick = closeReceipt;
 $("#receiptModal").onclick = (e) => { if (e.target.id === "receiptModal") closeReceipt(); };
 
 // ---------------------------------------------------------------
-// 마이페이지 (시연: 로그인했다고 치고 시연용 가게 계정): 첫 화면 내 정보 · 나의 영수증 · 설정(알림 · 권한) · 계정
+// 마이페이지: 로그인한 사장님 정보(/api/auth/me) · 나의 영수증 · 설정(알림 · 권한) · 계정
 // ---------------------------------------------------------------
-const ME = { name: "달서구 한식당 사장님", store: "살피 한식당", place: "대구 달서구", type: "한식 · 40석", email: "demo@salpi.example" };
-if (STORE_VIEW) $("#storeName").textContent = `나의 가게 · ${ME.store}`;
+if (STORE_VIEW) $("#storeName").textContent = `나의 가게 · ${readLogin()?.store || "내 가게"}`;
+// 휴대폰 번호는 가운데를 가려서 보여 줌 (01012345678 → 010-****-5678)
+const maskPhone = (p) => (p && p.length >= 10 ? `${p.slice(0, 3)}-****-${p.slice(-4)}` : "");
+// 마이페이지는 기억해 둔 정보로 바로 그리고 → 서버(/api/auth/me) 답이 오면 기억을 고치고 다시 그림 (빈 화면으로 기다리지 않게)
+function cachedProfile() {
+  const u = readLogin();
+  return u?.profile || { name: u?.name, store_name: u?.store, provider: u?.provider, login_id: u?.provider === "kakao" ? null : u?.id };
+}
+async function freshProfile() {
+  const u = readLogin();
+  const me = await authCall("/api/auth/me", { method: "GET", token: u?.access_token });
+  try { saveLogin({ ...u, profile: me, name: me.name, store: me.store_name }, !!localStorage.getItem(LOGIN_KEY)); } catch (e) {}
+  return me;
+}
 
 function openMypage(view = "home") {
   if (!SIGNED_IN) return goLogin();   // 마이페이지는 로그인한 사장님만
@@ -2345,14 +2357,26 @@ async function renderMypage(view) {
     showNotiPerm();
     return;
   }
-  box.innerHTML = `
+  const draw = (me, offline) => { if ($("#mypage").classList.contains("open") && $("#mypageTitle").textContent === "마이페이지") box.innerHTML = myHome(me, offline); };
+  const cached = cachedProfile();
+  draw(cached);
+  freshProfile().then((me) => { if (JSON.stringify(me) !== JSON.stringify(cached)) draw(me); }).catch(() => draw(cached, true));
+}
+
+function myHome(me, offline) {
+  const how = me.provider === "kakao" ? "카카오 로그인" : me.login_id ? `아이디 ${me.login_id}` : "";
+  const place = ["대구", me.district, me.place].filter(Boolean).join(" ");
+  return `
     <section class="my-card profile">
-      <img src="/static/img/owner_face.png" alt="">
-      <div><b>${esc(ME.name)}</b><small>${esc(ME.email)}</small></div>
+      <img src="${esc(me.avatar || "/static/img/owner_face.png")}" alt="" referrerpolicy="no-referrer" onerror="this.src='/static/img/owner_face.png'">
+      <div><b>${esc(me.name || "사장님")} 사장님</b><small>${esc(how)}</small></div>
     </section>
     <section class="my-card">
       <h4>내 정보</h4>
-      <dl><dt>지역</dt><dd>${esc(ME.place)}</dd><dt>업종</dt><dd>${esc(ME.type)}</dd></dl>
+      <dl><dt>가게</dt><dd>${esc(me.store_name || "아직 없어요")}</dd><dt>지역</dt><dd>${esc(place)}</dd>
+        ${me.business_type ? `<dt>업종</dt><dd>${esc(me.business_type)}</dd>` : ""}
+        ${me.phone ? `<dt>휴대폰</dt><dd>${esc(maskPhone(me.phone))}</dd>` : ""}</dl>
+      ${offline ? `<p class="muted small">서버에 연결하지 못해 기억해 둔 정보만 보여 드려요.</p>` : ""}
       <a class="my-link" href="/?page=store"><span>나의 가게</span><i>›</i></a>
       <button class="my-link" data-view="receipts"><span>나의 영수증</span><i>›</i></button>
     </section>

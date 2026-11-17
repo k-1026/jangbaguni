@@ -1118,3 +1118,6 @@ body.login-view .login-only, body.signup-view .signup-only { display: flex; }
 .bye-toast { position: fixed; left: 50%; top: 84px; z-index: 80; transform: translateX(-50%); padding: 12px 22px; border-radius: 999px;
   background: var(--ink); color: #fff; font-size: 15px; font-weight: 700; box-shadow: var(--e3); white-space: nowrap; animation: bye-in .25s ease-out; }
 @keyframes bye-in { from { opacity: 0; transform: translate(-50%, -8px); } }
+
+/* 카카오로 처음 온 사장님: 회원가입 카드에서 휴대폰 · 아이디 · 비밀번호 칸과 간편 가입 버튼을 숨기고 이름 · 가게 · 약관만 */
+.kakao-mode .su-local { display: none; }

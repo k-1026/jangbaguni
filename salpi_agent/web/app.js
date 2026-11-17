@@ -19,8 +19,8 @@ if (ITEM) {
   document.body.classList.add("item-view");
   $("#itemPage").hidden = false;
 }
-// 로그인 상태: 지금은 브라우저에만 기억함 (서버 로그인 · 카카오 연결 전 임시)
-// '로그인 상태 유지'를 켜면 브라우저를 닫아도 유지(localStorage), 끄면 창을 닫으면 풀림(sessionStorage)
+// 로그인 상태: 서버(/api/auth/*, Supabase 로그인)가 준 로그인 표를 이 브라우저에 보관 → 서버에 'Authorization: Bearer' 로 보냄
+// '로그인 상태 유지'를 켜면 브라우저를 닫아도 유지(localStorage), 끄면 창을 닫으면 풀림(sessionStorage). 비밀번호는 보관하지 않음
 const LOGIN_KEY = "salpi_login";
 function readLogin() {
   try { return JSON.parse(localStorage.getItem(LOGIN_KEY) || sessionStorage.getItem(LOGIN_KEY) || "null"); } catch (e) { return null; }
@@ -31,9 +31,24 @@ function saveLogin(user, keep) {
     return true;
   } catch (e) { return false; }
 }
-// 로그아웃: 기억해 둔 로그인 상태를 지우고 첫 화면으로 (나의 가게처럼 로그인이 필요한 페이지에 남지 않게)
-function logout() {
+function clearLogin() {
   try { localStorage.removeItem(LOGIN_KEY); sessionStorage.removeItem(LOGIN_KEY); } catch (e) {}
+}
+// 서버 답 → 이 브라우저에 보관할 것 (로그인 표 + 사장님 · 가게 이름)
+const sessionToLogin = (s) => ({ id: s.user.login_id || s.user.name, provider: s.user.provider, name: s.user.name, store: s.user.store_name, store_id: s.user.store_id,
+  profile: s.user, access_token: s.access_token, refresh_token: s.refresh_token, expires_at: s.expires_at, at: Date.now() });
+async function authCall(url, { method = "POST", body, token } = {}) {
+  const r = await fetch(url, { method, headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: body ? JSON.stringify(body) : undefined });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.detail || "잠시 뒤 다시 해 주세요.");
+  return data;
+}
+// 로그아웃: 서버에서 로그인 표를 무효로 하고 · 이 브라우저 기억을 지우고 첫 화면으로 (나의 가게처럼 로그인이 필요한 페이지에 남지 않게)
+function logout() {
+  const u = readLogin();
+  if (u?.access_token) fetch("/api/auth/logout", { method: "POST", headers: { Authorization: `Bearer ${u.access_token}` }, keepalive: true }).catch(() => {});
+  clearLogin();
   location.replace("/");
 }
 // 탈퇴 뒤 첫 화면에서 한 번만 인사
@@ -75,6 +90,34 @@ $("#storeBtn").hidden = $("#bellBtn").hidden = $("#meBtn").hidden = !SIGNED_IN;
 $("#loginBtn").hidden = SIGNED_IN || AUTH_VIEW;
 $("#loginBtn").href = LOGIN_URL;
 
+// 페이지를 열 때 로그인 표 확인: 서버 연결 전 임시 로그인이면 다시 로그인, 곧 끝나는 표는 새로 받음 (못 받으면 로그아웃)
+(async () => {
+  const u = readLogin();
+  if (!u) return;
+  const relogin = () => { clearLogin(); location.replace(PAGE === "store" ? LOGIN_URL : location.href); };
+  if (!u.refresh_token) return relogin();
+  if ((u.expires_at || 0) * 1000 - Date.now() > 60000) return;
+  try {
+    const keep = (() => { try { return !!localStorage.getItem(LOGIN_KEY); } catch (e) { return false; } })();
+    saveLogin(sessionToLogin(await authCall("/api/auth/refresh", { body: { refresh_token: u.refresh_token } })), keep);
+  } catch (e) { relogin(); }
+})();
+
+// 카카오에서 돌아옴 (/?page=oauth#access_token=...): 가게가 있으면 바로 로그인, 처음이면 가게 정보만 받는 가입 화면으로
+const OAUTH_KEY = "salpi_oauth";   // 가게 정보를 받기 전까지 카카오 로그인 표를 잠깐 보관 (이 창에서만)
+const kakaoStart = () => location.assign(`/api/auth/kakao?next=${encodeURIComponent(LOGIN_NEXT)}`);
+if (!ITEM && PAGE === "oauth" && !SIGNED_IN) (async () => {
+  const h = new URLSearchParams(location.hash.slice(1));
+  const fail = (m) => location.replace(`/?page=login&next=${encodeURIComponent(LOGIN_NEXT)}&err=${encodeURIComponent(m)}`);
+  if (!h.get("access_token")) return fail(h.get("error_description") || "카카오 로그인을 하지 못했어요. 다시 해 주세요.");
+  const s = { access_token: h.get("access_token"), refresh_token: h.get("refresh_token"),
+    expires_at: Number(h.get("expires_at")) || Math.floor(Date.now() / 1000) + Number(h.get("expires_in") || 3600) };
+  try { s.user = await authCall("/api/auth/me", { method: "GET", token: s.access_token }); } catch (e) { return fail(e.message); }
+  if (s.user.store_id) { saveLogin(sessionToLogin(s), true); return location.replace(LOGIN_NEXT); }
+  try { sessionStorage.setItem(OAUTH_KEY, JSON.stringify(s)); } catch (e) {}
+  location.replace(`/?page=signup&kakao=1&next=${encodeURIComponent(LOGIN_NEXT)}`);
+})();
+
 // 로그인 · 회원가입 카드에서 같이 쓰는 것: 안내 한 줄, 비밀번호 보기 눈 버튼, 아직 연결 전인 버튼(data-soon)
 function authMsg(box) {
   return (text) => { box.textContent = text; box.hidden = !text; };
@@ -104,14 +147,25 @@ if (LOGIN_VIEW) {
   eyeToggle($("#loginEye"), $("#loginPw"));
   soonButtons($("#loginForm"), msg);   // 간편 로그인 · 아이디 찾기 · 비밀번호 찾기는 아직 연결 전
   $("#loginToSignup").href = authLink("signup");
-  $("#loginForm").onsubmit = (e) => {
+  $("#loginKakao").onclick = kakaoStart;
+  const loginErr = new URLSearchParams(location.search).get("err");   // 카카오 로그인 실패하고 돌아온 경우
+  if (loginErr) msg(loginErr);
+  $("#loginForm").onsubmit = async (e) => {
     e.preventDefault();
     const id = $("#loginId").value.trim(), pw = $("#loginPw").value;
     if (!id) { msg("아이디 또는 휴대폰 번호를 입력해 주세요."); $("#loginId").focus(); return; }
     if (!pw) { msg("비밀번호를 입력해 주세요."); $("#loginPw").focus(); return; }
-    // 임시: 서버 확인 전이라 아이디 · 비밀번호를 넣으면 로그인한 것으로 봄 (비밀번호는 저장하지 않음)
-    if (!saveLogin({ id, at: Date.now() }, $("#loginKeep").checked)) { msg("이 브라우저에서는 로그인 상태를 기억할 수 없어요."); return; }
-    location.replace(LOGIN_NEXT);
+    const btn = e.submitter || $("#loginForm button[type=submit]");
+    if (btn) btn.disabled = true;
+    try {
+      const s = await authCall("/api/auth/login", { body: { id, password: pw } });   // 아이디 또는 휴대폰 번호
+      if (!saveLogin(sessionToLogin(s), $("#loginKeep").checked)) { msg("이 브라우저에서는 로그인 상태를 기억할 수 없어요."); return; }
+      location.replace(LOGIN_NEXT);
+    } catch (err) {
+      msg(err.message);
+    } finally {
+      if (btn) btn.disabled = false;
+    }
   };
   $("#loginId").focus();
 }
@@ -123,6 +177,16 @@ if (SIGNUP_VIEW) {
   eyeToggle($("#suEye"), $("#suPw"));
   soonButtons($("#signupForm"), msg);   // 카카오 · 네이버 · 구글 가입은 아직 연결 전
   $("#signupToLogin").href = authLink("login");
+  $("#suKakao").onclick = kakaoStart;
+  // 카카오로 처음 온 사장님: 이름 · 가게 · 약관만 받음 (휴대폰 · 아이디 · 비밀번호는 카카오가 대신)
+  const pending = (() => { try { return JSON.parse(sessionStorage.getItem(OAUTH_KEY) || "null"); } catch (e) { return null; } })();
+  const KAKAO_MODE = new URLSearchParams(location.search).get("kakao") === "1" && !!pending?.access_token;
+  if (KAKAO_MODE) {
+    $("#signupForm").classList.add("kakao-mode");
+    $("#signupForm h1").textContent = "가게 정보";
+    $("#suKakaoNote").hidden = false;
+    $("#suName").value = pending.user?.name || "";
+  }
 
   // 휴대폰 인증: 번호를 바꾸면 인증을 다시 받아야 함
   let verified = false, left = 0, tick = null;
@@ -178,12 +242,25 @@ if (SIGNUP_VIEW) {
   $("#suAll").onchange = () => terms.forEach((t) => { t.checked = $("#suAll").checked; });
   terms.forEach((t) => { t.onchange = () => { $("#suAll").checked = terms.every((x) => x.checked); }; });
 
-  $("#signupForm").onsubmit = (e) => {
+  $("#signupForm").onsubmit = async (e) => {
     e.preventDefault();
     const name = $("#suName").value.trim(), id = $("#suId").value.trim(), pw = $("#suPw").value, store = $("#suStore").value.trim();
     const gu = $("#suGu").value;   // 대구 구 · 군만 받음 (살피는 대구 시세 서비스)
     const place = ["대구", gu, $("#suPlaceMore").value.trim()].filter(Boolean).join(" ");
     if (!name) return fail("이름을 입력해 주세요.", $("#suName"));
+    if (KAKAO_MODE) {
+      if (!store) return fail("가게 이름을 입력해 주세요.", $("#suStore"));
+      if (!gu) return fail("가게가 있는 구 · 군을 골라 주세요.", $("#suGu"));
+      if (terms.some((t) => t.dataset.required !== undefined && !t.checked)) return fail("필수 약관에 동의해 주세요.");
+      try {
+        const r = await authCall("/api/auth/store", { token: pending.access_token, body: { name, store, district: gu,
+          place: $("#suPlaceMore").value.trim(), alarm: $("#suAlarm").checked, terms_ok: true } });
+        if (!saveLogin(sessionToLogin({ ...pending, user: r.user }), true)) return fail("이 브라우저에서는 로그인 상태를 기억할 수 없어요.");
+        try { sessionStorage.removeItem(OAUTH_KEY); } catch (err) {}
+        location.replace(LOGIN_NEXT);
+      } catch (err) { fail(err.message); }
+      return;
+    }
     if (!verified) return fail("휴대폰 번호를 인증해 주세요.", $("#suPhone"));
     if (!/^[A-Za-z0-9_]{4,}$/.test(id)) return fail("아이디는 영문 · 숫자 4자 이상으로 정해 주세요.", $("#suId"));
     if (pw.length < 8 || !/[A-Za-z]/.test(pw) || !/\d/.test(pw)) return fail("비밀번호는 영문 · 숫자를 섞어 8자 이상으로 정해 주세요.", $("#suPw"));
@@ -191,9 +268,18 @@ if (SIGNUP_VIEW) {
     if (!store) return fail("가게 이름을 입력해 주세요.", $("#suStore"));
     if (!gu) return fail("가게가 있는 구 · 군을 골라 주세요.", $("#suGu"));
     if (terms.some((t) => t.dataset.required !== undefined && !t.checked)) return fail("필수 약관에 동의해 주세요.");
-    // 임시: 서버 가입 전이라 가입하면 바로 로그인한 것으로 봄 (비밀번호 · 휴대폰 번호는 저장하지 않음)
-    if (!saveLogin({ id, name, store, place, alarm: $("#suAlarm").checked, at: Date.now() }, true)) return fail("이 브라우저에서는 로그인 상태를 기억할 수 없어요.");
-    location.replace(LOGIN_NEXT);
+    const btn = e.submitter || $("#signupForm button[type=submit]");
+    if (btn) btn.disabled = true;
+    try {
+      const s = await authCall("/api/auth/signup", { body: { name, phone: phoneDigits(), login_id: id, password: pw, store, district: gu,
+        place: $("#suPlaceMore").value.trim(), alarm: $("#suAlarm").checked, terms_ok: true } });
+      if (!saveLogin(sessionToLogin(s), true)) return fail("이 브라우저에서는 로그인 상태를 기억할 수 없어요.");
+      location.replace(LOGIN_NEXT);
+    } catch (err) {
+      fail(err.message);
+    } finally {
+      if (btn) btn.disabled = false;
+    }
   };
   $("#suName").focus();
 }
@@ -2200,10 +2286,22 @@ $("#receiptModalClose").onclick = closeReceipt;
 $("#receiptModal").onclick = (e) => { if (e.target.id === "receiptModal") closeReceipt(); };
 
 // ---------------------------------------------------------------
-// 마이페이지 (시연: 로그인했다고 치고 시연용 가게 계정): 첫 화면 내 정보 · 나의 영수증 · 설정(알림 · 권한) · 계정
+// 마이페이지: 로그인한 사장님 정보(/api/auth/me) · 나의 영수증 · 설정(알림 · 권한) · 계정
 // ---------------------------------------------------------------
-const ME = { name: "달서구 한식당 사장님", store: "살피 한식당", place: "대구 달서구", type: "한식 · 40석", email: "demo@salpi.example" };
-if (STORE_VIEW) $("#storeName").textContent = `나의 가게 · ${ME.store}`;
+if (STORE_VIEW) $("#storeName").textContent = `나의 가게 · ${readLogin()?.store || "내 가게"}`;
+// 휴대폰 번호는 가운데를 가려서 보여 줌 (01012345678 → 010-****-5678)
+const maskPhone = (p) => (p && p.length >= 10 ? `${p.slice(0, 3)}-****-${p.slice(-4)}` : "");
+// 마이페이지는 기억해 둔 정보로 바로 그리고 → 서버(/api/auth/me) 답이 오면 기억을 고치고 다시 그림 (빈 화면으로 기다리지 않게)
+function cachedProfile() {
+  const u = readLogin();
+  return u?.profile || { name: u?.name, store_name: u?.store, provider: u?.provider, login_id: u?.provider === "kakao" ? null : u?.id };
+}
+async function freshProfile() {
+  const u = readLogin();
+  const me = await authCall("/api/auth/me", { method: "GET", token: u?.access_token });
+  try { saveLogin({ ...u, profile: me, name: me.name, store: me.store_name }, !!localStorage.getItem(LOGIN_KEY)); } catch (e) {}
+  return me;
+}
 
 function openMypage(view = "home") {
   if (!SIGNED_IN) return goLogin();   // 마이페이지는 로그인한 사장님만
@@ -2259,14 +2357,26 @@ async function renderMypage(view) {
     showNotiPerm();
     return;
   }
-  box.innerHTML = `
+  const draw = (me, offline) => { if ($("#mypage").classList.contains("open") && $("#mypageTitle").textContent === "마이페이지") box.innerHTML = myHome(me, offline); };
+  const cached = cachedProfile();
+  draw(cached);
+  freshProfile().then((me) => { if (JSON.stringify(me) !== JSON.stringify(cached)) draw(me); }).catch(() => draw(cached, true));
+}
+
+function myHome(me, offline) {
+  const how = me.provider === "kakao" ? "카카오 로그인" : me.login_id ? `아이디 ${me.login_id}` : "";
+  const place = ["대구", me.district, me.place].filter(Boolean).join(" ");
+  return `
     <section class="my-card profile">
-      <img src="/static/img/owner_face.png" alt="">
-      <div><b>${esc(ME.name)}</b><small>${esc(ME.email)}</small></div>
+      <img src="${esc(me.avatar || "/static/img/owner_face.png")}" alt="" referrerpolicy="no-referrer" onerror="this.src='/static/img/owner_face.png'">
+      <div><b>${esc(me.name || "사장님")} 사장님</b><small>${esc(how)}</small></div>
     </section>
     <section class="my-card">
       <h4>내 정보</h4>
-      <dl><dt>지역</dt><dd>${esc(ME.place)}</dd><dt>업종</dt><dd>${esc(ME.type)}</dd></dl>
+      <dl><dt>가게</dt><dd>${esc(me.store_name || "아직 없어요")}</dd><dt>지역</dt><dd>${esc(place)}</dd>
+        ${me.business_type ? `<dt>업종</dt><dd>${esc(me.business_type)}</dd>` : ""}
+        ${me.phone ? `<dt>휴대폰</dt><dd>${esc(maskPhone(me.phone))}</dd>` : ""}</dl>
+      ${offline ? `<p class="muted small">서버에 연결하지 못해 기억해 둔 정보만 보여 드려요.</p>` : ""}
       <a class="my-link" href="/?page=store"><span>나의 가게</span><i>›</i></a>
       <button class="my-link" data-view="receipts"><span>나의 영수증</span><i>›</i></button>
     </section>
@@ -2339,7 +2449,7 @@ document.addEventListener("keydown", (e) => {
 });
 
 // 회원탈퇴: 한 번 더 묻는 팝업 → '안내를 확인했어요'에 체크해야 [탈퇴하기]가 눌림
-// 탈퇴하면 이 브라우저의 로그인 상태 · 알림 설정을 지우고 첫 화면으로 (임시: 서버 계정이 생기면 가게 정보 · 영수증도 서버에서 지움)
+// 탈퇴하면 서버에서 계정 · 가게 · 메뉴 · 영수증(사진 포함)을 지우고, 이 브라우저의 로그인 상태 · 알림 설정도 지우고 첫 화면으로
 function openLeave() {
   $("#leaveAgree").checked = false;
   $("#leaveOk").disabled = true;
@@ -2350,12 +2460,23 @@ function closeLeave() { $("#leaveModal").hidden = true; }
 $("#leaveAgree").onchange = () => { $("#leaveOk").disabled = !$("#leaveAgree").checked; };
 $("#leaveCancel").onclick = closeLeave;
 $("#leaveModal").onclick = (e) => { if (e.target === e.currentTarget) closeLeave(); };   // 바깥을 누르면 취소
-$("#leaveOk").onclick = () => {
+$("#leaveOk").onclick = async () => {
+  const btn = $("#leaveOk"), label = btn.textContent;
+  btn.disabled = true;
+  try {
+    await authCall("/api/auth/me", { method: "DELETE", token: readLogin()?.access_token });
+  } catch (err) {
+    btn.textContent = "탈퇴하지 못했어요 · 다시 누르기";
+    btn.disabled = false;
+    return;
+  }
   try {
     [ALERT_PREFS_KEY, ALERT_READ_KEY].forEach((k) => localStorage.removeItem(k));
     sessionStorage.setItem(BYE_KEY, "1");   // 첫 화면에서 인사 한 번
   } catch (err) {}
-  logout();
+  btn.textContent = label;
+  clearLogin();
+  location.replace("/");
 };
 
 // ---------------------------------------------------------------

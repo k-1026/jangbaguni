@@ -148,7 +148,7 @@
         로그인
       </button>
       <div class="login-or"><span>또는 간편 로그인</span></div>
-      <button class="login-social kakao" type="button" data-soon="카카오 로그인">
+      <button class="login-social kakao" type="button" id="loginKakao">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4C6.9 4 3 7.2 3 11.1c0 2.5 1.6 4.6 4 5.9l-.9 3.3c-.1.3.3.5.5.3l3.9-2.6c.5.1 1 .1 1.5.1 5.1 0 9-3.2 9-7.1S17.1 4 12 4z"/></svg>
         카카오로 3초 만에 시작하기
       </button>
@@ -172,15 +172,15 @@
   <section class="signup-only login-page" id="signup">
     <form class="login-card signup-card" id="signupForm" novalidate>
       <h1>회원가입</h1>
-      <button class="login-social kakao" type="button" data-soon="카카오 가입">
+      <button class="login-social kakao su-local" type="button" id="suKakao">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4C6.9 4 3 7.2 3 11.1c0 2.5 1.6 4.6 4 5.9l-.9 3.3c-.1.3.3.5.5.3l3.9-2.6c.5.1 1 .1 1.5.1 5.1 0 9-3.2 9-7.1S17.1 4 12 4z"/></svg>
         카카오로 3초 만에 시작하기
       </button>
-      <button class="login-social naver" type="button" data-soon="네이버 가입">
+      <button class="login-social naver su-local" type="button" data-soon="네이버 가입">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.6 12.8 8.1 2H2v20h6.4V11.2L15.9 22H22V2h-6.4z"/></svg>
         네이버 아이디로 가입하기
       </button>
-      <button class="login-social google" type="button" data-soon="Google 가입">
+      <button class="login-social google su-local" type="button" data-soon="Google 가입">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path fill="#4285F4" d="M22.5 12.3c0-.8-.1-1.5-.2-2.2H12v4.2h5.9c-.3 1.4-1 2.5-2.2 3.3v2.7h3.6c2-1.9 3.2-4.7 3.2-8z"/>
           <path fill="#34A853" d="M12 23c3 0 5.5-1 7.3-2.7l-3.6-2.7c-1 .7-2.2 1.1-3.7 1.1-2.9 0-5.3-1.9-6.2-4.5H2.1v2.8C3.9 20.6 7.7 23 12 23z"/>
@@ -189,11 +189,13 @@
         </svg>
         구글 계정으로 가입하기
       </button>
-      <div class="login-or"><span>또는 직접 가입</span></div>
+      <div class="login-or su-local"><span>또는 직접 가입</span></div>
 
       <h2 class="signup-sec">사장님 정보</h2>
       <label class="login-label" for="suName">이름</label>
       <input class="login-input" id="suName" autocomplete="name" placeholder="홍길동">
+      <p class="signup-hint ok" id="suKakaoNote" hidden>카카오로 확인됐어요. 가게 정보만 한 번 알려 주세요.</p>
+      <div class="su-local">
       <label class="login-label" for="suPhone">휴대폰 번호</label>
       <div class="signup-inline">
         <input class="login-input" id="suPhone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="13" placeholder="010-1234-5678">
@@ -221,6 +223,7 @@
       <label class="login-label" for="suPw2">비밀번호 확인</label>
       <input class="login-input" id="suPw2" type="password" autocomplete="new-password">
       <p class="signup-hint" id="suPwHint" hidden></p>
+      </div>
 
       <h2 class="signup-sec">가게 정보</h2>
       <label class="login-label" for="suStore">가게 이름</label>

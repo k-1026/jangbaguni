@@ -8,15 +8,16 @@
 
 from analysis import extra_trend, item_trend
 from data_sources import EXTRA_ITEMS, ITEMS
+from units import per_base_price, to_base
 
 # 시세 API가 없는 재료: (단위, 단위당 원) — 시연용 가정값 (supabase/seed.sql 영수증 값 기준)
 REFERENCE_PRICES = {
     "돼지고기 앞다리": ("kg", 12800), "돼지고기 삼겹살": ("kg", 22000), "닭고기": ("kg", 6500),
     "소고기 국거리": ("kg", 30000), "오징어": ("kg", 15000), "두부": ("모", 1200),
     "배추김치": ("kg", 3800), "된장": ("kg", 7000), "고추장": ("kg", 7000), "고춧가루": ("kg", 14000),
-    "간장": ("kg", 4000), "설탕": ("kg", 2000), "깐마늘": ("kg", 11000), "쌀": ("kg", 2750),
+    "간장": ("L", 4600), "설탕": ("kg", 2000), "깐마늘": ("kg", 11000), "쌀": ("kg", 2750),
     "떡볶이떡": ("kg", 4000), "어묵": ("kg", 6000), "계란": ("개", 250), "콩나물": ("kg", 3000),
-    "참기름": ("kg", 20000), "햄": ("kg", 9000), "라면사리": ("개", 400),
+    "참기름": ("L", 18400), "햄": ("kg", 9000), "라면사리": ("개", 400),
 }
 
 # 사장님이 흔히 부르는 이름 → (품목, 환산 배율). 밥 200g ≈ 쌀 90g
@@ -38,7 +39,7 @@ STANDARD_RECIPES = {
     "떡볶이": [("떡볶이떡", 200, "g"), ("어묵", 60, "g"), ("양배추", 40, "g"), ("대파", 20, "g"),
             ("고추장", 30, "g"), ("고춧가루", 5, "g"), ("설탕", 15, "g")],
     "비빔밥": [("쌀", 150, "g"), ("콩나물", 40, "g"), ("시금치", 30, "g"), ("당근", 20, "g"), ("애호박", 30, "g"),
-            ("계란", 1, "개"), ("고추장", 20, "g"), ("참기름", 5, "g")],
+            ("계란", 1, "개"), ("고추장", 20, "g"), ("참기름", 5, "mL")],
     "부대찌개": [("햄", 80, "g"), ("배추김치", 60, "g"), ("두부", 0.2, "모"), ("양파", 30, "g"), ("대파", 20, "g"),
              ("라면사리", 0.5, "개"), ("고춧가루", 5, "g"), ("쌀", 120, "g")],
     "오징어볶음": [("오징어", 120, "g"), ("양파", 60, "g"), ("양배추", 40, "g"), ("당근", 15, "g"), ("대파", 15, "g"),
@@ -69,7 +70,7 @@ def _unit_price(name):
 
 def menu_cost(menu, sale_price, ingredients=None):
     """menu: 메뉴 이름, sale_price: 판매가(원),
-    ingredients: [{"name", "amount", "unit"(g·모·개)}] — 없으면 표준 레시피 사용."""
+    ingredients: [{"name", "amount", "unit"(g · kg · mL · L · 모 · 개)}] — 없으면 표준 레시피 사용."""
     if ingredients:
         recipe = []
         for i in ingredients:
@@ -84,14 +85,22 @@ def menu_cost(menu, sale_price, ingredients=None):
                 "message": "표준 레시피가 없는 메뉴예요. 1인분에 들어가는 재료와 양을 알려 주세요.",
                 "standard_menus": list(STANDARD_RECIPES)}
 
-    lines, unknown, total = [], [], 0.0
+    lines, unknown, unit_unknown, total = [], [], [], 0.0
     for name, amount, unit in recipe:
         p = _unit_price(name)
         if not p:
             unknown.append(name)
             continue
         p_unit, price, source = p
-        qty = amount / 1000 if unit == "g" and p_unit == "kg" else amount
+        # 단위 기준(units.py): 레시피 양 · 단가를 둘 다 기준 단위(kg · L · 모 · 개)로 맞춘 뒤 곱함
+        b = to_base(name, amount, unit)
+        if p_unit != b["unit"]:
+            pb = per_base_price(name, price, 1, p_unit)
+            price, p_unit = pb["price"], pb["unit"]
+        if b["qty"] is None or price is None:
+            unit_unknown.append(f"{name} {amount:g}{unit}")
+            continue
+        qty = b["qty"]
         cost = qty * price
         total += cost
         lines.append({"name": name, "amount": f"{amount:g}{unit}", "unit_price": f"{price:,.0f}원/{p_unit}",
@@ -112,6 +121,7 @@ def menu_cost(menu, sale_price, ingredients=None):
         "cost_per_serving": round(total), "cost_ratio_pct": round(ratio, 1) if ratio else None,
         "margin_after_ingredients": round(sale_price - total) if sale_price else None,
         "verdict": verdict, "biggest_costs": lines[:3], "breakdown": lines, "unknown_price_items": unknown,
+        "unknown_unit_items": unit_unknown,   # 단위를 기준 단위로 못 바꾼 재료 (예: '큰술') → 계산에서 뺌
         "note": "식재료비만 본 값이에요(인건비 · 임대료 · 가스비 제외). 참고 단가는 영수증 값으로 바꾸면 정확해져요.",
         "price_for_30pct": round(total / 0.30, -2),   # 재료비 30%가 되는 판매가
     }

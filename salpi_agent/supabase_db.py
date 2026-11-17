@@ -5,10 +5,21 @@ Secret key는 서버에서만 쓰고 화면(브라우저)에는 절대 보내지
 """
 
 import os
+import threading
 
 import requests
 
 from data_sources import ApiError, ApiKeyMissing
+
+_local = threading.local()
+
+
+def _http():
+    """Supabase 와 맺은 연결을 재사용 (요청마다 새로 연결하면 암호 연결에만 0.3~0.5초). 서버 스레드마다 하나."""
+    if not hasattr(_local, "session"):
+        _local.session = requests.Session()
+    return _local.session
+
 
 DEMO_STORE = "00000000-0000-0000-0000-000000000001"   # 시연용 가게 '살피 시연 한식당' (seed.sql)
 
@@ -25,7 +36,7 @@ def select(table, **params):
     base, headers = _base()
     params.setdefault("select", "*")
     try:
-        r = requests.get(base + table, params=params, headers={**headers, "Range": "0-9999"}, timeout=20)
+        r = _http().get(base + table, params=params, headers={**headers, "Range": "0-9999"}, timeout=20)
         r.raise_for_status()
         return r.json()
     except requests.RequestException as e:
@@ -39,7 +50,7 @@ def upsert(table, rows, on_conflict):
         return
     base, headers = _base()
     try:
-        r = requests.post(base + table, params={"on_conflict": on_conflict}, json=rows, timeout=20,
+        r = _http().post(base + table, params={"on_conflict": on_conflict}, json=rows, timeout=20,
                           headers={**headers, "Prefer": "resolution=merge-duplicates,return=minimal"})
         r.raise_for_status()
     except requests.RequestException as e:
@@ -53,7 +64,7 @@ def insert_ignore(table, rows, on_conflict):
         return
     base, headers = _base()
     try:
-        r = requests.post(base + table, params={"on_conflict": on_conflict}, json=rows, timeout=20,
+        r = _http().post(base + table, params={"on_conflict": on_conflict}, json=rows, timeout=20,
                           headers={**headers, "Prefer": "resolution=ignore-duplicates,return=minimal"})
         r.raise_for_status()
     except requests.RequestException as e:
@@ -65,7 +76,7 @@ def insert(table, rows):
     """새 줄을 넣고 넣은 줄(자동 번호 포함)을 돌려받음."""
     base, headers = _base()
     try:
-        r = requests.post(base + table, json=rows, timeout=20, headers={**headers, "Prefer": "return=representation"})
+        r = _http().post(base + table, json=rows, timeout=20, headers={**headers, "Prefer": "return=representation"})
         r.raise_for_status()
         return r.json()
     except requests.RequestException as e:
@@ -77,7 +88,7 @@ def update(table, values, **params):
     """조건(params)에 맞는 줄의 값을 바꿈. 예: update("purchases", {"supplier": "마트"}, id="eq.3")"""
     base, headers = _base()
     try:
-        r = requests.patch(base + table, params=params, json=values, timeout=20, headers={**headers, "Prefer": "return=representation"})
+        r = _http().patch(base + table, params=params, json=values, timeout=20, headers={**headers, "Prefer": "return=representation"})
         r.raise_for_status()
         return r.json()
     except requests.RequestException as e:
@@ -88,7 +99,7 @@ def update(table, values, **params):
 def delete(table, **params):
     base, headers = _base()
     try:
-        r = requests.delete(base + table, params=params, timeout=20, headers={**headers, "Prefer": "return=representation"})
+        r = _http().delete(base + table, params=params, timeout=20, headers={**headers, "Prefer": "return=representation"})
         r.raise_for_status()
         return r.json()
     except requests.RequestException as e:
@@ -109,11 +120,11 @@ def upload(bucket, path, data, content_type):
     auth = {"apikey": headers["apikey"], "Authorization": f"Bearer {headers['apikey']}"}
     try:
         if bucket not in _buckets_ready:
-            r = requests.post(storage + "bucket", json={"id": bucket, "name": bucket, "public": False}, headers=auth, timeout=20)
+            r = _http().post(storage + "bucket", json={"id": bucket, "name": bucket, "public": False}, headers=auth, timeout=20)
             if r.status_code not in (200, 201, 400, 409):   # 400 · 409 = 이미 있음
                 r.raise_for_status()
             _buckets_ready.add(bucket)
-        r = requests.post(f"{storage}object/{bucket}/{path}", data=data, timeout=30,
+        r = _http().post(f"{storage}object/{bucket}/{path}", data=data, timeout=30,
                           headers={**auth, "Content-Type": content_type, "x-upsert": "true"})
         r.raise_for_status()
         return f"{bucket}/{path}"
@@ -127,7 +138,7 @@ def download(bucket, path):
     base, headers = _base()
     storage = base.replace("/rest/v1/", "/storage/v1/")
     try:
-        r = requests.get(f"{storage}object/{bucket}/{path}", timeout=30,
+        r = _http().get(f"{storage}object/{bucket}/{path}", timeout=30,
                          headers={"apikey": headers["apikey"], "Authorization": f"Bearer {headers['apikey']}"})
         if r.status_code in (400, 404):   # 아직 없음
             return None
@@ -143,7 +154,7 @@ def remove_file(path):
     base, headers = _base()
     bucket, _, name = path.partition("/")
     try:
-        requests.delete(base.replace("/rest/v1/", "/storage/v1/") + f"object/{bucket}", json={"prefixes": [name]}, timeout=20,
+        _http().delete(base.replace("/rest/v1/", "/storage/v1/") + f"object/{bucket}", json={"prefixes": [name]}, timeout=20,
                         headers={"apikey": headers["apikey"], "Authorization": f"Bearer {headers['apikey']}"})
     except requests.RequestException:
         pass
@@ -155,7 +166,7 @@ def signed_url(path, seconds=600):
     bucket, _, name = path.partition("/")
     storage = base.replace("/rest/v1/", "/storage/v1")
     try:
-        r = requests.post(f"{storage}/object/sign/{bucket}/{name}", json={"expiresIn": seconds}, timeout=20,
+        r = _http().post(f"{storage}/object/sign/{bucket}/{name}", json={"expiresIn": seconds}, timeout=20,
                           headers={"apikey": headers["apikey"], "Authorization": f"Bearer {headers['apikey']}"})
         r.raise_for_status()
         return storage + r.json()["signedURL"]

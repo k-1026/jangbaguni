@@ -38,8 +38,8 @@
 - [ ] **회원가입 · 탈퇴 서버** (사장님 · 가게 정보 저장 · 삭제) — 화면은 됨
 
 **🧠 AI · 데이터**
-- [ ] GitHub Secrets 5개 등록 (`AT_SALE_API_KEY` · `KMA_ASOS_API_KEY` · `SUPABASE_URL` · `SUPABASE_SECRET_KEY` · `GEMINI_API_KEY`)
 - [ ] Actions → "매일 새벽 AI 예측 학습" 한 번 직접 돌려 보기
+- [ ] GitHub Secrets 5개 등록 (`AT_SALE_API_KEY` · `KMA_ASOS_API_KEY` · `SUPABASE_URL` · `SUPABASE_SECRET_KEY` · `GEMINI_API_KEY`)
 - [ ] 오늘 AI 모델 첫 예측 기록 확인 (사이트 한 번 열기 → `forecast_log` 에 `ai-` 버전 줄)
 - [ ] Vercel 환경 변수에 예보 키 (`KMA_VILAGE_*` · `KMA_MID_*`)
 - [ ] 날씨 예보 받기 (단기 + 중기 → 앞으로 7일)

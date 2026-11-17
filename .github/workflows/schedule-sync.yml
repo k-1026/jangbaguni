@@ -25,7 +25,7 @@ concurrency:
 
 jobs:
   sync:
-    if: github.event_name != 'issues' || contains(github.event.issue.labels.*.name, '일정')
+    if: github.event_name != 'issues' || github.event.issue.title == '📅 살피 일정 체크'
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}

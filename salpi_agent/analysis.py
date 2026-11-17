@@ -10,6 +10,7 @@ from datetime import date, timedelta
 from data_sources import (kind_of, BEEF_GRADES, EKAPE_LINKS, EKAPE_MARKET_NAME, EXTRA_ITEMS, PIG_GRADES, ITEMS, daegu_events, ekape_days,
                           events_between, foodspring_url, holidays, holidays_between, kst_today, perday_prices, sale_days,
                           weather_days)
+from units import per_base_price
 
 FLAT_BAND = 3.0  # ±3% 안쪽은 '비슷함'으로 본다
 
@@ -59,19 +60,29 @@ def _unit_price(r):
 
 
 def retail_series(item_name, days=35):
-    """KAMIS 조사가격(대구, 상품 등급): 날짜별 소매 평균가(단위 포함)."""
-    by_date, unit = {}, None
+    """KAMIS 조사가격(대구, 상품 등급): 날짜별 소매 평균가(단위 포함).
+    base_*: 단위 기준(units.py)으로 바꾼 값 — 포기 · 개로 조사하는 품목은 환산표로 "약" kg당."""
+    by_date, by_date_base, unit, base = {}, {}, None, None
     grd = ITEMS[item_name].get("retail_grd", "04")   # 상품 등급 (감귤 · 포도는 크기 등급)
     for r in perday_prices(item_name, days):
         if r.get("grd_cd") != grd or r.get("se_nm") != "소매":
             continue
         try:
             price, unit = _unit_price(r)
+            b = (per_base_price(item_name, price, 1, "kg") if unit == "kg"
+                 else per_base_price(item_name, float(r["exmn_dd_prc"]), r.get("unit_sz") or 1, r.get("unit")))
         except (TypeError, ValueError):
             continue
         d = f"{r['exmn_ymd'][:4]}-{r['exmn_ymd'][4:6]}-{r['exmn_ymd'][6:]}"
         by_date.setdefault(d, []).append(price)
-    return [{"date": d, "retail": round(statistics.mean(v)), "unit": unit} for d, v in sorted(by_date.items())]
+        if b["price"]:
+            by_date_base.setdefault(d, []).append(b["price"])
+            base = b
+    return [{"date": d, "retail": round(statistics.mean(v)), "unit": unit,
+             "base_price": round(statistics.mean(by_date_base[d])) if d in by_date_base else None,
+             "base_unit": base["unit"] if base else None, "base_how": base["how"] if base else "모름",
+             "base_note": base["note"] if base else None}
+            for d, v in sorted(by_date.items())]
 
 
 def _week_change(series, key):
@@ -101,7 +112,12 @@ def item_trend(item_name):
                       "kg_price": w_price, "week_change_pct": w_pct, "direction": _direction(w_pct),
                       "volume_kg": whl[-1]["volume_kg"] if whl else None},
         "retail": {"source": "aT 일별 도·소매가(KAMIS 조사) · 대구 소매 평균, 상품", "date": r_date,
-                   "price": r_price, "unit": ret[-1]["unit"] if ret else None, "week_change_pct": r_pct, "direction": _direction(r_pct)},
+                   "price": r_price, "unit": ret[-1]["unit"] if ret else None, "week_change_pct": r_pct, "direction": _direction(r_pct),
+                   # 단위 기준으로 바꾼 값 (도매 kg 값과 바로 비교 가능). how: 정확 · 약 · 모름
+                   "base_price": ret[-1]["base_price"] if ret and r_price else None,
+                   "base_unit": ret[-1]["base_unit"] if ret else None,
+                   "base_how": ret[-1]["base_how"] if ret and r_price else "모름",
+                   "base_note": ret[-1]["base_note"] if ret and r_price else None},
         "wholesale_history": whl[-14:],
     }
 
@@ -115,6 +131,8 @@ def market_overview():
                      "wholesale_kg": t["wholesale"]["kg_price"], "wholesale_change_pct": t["wholesale"]["week_change_pct"],
                      "wholesale_date": t["wholesale"]["date"], "direction": t["wholesale"]["direction"],
                      "retail_price": t["retail"]["price"], "retail_unit": t["retail"]["unit"],
+                     "retail_base_price": t["retail"]["base_price"], "retail_base_unit": t["retail"]["base_unit"],
+                     "retail_base_how": t["retail"]["base_how"],
                      "retail_change_pct": t["retail"]["week_change_pct"], "foodspring_url": foodspring_url(name)})
     return rows
 
@@ -262,6 +280,8 @@ def extra_trend(item_name):
         "item": item_name, "group": cfg["group"],
         "source": source, "price_basis": basis, "basis_label": label,
         "date": last, "price": price, "unit": series[-1]["unit"] if series else None,
+        # 단위 기준으로 바꾼 값 (예: 멸치액젓 kg당 → 약 L당). how: 정확 · 약 · 모름
+        "base": per_base_price(item_name, price, 1, series[-1]["unit"]) if series and price else None,
         "week_change_pct": week_pct, "direction": _direction(week_pct),
         "month_change_pct": month_pct, "month_from": series[0]["date"] if series else None,
         # 약 4주 + 그날 비(수산물만) · 공휴일 · 행사 (대시보드 그래프 · 재료 페이지 시세판에 씀)

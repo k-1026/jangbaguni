@@ -42,7 +42,7 @@
 - [x] GitHub Secrets 5개 등록 (`AT_SALE_API_KEY` · `KMA_ASOS_API_KEY` · `SUPABASE_URL` · `SUPABASE_SECRET_KEY` · `GEMINI_API_KEY`)
 - [x] 오늘 AI 모델 첫 예측 기록 확인 (사이트 한 번 열기 → `forecast_log` 에 `ai-` 버전 줄)
 - [ ] Vercel 환경 변수에 예보 키 (`KMA_VILAGE_*` · `KMA_MID_*`)
-- [ ] 날씨 예보 받기 (단기 + 중기 → 앞으로 7일)
+- [x] 날씨 예보 받기 (단기 + 중기 → 앞으로 7일)
 - [ ] 단위 기준 정하기 (kg · 개 · 모)
 - [ ] "1개 = 몇 kg" 환산표 (배추 1포기 · 무 1개 · 양배추 1통 · 대파 1단 등, 출처 포함)
 

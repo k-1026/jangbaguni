@@ -94,7 +94,9 @@ def _profile(user, store=False):
         store = ({"id": meta["store_id"], "name": meta.get("store_name"), "district": meta.get("district"),
                   "business_type": meta.get("business_type", "한식")} if meta.get("store_id") else _store_of(user["id"]))
     name = meta.get("name") or meta.get("full_name") or meta.get("nickname") or meta.get("preferred_username")   # 카카오는 닉네임
+    email = user.get("email") or ""
     return {"id": user["id"], "login_id": meta.get("login_id"), "name": name,
+            "email": None if email.endswith("@" + ID_DOMAIN) else email or None,   # 아이디로 가입하면 만들어 둔 가짜 주소라 안 보여 줌
             "provider": (user.get("app_metadata") or {}).get("provider", "email"),
             "phone": meta.get("phone"), "alarm": bool(meta.get("alarm")),
             "store_id": store["id"] if store else None, "store_name": store["name"] if store else None,

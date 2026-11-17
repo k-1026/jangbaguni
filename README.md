@@ -8,7 +8,7 @@
 - **12/3 발표 준비**
 - **12/4(금) 최종 발표**
 
-- ✅ **끝난 일 체크는 [Issue "📅 살피 일정 체크"](https://github.com/k-1026/jangbaguni/issues?q=is%3Aissue+is%3Aopen+label%3A%EC%9D%BC%EC%A0%95)에서 클릭 한 번** → 1분 안에 이 README에 자동 반영 · 이미 끝난 일은 [맨 아래 완료 목록](#-완료한-일)
+- ✅ **끝난 일 체크는 [Issue "📅 살피 일정 체크"](https://github.com/k-1026/jangbaguni/issues/86)에서 클릭 한 번** → 1분 안에 이 README에 자동 반영 · 이미 끝난 일은 [맨 아래 완료 목록](#-완료한-일)
 - 자세한 설명: [최종 계획](plan/1116_final_sprint_plan.md) · [AI 학습 모델](plan/forecast/1116_self_learning_forecast.md) · [화면 ↔ 서버 약속](plan/1116_api_contract.md) · [10/27~11/16 흐름](plan/1116_workflow_summary.md)
 
 ---

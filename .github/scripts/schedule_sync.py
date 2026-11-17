@@ -13,7 +13,6 @@ import subprocess
 import sys
 import tempfile
 
-LABEL = "일정"
 TITLE = "📅 살피 일정 체크"
 START = re.compile(r"<!-- 일정:시작[^>]*-->\n")
 END = "\n<!-- 일정:끝 -->"
@@ -41,8 +40,13 @@ def readme_part():
 
 
 def find_issue():
-    out = sh("gh", "issue", "list", "--repo", REPO, "--label", LABEL, "--state", "open", "--json", "number,body", "--limit", "1")
-    items = json.loads(out or "[]")
+    """제목이 같은 열린 Issue 중 가장 먼저 만든 것. 여러 개면 나머지는 닫음 (라벨은 안 붙는 경우가 있어 제목으로 찾음)."""
+    out = sh("gh", "issue", "list", "--repo", REPO, "--state", "open", "--json", "number,title,body", "--limit", "200")
+    items = sorted((i for i in json.loads(out or "[]") if i["title"].strip() == TITLE), key=lambda i: i["number"])
+    for dup in items[1:]:
+        sh("gh", "issue", "close", str(dup["number"]), "--repo", REPO, "--comment",
+           f"같은 일정 Issue가 두 번 만들어져서 닫아요. 체크는 #{items[0]['number']} 에서 해 주세요.", check=False)
+        print(f"중복 Issue #{dup['number']} 닫음")
     return items[0] if items else None
 
 
@@ -52,8 +56,7 @@ def to_issue(part):
     with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False, encoding="utf-8") as f:
         f.write(body)
     if not issue:
-        sh("gh", "label", "create", LABEL, "--repo", REPO, "--color", "E86A2E", "--description", "최종 일정 체크리스트", check=False)
-        url = sh("gh", "issue", "create", "--repo", REPO, "--title", TITLE, "--label", LABEL, "--body-file", f.name)
+        url = sh("gh", "issue", "create", "--repo", REPO, "--title", TITLE, "--body-file", f.name)
         sh("gh", "issue", "pin", url, "--repo", REPO, check=False)
         print(f"Issue 만듦: {url}")
     elif norm(issue["body"]) != norm(part):

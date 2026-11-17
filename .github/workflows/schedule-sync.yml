@@ -1,0 +1,45 @@
+# 일정 체크 자동 반영: Issue "📅 살피 일정 체크"에서 체크박스를 누르면 → 1분 안에 README에 자동으로 반영 (PR · 합치기를 사람이 안 함)
+# - Issue 체크 → 45초 기다렸다가 (여러 개를 연달아 누르면 마지막 것만) README 일정 부분을 Issue와 똑같이 → dev로 자동 PR · 합치기
+# - README 일정 부분이 dev에서 바뀌면 → Issue 본문도 README에 맞춤
+# - 처음 한 번: Actions 탭 → "일정 체크 자동 반영" → Run workflow → Issue가 만들어지고 맨 위에 고정됨
+# - 합치기 권한: Secrets에 RELEASE_TOKEN(배포 담당자 개인 토큰)이 있으면 그걸로, 없으면 GitHub 기본 토큰 (평일 저녁 배포와 같음)
+# - 스크립트: .github/scripts/schedule_sync.py
+name: 일정 체크 자동 반영
+
+on:
+  issues:
+    types: [edited]
+  push:
+    branches: [dev]
+    paths: [README.md]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: schedule-sync
+  cancel-in-progress: true   # 연달아 체크하면 앞의 실행은 취소하고 마지막 것만
+
+jobs:
+  sync:
+    if: github.event_name != 'issues' || contains(github.event.issue.labels.*.name, '일정')
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+      REPO: ${{ github.repository }}
+      ISSUE_BODY: ${{ github.event.issue.body }}
+    steps:
+      - name: 연달아 체크할 때를 위해 잠깐 기다리기
+        if: github.event_name == 'issues'
+        run: sleep 45
+
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: README ↔ Issue 맞추기
+        run: python3 .github/scripts/schedule_sync.py "${{ github.event_name }}"

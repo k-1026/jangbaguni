@@ -2583,6 +2583,7 @@ function myHome(me, offline) {
 // ---------------------------------------------------------------
 const COST_KEY = () => { const u = readLogin(); return `salpi_costs_${u?.profile?.id || u?.id || "me"}`; };
 const WEEK = ["월", "화", "수", "목", "금", "토", "일"];
+const BIZ = ["한식", "중식", "일식", "양식", "분식", "치킨", "카페", "기타"];
 const FIXED_BASE = [["rent", "임대료"], ["manage", "관리비"], ["staff", "인건비"], ["power", "전기료"], ["gas", "가스비"], ["water", "수도세"]];
 const FIXED_EXTRA = ["4대보험", "광고비", "세무 기장료", "대출 이자", "음식물 쓰레기"];
 const DELIV = [["fee", "중개 수수료", ""], ["ride", "배달비", "사장님 부담"], ["pack", "포장 용기", ""]];
@@ -2664,16 +2665,19 @@ function mcSection(key, title, total, body, extra = "") {
 function costCard() {
   const me = costMe || {}, c = costs(), k = costCalc(c), ed = costEdit;
   const place = ["대구", me.district, me.place].filter(Boolean).join(" ");
-  const kind = [me.business_type || "업종 없음", c.seats ? `${c.seats}석` : ""].filter(Boolean).join(" · ");
+  const biz = c.biz || me.business_type;   // 고친 업종은 이 기기에 기억 (가입할 때 업종이 기본)
+  const none = (t) => `<span class="none">${t}</span>`;
 
   const info = `<dl class="mc-info">
       <dt>가게 이름</dt><dd>${esc(me.store_name || "아직 없어요")}</dd>
       <dt>지역</dt><dd>${esc(place)}</dd>
-      ${ed ? `<dt>좌석</dt><dd>${numIn("seats", c.seats, "좌석 수", "0", "석")}</dd>`
-           : `<dt>업종 · 좌석</dt><dd>${esc(kind)}</dd>`}
+      <dt>업종</dt><dd>${ed
+        ? `<div class="mc-pick">${BIZ.map((b) => `<button type="button" data-biz="${b}" aria-pressed="${b === biz}">${b}</button>`).join("")}</div>`
+        : biz ? esc(biz) : none("수정에서 골라 주세요")}</dd>
+      <dt>좌석</dt><dd>${ed ? numIn("seats", c.seats, "좌석 수", "0", "석") : c.seats ? `${c.seats}석` : none("수정에서 넣어 주세요")}</dd>
       <dt>쉬는 요일</dt><dd>${ed
         ? `<div class="mc-days">${WEEK.map((d) => `<button type="button" data-day="${d}" aria-pressed="${c.closed.includes(d)}">${d}</button>`).join("")}</div>`
-        : c.closed.length ? WEEK.filter((d) => c.closed.includes(d)).map((d) => `${d}요일`).join(" · ") : "없어요"}</dd>
+        : c.closed.length ? WEEK.filter((d) => c.closed.includes(d)).map((d) => `${d}요일`).join(", ") : "없어요"}</dd>
       ${me.phone ? `<dt>휴대폰</dt><dd>${esc(maskPhone(me.phone))}</dd>` : ""}
     </dl>`;
 
@@ -2739,13 +2743,14 @@ async function loadReceiptMaterial() {
 }
 
 function costClick(e) {
-  const t = e.target.closest("[data-cedit],[data-cdone],[data-day],[data-tax],[data-deliv],[data-cadd],[data-xadd],[data-xdel],[data-fold]");
+  const t = e.target.closest("[data-cedit],[data-cdone],[data-day],[data-biz],[data-tax],[data-deliv],[data-cadd],[data-xadd],[data-xdel],[data-fold]");
   if (!t || !t.closest("#myCost")) return false;
   const c = costs(), d = t.dataset;
   let focus;
   if ("cedit" in d) { costEdit = true; costFold.clear(); focus = '[data-k="seats"]'; }
   else if ("cdone" in d) { costEdit = false; c.extra = c.extra.filter((x) => x.name || x.v); focus = "[data-cedit]"; }   // 이름 · 금액 둘 다 빈 줄은 정리
   else if (d.fold) { costFold.has(d.fold) ? costFold.delete(d.fold) : costFold.add(d.fold); store(COST_FOLD_KEY, [...costFold]); focus = `.mc-chev[data-fold="${d.fold}"]`; }
+  else if (d.biz) { c.biz = d.biz; focus = `[data-biz="${d.biz}"]`; }
   else if (d.day) { c.closed = c.closed.includes(d.day) ? c.closed.filter((x) => x !== d.day) : [...c.closed, d.day]; focus = `[data-day="${d.day}"]`; }
   else if (d.tax) { c.tax = d.tax; focus = `[data-tax="${d.tax}"]`; }
   else if (d.deliv) {

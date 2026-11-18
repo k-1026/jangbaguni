@@ -985,6 +985,10 @@ a.my-link { color: inherit; text-decoration: none; }
 .mc-del:hover { background: #FFF0EE; color: var(--up); }
 
 /* 쉬는 요일 · 과세 유형 · 배달 여부 */
+/* 업종 고르기: 작은 알약 버튼, 고른 것만 초록 */
+.mc-pick { display: flex; flex-wrap: wrap; gap: 5px; }
+.mc-pick button { height: 30px; padding: 0 11px; border: 1px solid var(--outline); border-radius: 999px; background: var(--surface); color: var(--ink); font-size: 14px; }
+.mc-pick button[aria-pressed="true"] { border-color: var(--primary); background: var(--primary); color: #fff; font-weight: 700; }
 .mc-days { display: flex; flex-wrap: wrap; gap: 3px; }
 .mc-days button { width: 30px; height: 30px; padding: 0; border: 1px solid var(--outline); border-radius: 50%; background: var(--surface); color: var(--ink); font-size: 14px; }
 .mc-days button[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: #fff; font-weight: 700; }

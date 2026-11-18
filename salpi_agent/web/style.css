@@ -959,7 +959,8 @@ a.my-link { color: inherit; text-decoration: none; }
 /* 넣은 금액이 없는 칸: 제목 · 합계를 흐리게 */
 .mc-sec.empty h5, .mc-sec.empty .mc-total { color: #A5ABA7; }
 .mc-box { margin-top: 8px; padding: 8px 18px; border-radius: 12px; background: #F8F9F6; }
-.mc-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 46px; font-size: 16px; }
+.mc-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 40px; font-size: 16px; }
+.mc-row:has(input) { padding: 3px 0; }   /* 수정 화면: 입력칸끼리 붙지 않게 */
 .mc-label { display: flex; align-items: center; gap: 8px; min-width: 0; color: #4A524D; white-space: nowrap; }
 .mc-label small { color: var(--muted); font-size: 13px; }
 .mc-row .v { color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }

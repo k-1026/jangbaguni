@@ -2572,7 +2572,7 @@ function myHome(me, offline) {
       <button class="my-link" data-view="receipts"><span>나의 영수증</span><i>›</i></button>
     </section>
     <section class="my-card">
-      <button class="my-link" type="button" data-view="settings"><span>설정 <small class="muted">알림 · 권한</small></span><i>›</i></button>
+      <button class="my-link" type="button" data-view="settings"><span>설정 <small>알림 · 권한</small></span><i>›</i></button>
     </section>
     <section class="my-card my-account">
       <button class="my-link" type="button" data-account="logout"><span>로그아웃</span><i>›</i></button>

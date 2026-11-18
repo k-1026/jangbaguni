@@ -1218,17 +1218,18 @@ body.login-view .login-only, body.signup-view .signup-only { display: flex; }
 /* 칭찬 팝업: 싸게 사서 아낀 돈이 더 많을 때 엄지 척 살피 + 배지 + 멘트, 5초 뒤 저절로 닫힘 */
 .praise-pop { position: fixed; inset: 0; z-index: 90; background: rgba(255,255,255,.72); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; padding: 16px; animation: praise-fade .2s ease-out; }
 .praise-pop.out { opacity: 0; transition: opacity .2s; }
-.praise-box { position: relative; width: min(340px, 100%); background: var(--surface); border-radius: 24px; padding: 26px 24px 22px; text-align: center; box-shadow: var(--e3); overflow: hidden; animation: praise-in .35s cubic-bezier(.2,1.4,.4,1); }
-.praise-box img { width: 132px; height: auto; display: block; margin: 0 auto 10px; animation: praise-bounce .6s .15s ease-out; }
+.praise-box { position: relative; width: min(340px, 100%); background: var(--surface); border-radius: 24px; padding: 26px 24px 22px; text-align: center; box-shadow: var(--e3); overflow: hidden; animation: praise-in .6s ease-out; }
+.praise-box img { width: 132px; height: auto; display: block; margin: 0 auto 10px; animation: praise-bounce .9s .25s ease-out both; }
 .praise-x { position: absolute; top: 10px; right: 10px; width: 36px; height: 36px; border: 0; border-radius: 50%; background: none; font-size: 24px; line-height: 1; color: var(--muted); cursor: pointer; }
 .praise-x:hover { background: var(--surface-variant); color: var(--ink); }
-.praise-badge { display: block; margin: 2px 0 0; font-size: 30px; font-weight: 900; letter-spacing: -1px; line-height: 1.2; background: linear-gradient(135deg, #F08A3E, var(--accent-hover)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.praise-badge { display: block; margin: 2px 0 0; font-size: 30px; font-weight: 900; letter-spacing: -1px; line-height: 1.2; background: linear-gradient(135deg, #F08A3E, var(--accent-hover)); -webkit-background-clip: text; background-clip: text; color: transparent; animation: praise-title .5s .45s ease-out both; }
 .praise-msg { margin: 12px 0 4px; font-size: 18px; font-weight: 700; color: var(--ink); word-break: keep-all; }
 .praise-msg b { color: #0C6E52; font-weight: 900; }
 .praise-best { margin: 0; font-size: 13.5px; color: var(--muted); word-break: keep-all; }
 .praise-best b { color: #0C6E52; }
 .praise-timer { position: absolute; left: 0; bottom: 0; height: 4px; width: 100%; background: var(--accent); transform-origin: left; animation: praise-time 5s linear forwards; }
 @keyframes praise-fade { from { opacity: 0; } }
-@keyframes praise-in { from { opacity: 0; transform: scale(.85) translateY(10px); } }
-@keyframes praise-bounce { 0% { transform: translateY(0); } 40% { transform: translateY(-10px); } 100% { transform: none; } }
+@keyframes praise-in { 0% { opacity: 0; transform: scale(.3); } 45% { opacity: 1; transform: scale(1.1); } 65% { transform: scale(.94); } 82% { transform: scale(1.03); } 100% { transform: none; } }
+@keyframes praise-bounce { 0% { transform: translateY(0) rotate(0); } 25% { transform: translateY(-26px) rotate(-8deg); } 45% { transform: translateY(0) rotate(0); } 60% { transform: translateY(-12px) rotate(6deg); } 75% { transform: translateY(0) rotate(0); } 88% { transform: translateY(-4px); } 100% { transform: none; } }
+@keyframes praise-title { 0% { opacity: 0; transform: scale(.4); } 60% { opacity: 1; transform: scale(1.18); } 100% { transform: none; } }
 @keyframes praise-time { to { transform: scaleX(0); } }

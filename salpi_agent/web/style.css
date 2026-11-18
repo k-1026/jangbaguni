@@ -1060,6 +1060,14 @@ body.login-view .login-only, body.signup-view .signup-only { display: flex; }
 
 /* 회원가입 (/?page=signup): 로그인 카드를 그대로 쓰고, 칸이 많아 조금 더 넓게 · 입력칸은 연한 초록으로 채움 */
 .signup-card { max-width: 460px; }
+/* 로그인 창은 조금 더 크게 (회원가입 창은 그대로) */
+#loginForm { max-width: 460px; padding: 42px 40px 38px; }
+#loginForm h1 { margin-bottom: 30px; font-size: 25px; }
+#loginForm .login-label { font-size: 15px; }
+#loginForm .login-input { height: 52px; font-size: 16px; }
+#loginForm .login-eye { top: 8px; }   /* 칸이 커진 만큼 눈 버튼도 가운데로 */
+#loginForm .login-submit { height: 56px; font-size: 17px; }
+#loginForm .login-social { height: 52px; }
 .signup-card .login-social:first-of-type { margin-top: 0; }
 .signup-card .login-or { margin: 22px 0 8px; }
 .signup-card .login-input { background: #F3F7EE; border-color: transparent; }
@@ -1092,6 +1100,8 @@ body.login-view .login-only, body.signup-view .signup-only { display: flex; }
   .login-page { padding: 20px 12px 48px; }
   .login-card { padding: 28px 20px; }
   .login-card h1 { font-size: 21px; margin-bottom: 20px; }
+  #loginForm { padding: 30px 20px; }
+  #loginForm h1 { font-size: 22px; }
 }
 
 /* 회원탈퇴 확인 팝업: 취소는 눈에 띄는 초록, 탈퇴하기는 빨간 글씨 (체크해야 눌림) */

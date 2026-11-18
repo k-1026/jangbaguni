@@ -2337,7 +2337,7 @@ function showReceiptView(id, d) {
           <tbody>${d.items.map((x) => `<tr><td>${esc(x.raw_name)}</td><td>${esc(x.item || "재료 아님")}</td><td>${qtyTxt(x)}</td>
             <td class="price">${won(x.amount)}</td><td>${x.unit_price ? won(x.unit_price) : "-"}</td></tr>`).join("")}</tbody>
         </table>
-        <div class="rc-judge" id="rcJudge"><p class="muted small">산 값을 평소 단가 · 대구 시세와 비교하는 중이에요</p></div>
+        <div class="rc-judge" id="rcJudge"><p class="muted small">구매가를 평소 단가 · 대구 시세와 비교하는 중이에요</p></div>
         <div class="receipt-actions rc-view-btns"><button class="rc-edit" id="rcViewEdit" type="button">수정하기</button>
           <button class="rc-remove" id="rcViewDel" type="button">지우기</button></div>
       </div>

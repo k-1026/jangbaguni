@@ -882,6 +882,7 @@ body.chat-open .fab-count { display: none; }
 .drawer-body { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 .my-card { background: var(--surface); border: 0; border-radius: 16px; padding: 16px; box-shadow: var(--e1); }
 .my-card h4 { margin: 0 0 10px; font-size: 16px; }
+.my-card h4 + .muted { margin: -4px 0 12px; }   /* 제목 바로 밑 설명: 제목에 붙이고 아래 구분선과는 띄움 */
 .my-card.profile { display: flex; align-items: center; gap: 12px; }
 .my-card.profile img { width: 56px; height: 56px; border-radius: 50%; background: var(--surface-variant); object-fit: cover; }
 .my-card.profile b { display: block; font-size: 17px; } .my-card.profile small { color: var(--muted); }

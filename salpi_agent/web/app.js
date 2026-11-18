@@ -1576,13 +1576,13 @@ function receiptList(list) {
           <button class="rc-remove rc-sel-del" type="button" disabled>지우기</button><button class="rc-sel-cancel" type="button">취소</button></span>
       </span>` : ""}</div>
     <div class="rc-strip-wrap">
-      <button class="rc-arrow prev" type="button" aria-label="앞 영수증 보기" disabled>‹</button>
+      <button class="rc-arrow prev" type="button" aria-label="앞 영수증 보기" disabled><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 6l-6 6 6 6"/></svg></button>
       <ul class="rc-strip">
         <li class="rc-card"><button class="rc-thumb rc-add-tile" type="button" title="눌러서 영수증 사진 · PDF 올리기">
           <span class="rc-add-icon">${RC_PIC}<i aria-hidden="true">+</i></span><b>영수증 올리기</b><small>눌러서 사진 · PDF 선택</small></button></li>
         ${cards}
       </ul>
-      <button class="rc-arrow next" type="button" aria-label="다음 영수증 보기" disabled>›</button>
+      <button class="rc-arrow next" type="button" aria-label="다음 영수증 보기" disabled><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>
     </div>`;
 }
 // 화살표: 더 넘길 게 없으면 흐리게 (자리는 그대로라 줄이 흔들리지 않음)

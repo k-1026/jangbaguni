@@ -172,3 +172,25 @@ def signed_url(path, seconds=600):
         return storage + r.json()["signedURL"]
     except (requests.RequestException, KeyError, ValueError):
         return None
+
+
+def signed_urls(paths, seconds=600):
+    """signed_url 여러 개를 보관함마다 한 번에 → {path: 주소}. 실패한 것은 빠짐 (영수증 사진 줄에서 씀)."""
+    base, headers = _base()
+    storage = base.replace("/rest/v1/", "/storage/v1")
+    groups = {}
+    for p in paths:
+        bucket, _, name = p.partition("/")
+        groups.setdefault(bucket, []).append(name)
+    out = {}
+    for bucket, names in groups.items():
+        try:
+            r = _http().post(f"{storage}/object/sign/{bucket}", json={"expiresIn": seconds, "paths": names}, timeout=20,
+                              headers={"apikey": headers["apikey"], "Authorization": f"Bearer {headers['apikey']}"})
+            r.raise_for_status()
+            for x in r.json():
+                if x.get("signedURL") and not x.get("error"):
+                    out[f"{bucket}/{x['path']}"] = storage + x["signedURL"]
+        except (requests.RequestException, KeyError, ValueError, TypeError):
+            pass
+    return out

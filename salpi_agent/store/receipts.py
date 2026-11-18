@@ -361,21 +361,32 @@ def my_ingredients(store_id):
 
 
 # ---------------------------------------------------------------
-# 4) 최근 영수증 목록 · 지우기 (시연에서 영수증 읽기로 넣은 것만 지울 수 있음)
+# 4) 최근 영수증 목록 · 지우기 (기본 데이터 영수증도 지울 수 있음)
 # ---------------------------------------------------------------
 
 def recent(store_id, limit=8):
     ps = db.select("purchases", store_id=f"eq.{store_id}", select="id,purchased_on,supplier,total_amount,source,image_path",
                    order="purchased_on.desc,id.desc", limit=str(limit))
-    counts = {}
-    for r in db.select("purchase_items", purchase_id=f"in.({','.join(str(p['id']) for p in ps) or 0})", select="purchase_id"):
+    counts, names = {}, {}
+    for r in db.select("purchase_items", purchase_id=f"in.({','.join(str(p['id']) for p in ps) or 0})", select="purchase_id,raw_name", order="id"):
         counts[r["purchase_id"]] = counts.get(r["purchase_id"], 0) + 1
-    return [{**p, "items": counts.get(p["id"], 0), "image_path": bool(p["image_path"])} for p in ps]
+        names.setdefault(r["purchase_id"], []).append(r["raw_name"])
+    urls = db.signed_urls([p["image_path"] for p in ps if p["image_path"]], seconds=3600)   # 사진 줄 미리보기 (한 번에, 1시간)
+    return [{**p, "items": counts.get(p["id"], 0), "image_path": bool(p["image_path"]), "image_url": _image_url(p, urls),
+             "names": names.get(p["id"], [])[:4]} for p in ps]   # 사진 없는 영수증은 품목 몇 줄로 작은 영수증을 그림
 
 
 # 시연 기본 데이터(seed.sql) 영수증 4장은 같은 내용으로 그린 시연용 영수증 그림을 보여 줌
 DEMO_IMAGES = {"2026-10-12": "receipt_1012_statement", "2026-10-19": "receipt_1019_statement",
                "2026-10-26": "receipt_1026_mart", "2026-11-02": "receipt_1102_handwritten"}
+
+
+def _image_url(p, urls):
+    if p["image_path"]:
+        return urls.get(p["image_path"])
+    if p["source"] == "demo" and p["purchased_on"] in DEMO_IMAGES:
+        return f"/receipts_demo/{DEMO_IMAGES[p['purchased_on']]}.png"
+    return None
 
 
 def detail(store_id, purchase_id):
@@ -401,9 +412,9 @@ def detail(store_id, purchase_id):
 
 
 def remove(store_id, purchase_id):
-    gone = db.delete("purchases", id=f"eq.{purchase_id}", store_id=f"eq.{store_id}", source="eq.ocr")
+    gone = db.delete("purchases", id=f"eq.{purchase_id}", store_id=f"eq.{store_id}")   # 기본(시연) 영수증도 지울 수 있음
     if not gone:
-        raise ValueError("영수증 읽기로 넣은 영수증만 지울 수 있어요")
+        raise ValueError("영수증을 찾지 못했어요")
     for g in gone:
         if g.get("image_path"):
             db.remove_file(g["image_path"])

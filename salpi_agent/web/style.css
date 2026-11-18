@@ -1214,3 +1214,21 @@ body.login-view .login-only, body.signup-view .signup-only { display: flex; }
 
 /* 카카오로 처음 온 사장님: 회원가입 카드에서 휴대폰 · 아이디 · 비밀번호 칸과 간편 가입 버튼을 숨기고 이름 · 가게 · 약관만 */
 .kakao-mode .su-local { display: none; }
+
+/* 칭찬 팝업: 싸게 사서 아낀 돈이 더 많을 때 엄지 척 살피 + 배지 + 멘트, 3초 뒤 저절로 닫힘 */
+.praise-pop { position: fixed; inset: 0; z-index: 90; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; padding: 16px; animation: praise-fade .2s ease-out; }
+.praise-pop.out { opacity: 0; transition: opacity .2s; }
+.praise-box { position: relative; width: min(340px, 100%); background: var(--surface); border-radius: 24px; padding: 26px 24px 22px; text-align: center; box-shadow: var(--e3); overflow: hidden; animation: praise-in .35s cubic-bezier(.2,1.4,.4,1); }
+.praise-box img { width: 132px; height: auto; display: block; margin: 0 auto 10px; animation: praise-bounce .6s .15s ease-out; }
+.praise-x { position: absolute; top: 10px; right: 10px; width: 36px; height: 36px; border: 0; border-radius: 50%; background: none; font-size: 24px; line-height: 1; color: var(--muted); cursor: pointer; }
+.praise-x:hover { background: var(--surface-variant); color: var(--ink); }
+.praise-badge { display: inline-block; padding: 5px 14px; border-radius: 999px; background: var(--accent-container); color: var(--accent-hover); font-size: 15px; font-weight: 800; }
+.praise-msg { margin: 12px 0 4px; font-size: 18px; font-weight: 700; color: var(--ink); word-break: keep-all; }
+.praise-msg b { color: #0C6E52; font-weight: 900; }
+.praise-best { margin: 0; font-size: 13.5px; color: var(--muted); word-break: keep-all; }
+.praise-best b { color: #0C6E52; }
+.praise-timer { position: absolute; left: 0; bottom: 0; height: 4px; width: 100%; background: var(--accent); transform-origin: left; animation: praise-time 3s linear forwards; }
+@keyframes praise-fade { from { opacity: 0; } }
+@keyframes praise-in { from { opacity: 0; transform: scale(.85) translateY(10px); } }
+@keyframes praise-bounce { 0% { transform: translateY(0); } 40% { transform: translateY(-10px); } 100% { transform: none; } }
+@keyframes praise-time { to { transform: scaleX(0); } }

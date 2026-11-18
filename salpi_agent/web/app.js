@@ -489,7 +489,7 @@ function itemSlide(r, idx) {
     <div>
       <h3>${esc(r.item)} 시세</h3>
       <p class="price-now"><strong>${won(r.wholesale_kg)}/kg</strong>
-        <span class="${cls(r.wholesale_change_pct, 3)}">1주 전보다 ${pct(r.wholesale_change_pct)}</span></p>
+        <span class="${cls(r.wholesale_change_pct, 3)}">1주 전보다 ${pct(r.wholesale_change_pct)}</span>${PER100_ITEMS.has(r.item) && r.wholesale_kg ? ` <span>· 100g ${won(r.wholesale_kg / 10)}</span>` : ""}</p>
     </div>
     <div class="legend">
       <span><i class="lg line"></i>도매 kg당</span><span><i class="lg fc"></i>7일 예측</span>
@@ -587,7 +587,9 @@ const extraByItem = (name) => extraList().find((r) => r.item === name);
 const extraRows = () => extraList().filter((r) => r.group === boardTab && r.price);
 const basisName = (r) => r.basis_label || (r.price_basis === "중도매" ? "북부도매시장 중도매가" : "대구 소매 평균");
 // 고기는 kg당 값이 커서 100g당 값도 같이 (정육점 표기와 같게)
-const per100 = (r) => (r.group === "육류" && r.unit === "kg" ? ` · 100g ${won(r.price / 10)}` : "");
+// 가지 · 레몬은 1개 무게 근거가 약하고 낱개로 사는 양이 적어 100g당이 더 와닿음
+const PER100_ITEMS = new Set(["가지", "레몬"]);
+const per100 = (r) => ((r.group === "육류" || PER100_ITEMS.has(r.item)) && r.unit === "kg" ? ` · 100g ${won(r.price / 10)}` : "");
 
 const extraExp = (r) => r.forecast?.expected_change_pct ?? 0;
 // 농산물 차트 · 예측 칸을 그대로 쓰도록 모양을 맞춤 (price → kg_price, expected_price_range → expected_kg_price_range)

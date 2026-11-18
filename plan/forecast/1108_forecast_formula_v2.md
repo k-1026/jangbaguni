@@ -1,6 +1,6 @@
 # 시세 · 판매량 예측 공식 고도화 계획 (11/08)
 
-> 기준: 지금 공식 `salpi_agent/analysis.py` `forecast_item` (시세) · `salpi_agent/demand.py` (판매량)
+> 기준: 지금 공식 `salpi_agent/price/analysis.py` `forecast_item` (시세) · `salpi_agent/demand/demand.py` (판매량)
 > 11/08에 정한 것: 시세는 **가격 범위**를 맞히는 게 목표 (적중률 70% → 80%) · 계수는 **그룹별**로 과거 데이터에 맞춤 · **계절성 · 되돌림** 추가 / 판매량은 **가상 POS**로 시험 · **날씨 · 행사 · 월급날** 추가
 
 ---

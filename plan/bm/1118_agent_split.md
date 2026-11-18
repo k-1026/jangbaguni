@@ -1,7 +1,7 @@
 # 챗봇을 안내 + 담당 에이전트 3개로 나눔 (11/18)
 
 > 무엇: 도구 13개를 한 덩어리로 들고 있던 챗봇을 [AI 파이프라인 v3](../presentation/살피_AI파이프라인_v3.png) 그림대로 **안내 → 시세 · 원가 · 마진 · 내일 준비**로 나눔 → 발표 그림과 코드가 같아짐
-> 코드: [salpi_agent/agent.py](../../salpi_agent/agent.py) · 앞 문서: [AI 파이프라인 (11/12)](1112_agent_pipeline.md) · [최종 계획 3절 #4](../1116_final_sprint_plan.md)
+> 코드: [salpi_agent/chat/agent.py](../../salpi_agent/chat/agent.py) · 앞 문서: [AI 파이프라인 (11/12)](1112_agent_pipeline.md) · [최종 계획 3절 #4](../1116_final_sprint_plan.md)
 
 ---
 

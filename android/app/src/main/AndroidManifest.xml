@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 살피 앱: 실행하면 살피 모바일 화면(/m/)을 크롬 엔진으로 엶 (TWA). 화면 코드는 서버(web/m)에 있어서 앱을 다시 만들지 않아도 화면이 바뀜 -->
+<!-- 살피 앱: 실행하면 살피 모바일 화면(/m/)을 크롬 엔진으로 엶 (TWA). 화면 코드는 서버(mobile/)에 있어서 앱을 다시 만들지 않아도 화면이 바뀜 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />

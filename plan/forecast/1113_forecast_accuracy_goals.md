@@ -197,7 +197,7 @@
 | 수산물 | KAMIS 대구 (`data/raw/1112_*.csv.xz`) | 2020-01 ~ 2025-08 |
 | 육류 | 협신식품 경락가 주간 (`data/raw/1112_meat_weekly`) · KAMIS 대구 소매 | 2025~2026 · 2020~2022 (범위 적중률은 KAMIS) |
 
-- 다시 채점하기: `python salpi_agent/backtest.py` (2~5분). 범위 적중률 · 말하는 기준별 표는 아직 `backtest.py` 에 없음 → 3-2의 1~3번 때 넣음
+- 다시 채점하기: `salpi_agent` 폴더에서 `python -m price.backtest` (2~5분). 범위 적중률 · 말하는 기준별 표는 아직 `backtest.py` 에 없음 → 3-2의 1~3번 때 넣음
 
 ### 4-4. 발표 · 설명할 때
 

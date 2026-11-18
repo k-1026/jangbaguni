@@ -1,7 +1,7 @@
 # 내일 판매량 학습 (가상 가게 데이터, 11/18)
 
 > 무엇: 실제 사장님의 메뉴 · 영수증 · 판매량을 구할 수 없어서, **가상 가게 1년 치 데이터**를 만들고 그걸로 **다음 날 메뉴별 판매량을 학습 모델(부스팅)로 예측**해 봄
-> 코드: [dummy_store.py](../../salpi_agent/dummy_store.py) (더미 데이터) · [demand_learn.py](../../salpi_agent/demand_learn.py) (학습 · 시험) · [demand_model.py](../../salpi_agent/demand_model.py) (화면 예측) · [demand.py](../../salpi_agent/demand.py) (내일 준비)
+> 코드: [dummy_store.py](../../salpi_agent/demand/dummy_store.py) (더미 데이터) · [demand_learn.py](../../salpi_agent/demand/demand_learn.py) (학습 · 시험) · [demand_model.py](../../salpi_agent/demand/demand_model.py) (화면 예측) · [demand.py](../../salpi_agent/demand/demand.py) (내일 준비)
 > 데이터: [data/dummy_store/](../../data/dummy_store/) · 모델: `salpi_agent/models/demand_demo.json`
 > 앞 문서: [최종 계획 M6](../1116_final_sprint_plan.md) · [AI 파이프라인 v3](../presentation/살피_AI파이프라인_v3.png) (내일 준비 에이전트 · 판매량 예측 모델)
 
@@ -113,8 +113,8 @@
 
 ```
 cd salpi_agent
-.venv\Scripts\python dummy_store.py --apply   # 더미 데이터 다시 만들고 Supabase 시연 가게에 넣기 (어제까지)
-.venv\Scripts\python demand_learn.py          # 학습 · 시험 · 모델 저장 (약 5분)
+.venv\Scripts\python -m demand.dummy_store --apply   # 더미 데이터 다시 만들고 Supabase 시연 가게에 넣기 (어제까지)
+.venv\Scripts\python -m demand.demand_learn          # 학습 · 시험 · 모델 저장 (약 5분)
 ```
 
 - 같은 씨앗값이라 몇 번 돌려도 같은 데이터가 나옴 (마지막 날만 바뀜)

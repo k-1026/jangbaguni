@@ -170,8 +170,8 @@
 
 ### 7-1. 지금 구조
 
-- 제미나이 대화 하나가 **도구 12개**를 모두 들고, 시스템 프롬프트 하나에 **질문 유형 5개(A~E)** + 브랜드 말투 규칙이 다 들어 있음 ([agent.py](../../salpi_agent/agent.py))
-- 영수증 읽기([receipts.py](../../salpi_agent/receipts.py))는 이미 따로 떨어져 있음
+- 제미나이 대화 하나가 **도구 12개**를 모두 들고, 시스템 프롬프트 하나에 **질문 유형 5개(A~E)** + 브랜드 말투 규칙이 다 들어 있음 ([agent.py](../../salpi_agent/chat/agent.py))
+- 영수증 읽기([receipts.py](../../salpi_agent/store/receipts.py))는 이미 따로 떨어져 있음
 - 아침 브리핑도 사장님이 요청할 때마다 대화 모델이 새로 만듦
 
 ### 7-2. 병목은 어디인가
@@ -203,7 +203,7 @@
 [VOC 분석]       카페 캡처 → 페인포인트 · 원가 계산 방식 분류 (서비스 밖, 팀 리서치용)
 ```
 
-| 담당 | 도구 (지금 [agent.py](../../salpi_agent/agent.py) 기준) | 지금 프롬프트의 어느 부분 |
+| 담당 | 도구 (지금 [agent.py](../../salpi_agent/chat/agent.py) 기준) | 지금 프롬프트의 어느 부분 |
 |---|---|---|
 | 안내 | 없음 (분류만) | — |
 | 시세 | `get_market_overview` · `get_item_price_trend` · `forecast_item_price` · `recommend_buy_now` · `get_weather_summary` · `get_daegu_events` · `get_upcoming_holidays` · `list_supported_items` | A · C |

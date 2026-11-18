@@ -2,7 +2,7 @@
 
 > 무엇: 지금 웹사이트를 **휴대폰에 설치하는 앱(PWA)**으로 만들고, 매일 아침 시세 알림을 **휴대폰 알림**으로 보냄
 > 왜: 카카오톡 "나에게 보내기"는 카톡 정책상 '나와의 채팅'에 알림이 울리지 않음. 카카오 알림톡(채널)은 사업자등록 · 심사가 필요해 12/4 전엔 어려움
-> 코드: [app_push.py](../salpi_agent/app_push.py) (알림 보내기) · [web/sw.js](../salpi_agent/web/sw.js) (앱 백그라운드 작업) · [web/manifest.webmanifest](../salpi_agent/web/manifest.webmanifest) (앱 이름 · 아이콘)
+> 코드: [app_push.py](../salpi_agent/account/app_push.py) (알림 보내기) · [web/sw.js](../salpi_agent/web/sw.js) (앱 백그라운드 작업) · [web/manifest.webmanifest](../salpi_agent/web/manifest.webmanifest) (앱 이름 · 아이콘)
 
 ---
 
@@ -43,7 +43,7 @@
 
 ## 5. 안드로이드 스튜디오로 열기 (android/ 폴더, TWA)
 
-살피 모바일 화면(`/m/`)을 크롬 엔진으로 여는 **안드로이드 앱 프로젝트**. 화면 코드는 서버(`salpi_agent/web/m/`)에 있어서, 화면을 고쳐도 앱을 다시 만들 필요가 없음. 사이트 알림이 "살피" 앱 알림으로 옴
+살피 모바일 화면(`/m/`)을 크롬 엔진으로 여는 **안드로이드 앱 프로젝트**. 화면 코드는 서버(`salpi_agent/mobile/`)에 있어서, 화면을 고쳐도 앱을 다시 만들 필요가 없음. 사이트 알림이 "살피" 앱 알림으로 옴
 
 1. 안드로이드 스튜디오 → **Open** → 저장소의 `android` 폴더 → Gradle 동기화를 기다림 (처음엔 몇 분, Gradle 8.7 · AGP 8.5 를 받음)
 2. 폰 연결: 폰 설정 → 휴대전화 정보 → 빌드번호 7번 → 개발자 옵션 → **USB 디버깅** 켜기 → USB 연결 → "허용"

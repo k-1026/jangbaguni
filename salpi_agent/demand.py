@@ -6,6 +6,9 @@
 - 최근 흐름: 최근 2주가 그 전 2주보다 늘었는지 줄었는지 (꺾이기 쉬워 절반만 반영)
 - 공휴일: 지난 공휴일에 평소보다 얼마나 팔렸는지
 - 범위: 최근 4주 동안 위 방식이 실제와 얼마나 어긋났는지로 정함 (10번 중 8번 들어오는 폭)
+
+시연 가게(is_demo)는 가상 판매 기록 1년으로 학습한 모델(demand_model.py)을 먼저 쓴다 (요일 · 공휴일 · 기온 · 폭염 ·
+삼성 홈경기 · 대구 축제 · 월급날까지 봄). 모델이 없거나 실패하면 위 규칙. 결과: plan/forecast/1118_demand_learning.md
 """
 
 import math
@@ -42,7 +45,15 @@ def _load(store_id):
     if not store:
         raise ValueError("가게 정보를 찾지 못했어요")
     menus = db.select("menus", store_id=f"eq.{store_id}", is_active="is.true", select="id,name,price", order="id")
-    sales = db.select("sales_daily", store_id=f"eq.{store_id}", select="menu_id,sale_date,qty", order="sale_date")
+    # 판매 기록은 1년 치면 1000줄을 넘어서 (Supabase 한 번에 1000줄) 나눠 받음
+    sales, k = [], 0
+    while True:
+        part = db.select("sales_daily", store_id=f"eq.{store_id}", select="menu_id,sale_date,qty",
+                         order="sale_date,menu_id,channel", limit="1000", offset=str(k))
+        sales += part
+        if len(part) < 1000:
+            break
+        k += 1000
     recipes = db.select("recipe_items", menu_id=f"in.({','.join(str(m['id']) for m in menus) or 0})",
                         select="menu_id,qty_per_serving,loss_rate,items(id,name,base_unit)")
     stock = db.select("inventory", store_id=f"eq.{store_id}", select="item_id,on_hand_qty,next_delivery_date,updated_at")
@@ -88,6 +99,53 @@ class _MenuModel:
         return round(mid), round(mid * (1 - self.spread)), round(mid * (1 + self.spread)), factors
 
 
+def _learned(store, holidays, start, end):
+    """시연 가게면 학습 모델과 start~end 날씨(지난날 관측 · 앞날 예보). 아니면 None."""
+    if not store.get("is_demo"):
+        return None
+    try:
+        import demand_model
+        model, blob = demand_model.load()
+    except Exception as e:
+        print(f"[판매량 학습] 모델 읽기 실패, 규칙 사용: {e}", flush=True)
+        return None
+    if not model:
+        return None
+    weather = {}
+    try:
+        from data_sources import weather_days, weather_forecast
+        for w in weather_days(10):
+            weather[w["date"]] = (w["avg_temp"], (w["rain_mm"] or 0) >= 5, (w["max_temp"] or 0) >= 33)
+        for w in weather_forecast(7):
+            if w.get("min") is not None and w.get("max") is not None:
+                rain = max(w.get("rain_pct_am") or 0, w.get("rain_pct_pm") or 0) >= 60
+                weather[w["date"]] = ((w["min"] + w["max"]) / 2, rain, w["max"] >= 33)
+    except Exception as e:   # 날씨를 못 받으면 날씨 요인만 빈 값으로 (모델은 빈 값도 다룸)
+        print(f"[판매량 학습] 날씨 실패: {e}", flush=True)
+    return {"blob": blob, "weather": weather, "cal": lambda d: demand_model.calendar_day(d, holidays, weather, blob),
+            "predict": demand_model.predict}
+
+
+class _Menu:
+    """메뉴 하나: 학습 모델이 있으면 그걸로, 없거나 실패하면 규칙(_MenuModel)으로."""
+
+    def __init__(self, name, daily, holidays, learned):
+        self.name, self.learned, self.used_learned = name, learned, False
+        self.rule = _MenuModel(daily, holidays)
+        self.hist = sorted(daily.items())
+
+    def predict(self, d, holidays):
+        if self.learned:
+            try:
+                r = self.learned["predict"](self.name, self.hist, d, self.learned["cal"](d))
+                if r:
+                    self.used_learned = True
+                    return r
+            except Exception as e:
+                print(f"[판매량 학습] {self.name} 실패, 규칙 사용: {e}", flush=True)
+        return self.rule.predict(d, holidays)
+
+
 def forecast(store_id=db.DEMO_STORE, target=None, price_outlook=None, save=True):
     """target(기본 내일) 메뉴별 예상 그릇 수, 재료 필요량, 다음 입고까지 발주 추천.
 
@@ -114,12 +172,15 @@ def forecast(store_id=db.DEMO_STORE, target=None, price_outlook=None, save=True)
     def is_open(d):
         return WEEKDAYS[d.weekday()] in open_days
 
+    # 시연 가게는 더미 판매 기록으로 학습한 모델(demand_model)을 먼저 쓰고, 없거나 실패하면 규칙
+    learned = _learned(store, holidays, today, horizon_end)
+
     # 1) 메뉴별 예상 그릇 수 (target 하루 + 다음 입고 전날까지 매일)
     result_menus, need_target, need_period, models = [], defaultdict(float), defaultdict(float), {}
     for m in menus:
         if not per_menu.get(m["id"]):
             continue
-        models[m["id"]] = model = _MenuModel(per_menu[m["id"]], holidays)
+        models[m["id"]] = model = _Menu(m["name"], per_menu[m["id"]], holidays, learned)
         mid, lo, hi, factors = model.predict(target, holidays) if is_open(target) else (0, 0, 0, {"휴무일": -1})
         recent = [{"date": str(d), "qty": q} for d, q in sorted(per_menu[m["id"]].items())[-14:]]
         result_menus.append({"menu_id": m["id"], "menu": m["name"], "price": m["price"], "predicted": mid,
@@ -184,7 +245,17 @@ def forecast(store_id=db.DEMO_STORE, target=None, price_outlook=None, save=True)
         "total_predicted": sum(m["predicted"] for m in result_menus),
         "menus": result_menus, "items": result_items,
         "method": "규칙 기반(요일 · 최근 2주 흐름 · 공휴일). 범위는 10번 중 8번 들어오는 폭. 발주는 예측보다 10% 여유",
+        "model_version": "rule-v1",
     }
+    used = learned and any(models[m["menu_id"]].used_learned for m in result_menus if m["menu_id"] in models)
+    if used:
+        met = learned["blob"]["metrics"]
+        out["method"] = (f"학습 모델(부스팅) · 가상 판매 기록 1년으로 학습 (실제 가게 기록이 아님). "
+                         f"6달 시험 평균 오차 {met['ai']['mae_bowls']}그릇 (규칙 {met['rule']['mae_bowls']}그릇). "
+                         "범위는 10번 중 8번 들어오는 폭. 발주는 예측보다 10% 여유")
+        out["model_version"] = learned["blob"]["version"]
+        out["model"] = {"version": learned["blob"]["version"], "data": learned["blob"]["data"],
+                        "ai": met["ai"], "rule": met["rule"], "test_period": met["test_period"]}
     if save:
         _save(store["id"], target, out)
     return out
@@ -193,7 +264,7 @@ def forecast(store_id=db.DEMO_STORE, target=None, price_outlook=None, save=True)
 def _save(store_id, target, out):
     db.upsert("menu_forecasts", [{
         "store_id": store_id, "menu_id": m["menu_id"], "target_date": str(target), "predicted_qty": m["predicted"],
-        "lower_qty": m["range"][0], "upper_qty": m["range"][1], "contributions": m["factors"], "model_version": "rule-v1",
+        "lower_qty": m["range"][0], "upper_qty": m["range"][1], "contributions": m["factors"], "model_version": out["model_version"],
     } for m in out["menus"]], "store_id,menu_id,target_date")
     db.upsert("order_recommendations", [{
         "store_id": store_id, "item_id": i["item_id"], "target_date": str(target), "recommended_qty": i["order_qty"],

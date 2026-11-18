@@ -273,9 +273,12 @@ def cost_report(store_id=db.DEMO_STORE):
             h = hist.get(r["item_id"]) or []
             per = float(r["qty_per_serving"]) / (1 - float(r["loss_rate"]))
             if h:
-                first, last = h[0][1], h[-1][1]
+                # 비교 기준: 최근 영수증보다 4주 이상 앞선 영수증 중 가장 최근 것 (없으면 첫 영수증) — 1년 치가 쌓여도 '최근 한 달 새' 변화로 봄
+                cut = str(datetime.fromisoformat(h[-1][0]).date() - timedelta(28))
+                since, first = ([x for x in h if x[0] <= cut] or h[:1])[-1]
+                last = h[-1][1]
                 parts.append({"item": r["items"]["name"], "unit": r["items"]["base_unit"], "cost": round(per * last),
-                              "first_price": round(first), "latest_price": round(last), "since": h[0][0], "latest_date": h[-1][0],
+                              "first_price": round(first), "latest_price": round(last), "since": since, "latest_date": h[-1][0],
                               "change_pct": round((last / first - 1) * 100, 1) if first else None,
                               "cost_up": round(per * (last - first)), "_per": per})   # 1인분 재료비가 얼마나 늘었나(원)
         parts.sort(key=lambda p: -p["cost"])

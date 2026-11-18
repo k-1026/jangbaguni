@@ -232,29 +232,7 @@
     <p class="muted">우리 가게 판매 기록과 영수증으로 내일 준비 · 원가율을 살펴봐요</p>
   </section>
 
-  <!-- 우리 가게 내일 준비: 판매 기록(Supabase)으로 예상 그릇 수 · 재료 필요량 · 발주 추천 -->
-  <section class="wrap section store-only" id="store">
-    <div class="section-head">
-      <h2>우리 가게 내일 준비</h2>
-      <p class="muted" id="storeBasis">판매 기록을 불러오는 중이에요</p>
-    </div>
-    <div class="store-grid">
-      <div class="card" id="menuForecast"><p class="muted">불러오는 중</p></div>
-      <div class="card order-card" id="orderCard"></div>
-    </div>
-  </section>
-
-  <!-- 메뉴별 원가율: 영수증 단가로 메뉴 한 그릇 재료비 · 원가율 · 남는 돈 -->
-  <section class="wrap section store-only" id="costs">
-    <div class="section-head">
-      <h2>메뉴별 원가율</h2>
-      <p class="muted">저장한 영수증 단가로 메뉴 한 그릇의 재료비와 남는 돈을 계산해요</p>
-      <button class="btn primary menu-add-btn" id="menuAddBtn" type="button">+ 메뉴 추가</button>
-    </div>
-    <div class="card" id="costCard"><p class="muted">원가율을 불러오는 중이에요</p></div>
-  </section>
-
-  <!-- 영수증 분석: 사진 읽기 → 확인 · 수정 → 저장 (저장하면 위 메뉴별 원가율을 다시 계산) -->
+  <!-- 영수증 분석: 사진 읽기 → 확인 · 수정 → 저장 (저장하면 아래 메뉴별 원가율을 다시 계산) — 나의 가게 맨 위 -->
   <section class="wrap section store-only" id="receipt">
     <div class="section-head">
       <h2>영수증 분석</h2>
@@ -275,6 +253,28 @@
       <div id="receiptResult"></div>
       <div id="receiptList"></div>
     </div>
+  </section>
+
+  <!-- 우리 가게 내일 준비: 판매 기록(Supabase)으로 예상 그릇 수 · 재료 필요량 · 발주 추천 -->
+  <section class="wrap section store-only" id="store">
+    <div class="section-head">
+      <h2>우리 가게 내일 준비</h2>
+      <p class="muted" id="storeBasis">판매 기록을 불러오는 중이에요</p>
+    </div>
+    <div class="store-grid">
+      <div class="card" id="menuForecast"><p class="muted">불러오는 중</p></div>
+      <div class="card order-card" id="orderCard"></div>
+    </div>
+  </section>
+
+  <!-- 메뉴별 원가율: 영수증 단가로 메뉴 한 그릇 재료비 · 원가율 · 남는 돈 -->
+  <section class="wrap section store-only" id="costs">
+    <div class="section-head">
+      <h2>메뉴별 원가율</h2>
+      <p class="muted">저장한 영수증 단가로 메뉴 한 그릇의 재료비와 남는 돈을 계산해요</p>
+      <button class="btn primary menu-add-btn" id="menuAddBtn" type="button">+ 메뉴 추가</button>
+    </div>
+    <div class="card" id="costCard"><p class="muted">원가율을 불러오는 중이에요</p></div>
   </section>
 
   <!-- 대형마트 판매가: 한국소비자원 참가격 중 음식 재료만 (회사별 가격 · 2주 전 대비) -->

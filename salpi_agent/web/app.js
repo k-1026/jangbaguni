@@ -1501,14 +1501,21 @@ const rcMini = (p) => `<span class="rc-mini" aria-hidden="true">
   <b>${esc(supplierName(p.supplier))}</b><small>${mmdd(p.purchased_on)}</small>
   ${(p.names || []).slice(0, 3).map((n) => `<i>${esc(n)}</i>`).join("")}${p.items > 3 ? `<i class="more">외 ${p.items - 3}줄</i>` : ""}
   <em>합계 ${won(p.total_amount)}</em></span>`;
+const RC_TRASH = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4.5h6V7M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>`;
 function receiptList(list) {
-  const cards = list.map((p) => `<li class="rc-card">
+  const cards = list.map((p) => `<li class="rc-card" data-id="${p.id}">
+    <span class="rc-check" aria-hidden="true"></span>
     <button class="rc-open rc-thumb" data-rid="${p.id}" type="button" title="사진과 품목 보기">
       ${p.image_url ? `<img src="${esc(p.image_url)}" alt="${mmdd(p.purchased_on)} 영수증 사진" loading="lazy">` : rcMini(p)}
     </button>
     <div class="rc-meta"><span class="rc-date">${+p.purchased_on.slice(5, 7)}월 ${+p.purchased_on.slice(8, 10)}일</span>
       <b title="${esc(supplierName(p.supplier))}">${esc(supplierName(p.supplier))}</b><span class="rc-price">${won(p.total_amount)}</span></div></li>`).join("");
-  return `<h3 class="sub-h">최근 영수증</h3>
+  return `<div class="rc-head"><h3 class="sub-h">최근 영수증</h3>
+      ${list.length ? `<span class="rc-tools">
+        <button class="rc-trash" type="button" title="여러 장 골라서 지우기" aria-label="여러 장 골라서 지우기">${RC_TRASH}</button>
+        <span class="rc-sel-bar"><span class="rc-sel-count">지울 영수증을 골라 주세요</span>
+          <button class="rc-remove rc-sel-del" type="button" disabled>지우기</button><button class="rc-sel-cancel" type="button">취소</button></span>
+      </span>` : ""}</div>
     <div class="rc-strip-wrap">
       <button class="rc-arrow prev" type="button" aria-label="앞 영수증 보기" disabled>‹</button>
       <ul class="rc-strip">
@@ -1528,6 +1535,7 @@ function rcArrows() {
   $("#receiptList .rc-arrow.next").disabled = s.scrollLeft >= max;
 }
 function showReceiptList(list) {
+  $("#receiptList").classList.remove("selecting");
   $("#receiptList").innerHTML = receiptList(list);
   rcArrows();
   document.querySelectorAll("#receiptList .rc-strip img").forEach((i) => i.addEventListener("load", rcArrows, { once: true }));
@@ -1754,10 +1762,39 @@ function closeCamera() { stopCamera(); $("#cameraModal").hidden = true; }
 $("#cameraBtn").onclick = openCamera;
 $("#cameraClose").onclick = closeCamera;
 $("#cameraModal").onclick = (e) => { if (e.target.id === "cameraModal") closeCamera(); };
+// 휴지통 → 고르기 모드: 카드 오른쪽 위 체크 칸으로 여러 장 골라 한 번에 지우기
+const rcPicked = () => [...document.querySelectorAll("#receiptList .rc-card.picked")].map((li) => li.dataset.id);
+function rcSelectMode(on) {
+  $("#receiptList").classList.toggle("selecting", on);
+  document.querySelectorAll("#receiptList .rc-card.picked").forEach((li) => li.classList.remove("picked"));
+  rcSelCount();
+}
+function rcSelCount() {
+  const n = rcPicked().length;
+  $("#receiptList .rc-sel-count").textContent = n ? `${n}장 골랐어요` : "지울 영수증을 골라 주세요";
+  $("#receiptList .rc-sel-del").disabled = !n;
+}
+async function rcDeletePicked() {
+  const ids = rcPicked();
+  if (!ids.length || !confirm(`영수증 ${ids.length}장을 지울까요? 원가율이 다시 계산돼요.`)) return;
+  $("#receiptList .rc-sel-del").disabled = true;
+  const res = await Promise.allSettled(ids.map((id) => sendJSON(`/api/receipt/${id}`, "DELETE")));
+  const fail = res.filter((x) => x.status === "rejected").length;
+  if (fail) alert(`${ids.length}장 중 ${fail}장은 지우지 못했어요. 잠시 뒤 다시 해 주세요.`);
+  loadCosts(true);   // 원가율 · 사진 줄을 한 번에 새로 (고르기 모드도 풀림)
+}
 $("#receiptList").onclick = async (e) => {
-  if (e.target.closest(".rc-add-tile")) return $("#receiptFile").click();   // 맨 앞 그림 칸 = 새 영수증 올리기
+  if (e.target.closest(".rc-trash")) return rcSelectMode(true);
+  if (e.target.closest(".rc-sel-cancel")) return rcSelectMode(false);
+  if (e.target.closest(".rc-sel-del")) return rcDeletePicked();
   const ar = e.target.closest(".rc-arrow");
   if (ar) { const s = $("#receiptList .rc-strip"); return s.scrollBy({ left: (ar.classList.contains("next") ? 1 : -1) * s.clientWidth * 0.8, behavior: "smooth" }); }
+  if ($("#receiptList").classList.contains("selecting")) {   // 고르기 모드: 카드를 누르면 체크만
+    const li = e.target.closest(".rc-card[data-id]");
+    if (li) { li.classList.toggle("picked"); rcSelCount(); }
+    return;
+  }
+  if (e.target.closest(".rc-add-tile")) return $("#receiptFile").click();   // 맨 앞 그림 칸 = 새 영수증 올리기
   const o = e.target.closest(".rc-open");
   if (o) return openReceipt(o.dataset.rid);   // 수정하기 · 지우기는 열린 창 안에
 };

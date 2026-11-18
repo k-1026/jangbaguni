@@ -713,7 +713,7 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 /* 최근 영수증 제목 줄: 오른쪽 위 휴지통 → 누르면 "n장 골랐어요 [지우기] [취소]" */
 .rc-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 16px 0 6px; }
 .rc-head .sub-h { margin: 0; }
-.rc-tools { display: flex; align-items: center; }
+.rc-tools { display: flex; align-items: center; margin-right: calc(32px + 8px + 4px); }   /* 오른쪽 화살표 칸 + 사이 + 줄 안쪽 여백 → 사진 줄 오른쪽 끝에 맞춤 */
 .rc-trash { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 1px solid var(--outline); border-radius: 50%; background: var(--surface); color: var(--muted); cursor: pointer; }
 .rc-trash svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .rc-trash:hover { border-color: var(--up); color: var(--up); }

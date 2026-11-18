@@ -162,7 +162,8 @@ def index():
 # 키 확인용: 값은 절대 보내지 않고 "넣었는지"만 알려 줌 (Vercel 환경 변수 확인)
 KEY_NAMES = ["AT_SALE_API_KEY", "AT_PERDAY_API_KEY", "AT_REALTIME_API_KEY", "KMA_ASOS_API_KEY", "KASI_SPCDE_API_KEY",
              "KTO_TOUR_API_KEY", "KAMIS_CERT_KEY", "KAMIS_CERT_ID", "GEMINI_API_KEY", "SUPABASE_URL", "SUPABASE_SECRET_KEY",
-             "KCA_PRICE_API_KEY", "KMA_VILAGE_API_KEY", "KMA_MID_API_KEY"]
+             "KCA_PRICE_API_KEY", "KMA_VILAGE_API_KEY", "KMA_MID_API_KEY", "KOSIS_API_KEY", "MOIS_RESTAURANT_API_KEY",
+             "KAKAO_REST_API_KEY", "KAKAO_CLIENT_SECRET"]
 
 
 @app.get("/api/health")

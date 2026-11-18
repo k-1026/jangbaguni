@@ -2550,7 +2550,7 @@ async function renderMypage(view) {
   }
   const draw = (me, offline) => { if ($("#mypage").classList.contains("open") && $("#mypageTitle").textContent === "마이페이지") box.innerHTML = myHome(me, offline); };
   const cached = cachedProfile();
-  costEdit = false; costAdding = false; costFold = new Set(load(COST_FOLD_KEY, []));
+  costEdit = false; costAdding = false; addSec = "fixed"; costFold = new Set(load(COST_FOLD_KEY, []));
   draw(cached);
   freshProfile().then((me) => { if (JSON.stringify(me) !== JSON.stringify(cached)) draw(me); }).catch(() => draw(cached, true));
   loadReceiptMaterial();
@@ -2585,7 +2585,15 @@ const COST_KEY = () => { const u = readLogin(); return `salpi_costs_${u?.profile
 const WEEK = ["월", "화", "수", "목", "금", "토", "일"];
 const BIZ = ["한식", "중식", "일식", "양식", "분식", "치킨", "카페", "기타"];
 const FIXED_BASE = [["rent", "임대료"], ["manage", "관리비"], ["staff", "인건비"], ["power", "전기료"], ["gas", "가스비"], ["water", "수도세"]];
-const FIXED_EXTRA = ["4대보험", "광고비", "세무 기장료", "대출 이자", "음식물 쓰레기"];
+// 비용 추가: 넣을 칸 → 그 칸에 맞는 추천 항목 (추가한 비용은 extra[{name, v, sec}] 에 칸 이름과 함께 기억, sec 없으면 고정 비용)
+const ADD_SECS = [["fixed", "고정 비용"], ["sale", "판매 비용"], ["deliv", "배달"]];
+const EXTRA_SUGGEST = {
+  fixed: ["4대보험", "광고비", "세무 기장료", "대출 이자", "음식물 쓰레기"],
+  sale: ["일회용품", "주방 소모품", "주류 · 음료", "할인 · 포인트"],
+  deliv: ["배달앱 광고", "할인 쿠폰", "배달 대행 기본료"],
+};
+const extraSec = (x) => x.sec || "fixed";
+let addSec = "fixed";   // 비용 추가하기에서 고른 칸
 const DELIV = [["fee", "중개 수수료", ""], ["ride", "배달비", "사장님 부담"], ["pack", "포장 용기", ""]];
 const COST_DEFAULT = { seats: null, closed: ["일"], sales: null, fixed: {}, extra: [], material: null, card: null, tax: "general", delivery: false, deliv: {} };
 const PEN = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>`;
@@ -2619,16 +2627,18 @@ function man(v) {
 //   하루 본전 = S ÷ 한 달 영업일
 function costCalc(c) {
   const n = (v) => +v || 0;
-  const fixed = FIXED_BASE.reduce((s, [k]) => s + n(c.fixed[k]), 0) + c.extra.reduce((s, x) => s + n(x.v), 0);
+  const ex = (sec) => c.extra.filter((x) => extraSec(x) === sec).reduce((s, x) => s + n(x.v), 0);
+  const fixed = FIXED_BASE.reduce((s, [k]) => s + n(c.fixed[k]), 0) + ex("fixed");
   const material = c.material == null ? n(receiptMaterial) : n(c.material);
-  const deliv = c.delivery ? DELIV.reduce((s, [k]) => s + n(c.deliv[k]), 0) : 0;
+  const saleEx = ex("sale");
+  const deliv = c.delivery ? DELIV.reduce((s, [k]) => s + n(c.deliv[k]), 0) + ex("deliv") : 0;
   const cardRate = c.card == null ? 0.012 : 0;
-  const base = fixed + material + deliv + (c.card == null ? 0 : n(c.card));
+  const base = fixed + material + saleEx + deliv + (c.card == null ? 0 : n(c.card));
   const S = !base ? 0 : c.tax === "simple" ? base / (1 - cardRate - 0.015) : (base - material / 11) / (1 - cardRate - 1 / 11);
   const card = c.card == null ? S * cardRate : n(c.card);
   const vat = c.tax === "simple" ? S * 0.015 : Math.max(0, S - material) / 11;
   const days = Math.round(30.4 * (7 - c.closed.length) / 7);
-  return { fixed, material, card, vat, deliv, sale: material + card + vat, days, monthly: S, be: days && S ? S / days : null };
+  return { fixed, material, card, vat, deliv, sale: material + saleEx + card + vat, days, monthly: S, be: days && S ? S / days : null };
 }
 
 function costBanner(k) {
@@ -2681,13 +2691,16 @@ function costCard() {
       ${me.phone ? `<dt>휴대폰</dt><dd>${esc(maskPhone(me.phone))}</dd>` : ""}
     </dl>`;
 
+  // 추가한 비용 줄 (칸별로). i 는 extra 전체에서의 순서
+  const extraRows = (sec) => c.extra.map((x, i) => [x, i]).filter(([x]) => extraSec(x) === sec).map(([x, i]) => ed
+    ? `<div class="mc-row"><span class="mc-label"><input class="mc-name" type="text" data-k="extra.${i}.name" value="${esc(x.name)}" placeholder="비용 이름" aria-label="비용 이름"></span>
+        <span class="mc-row-end">${numIn(`extra.${i}.v`, x.v, x.name || "비용")}<button class="mc-del" type="button" data-xdel="${i}" aria-label="${esc(x.name || "비용")} 지우기">×</button></span></div>`
+    : mcShow(esc(x.name || "기타"), x.v)).join("");
+
   // 고정 비용
-  const fixedRows = ed
+  const fixedRows = (ed
     ? FIXED_BASE.map(([key, label]) => mcRow(label, numIn(`fixed.${key}`, c.fixed[key], label))).join("")
-      + c.extra.map((x, i) => `<div class="mc-row"><span class="mc-label"><input class="mc-name" type="text" data-k="extra.${i}.name" value="${esc(x.name)}" placeholder="비용 이름" aria-label="비용 이름"></span>
-          <span class="mc-row-end">${numIn(`extra.${i}.v`, x.v, x.name || "비용")}<button class="mc-del" type="button" data-xdel="${i}" aria-label="${esc(x.name || "비용")} 지우기">×</button></span></div>`).join("")
-    : FIXED_BASE.map(([key, label]) => mcShow(label, c.fixed[key])).join("")
-      + c.extra.map((x) => mcShow(esc(x.name || "기타"), x.v)).join("");
+    : FIXED_BASE.map(([key, label]) => mcShow(label, c.fixed[key])).join("")) + extraRows("fixed");
 
   // 판매 비용 (부가세 줄 안에 작은 일반 · 간이 전환)
   const matAuto = c.material == null && receiptMaterial != null;
@@ -2698,17 +2711,25 @@ function costCard() {
       + mcRow("카드 수수료", numIn("card", c.card, "카드 수수료", k.card ? `어림 ${Math.round(k.card)}` : "0"))
     : mcShow("재료비", k.material, matAuto ? mcTag("자동", true) : "")
       + mcShow("카드 수수료", k.card, c.card == null ? mcTag("어림값") : ""))
-    + mcRow("부가세", mcVal(k.vat, "약 "), taxSeg, !k.vat);
+    + mcRow("부가세", mcVal(k.vat, "약 "), taxSeg, !k.vat) + extraRows("sale");
 
   // 배달
   const delivRows = c.delivery ? (ed
     ? mcRow("배달 매출", numIn("deliv.sales", c.deliv.sales, "배달 매출")) + DELIV.map(([key, label, sub]) => mcRow(DELIV_LABEL(label, sub), numIn(`deliv.${key}`, c.deliv[key], label))).join("")
-    : mcShow("배달 매출", c.deliv.sales) + DELIV.map(([key, label, sub]) => mcShow(DELIV_LABEL(label, sub), c.deliv[key])).join("")) : "";
+    : mcShow("배달 매출", c.deliv.sales) + DELIV.map(([key, label, sub]) => mcShow(DELIV_LABEL(label, sub), c.deliv[key])).join("")) + extraRows("deliv") : "";
   const delivSwitch = `<span class="mc-switch${c.delivery ? " on" : ""}" role="group" aria-label="배달 여부">
     <button type="button" data-deliv="0" aria-pressed="${!c.delivery}">안 해요</button><button type="button" data-deliv="1" aria-pressed="${c.delivery}">해요</button></span>`;
 
-  const added = new Set(c.extra.map((x) => x.name));
-  const chips = FIXED_EXTRA.filter((n) => !added.has(n));
+  // 비용 추가하기: [고정 비용 | 판매 비용 | 배달] 중 넣을 칸 → 그 칸 추천 항목 + 직접 입력
+  const added = new Set(c.extra.filter((x) => extraSec(x) === addSec).map((x) => x.name));
+  const chips = EXTRA_SUGGEST[addSec].filter((n) => !added.has(n));
+  const addBox = `<div class="mc-addbox">
+      <div class="mc-addto"><span>어디에 넣을까요?</span>
+        <span class="mc-seg" role="group" aria-label="비용을 넣을 칸">${ADD_SECS.map(([key, label]) =>
+          `<button type="button" data-addsec="${key}" aria-pressed="${key === addSec}">${label}</button>`).join("")}</span></div>
+      <div class="mc-chips">${chips.map((n) => `<button type="button" data-xadd="${esc(n)}">${esc(n)}</button>`).join("")}<button type="button" data-xadd="">직접 입력</button></div>
+      ${addSec === "deliv" && !c.delivery ? `<p class="mc-hint">고르면 배달이 '해요'로 바뀌어요</p>` : ""}
+    </div>`;
 
   return `
     <div class="mc-head"><h4>내 정보</h4>
@@ -2719,7 +2740,7 @@ function costCard() {
     ${mcSection("sale", "판매 비용", k.sale, saleRows)}
     ${mcSection("delivery", "배달", c.delivery ? k.deliv : null, delivRows, delivSwitch)}
     <button class="mc-add" type="button" data-cadd aria-expanded="${costAdding}">${PLUS}<span>비용 추가하기</span></button>
-    ${costAdding ? `<div class="mc-chips">${chips.map((n) => `<button type="button" data-xadd="${esc(n)}">${esc(n)}</button>`).join("")}<button type="button" data-xadd="">직접 입력</button></div>` : ""}
+    ${costAdding ? addBox : ""}
     ${ed ? `<button class="mc-done wide" type="button" data-cdone>완료</button>` : ""}`;
 }
 
@@ -2743,7 +2764,7 @@ async function loadReceiptMaterial() {
 }
 
 function costClick(e) {
-  const t = e.target.closest("[data-cedit],[data-cdone],[data-day],[data-biz],[data-tax],[data-deliv],[data-cadd],[data-xadd],[data-xdel],[data-fold]");
+  const t = e.target.closest("[data-cedit],[data-cdone],[data-day],[data-biz],[data-tax],[data-deliv],[data-cadd],[data-addsec],[data-xadd],[data-xdel],[data-fold]");
   if (!t || !t.closest("#myCost")) return false;
   const c = costs(), d = t.dataset;
   let focus;
@@ -2760,9 +2781,11 @@ function costClick(e) {
     else focus = `[data-deliv="${d.deliv}"]`;
   }
   else if ("cadd" in d) { costAdding = !costAdding; focus = "[data-cadd]"; }
+  else if (d.addsec) { addSec = d.addsec; focus = `[data-addsec="${d.addsec}"]`; }
   else if (d.xadd != null) {
-    c.extra.push({ name: d.xadd, v: null });
-    costEdit = true; costFold.delete("fixed");
+    c.extra.push({ name: d.xadd, v: null, sec: addSec });
+    if (addSec === "deliv") c.delivery = true;   // 배달 칸에 넣으면 배달을 켬
+    costEdit = true; costAdding = false; costFold.delete({ fixed: "fixed", sale: "sale", deliv: "delivery" }[addSec]);
     const i = c.extra.length - 1;
     focus = d.xadd ? `[data-k="extra.${i}.v"]` : `[data-k="extra.${i}.name"]`;
   }

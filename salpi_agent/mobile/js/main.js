@@ -3,7 +3,7 @@
 import { splash, bottomNav, appHeader } from "./components/index.js";
 import { createRouter } from "./core/router.js";
 import { homeVM } from "./viewmodels/HomeVM.js";
-import { installPrompt } from "./viewmodels/MyVM.js";
+import { installPrompt, initNativePush } from "./viewmodels/MyVM.js";
 import { IS_NATIVE, plugin, APP_OAUTH_PREFIX, finishKakaoLogin, siteUrl } from "./core/api.js";
 
 const sp = splash();
@@ -35,6 +35,9 @@ if (IS_NATIVE) {
     } catch (err) { toastMod.toast(err.message || "로그인을 하지 못했어요", 5000); }
   });
 }
+
+// 안드로이드 앱 알림(Firebase): 알림을 누르면 그 화면으로 (서버가 보내는 주소 /m/#/store → #/store)
+initNativePush((url) => { const h = url.includes("#") ? url.slice(url.indexOf("#")) : ""; location.hash = h || "#/home"; });
 
 // 웹으로 열었을 때만: 설치형 앱(PWA) 백그라운드 작업 · "앱 설치" 기회 받아 두기 (안드로이드 앱 안에서는 필요 없음)
 if (!IS_NATIVE) {

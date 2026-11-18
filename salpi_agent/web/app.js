@@ -2664,7 +2664,7 @@ async function showKakao() {
         sessionStorage.removeItem("salpi_kakao_ok"); sessionStorage.removeItem("salpi_kakao_err"); } catch (e) {}
   if (!st.connected) {
     // 아이디로 가입한 사장님도 됨: 살피 로그인은 그대로, 카카오톡 권한만 붙임
-    box.innerHTML = `<div class="toggle-row"><span><b>아직 연결 전</b><small>카카오 계정으로 '카카오톡 메시지 전송'에 동의하면 받아요</small></span>
+    box.innerHTML = `<div class="toggle-row"><span><b>아직 연결 전</b><small>카카오톡 연결 후 동의하면 받아요.</small></span>
       <button class="btn primary" id="kakaoLink" type="button" ${st.ready ? "" : "disabled"}>카카오톡 연결</button></div>
       ${st.ready ? "" : `<p class="muted small">서버에 카카오 키가 아직 없어요</p>`}
       ${err ? `<p class="rc-warn">연결하지 못했어요: ${esc(err)}</p>` : ""}`;

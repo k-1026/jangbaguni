@@ -106,7 +106,8 @@ $("#loginBtn").href = LOGIN_URL;
 // 카카오에서 돌아옴 (/?page=oauth#access_token=...): 가게가 있으면 바로 로그인, 처음이면 가게 정보만 받는 가입 화면으로
 const OAUTH_KEY = "salpi_oauth";   // 가게 정보를 받기 전까지 카카오 로그인 표를 잠깐 보관 (이 창에서만)
 const kakaoStart = () => location.assign(`/api/auth/kakao?next=${encodeURIComponent(LOGIN_NEXT)}`);
-if (!ITEM && PAGE === "oauth" && !SIGNED_IN) (async () => {
+// 이미 로그인한 사장님이 마이페이지 '카카오로 연결'(카카오톡 메시지 동의)로 돌아올 때도 여기를 지나야 카카오 표가 저장됨 (11/18 고침)
+if (!ITEM && PAGE === "oauth") (async () => {
   const h = new URLSearchParams(location.hash.slice(1));
   const fail = (m) => location.replace(`/?page=login&next=${encodeURIComponent(LOGIN_NEXT)}&err=${encodeURIComponent(m)}`);
   if (!h.get("access_token")) return fail(h.get("error_description") || "카카오 로그인을 하지 못했어요. 다시 해 주세요.");
@@ -114,9 +115,12 @@ if (!ITEM && PAGE === "oauth" && !SIGNED_IN) (async () => {
     expires_at: Number(h.get("expires_at")) || Math.floor(Date.now() / 1000) + Number(h.get("expires_in") || 3600) };
   try { s.user = await authCall("/api/auth/me", { method: "GET", token: s.access_token }); } catch (e) { return fail(e.message); }
   // 카카오톡 시세 알림용 카카오 표 저장 ('카카오톡 메시지 전송'에 동의했을 때만 옴, 실패해도 로그인은 그대로)
+  let linkErr = "";
   if (h.get("provider_refresh_token")) {
-    try { await authCall("/api/kakao/connect", { token: s.access_token, body: { provider_token: h.get("provider_token") || "", provider_refresh_token: h.get("provider_refresh_token") } }); } catch (e) {}
-  }
+    try { await authCall("/api/kakao/connect", { token: s.access_token, body: { provider_token: h.get("provider_token") || "", provider_refresh_token: h.get("provider_refresh_token") } }); }
+    catch (e) { linkErr = e.message; }
+  } else linkErr = "카카오가 메시지 권한 표를 보내 주지 않았어요 ('카카오톡 메시지 전송' 동의를 확인해 주세요)";
+  try { if (sessionStorage.getItem("salpi_kakao_link")) { sessionStorage.removeItem("salpi_kakao_link"); if (linkErr) sessionStorage.setItem("salpi_kakao_err", linkErr); } } catch (e) {}
   if (s.user.store_id) { saveLogin(sessionToLogin(s), true); return location.replace(LOGIN_NEXT); }
   try { sessionStorage.setItem(OAUTH_KEY, JSON.stringify(s)); } catch (e) {}
   location.replace(`/?page=signup&kakao=1&next=${encodeURIComponent(LOGIN_NEXT)}`);
@@ -2445,7 +2449,9 @@ async function showKakao() {
   if (!st.connected) {
     box.innerHTML = `<div class="toggle-row"><span><b>아직 연결 전</b><small>카카오로 다시 로그인하고 '카카오톡 메시지 전송'에 동의해 주세요</small></span>
       <button class="btn primary" id="kakaoRelogin" type="button">카카오로 연결</button></div>`;
-    $("#kakaoRelogin").onclick = () => location.assign(`/api/auth/kakao?talk=1&next=${encodeURIComponent("/?page=store")}`);
+    let err = ""; try { err = sessionStorage.getItem("salpi_kakao_err") || ""; sessionStorage.removeItem("salpi_kakao_err"); } catch (e) {}
+    if (err) box.insertAdjacentHTML("beforeend", `<p class="rc-warn">지난번 연결 실패: ${esc(err)}</p>`);
+    $("#kakaoRelogin").onclick = () => { try { sessionStorage.setItem("salpi_kakao_link", "1"); } catch (e) {} location.assign(`/api/auth/kakao?talk=1&next=${encodeURIComponent("/?page=store")}`); };
     return;
   }
   box.innerHTML = `<label class="toggle-row"><span><b>매일 아침 받기</b><small>${st.last_sent ? `마지막으로 보낸 때 ${esc(st.last_sent.replace("T", " "))}` : "아직 보낸 적 없어요"}${st.last_error ? ` · 지난번 실패: ${esc(st.last_error)}` : ""}</small></span>

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 앱 알림 색 (살피 초록, mobile/app.css 의 primary 색) -->
+<resources>
+    <color name="salpi_notification">#3B7A0A</color>
+</resources>

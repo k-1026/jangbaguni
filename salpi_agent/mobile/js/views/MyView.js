@@ -30,14 +30,15 @@ function kakaoBody(k) {
     <button type="button" class="m-btn primary" data-kconnect ${s.ready ? "" : "disabled"}>연결</button></div>`;
   return `<label class="m-li m-tg"><span><b>매일 아침 받기</b><small>${s.last_sent ? `마지막으로 보낸 때 ${esc(String(s.last_sent).replace("T", " "))}` : "아직 보낸 적 없어요"}${s.last_error ? ` · 지난번 실패: ${esc(s.last_error)}` : ""}</small></span>
       <input type="checkbox" class="m-switch" data-kon ${s.on ? "checked" : ""}></label>
-    <div class="m-li"><span><b>지금 보내 보기</b><small>내 카톡 '나와의 채팅'으로 지금 시세 알림</small></span><button type="button" class="m-btn" data-ktest>보내기</button></div>
+    <div class="m-li"><span><b>카톡으로 보내 보기</b><small>내 카톡 '나와의 채팅'으로 지금 시세 알림</small></span><button type="button" class="m-btn" data-ktest>보내기</button></div>
     <div class="m-li"><span><b>연결 끊기</b><small>카카오톡 알림을 그만 받아요</small></span><button type="button" class="m-btn" data-kunlink>끊기</button></div>`;
 }
 
 function appBody(vm, p) {
-  if (IS_NATIVE) return `<div class="m-li"><b>살피 앱</b><span class="m-on">설치됨</span></div>
-    <p class="m-note">휴대폰 알림(푸시)은 카카오톡 알림으로 먼저 받을 수 있어요. 앱 자체 푸시는 준비 중이에요.</p>`;
-  const install = vm.isApp() ? `<div class="m-li"><b>살피 앱</b><span class="m-on">설치됨</span></div>`
+  const installed = `<div class="m-li"><b>살피 앱</b><span class="m-on">설치됨</span></div>`;
+  if (IS_NATIVE && !vm.hasFirebase) return installed
+    + `<p class="m-note">이 앱 빌드에는 알림 설정(google-services.json)이 아직 없어요. 그동안은 카카오톡 알림으로 받아 주세요.</p>`;
+  const install = IS_NATIVE ? installed : vm.isApp() ? `<div class="m-li"><b>살피 앱</b><span class="m-on">설치됨</span></div>`
     : vm.installPrompt.get() ? `<div class="m-li"><span><b>살피 앱 설치</b><small>홈 화면에 아이콘이 생겨요</small></span><button type="button" class="m-btn primary" data-install>설치</button></div>`
     : vm.isIOS ? `<p class="m-note">아이폰: Safari 아래 공유 버튼 → "홈 화면에 추가" → 그 앱에서 알림을 켜 주세요</p>`
     : `<p class="m-note">크롬 메뉴(⋮) → "앱 설치" 또는 "홈 화면에 추가"</p>`;
@@ -45,9 +46,9 @@ function appBody(vm, p) {
   if (p.loading) return install + loading("알림 상태를 확인하는 중이에요");
   const push = p.on
     ? `<div class="m-li"><span><b>앱 알림 켜짐</b><small>${p.last ? `마지막 알림 ${esc(p.last.replace("T", " "))}` : "매일 아침 시세 알림이 와요"}</small></span><button type="button" class="m-btn" data-off>끄기</button></div>
-       <div class="m-li"><span><b>지금 보내 보기</b><small>이 계정의 기기로 지금 알림</small></span><button type="button" class="m-btn" data-test>보내기</button></div>`
-    : p.denied ? `<p class="m-warn">알림이 막혀 있어요. 휴대폰 설정 → 앱 → 살피(또는 크롬) → 알림 허용</p>`
-    : `<div class="m-li"><span><b>앱 알림</b><small>${p.ready ? "매일 아침 내 메뉴 재료 시세 · 원가율" : "서버에 앱 알림 열쇠가 아직 없어요"}</small></span>
+       <div class="m-li"><span><b>지금 보내 보기</b><small>${IS_NATIVE ? "이 휴대폰으로 지금 앱 알림" : "이 계정의 기기로 지금 알림"}</small></span><button type="button" class="m-btn" data-test>보내기</button></div>`
+    : p.denied ? `<p class="m-warn">알림이 막혀 있어요. 휴대폰 설정 → 앱 → 살피${IS_NATIVE ? "" : "(또는 크롬)"} → 알림 허용</p>`
+    : `<div class="m-li"><span><b>앱 알림</b><small>${p.ready ? "매일 아침 내 메뉴 재료 시세 · 원가율" : `서버에 앱 알림 열쇠${IS_NATIVE ? "(FCM_SERVICE_ACCOUNT)" : ""}가 아직 없어요`}</small></span>
         <button type="button" class="m-btn primary" data-on ${p.ready ? "" : "disabled"}>켜기</button></div>`;
   return install + push + (p.error ? `<p class="m-warn">${esc(p.error)}</p>` : "");
 }

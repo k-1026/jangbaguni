@@ -20,7 +20,12 @@ REPO = os.environ["REPO"]
 
 
 def sh(*args, check=True):
-    r = subprocess.run(args, capture_output=True, text=True)
+    env = None
+    if args[:2] == ("gh", "issue") and os.environ.get("ISSUE_TOKEN"):
+        # Issue 만들기 · 고치기는 GitHub 기본 토큰으로 (배포 담당자 개인 토큰엔 Issue 쓰기 권한이 없어 updateIssue 가 막혔음, 11/18)
+        # 기본 토큰으로 고친 Issue 는 이 작업을 다시 깨우지 않아서, README ↔ Issue 가 서로 계속 바꾸는 일도 없음
+        env = {**os.environ, "GH_TOKEN": os.environ["ISSUE_TOKEN"]}
+    r = subprocess.run(args, capture_output=True, text=True, env=env)
     if check and r.returncode:
         print(r.stdout, r.stderr)
         sys.exit(r.returncode)

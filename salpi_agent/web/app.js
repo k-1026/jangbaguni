@@ -1467,7 +1467,7 @@ function renderReceiptEdit() {
 }
 
 // 칭찬 팝업: 새로 저장한 영수증에서 아낀 돈이 더 낸 돈보다 많을 때만 (나쁜 소식은 구매가 점검 칸에서만)
-// 아낀 금액에 따라 배지 3단계 · 3초 뒤 저절로 닫히고 × 로 바로 닫을 수도 있음
+// 아낀 금액에 따라 배지 3단계 · 5초 뒤 저절로 닫히고 × 로 바로 닫을 수도 있음
 const PRAISE_BADGES = [[50000, "🏆", "살림 9단"], [10000, "🛒", "장보기 고수"], [0, "🌱", "알뜰 새싹"]];
 async function praiseIfSaved(id) {
   if (!id) return;
@@ -1499,7 +1499,7 @@ function showPraise(net, best) {
   document.body.append(pop);
   let timer;
   const close = () => { clearTimeout(timer); pop.classList.add("out"); setTimeout(() => pop.remove(), 200); };
-  timer = setTimeout(close, 3000);
+  timer = setTimeout(close, 5000);
   pop.querySelector(".praise-x").onclick = close;
   pop.onclick = (e) => { if (e.target === pop) close(); };
 }

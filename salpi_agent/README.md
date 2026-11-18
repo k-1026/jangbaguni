@@ -57,7 +57,7 @@
 | `demand.py` | 내일 준비: 메뉴별 내일 그릇 수 → 재료 필요량 → 재고 뺀 발주량. 시연 가게는 학습 모델(`demand_model.py`), 그 밖은 규칙 |
 | `dummy_store.py` | 시연 가게 1년 치 가상 데이터(메뉴 · 레시피 · 판매량 · 영수증 · 재고) 만들기 → `data/dummy_store/`, `--apply` 면 Supabase 시연 가게에 넣기 |
 | `demand_learn.py` · `demand_model.py` | 판매량 학습: 가상 판매 기록으로 부스팅을 학습 · 6달 시험(규칙과 비교) → `models/demand_demo.json` / 서버에서 numpy 없이 읽어 내일 예측 ([결과](../plan/forecast/1118_demand_learning.md)) |
-| `agent.py` | 제미나이 에이전트: 도구 호출 → 살피 말투로 설명 (`brand/SKILL.md` 적용), 바쁠 때 다른 모델로 자동 전환 |
+| `agent.py` | 제미나이 에이전트: **안내 + 담당 3개**(📈 시세 · 💰 원가 · 마진 · 📦 내일 준비). 안내가 버튼 질문은 규칙으로, 자유 질문은 가벼운 모델로 담당을 고르고(실패하면 낱말 규칙), 섞인 질문은 담당들을 동시에 불러 답을 붙임. 담당마다 도구 5~9개 → 살피 말투로 설명 (`brand/SKILL.md` 적용), 바쁠 때 다른 모델로 자동 전환 ([설명](../plan/bm/1118_agent_split.md)) |
 | `price_judge.py` | 싸게/비싸게 판정 (`/api/price-judge`): 영수증 품목마다 산 값을 우리 가게 평소 단가(앞 영수증 8장 가운데값) · 대구 시세와 비교. 10% 안쪽은 비슷해요, 평소보다 비싸도 소매가보다 싸면 '시세가 올랐어요' |
 | `server.py` | 웹 서버 (화면 + `/api/...`) |
 | `web/` | 화면 (`index.html` · `style.css` · `app.js`), `web/img/` 는 brand 폴더의 배경 없는 살피 이미지를 웹용으로 줄인 것 |

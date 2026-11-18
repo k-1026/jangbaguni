@@ -706,6 +706,30 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .rc-edit { border: 1px solid var(--accent); background: var(--surface); border-radius: 8px; padding: 2px 8px; font-size: 12px; font-weight: 700; color: var(--accent); }
 .rc-edit:hover { background: var(--accent); color: #fff; }
 
+/* 최근 영수증: 사진 카드 한 줄 (맨 앞 = 새 영수증 올리기 그림 칸) · 양옆 작은 화살표 */
+.rc-strip-wrap { position: relative; }
+.rc-strip { display: flex; gap: 12px; margin: 0; padding: 2px 2px 8px; list-style: none; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.rc-strip::-webkit-scrollbar { display: none; }
+.rc-card { flex: 0 0 150px; display: flex; flex-direction: column; gap: 6px; scroll-snap-align: start; font-size: 12.5px; }
+.rc-strip .rc-thumb { display: block; width: 100%; aspect-ratio: 4 / 5; padding: 0; overflow: hidden; border: 1px solid var(--outline-variant); border-radius: 12px; background: #F6F6F6; cursor: pointer; }
+.rc-thumb img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; transition: transform .2s; }
+.rc-thumb:hover img { transform: scale(1.04); }
+.rc-thumb svg { width: 60px; height: 50px; fill: none; stroke: #9A9A9A; stroke-width: 2.5; }
+.rc-thumb svg circle, .rc-thumb svg path { fill: #9A9A9A; stroke: none; }
+.rc-strip .rc-add-tile { display: flex; align-items: center; justify-content: center; }
+.rc-add-tile:hover { border-color: var(--primary); }
+.rc-nophoto { display: flex; height: 100%; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: var(--muted); }
+.rc-nophoto svg { width: 44px; height: 36px; }
+.rc-meta { display: flex; flex-direction: column; gap: 2px; line-height: 1.35; }
+.rc-meta b { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.rc-meta span { color: var(--muted); }
+.rc-card .rc-btns small { color: var(--muted); font-size: 11.5px; }
+.rc-arrow { position: absolute; top: calc(150px * 5 / 8); width: 32px; height: 32px; padding: 0; border: 1px solid var(--outline); border-radius: 50%;
+  background: var(--surface); box-shadow: var(--e2); color: var(--ink); font-size: 20px; line-height: 1; transform: translateY(-50%); cursor: pointer; }
+.rc-arrow.prev { left: -10px; } .rc-arrow.next { right: -10px; }
+.rc-arrow:hover { border-color: var(--primary); color: var(--primary); }
+.rc-arrow[hidden] { display: none; }
+
 /* 식봄 상품 카드 (재료 페이지 · 검색에서 씀) */
 .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px 14px; }
 .product { text-decoration: none; color: inherit; display: flex; flex-direction: column; gap: 3px; }

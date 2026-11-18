@@ -370,12 +370,21 @@ def recent(store_id, limit=8):
     counts = {}
     for r in db.select("purchase_items", purchase_id=f"in.({','.join(str(p['id']) for p in ps) or 0})", select="purchase_id"):
         counts[r["purchase_id"]] = counts.get(r["purchase_id"], 0) + 1
-    return [{**p, "items": counts.get(p["id"], 0), "image_path": bool(p["image_path"])} for p in ps]
+    urls = db.signed_urls([p["image_path"] for p in ps if p["image_path"]], seconds=3600)   # 사진 줄 미리보기 (한 번에, 1시간)
+    return [{**p, "items": counts.get(p["id"], 0), "image_path": bool(p["image_path"]), "image_url": _image_url(p, urls)} for p in ps]
 
 
 # 시연 기본 데이터(seed.sql) 영수증 4장은 같은 내용으로 그린 시연용 영수증 그림을 보여 줌
 DEMO_IMAGES = {"2026-10-12": "receipt_1012_statement", "2026-10-19": "receipt_1019_statement",
                "2026-10-26": "receipt_1026_mart", "2026-11-02": "receipt_1102_handwritten"}
+
+
+def _image_url(p, urls):
+    if p["image_path"]:
+        return urls.get(p["image_path"])
+    if p["source"] == "demo" and p["purchased_on"] in DEMO_IMAGES:
+        return f"/receipts_demo/{DEMO_IMAGES[p['purchased_on']]}.png"
+    return None
 
 
 def detail(store_id, purchase_id):

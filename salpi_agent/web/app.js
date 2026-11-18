@@ -1494,18 +1494,47 @@ function costPlan(m, T) {
   </div>`;
 }
 
+// 최근 영수증: 사진 카드 한 줄 (맨 앞 = 새 영수증 올리기 칸) · 양옆 작은 화살표로 넘김
+const RC_PIC = `<svg viewBox="0 0 48 40" aria-hidden="true"><rect x="2" y="2" width="44" height="36" rx="1.5"/><circle cx="11" cy="11" r="3.5"/><path d="M5 35l12-15 7 8 8-12 11 19z"/></svg>`;
 function receiptList(list) {
-  return `<h3 class="sub-h">최근 영수증</h3><ul class="ctx-list receipt-list">${list.map((p) => `<li>
-    <button class="rc-open" data-rid="${p.id}" title="사진과 품목 보기">${mmdd(p.purchased_on)} · ${esc(supplierName(p.supplier))} · ${p.items}줄 · ${won(p.total_amount)} <i>보기 ›</i></button>
+  const cards = list.map((p) => `<li class="rc-card">
+    <button class="rc-open rc-thumb" data-rid="${p.id}" type="button" title="사진과 품목 보기">
+      ${p.image_url ? `<img src="${esc(p.image_url)}" alt="${mmdd(p.purchased_on)} 영수증 사진" loading="lazy">` : `<span class="rc-nophoto">${RC_PIC}<small>사진 없음</small></span>`}
+    </button>
+    <div class="rc-meta"><b>${mmdd(p.purchased_on)} · ${esc(supplierName(p.supplier))}</b><span>${p.items}줄 · ${won(p.total_amount)}</span></div>
     <span class="rc-btns"><button class="rc-edit" data-eid="${p.id}" type="button">수정하기</button>
-    ${p.source === "ocr" ? `<button class="rc-remove" data-id="${p.id}" type="button">지우기</button>` : `<small>기본 데이터</small>`}</span></li>`).join("")}</ul>`;
+    ${p.source === "ocr" ? `<button class="rc-remove" data-id="${p.id}" type="button">지우기</button>` : `<small>기본 데이터</small>`}</span></li>`).join("");
+  return `<h3 class="sub-h">최근 영수증</h3>
+    <div class="rc-strip-wrap">
+      <ul class="rc-strip">
+        <li class="rc-card"><button class="rc-thumb rc-add-tile" type="button" title="새 영수증 올리기" aria-label="새 영수증 올리기">${RC_PIC}</button></li>
+        ${cards}
+      </ul>
+      <button class="rc-arrow prev" type="button" aria-label="앞 영수증 보기" hidden>‹</button>
+      <button class="rc-arrow next" type="button" aria-label="다음 영수증 보기" hidden>›</button>
+    </div>`;
 }
+// 화살표: 더 넘길 게 있을 때만 보임
+function rcArrows() {
+  const s = $("#receiptList .rc-strip");
+  if (!s) return;
+  const max = s.scrollWidth - s.clientWidth - 2;
+  $("#receiptList .rc-arrow.prev").hidden = s.scrollLeft <= 2;
+  $("#receiptList .rc-arrow.next").hidden = s.scrollLeft >= max;
+}
+function showReceiptList(list) {
+  $("#receiptList").innerHTML = receiptList(list);
+  rcArrows();
+  document.querySelectorAll("#receiptList .rc-strip img").forEach((i) => i.addEventListener("load", rcArrows, { once: true }));
+}
+$("#receiptList").addEventListener("scroll", rcArrows, true);
+addEventListener("resize", rcArrows);
 
 async function loadCosts(full = true) {
   try {
     const r = await getJSON("/api/costs");
     if (full) renderCosts(r, false);
-    $("#receiptList").innerHTML = receiptList(r.receipts);
+    showReceiptList(r.receipts);
   } catch (e) {
     if (full) $("#costCard").innerHTML = `<p class="muted">원가율을 불러오지 못했어요. ${esc(e.message)}</p>`;
   }
@@ -1646,7 +1675,7 @@ async function stopMenu(m) {
 function afterMenuChange(r, text) {
   renderCosts(r, false);
   $("#costCard").insertAdjacentHTML("afterbegin", `<p class="ok">${esc(text)}</p>`);
-  $("#receiptList").innerHTML = receiptList(r.receipts);
+  showReceiptList(r.receipts);
   loadMyItems();
   loadDemand();
 }
@@ -1721,6 +1750,9 @@ $("#cameraBtn").onclick = openCamera;
 $("#cameraClose").onclick = closeCamera;
 $("#cameraModal").onclick = (e) => { if (e.target.id === "cameraModal") closeCamera(); };
 $("#receiptList").onclick = async (e) => {
+  if (e.target.closest(".rc-add-tile")) return $("#receiptFile").click();   // 맨 앞 그림 칸 = 새 영수증 올리기
+  const ar = e.target.closest(".rc-arrow");
+  if (ar) { const s = $("#receiptList .rc-strip"); return s.scrollBy({ left: (ar.classList.contains("next") ? 1 : -1) * s.clientWidth * 0.8, behavior: "smooth" }); }
   const o = e.target.closest(".rc-open");
   if (o) return openReceipt(o.dataset.rid);
   const ed = e.target.closest(".rc-edit");

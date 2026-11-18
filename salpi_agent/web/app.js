@@ -1514,7 +1514,8 @@ function receiptList(list) {
     <div class="rc-strip-wrap">
       <button class="rc-arrow prev" type="button" aria-label="앞 영수증 보기" disabled>‹</button>
       <ul class="rc-strip">
-        <li class="rc-card"><button class="rc-thumb rc-add-tile" type="button" title="새 영수증 올리기" aria-label="새 영수증 올리기">${RC_PIC}</button></li>
+        <li class="rc-card"><button class="rc-thumb rc-add-tile" type="button" title="눌러서 영수증 사진 · PDF 올리기">
+          <span class="rc-add-icon">${RC_PIC}<i aria-hidden="true">+</i></span><b>영수증 올리기</b><small>눌러서 사진 · PDF 선택</small></button></li>
         ${cards}
       </ul>
       <button class="rc-arrow next" type="button" aria-label="다음 영수증 보기" disabled>›</button>

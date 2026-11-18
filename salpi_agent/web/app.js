@@ -2254,10 +2254,28 @@ function showReceiptView(id, d) {
           <tbody>${d.items.map((x) => `<tr><td>${esc(x.raw_name)}</td><td>${esc(x.item || "재료 아님")}</td><td>${qtyTxt(x)}</td>
             <td class="price">${won(x.amount)}</td><td>${x.unit_price ? won(x.unit_price) : "-"}</td></tr>`).join("")}</tbody>
         </table>
+        <div class="rc-judge" id="rcJudge"><p class="muted small">산 값을 평소 단가 · 대구 시세와 비교하는 중이에요</p></div>
         <div class="receipt-actions"><button class="btn primary" id="rcViewEdit" type="button">수정하기</button></div>
       </div>
     </div>`;
   $("#rcViewEdit").onclick = () => editReceiptView(id, d);
+  loadJudge(id);
+}
+
+// 싸게/비싸게 판정 (/api/price-judge): 비싸게 · 시세 오름 · 싸게 산 품목만 한 줄씩, 나머지는 "비슷해요 N개"
+const JUDGE_CHIP = { "비싸게 샀어요": "up", "싸게 샀어요": "down" };
+async function loadJudge(id) {
+  const box = $("#rcJudge");
+  let j;
+  try { j = await getJSON(`/api/price-judge?purchase_id=${id}`); }
+  catch (e) { box.innerHTML = `<p class="muted small">산 값 판정을 불러오지 못했어요</p>`; return; }
+  if (!box.isConnected) return;
+  const notable = j.lines.filter((x) => x.verdict !== "비슷해요" && x.verdict !== "비교할 값 없음");
+  const s = j.summary;
+  box.innerHTML = `<h4>산 값 판정</h4>
+    ${notable.map((x) => `<p><span class="demand-chip ${JUDGE_CHIP[x.verdict] || ""}">${esc(x.verdict)}</span>
+      <b>${esc(x.item)}</b> ${won(x.unit_price)}/${esc(x.unit)} · ${esc(x.why)}${x.extra_paid ? ` · 평소 값이면 <b>${won(x.extra_paid)}</b> 덜 냈어요` : ""}${x.saved ? ` · <b>${won(x.saved)}</b> 아꼈어요` : ""}</p>`).join("")}
+    <p class="muted small">비슷해요 ${s.similar}개${notable.length ? "" : " · 모두 평소 값에 샀어요"} · 10% 안쪽은 비슷하다고 봐요</p>`;
 }
 
 // 저장한 영수증 고치기: 왼쪽에 사진(있으면)을 띄워 두고 오른쪽 표에서 바로 고침

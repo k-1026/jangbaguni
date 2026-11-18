@@ -422,6 +422,10 @@ function fit(){
 }
 addEventListener("resize",fit); fit();
 load(); setInterval(load,2*60*1000);
+// 다른 탭 · 창에 있다가 이 화면으로 돌아오면 바로 다시 읽음 (Issue에서 체크하고 돌아왔을 때 2분 기다리지 않게, 20초 안에 또 읽지는 않음)
+let lastLoad=Date.now();
+const loadSoon=()=>{if(!document.hidden && Date.now()-lastLoad>20e3){lastLoad=Date.now(); load()}};
+document.addEventListener("visibilitychange",loadSoon); addEventListener("focus",loadSoon);
 // 자정(한국 시간)이 지나면 다시 그려서 "오늘" · 지남 · D-day · 달력 위치를 바꿈
 let lastDay=kstToday().getTime();
 setInterval(()=>{const t=kstToday().getTime(); if(t!==lastDay){lastDay=t; if(ITEMS.length) renderAll(); load()}},60*1000);

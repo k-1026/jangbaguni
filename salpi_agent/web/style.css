@@ -254,6 +254,8 @@ body.item-view .home-only, body.store-view .home-only { display: none; }
 body.store-view .store-only { display: block; }
 .store-only { scroll-margin-top: 64px; }   /* 위쪽 메뉴에서 바로 갈 때 고정 메뉴줄에 제목이 가리지 않게 */
 .store-head h1 { margin: 6px 0 4px; font-size: 28px; }
+.store-head h1:has(b) { font-weight: 500; color: var(--muted); }   /* "사장님의 가게"는 가늘게 · 가게 이름만 굵고 진하게 */
+.store-head h1 b { font-weight: 800; color: var(--ink); }
 /* 나의 가게 버튼: 연한 초록 버튼, 나의 가게 페이지에서는 진한 초록 */
 .store-btn { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 999px; background: var(--primary-container); color: var(--on-primary-container);
   font-size: 14px; font-weight: 700; text-decoration: none; white-space: nowrap; transition: background .15s, box-shadow .15s; }

@@ -2360,7 +2360,8 @@ $("#receiptModal").onclick = (e) => { if (e.target.id === "receiptModal") closeR
 // ---------------------------------------------------------------
 // 마이페이지: 로그인한 사장님 정보(/api/auth/me) · 나의 영수증 · 설정(알림 · 권한) · 계정
 // ---------------------------------------------------------------
-if (STORE_VIEW) $("#storeName").textContent = `나의 가게 · ${readLogin()?.store || "내 가게"}`;
+// 제목: "<가게 이름> 사장님의 가게" — 가게 이름만 굵게 (가게 이름이 없으면 "나의 가게" 그대로)
+if (STORE_VIEW && readLogin()?.store) $("#storeName").innerHTML = `<b>${esc(readLogin().store)}</b> 사장님의 가게`;
 // 휴대폰 번호는 가운데를 가려서 보여 줌 (01012345678 → 010-****-5678)
 const maskPhone = (p) => (p && p.length >= 10 ? `${p.slice(0, 3)}-****-${p.slice(-4)}` : "");
 // 마이페이지는 기억해 둔 정보로 바로 그리고 → 서버(/api/auth/me) 답이 오면 기억을 고치고 다시 그림 (빈 화면으로 기다리지 않게)

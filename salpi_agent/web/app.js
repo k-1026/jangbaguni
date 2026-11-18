@@ -2366,7 +2366,6 @@ async function loadJudge(id) {
   catch (e) { box.innerHTML = `<p class="muted small">구매가 점검을 불러오지 못했어요</p>`; return; }
   if (!box.isConnected) return;
   const notable = j.lines.filter((x) => x.verdict !== "비슷해요" && x.verdict !== "비교할 값 없음");
-  const s = j.summary;
   // 한 품목 = 한 줄: 판정 | 재료 | 단가 | 이유(짧은 말로) | 더 낸 돈 · 아낀 돈 — 글자를 자르지 않고 줄마다 칸을 맞춤
   const shortWhy = (w) => w.replace("우리 가게 평소보다", "평소보다").replace("우리 가게 평소와", "평소와").replace(/대구 소매 평균/g, "소매가");
   const money = (x) => (x.extra_paid ? `<span class="jm up">${won(x.extra_paid)} 과지출</span>`
@@ -2376,7 +2375,7 @@ async function loadJudge(id) {
       <span class="demand-chip ${JUDGE_CHIP[x.verdict] || ""}">${esc(x.verdict)}</span>
       <b class="ji">${esc(x.item)}</b><span class="jp">${won(x.unit_price)}/${esc(x.unit)}</span>
       <span class="jw">${esc(shortWhy(x.why))}</span>${money(x)}</div>`).join("")}</div>` : ""}
-    <p class="muted small">비슷해요 ${s.similar}개${notable.length ? "" : " · 모두 평소 값에 샀어요"} · 10% 안쪽은 비슷하다고 봐요</p>`;
+    ${notable.length ? "" : `<p class="muted small">모두 평소 값에 샀어요</p>`}`;   // 눈에 띄는 품목이 없을 때만 한 줄 (칸이 비지 않게)
 }
 
 // 저장한 영수증 고치기: 왼쪽에 사진(있으면)을 띄워 두고 오른쪽 표에서 바로 고침

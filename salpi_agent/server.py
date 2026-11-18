@@ -168,6 +168,13 @@ KEY_NAMES = ["AT_SALE_API_KEY", "AT_PERDAY_API_KEY", "AT_REALTIME_API_KEY", "KMA
 
 
 # 설치형 앱(PWA): 앱 정보 · 백그라운드 작업 파일은 사이트 맨 위 주소에 있어야 앱 전체를 맡을 수 있음
+# 모바일 앱 화면 (MVVM, web/m/) — 데스크톱 화면(/)과 파일을 따로 둬서 서로 건드리지 않음
+@app.get("/m")
+@app.get("/m/")
+def mobile_app():
+    return FileResponse(WEB / "m" / "index.html", headers={"Cache-Control": "no-cache"})
+
+
 @app.get("/manifest.webmanifest")
 def manifest():
     return FileResponse(WEB / "manifest.webmanifest", media_type="application/manifest+json")

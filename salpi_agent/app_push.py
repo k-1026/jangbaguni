@@ -97,7 +97,7 @@ def _push(user, payload):
 def payload_for(user, outlook=None):
     text = kakao_alert.message((user.get("user_metadata") or {}).get("store_id"), outlook)
     first, _, rest = text.partition("\n")
-    return {"title": first.replace("[살피] ", "살피 · "), "body": rest, "url": "/?page=store&source=push", "tag": "salpi-morning"}
+    return {"title": first.replace("[살피] ", "살피 · "), "body": rest, "url": "/m/#/store", "tag": "salpi-morning"}
 
 
 def test(token, outlook=None):

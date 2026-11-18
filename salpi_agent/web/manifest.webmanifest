@@ -3,18 +3,18 @@
   "short_name": "살피",
   "description": "대구 식자재 시세 예측과 내 메뉴 원가율을 알려 주는 사장님 비서",
   "lang": "ko",
-  "start_url": "/?source=app",
+  "start_url": "/m/?source=app",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#FFF4E0",
-  "theme_color": "#3B7A0A",
+  "background_color": "#FFFFFF",
+  "theme_color": "#FFFFFF",
   "icons": [
     { "src": "/static/img/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "/static/img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     { "src": "/static/img/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "나의 가게", "url": "/?page=store&source=app", "icons": [{ "src": "/static/img/icon-192.png", "sizes": "192x192" }] }
+    { "name": "나의 가게", "url": "/m/#/store", "icons": [{ "src": "/static/img/icon-192.png", "sizes": "192x192" }] }
   ]
 }

@@ -1506,7 +1506,8 @@ function receiptList(list) {
     <button class="rc-open rc-thumb" data-rid="${p.id}" type="button" title="사진과 품목 보기">
       ${p.image_url ? `<img src="${esc(p.image_url)}" alt="${mmdd(p.purchased_on)} 영수증 사진" loading="lazy">` : rcMini(p)}
     </button>
-    <div class="rc-meta"><b>${mmdd(p.purchased_on)} · ${esc(supplierName(p.supplier))}</b><span>${won(p.total_amount)}</span></div>
+    <div class="rc-meta"><span class="rc-date">${+p.purchased_on.slice(5, 7)}월 ${+p.purchased_on.slice(8, 10)}일</span>
+      <b title="${esc(supplierName(p.supplier))}">${esc(supplierName(p.supplier))}</b><span class="rc-price">${won(p.total_amount)}</span></div>
     <span class="rc-btns"><button class="rc-edit" data-eid="${p.id}" type="button">수정하기</button>
     <button class="rc-remove" data-id="${p.id}" type="button">지우기</button></span></li>`).join("");
   return `<h3 class="sub-h">최근 영수증</h3>

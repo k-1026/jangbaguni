@@ -578,6 +578,37 @@ def kakao_on(body: KakaoOnIn, authorization: str | None = Header(None)):
     return _auth(lambda: kakao_alert.set_on(_bearer(authorization), body.on))
 
 
+def _site(request):
+    proto = request.headers.get("x-forwarded-proto") or request.url.scheme
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+    return f"{proto}://{host}"
+
+
+@app.post("/api/kakao/link")
+def kakao_link(request: Request, authorization: str | None = Header(None)):
+    """카카오톡 연결 (아이디 · 카카오 계정 모두): 카카오 인증 주소를 돌려줌 → 화면이 그리로 보냄."""
+    return _auth(lambda: {"url": kakao_alert.link_url(_bearer(authorization), _site(request))})
+
+
+@app.get("/api/kakao/callback")
+def kakao_callback(request: Request, code: str = "", state: str = "", error: str = "", error_description: str = ""):
+    """카카오에서 돌아옴 → 카카오 표 저장 → 나의 가게로 (결과는 주소 ?kakao=ok / kakao_err=이유)."""
+    from urllib.parse import quote
+    if error:
+        msg = "동의를 취소했어요" if error == "access_denied" else (error_description or error)
+        return RedirectResponse(f"/?page=store&kakao_err={quote(msg)}", status_code=302)
+    try:
+        kakao_alert.callback(code, state, _site(request))
+    except (auth.AuthError, ApiError, ApiKeyMissing) as e:
+        return RedirectResponse(f"/?page=store&kakao_err={quote(str(e)[:200])}", status_code=302)
+    return RedirectResponse("/?page=store&kakao=ok", status_code=302)
+
+
+@app.post("/api/kakao/unlink")
+def kakao_unlink(authorization: str | None = Header(None)):
+    return _auth(lambda: kakao_alert.unlink(_bearer(authorization)))
+
+
 @app.post("/api/kakao/test")
 def kakao_test(authorization: str | None = Header(None)):
     """마이페이지 '지금 보내 보기' — 내 카톡 '나와의 채팅'으로 지금 시세 알림."""

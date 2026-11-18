@@ -5,6 +5,7 @@
 시세 API가 없는 재료(두부 · 양념 등)와 조사가를 못 받은 날은 아래 참고 단가를 쓴다.
 참고 단가는 시연용 가정값이라 사장님 영수증 값으로 바꿔야 정확해진다.
 """
+import math
 
 from analysis import extra_trend, item_trend
 from data_sources import EXTRA_ITEMS, ITEMS
@@ -109,12 +110,10 @@ def menu_cost(menu, sale_price, ingredients=None):
     ratio = total / sale_price * 100 if sale_price else None
     if ratio is None:
         verdict = "판매가를 알려 주시면 남는지 계산해 드려요"
-    elif ratio <= 30:
-        verdict = "충분히 남아요"
-    elif ratio <= 38:
-        verdict = "남지만 빠듯해요"
+    elif ratio < 40:   # 원가율 기준 40% (receipts.TARGET_RATIO · 유저플로우 v2)
+        verdict = "괜찮아요"
     else:
-        verdict = "재료비 비중이 높아요. 가격이나 재료를 다시 보는 게 좋아요"
+        verdict = "재료비 비중이 높아요(40% 이상). 가격 조정 · 대체 재료 · 다른 메뉴 밀기를 검토해 보세요"
     lines.sort(key=lambda x: -x["cost"])
     return {
         "menu": menu, "sale_price": sale_price, "recipe_source": recipe_source,
@@ -123,5 +122,5 @@ def menu_cost(menu, sale_price, ingredients=None):
         "verdict": verdict, "biggest_costs": lines[:3], "breakdown": lines, "unknown_price_items": unknown,
         "unknown_unit_items": unit_unknown,   # 단위를 기준 단위로 못 바꾼 재료 (예: '큰술') → 계산에서 뺌
         "note": "식재료비만 본 값이에요(인건비 · 임대료 · 가스비 제외). 참고 단가는 영수증 값으로 바꾸면 정확해져요.",
-        "price_for_30pct": round(total / 0.30, -2),   # 재료비 30%가 되는 판매가
+        "price_for_40pct": math.ceil(total / 0.40 / 500) * 500 if total else None,   # 원가율 40% 아래가 되는 판매가 (500원 단위 올림)
     }

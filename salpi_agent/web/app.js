@@ -20,7 +20,7 @@ if (ITEM) {
   $("#itemPage").hidden = false;
 }
 // 로그인 상태: 서버(/api/auth/*, Supabase 로그인)가 준 로그인 표를 이 브라우저에 보관 → 서버에 'Authorization: Bearer' 로 보냄
-// '로그인 상태 유지'를 켜면 브라우저를 닫아도 유지(localStorage), 끄면 창을 닫으면 풀림(sessionStorage). 비밀번호는 보관하지 않음
+// '로그인 유지'를 켜면 브라우저를 닫아도 유지(localStorage), 끄면 창을 닫으면 풀림(sessionStorage). 비밀번호는 보관하지 않음
 const LOGIN_KEY = "salpi_login";
 function readLogin() {
   try { return JSON.parse(localStorage.getItem(LOGIN_KEY) || sessionStorage.getItem(LOGIN_KEY) || "null"); } catch (e) { return null; }
@@ -113,6 +113,10 @@ if (!ITEM && PAGE === "oauth" && !SIGNED_IN) (async () => {
   const s = { access_token: h.get("access_token"), refresh_token: h.get("refresh_token"),
     expires_at: Number(h.get("expires_at")) || Math.floor(Date.now() / 1000) + Number(h.get("expires_in") || 3600) };
   try { s.user = await authCall("/api/auth/me", { method: "GET", token: s.access_token }); } catch (e) { return fail(e.message); }
+  // 카카오톡 시세 알림용 카카오 표 저장 ('카카오톡 메시지 전송'에 동의했을 때만 옴, 실패해도 로그인은 그대로)
+  if (h.get("provider_refresh_token")) {
+    try { await authCall("/api/kakao/connect", { token: s.access_token, body: { provider_token: h.get("provider_token") || "", provider_refresh_token: h.get("provider_refresh_token") } }); } catch (e) {}
+  }
   if (s.user.store_id) { saveLogin(sessionToLogin(s), true); return location.replace(LOGIN_NEXT); }
   try { sessionStorage.setItem(OAUTH_KEY, JSON.stringify(s)); } catch (e) {}
   location.replace(`/?page=signup&kakao=1&next=${encodeURIComponent(LOGIN_NEXT)}`);
@@ -175,7 +179,7 @@ if (SIGNUP_VIEW) {
   const msg = authMsg($("#signupMsg"));
   const fail = (text, el) => { msg(text); el?.focus(); };
   eyeToggle($("#suEye"), $("#suPw"));
-  soonButtons($("#signupForm"), msg);   // 카카오 · 네이버 · 구글 가입은 아직 연결 전
+  soonButtons($("#signupForm"), msg);   // 아직 연결 전인 버튼은 '준비 중' 안내
   $("#signupToLogin").href = authLink("login");
   $("#suKakao").onclick = kakaoStart;
   // 카카오로 처음 온 사장님: 이름 · 가게 · 약관만 받음 (휴대폰 · 아이디 · 비밀번호는 카카오가 대신)
@@ -246,7 +250,6 @@ if (SIGNUP_VIEW) {
     e.preventDefault();
     const name = $("#suName").value.trim(), id = $("#suId").value.trim(), pw = $("#suPw").value, store = $("#suStore").value.trim();
     const gu = $("#suGu").value;   // 대구 구 · 군만 받음 (살피는 대구 시세 서비스)
-    const place = ["대구", gu, $("#suPlaceMore").value.trim()].filter(Boolean).join(" ");
     if (!name) return fail("이름을 입력해 주세요.", $("#suName"));
     if (KAKAO_MODE) {
       if (!store) return fail("가게 이름을 입력해 주세요.", $("#suStore"));
@@ -254,7 +257,7 @@ if (SIGNUP_VIEW) {
       if (terms.some((t) => t.dataset.required !== undefined && !t.checked)) return fail("필수 약관에 동의해 주세요.");
       try {
         const r = await authCall("/api/auth/store", { token: pending.access_token, body: { name, store, district: gu,
-          place: $("#suPlaceMore").value.trim(), alarm: $("#suAlarm").checked, terms_ok: true } });
+          alarm: $("#suAlarm").checked, terms_ok: true } });
         if (!saveLogin(sessionToLogin({ ...pending, user: r.user }), true)) return fail("이 브라우저에서는 로그인 상태를 기억할 수 없어요.");
         try { sessionStorage.removeItem(OAUTH_KEY); } catch (err) {}
         location.replace(LOGIN_NEXT);
@@ -272,7 +275,7 @@ if (SIGNUP_VIEW) {
     if (btn) btn.disabled = true;
     try {
       const s = await authCall("/api/auth/signup", { body: { name, phone: phoneDigits(), login_id: id, password: pw, store, district: gu,
-        place: $("#suPlaceMore").value.trim(), alarm: $("#suAlarm").checked, terms_ok: true } });
+        alarm: $("#suAlarm").checked, terms_ok: true } });
       if (!saveLogin(sessionToLogin(s), true)) return fail("이 브라우저에서는 로그인 상태를 기억할 수 없어요.");
       location.replace(LOGIN_NEXT);
     } catch (err) {
@@ -490,7 +493,7 @@ function itemSlide(r, idx) {
     <div>
       <h3>${esc(r.item)} 시세</h3>
       <p class="price-now"><strong>${won(r.wholesale_kg)}/kg</strong>
-        <span class="${cls(r.wholesale_change_pct, 3)}">1주 전보다 ${pct(r.wholesale_change_pct)}</span></p>
+        <span class="${cls(r.wholesale_change_pct, 3)}">1주 전보다 ${pct(r.wholesale_change_pct)}</span>${PER100_ITEMS.has(r.item) && r.wholesale_kg ? ` <span>· 100g ${won(r.wholesale_kg / 10)}</span>` : ""}</p>
     </div>
     <div class="legend">
       <span><i class="lg line"></i>도매 kg당</span><span><i class="lg fc"></i>7일 예측</span>
@@ -588,7 +591,9 @@ const extraByItem = (name) => extraList().find((r) => r.item === name);
 const extraRows = () => extraList().filter((r) => r.group === boardTab && r.price);
 const basisName = (r) => r.basis_label || (r.price_basis === "중도매" ? "북부도매시장 중도매가" : "대구 소매 평균");
 // 고기는 kg당 값이 커서 100g당 값도 같이 (정육점 표기와 같게)
-const per100 = (r) => (r.group === "육류" && r.unit === "kg" ? ` · 100g ${won(r.price / 10)}` : "");
+// 가지 · 레몬은 1개 무게 근거가 약하고 낱개로 사는 양이 적어 100g당이 더 와닿음
+const PER100_ITEMS = new Set(["가지", "레몬"]);
+const per100 = (r) => ((r.group === "육류" || PER100_ITEMS.has(r.item)) && r.unit === "kg" ? ` · 100g ${won(r.price / 10)}` : "");
 
 const extraExp = (r) => r.forecast?.expected_change_pct ?? 0;
 // 농산물 차트 · 예측 칸을 그대로 쓰도록 모양을 맞춤 (price → kg_price, expected_price_range → expected_kg_price_range)
@@ -1095,7 +1100,8 @@ function demandReason(factors) {
   if (v == null || Math.abs(v) < 0.02) return "평소와 비슷하게 팔릴 날이에요";
   const p = Math.round(Math.abs(v) * 100);
   if (name === "최근 2주 흐름") return `최근 2주 판매가 그 전보다 ${p}% ${v > 0 ? "늘었어요" : "줄었어요"}`;
-  return `${name}은 평소보다 ${p}% ${v > 0 ? "많이" : "적게"} 팔려요`;
+  if (name.endsWith("요일") || name === "공휴일") return `${name}은 평소보다 ${p}% ${v > 0 ? "많이" : "적게"} 팔려요`;
+  return `${name} 영향으로 평소보다 ${p}% ${v > 0 ? "많이" : "적게"} 팔릴 것 같아요`;   // 학습 모델 이유 (기온 · 삼성 홈경기 · 월급날 무렵 등)
 }
 
 const weekday = (s) => "일월화수목금토"[new Date(`${s}T00:00:00`).getDay()];
@@ -1122,7 +1128,7 @@ async function loadDemand() {
   const day = `${mmdd(d.target_date)}(${d.target_weekday})`;
   // 메뉴끼리 그릇 수를 막대 높이로 비교할 수 있게 같은 눈금을 씀 (위 여백은 숫자 자리)
   const max = Math.max(...d.menus.flatMap((m) => [m.predicted, ...m.recent.map((x) => x.qty)]), 1) * 1.2;
-  $("#storeBasis").textContent = `판매 기록 ${mmdd(d.last_sales_date)}까지`;
+  $("#storeBasis").textContent = `판매 기록 ${mmdd(d.last_sales_date)}까지${d.model ? " · 학습 모델 (가상 판매 기록)" : ""}`;
   $("#storeBasis").title = d.method;
   $("#menuForecast").innerHTML = `
     <div class="demand-top">
@@ -1443,7 +1449,7 @@ function renderReceiptEdit() {
   });
 }
 
-const ratioCls = (v) => (v == null ? "" : v > 35 ? "up" : v > 30 ? "warnc" : "down");
+const ratioCls = (v) => (v == null ? "" : v >= 40 ? "up" : "down");   // 원가율 40% 기준 (유저플로우 v2)
 
 function renderCosts(r, withChange) {
   const T = r.target_ratio_pct;
@@ -1464,7 +1470,9 @@ function renderCosts(r, withChange) {
           <div><dt>1인분 재료비</dt><dd>${won(m.cost_per_serving)}</dd></div>
           <div><dt>남는 금액</dt><dd>${won(m.margin)}</dd></div>
         </dl>
-        ${m.swap ? `<div class="cost-swap">
+        ${m.next_ratio_pct != null && Math.abs(m.next_ratio_pct - v) >= 0.5 ? `<p class="cost-next">다음 주 예상 원가율 <b>${m.next_ratio_pct}%</b> (야채 시세 예측 반영)</p>` : ""}
+        ${m.high ? costPlan(m, T) : ""}
+        ${m.swap && !m.high ? `<div class="cost-swap">
           <b class="swap-title">대체 재료 제안</b>
           <div class="swap-body">
             <div class="swap-main">
@@ -1477,6 +1485,19 @@ function renderCosts(r, withChange) {
       </article>`;
     }).join("")}</div>
     <p class="muted small">레시피에 주재료만 들어 있어 실제보다 원가율이 조금 낮게 나와요.</p>`;
+}
+
+// 원가율 40% 이상(지금 또는 다음 주): 마진 지키는 방법 세 가지를 함께 보여 줌 — 고르는 건 사장님 (유저플로우 v2)
+function costPlan(m, T) {
+  const p = m.price_up, s = m.swap, k = m.push_menu;
+  return `<div class="cost-plan">
+    <b class="swap-title">마진 지키는 방법 3가지 <small>원가율 ${T}% 이상</small></b>
+    <ol>
+      <li><b>가격 조정</b> ${p ? `판매가 ${won(m.price)} → <b>${won(p.price)}</b> (+${won(p.raise)}) · 원가율 ${p.new_ratio_pct}% · 남는 돈 ${won(p.new_margin)}${p.basis === "다음 주 예상 원가" ? " · 다음 주 오를 값까지 반영" : ""}` : "계산할 수 없어요"}</li>
+      <li><b>대체 재료</b> ${s ? `${esc(s.from)} ${s.share_pct}%를 <b>${esc(s.to)}</b>(으)로 바꾸면 1인분 ${won(s.saving_per_serving)} 아껴 원가율 ${s.new_ratio_pct}%` : "지금은 바꿀 만한 재료가 없어요 (후보 재료도 다음 주에 오를 예정이거나 값을 몰라요)"}</li>
+      <li><b>메뉴 제안</b> ${k ? `<b>${esc(k.menu)}</b>를 밀어 보세요 · 한 그릇에 ${won(k.margin)} 남아요 (원가율 ${k.cost_ratio_pct}%)` : "원가율이 괜찮은 다른 메뉴가 없어요"}</li>
+    </ol>
+  </div>`;
 }
 
 function receiptList(list) {
@@ -2254,10 +2275,28 @@ function showReceiptView(id, d) {
           <tbody>${d.items.map((x) => `<tr><td>${esc(x.raw_name)}</td><td>${esc(x.item || "재료 아님")}</td><td>${qtyTxt(x)}</td>
             <td class="price">${won(x.amount)}</td><td>${x.unit_price ? won(x.unit_price) : "-"}</td></tr>`).join("")}</tbody>
         </table>
+        <div class="rc-judge" id="rcJudge"><p class="muted small">산 값을 평소 단가 · 대구 시세와 비교하는 중이에요</p></div>
         <div class="receipt-actions"><button class="btn primary" id="rcViewEdit" type="button">수정하기</button></div>
       </div>
     </div>`;
   $("#rcViewEdit").onclick = () => editReceiptView(id, d);
+  loadJudge(id);
+}
+
+// 싸게/비싸게 판정 (/api/price-judge): 비싸게 · 시세 오름 · 싸게 산 품목만 한 줄씩, 나머지는 "비슷해요 N개"
+const JUDGE_CHIP = { "비싸게 샀어요": "up", "싸게 샀어요": "down" };
+async function loadJudge(id) {
+  const box = $("#rcJudge");
+  let j;
+  try { j = await getJSON(`/api/price-judge?purchase_id=${id}`); }
+  catch (e) { box.innerHTML = `<p class="muted small">산 값 판정을 불러오지 못했어요</p>`; return; }
+  if (!box.isConnected) return;
+  const notable = j.lines.filter((x) => x.verdict !== "비슷해요" && x.verdict !== "비교할 값 없음");
+  const s = j.summary;
+  box.innerHTML = `<h4>산 값 판정</h4>
+    ${notable.map((x) => `<p><span class="demand-chip ${JUDGE_CHIP[x.verdict] || ""}">${esc(x.verdict)}</span>
+      <b>${esc(x.item)}</b> ${won(x.unit_price)}/${esc(x.unit)} · ${esc(x.why)}${x.extra_paid ? ` · 평소 값이면 <b>${won(x.extra_paid)}</b> 덜 냈어요` : ""}${x.saved ? ` · <b>${won(x.saved)}</b> 아꼈어요` : ""}</p>`).join("")}
+    <p class="muted small">비슷해요 ${s.similar}개${notable.length ? "" : " · 모두 평소 값에 샀어요"} · 10% 안쪽은 비슷하다고 봐요</p>`;
 }
 
 // 저장한 영수증 고치기: 왼쪽에 사진(있으면)을 띄워 두고 오른쪽 표에서 바로 고침
@@ -2347,6 +2386,11 @@ async function renderMypage(view) {
         <span><b>${title}</b><small>${desc}</small></span>
         <input type="checkbox" class="switch" data-pref="${k}" ${prefs[k] ? "checked" : ""}></label>`).join("")}
     </section>
+    <section class="my-card" id="kakaoCard">
+      <h4>카카오톡 시세 알림</h4>
+      <p class="muted small">매일 아침 내 메뉴 재료의 다음 주 시세 · 원가율 40% 넘은 메뉴를 내 카카오톡 '나와의 채팅'으로 보내 드려요.</p>
+      <div id="kakaoBody"><p class="muted small">확인하는 중이에요</p></div>
+    </section>
     <section class="my-card" id="permCard">
       <h4>권한 설정</h4>
       <p class="muted small">영수증을 카메라로 찍거나, 창을 닫아 둬도 시세 알림을 받으려면 권한이 필요해요.</p>
@@ -2355,6 +2399,7 @@ async function renderMypage(view) {
     </section>`;
     showCameraPerm();
     showNotiPerm();
+    showKakao();
     return;
   }
   const draw = (me, offline) => { if ($("#mypage").classList.contains("open") && $("#mypageTitle").textContent === "마이페이지") box.innerHTML = myHome(me, offline); };
@@ -2387,6 +2432,35 @@ function myHome(me, offline) {
       <button class="my-link" type="button" data-account="logout"><span>로그아웃</span><i>›</i></button>
       <button class="my-link danger" type="button" data-account="leave"><span>회원탈퇴</span><i>›</i></button>
     </section>`;
+}
+
+// 카카오톡 시세 알림: 카카오 로그인 + '카카오톡 메시지 전송' 동의가 있으면 켜기 · 끄기 · 지금 보내 보기
+async function showKakao() {
+  const box = $("#kakaoBody"), token = readLogin()?.access_token;
+  if (!box) return;
+  let st;
+  try { st = await authCall("/api/kakao/status", { method: "GET", token }); }
+  catch (e) { box.innerHTML = `<p class="muted small">${esc(e.message)}</p>`; return; }
+  if (!st.kakao_login) { box.innerHTML = `<p class="muted small">카카오로 로그인한 계정만 받을 수 있어요.</p>`; return; }
+  if (!st.connected) {
+    box.innerHTML = `<div class="toggle-row"><span><b>아직 연결 전</b><small>카카오로 다시 로그인하고 '카카오톡 메시지 전송'에 동의해 주세요</small></span>
+      <button class="btn primary" id="kakaoRelogin" type="button">카카오로 연결</button></div>`;
+    $("#kakaoRelogin").onclick = () => location.assign(`/api/auth/kakao?talk=1&next=${encodeURIComponent("/?page=store")}`);
+    return;
+  }
+  box.innerHTML = `<label class="toggle-row"><span><b>매일 아침 받기</b><small>${st.last_sent ? `마지막으로 보낸 때 ${esc(st.last_sent.replace("T", " "))}` : "아직 보낸 적 없어요"}${st.last_error ? ` · 지난번 실패: ${esc(st.last_error)}` : ""}</small></span>
+      <input type="checkbox" class="switch" id="kakaoOn" ${st.on ? "checked" : ""}></label>
+    <div class="toggle-row"><span><b>지금 보내 보기</b><small id="kakaoTestMsg">${st.ready ? "내 카톡으로 지금 시세 알림을 보내요" : "서버에 카카오 키가 아직 없어요"}</small></span>
+      <button class="btn" id="kakaoTest" type="button" ${st.ready ? "" : "disabled"}>보내기</button></div>`;
+  $("#kakaoOn").onchange = async (e) => {
+    try { await authCall("/api/kakao/on", { token, body: { on: e.target.checked } }); } catch (err) { e.target.checked = !e.target.checked; }
+  };
+  $("#kakaoTest").onclick = async () => {
+    const msg = $("#kakaoTestMsg");
+    msg.textContent = "보내는 중이에요";
+    try { await authCall("/api/kakao/test", { token }); msg.textContent = "보냈어요. 카카오톡 '나와의 채팅'을 확인해 주세요"; }
+    catch (e) { msg.textContent = e.message; }
+  };
 }
 
 // 브라우저 알림 권한: 허용하면 새 시세 알림을 화면 밖(작업 표시줄 · 휴대폰 알림)으로도 띄움

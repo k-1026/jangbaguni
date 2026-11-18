@@ -627,6 +627,10 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .rc-edit-view > a img { max-height: calc(100vh - 140px); object-fit: contain; background: var(--surface-variant); }
 .no-photo small { color: var(--muted); }
 .receipt-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
+.rc-judge { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: var(--surface-variant); font-size: 13px; }
+.rc-judge h4 { margin: 0 0 6px; font-size: 14px; }
+.rc-judge p { margin: 4px 0; }
+.rc-judge .demand-chip { display: inline-block; margin: 0 4px 0 0; }
 /* 기본 버튼: 테두리 버튼 · 주 버튼은 진한 초록 */
 .btn { border: 1px solid var(--outline); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 9px 20px; font-weight: 700; transition: background .15s; }
 .btn:hover { background: var(--surface-variant); }
@@ -664,6 +668,11 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .menu-add-btn { margin-left: auto; padding: 9px 18px; font-size: 15px; white-space: nowrap; }
 #costCard > .ok { margin: 0 0 14px; }
 /* 대체 재료 제안: 연한 띠 한 줄 — 제목 | 오른 재료 → 바꿀 재료 | 이유 */
+.cost-next { margin: 6px 0 0; font-size: 12px; color: var(--muted, #5f6b66); }
+.cost-plan { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: #FFF0EE; font-size: 13px; }
+.cost-plan small { font-weight: 400; color: #B33A1A; margin-left: 4px; }
+.cost-plan ol { margin: 6px 0 0; padding-left: 18px; }
+.cost-plan li { margin: 4px 0; line-height: 1.45; }
 .cost-swap { display: flex; align-items: stretch; gap: 16px; margin-top: 16px; padding: 14px 18px; border-radius: 12px; background: var(--primary-container); }
 .swap-title { align-self: stretch; display: flex; align-items: center; margin: -14px 0 -14px -18px; padding: 0 18px; border: 2.5px solid var(--primary); border-radius: 12px; font-size: 16px; color: var(--primary); white-space: nowrap; }   /* 띠 왼쪽 칸에 꽉 맞는 테두리 */
 /* 띠 오른쪽: 첫 줄(재료 → 재료 | 💡 이유) + 아끼는 금액 · 계산 기준 줄 (제목 칸은 띠 높이 전체에 꽉 맞게) */
@@ -1037,9 +1046,9 @@ body.login-view .login-only, body.signup-view .signup-only { display: flex; }
 .login-eye[aria-pressed="true"] { color: var(--primary); }
 .login-eye svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
 .login-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 0 0 22px; font-size: 13px; font-weight: 700; white-space: nowrap; }
-.login-keep { display: flex; align-items: center; gap: 7px; cursor: pointer; }
-.login-keep input { width: 19px; height: 19px; margin: 0; accent-color: var(--login-deep); }
-.login-links { display: flex; align-items: center; gap: 6px; }
+.login-keep { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; }
+.login-keep input { width: 17px; height: 17px; margin: 0; accent-color: var(--login-deep); }
+.login-links { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 14px; font-size: 12px; font-weight: 700; white-space: nowrap; }
 .login-links a { color: var(--ink); text-decoration: none; }
 .login-links a:hover { text-decoration: underline; }
 .login-links i { font-style: normal; color: var(--outline); }
@@ -1057,13 +1066,17 @@ body.login-view .login-only, body.signup-view .signup-only { display: flex; }
 .login-social svg { width: 19px; height: 19px; }
 .login-social.kakao { background: #FEE500; color: #191919; }
 .login-social.kakao svg { fill: #191919; }
-.login-social.naver { background: #03C75A; color: #fff; }
-.login-social.naver svg { width: 15px; height: 15px; fill: #fff; }
-.login-social.google { border: 1px solid var(--outline); background: var(--surface); color: var(--ink); }
-.login-social.google:hover { filter: none; background: var(--surface-variant); }
 
 /* 회원가입 (/?page=signup): 로그인 카드를 그대로 쓰고, 칸이 많아 조금 더 넓게 · 입력칸은 연한 초록으로 채움 */
 .signup-card { max-width: 460px; }
+/* 로그인 창은 조금 더 크게 (회원가입 창은 그대로) */
+#loginForm { max-width: 460px; padding: 42px 40px 38px; }
+#loginForm h1 { margin-bottom: 30px; font-size: 25px; }
+#loginForm .login-label { font-size: 15px; }
+#loginForm .login-input { height: 52px; font-size: 16px; }
+#loginForm .login-eye { top: 8px; }   /* 칸이 커진 만큼 눈 버튼도 가운데로 */
+#loginForm .login-submit { height: 56px; font-size: 17px; }
+#loginForm .login-social { height: 52px; }
 .signup-card .login-social:first-of-type { margin-top: 0; }
 .signup-card .login-or { margin: 22px 0 8px; }
 .signup-card .login-input { background: #F3F7EE; border-color: transparent; }
@@ -1096,6 +1109,8 @@ body.login-view .login-only, body.signup-view .signup-only { display: flex; }
   .login-page { padding: 20px 12px 48px; }
   .login-card { padding: 28px 20px; }
   .login-card h1 { font-size: 21px; margin-bottom: 20px; }
+  #loginForm { padding: 30px 20px; }
+  #loginForm h1 { font-size: 22px; }
 }
 
 /* 회원탈퇴 확인 팝업: 취소는 눈에 띄는 초록, 탈퇴하기는 빨간 글씨 (체크해야 눌림) */

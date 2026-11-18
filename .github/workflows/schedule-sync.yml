@@ -1,4 +1,4 @@
-# 일정 체크 자동 반영: Issue "📅 살피 일정 체크"에서 체크박스를 누르면 → 1분 안에 README에 자동으로 반영 (PR · 합치기를 사람이 안 함)
+# 일정 체크 자동 반영: Issue "📅 살피 일정 체크" · "📋 피치 근거 보충 체크"에서 체크박스를 누르면 → 1분 안에 README에 자동으로 반영 (PR · 합치기를 사람이 안 함)
 # - Issue 체크 → 45초 기다렸다가 (여러 개를 연달아 누르면 마지막 것만) README 일정 부분을 Issue와 똑같이 → dev로 자동 PR · 합치기
 # - README 일정 부분이 dev에서 바뀌면 → Issue 본문도 README에 맞춤
 # - 처음 한 번: Actions 탭 → "일정 체크 자동 반영" → Run workflow → Issue가 만들어지고 맨 위에 고정됨
@@ -26,13 +26,12 @@ concurrency:
 
 jobs:
   sync:
-    if: github.event_name != 'issues' || github.event.issue.title == '📅 살피 일정 체크'
+    if: github.event_name != 'issues' || github.event.issue.title == '📅 살피 일정 체크' || github.event.issue.title == '📋 피치 근거 보충 체크'
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
       ISSUE_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # Issue 고치기는 기본 토큰 (개인 토큰엔 Issue 쓰기 권한 없음)
       REPO: ${{ github.repository }}
-      ISSUE_BODY: ${{ github.event.issue.body }}
     steps:
       - name: 연달아 체크할 때를 위해 잠깐 기다리기
         if: github.event_name == 'issues'

@@ -2550,27 +2550,24 @@ async function renderMypage(view) {
   }
   const draw = (me, offline) => { if ($("#mypage").classList.contains("open") && $("#mypageTitle").textContent === "마이페이지") box.innerHTML = myHome(me, offline); };
   const cached = cachedProfile();
+  costEdit = false; costAdding = false; addSec = "fixed"; costFold = new Set(["fixed", "sale", "delivery"]);   // 처음 들어오면 비용 칸은 모두 접힌 채로
   draw(cached);
   freshProfile().then((me) => { if (JSON.stringify(me) !== JSON.stringify(cached)) draw(me); }).catch(() => draw(cached, true));
+  loadReceiptMaterial();
 }
 
 function myHome(me, offline) {
-  const how = me.provider === "kakao" ? "카카오 로그인" : me.login_id ? `아이디 ${me.login_id}` : "";
-  const place = ["대구", me.district, me.place].filter(Boolean).join(" ");
+  // 이름 아래 한 줄: 이메일 → 아이디 → 카카오 로그인 순서로 있는 것
+  const loginId = me.login_id || (me.provider !== "kakao" ? readLogin()?.id : null);
+  const how = me.email || (loginId ? `아이디 ${loginId}` : me.provider === "kakao" ? "카카오 로그인" : "");
+  costMe = me;
   return `
     <section class="my-card profile">
       <img src="${esc(me.avatar || "/static/img/owner_face.png")}" alt="" referrerpolicy="no-referrer" onerror="this.src='/static/img/owner_face.png'">
-      <div><b>${esc(me.name || "사장님")} 사장님</b><small>${esc(how)}</small></div>
+      <div><b>${me.name ? `${esc(me.name)} 사장님` : "사장님"}</b>${how ? `<small>${esc(how)}</small>` : ""}</div>
     </section>
-    <section class="my-card">
-      <h4>내 정보</h4>
-      <dl><dt>가게</dt><dd>${esc(me.store_name || "아직 없어요")}</dd><dt>지역</dt><dd>${esc(place)}</dd>
-        ${me.business_type ? `<dt>업종</dt><dd>${esc(me.business_type)}</dd>` : ""}
-        ${me.phone ? `<dt>휴대폰</dt><dd>${esc(maskPhone(me.phone))}</dd>` : ""}</dl>
-      ${offline ? `<p class="muted small">서버에 연결하지 못해 기억해 둔 정보만 보여 드려요.</p>` : ""}
-      <a class="my-link" href="/?page=store"><span>나의 가게</span><i>›</i></a>
-      <button class="my-link" data-view="receipts"><span>나의 영수증</span><i>›</i></button>
-    </section>
+    ${offline ? `<p class="muted small my-offline">서버에 연결하지 못해 기억해 둔 정보만 보여 드려요.</p>` : ""}
+    <section class="my-card mc" id="myCost">${costCard()}</section>
     <section class="my-card">
       <button class="my-link" type="button" data-view="settings"><span>설정 <small>알림 · 권한</small></span><i>›</i></button>
     </section>
@@ -2578,6 +2575,237 @@ function myHome(me, offline) {
       <button class="my-link" type="button" data-account="logout"><span>로그아웃</span><i>›</i></button>
       <button class="my-link danger" type="button" data-account="leave"><span>회원탈퇴</span><i>›</i></button>
     </section>`;
+}
+
+// ---------------------------------------------------------------
+// 내 정보 · 가게 비용: 고정 비용 · 판매 비용 · 배달 비용을 넣으면 "하루 얼마 팔아야 본전인지" 알려 줌
+// 금액은 모두 '만 원' 단위로, 이 브라우저에 사장님별로 기억 (서버 저장은 나중에)
+// ---------------------------------------------------------------
+const COST_KEY = () => { const u = readLogin(); return `salpi_costs_${u?.profile?.id || u?.id || "me"}`; };
+const WEEK = ["월", "화", "수", "목", "금", "토", "일"];
+const BIZ = ["한식", "중식", "일식", "양식", "분식", "치킨", "카페", "기타"];
+const FIXED_BASE = [["rent", "임대료"], ["manage", "관리비"], ["staff", "인건비"], ["power", "전기료"], ["gas", "가스비"], ["water", "수도세"]];
+// 비용 추가: 넣을 칸 → 그 칸에 맞는 추천 항목 (추가한 비용은 extra[{name, v, sec}] 에 칸 이름과 함께 기억, sec 없으면 고정 비용)
+const ADD_SECS = [["fixed", "고정 비용"], ["sale", "판매 비용"], ["deliv", "배달"]];
+const EXTRA_SUGGEST = {
+  fixed: ["4대보험", "광고비", "세무 기장료", "대출 이자", "음식물 쓰레기"],
+  sale: ["일회용품", "주방 소모품", "주류 · 음료", "할인 · 포인트"],
+  deliv: ["배달앱 광고", "할인 쿠폰", "배달 대행 기본료"],
+};
+const extraSec = (x) => x.sec || "fixed";
+let addSec = "fixed";   // 비용 추가하기에서 고른 칸
+const DELIV = [["fee", "중개 수수료", ""], ["ride", "배달비", "사장님 부담"], ["pack", "포장 용기", ""]];
+const COST_DEFAULT = { seats: null, closed: ["일"], sales: null, fixed: {}, extra: [], material: null, card: null, tax: "general", delivery: false, deliv: {} };
+const PEN = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>`;
+let costEdit = false, costAdding = false, costMe = null, receiptMaterial = null;   // costEdit: '수정'을 눌러 모든 칸이 입력칸인지
+let costFold = new Set();
+
+function costs() {
+  const c = { ...COST_DEFAULT, ...load(COST_KEY(), {}) };
+  return { ...c, fixed: { ...c.fixed }, deliv: { ...c.deliv }, extra: [...c.extra], closed: [...c.closed] };
+}
+const saveCosts = (c) => store(COST_KEY(), c);
+function setCost(path, raw) {
+  const c = costs(), p = path.split(".");
+  let o = c;
+  for (const k of p.slice(0, -1)) o = o[k];
+  o[p.at(-1)] = p.at(-1) === "name" ? raw : raw === "" ? null : Math.max(0, +raw);
+  saveCosts(c);
+}
+// 만 원 → 보기 좋게 (100만 원 넘으면 소수점 없이, 1만 원 안 되면 원으로)
+function man(v) {
+  if (v == null || isNaN(v)) return "—";
+  if (v > 0 && v < 1) return `${Math.round(v * 10000).toLocaleString("ko-KR")}원`;
+  return `${(v >= 100 ? Math.round(v) : Math.round(v * 10) / 10).toLocaleString("ko-KR")}만 원`;
+}
+
+// 본전 계산: 넣은 비용을 모두 내고 남는 한 달 매출 S 를 거꾸로 구함 (매출은 묻지 않음)
+//   S = 고정 + 재료비 + 배달 비용 + 카드 수수료(S) + 부가세(S)
+//   카드 수수료 어림 = S × 1.2% (카드 결제 80% × 수수료 1.5%) — 직접 넣으면 그 금액
+//   부가세 어림 = 일반 과세자 (S − 재료비) ÷ 11 · 간이 과세자 S × 1.5% (음식점 부가가치율 15% × 10%)
+//   하루 본전 = S ÷ 한 달 영업일
+function costCalc(c) {
+  const n = (v) => +v || 0;
+  const ex = (sec) => c.extra.filter((x) => extraSec(x) === sec).reduce((s, x) => s + n(x.v), 0);
+  const fixed = FIXED_BASE.reduce((s, [k]) => s + n(c.fixed[k]), 0) + ex("fixed");
+  const material = c.material == null ? n(receiptMaterial) : n(c.material);
+  const saleEx = ex("sale");
+  const deliv = c.delivery ? DELIV.reduce((s, [k]) => s + n(c.deliv[k]), 0) + ex("deliv") : 0;
+  const cardRate = c.card == null ? 0.012 : 0;
+  const base = fixed + material + saleEx + deliv + (c.card == null ? 0 : n(c.card));
+  const S = !base ? 0 : c.tax === "simple" ? base / (1 - cardRate - 0.015) : (base - material / 11) / (1 - cardRate - 1 / 11);
+  const card = c.card == null ? S * cardRate : n(c.card);
+  const vat = c.tax === "simple" ? S * 0.015 : Math.max(0, S - material) / 11;
+  const days = Math.round(30.4 * (7 - c.closed.length) / 7);
+  return { fixed, material, card, vat, deliv, sale: material + saleEx + card + vat, days, monthly: S, be: days && S ? S / days : null };
+}
+
+function costBanner(k) {
+  if (!k.days) return `<div class="mc-be loss"><b>쉬는 요일을 확인해 주세요</b><small>영업하는 날이 하루도 없어요</small></div>`;
+  if (!k.be) return `<div class="mc-be empty"><b>비용을 넣어 주세요</b><small>하루에 얼마를 팔아야 본전인지 알려 드려요</small></div>`;
+  return `<div class="mc-be"><b>하루 <em>${man(k.be)}</em> 넘게 팔면 본전이에요</b>
+    <small>한 달 ${k.days}일 영업 기준</small></div>`;
+}
+
+const numIn = (path, v, label, ph = "0", unit = "만 원") => `<span class="mc-in"><input type="number" inputmode="decimal" min="0" step="any"
+  data-k="${path}" value="${v ?? ""}" placeholder="${esc(ph)}" aria-label="${esc(label)}"><i>${unit}</i></span>`;
+// 보기 화면: 금액을 넣은 줄만 진하게, 안 넣은 줄은 흐리게 (off)
+const mcRow = (label, value, tag = "", off = false) => `<div class="mc-row${off ? " off" : ""}"><span class="mc-label">${label}${tag}</span>${value}</div>`;
+const mcVal = (v, pre = "") => (v ? `<span class="v">${pre}${man(v)}</span>` : `<span class="v none">—</span>`);
+// 보기 화면: 금액이 있는 줄만 보여 줌 (안 넣은 줄은 아예 숨김)
+const mcShow = (label, v, tag = "", pre = "") => (v ? mcRow(label, mcVal(v, pre), tag) : "");
+const mcTag = (t, auto) => `<em class="mc-tag${auto ? " auto" : ""}">${t}</em>`;
+const CHEV = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>`;
+const PLUS = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>`;
+const DELIV_LABEL = (label, sub) => `${label}${sub ? ` <small>(${sub})</small>` : ""}`;
+
+// 칸에 보이는 줄(금액이 있는 줄)이 하나라도 있나 — 영수증 자동 재료비 · 어림값도 금액이 있으면 포함
+function costFilled(c, key) {
+  const k = costCalc(c);
+  if (key === "fixed") return k.fixed > 0;
+  if (key === "sale") return k.sale > 0;
+  return c.delivery && (k.deliv > 0 || +c.deliv.sales > 0);
+}
+
+// 칸 하나 (제목 · 합계 · 접기 꺾쇠). 제목 줄 어디를 눌러도 접히고 펼쳐짐
+// 넣은 금액이 없는 칸은 보기 화면에서 흐리게 (empty)
+function mcSection(key, title, total, body, extra = "") {
+  const open = !costFold.has(key);
+  const empty = !costEdit && !costFilled(costs(), key);
+  return `<div class="mc-sec${open ? "" : " folded"}${empty ? " empty" : ""}">
+    <div class="mc-sec-head" data-fold="${key}">
+      <h5>${title}</h5>${extra}
+      ${total == null ? "" : `<span class="mc-total" data-total="${key}">${man(total)}</span>`}
+      ${body ? `<button class="mc-chev" type="button" data-fold="${key}" aria-expanded="${open}" aria-label="${title} ${open ? "접기" : "펼치기"}">${CHEV}</button>` : ""}
+    </div>
+    ${body && open ? `<div class="mc-box">${body}</div>` : ""}
+  </div>`;
+}
+
+function costCard() {
+  const me = costMe || {}, c = costs(), k = costCalc(c), ed = costEdit;
+  const place = ["대구", me.district, me.place].filter(Boolean).join(" ");
+  const biz = c.biz || me.business_type;   // 고친 업종은 이 기기에 기억 (가입할 때 업종이 기본)
+  const none = (t) => `<span class="none">${t}</span>`;
+
+  const info = `<dl class="mc-info">
+      <dt>가게 이름</dt><dd>${esc(me.store_name || "아직 없어요")}</dd>
+      <dt>지역</dt><dd>${esc(place)}</dd>
+      <dt>업종</dt><dd>${ed
+        ? `<div class="mc-pick">${BIZ.map((b) => `<button type="button" data-biz="${b}" aria-pressed="${b === biz}">${b}</button>`).join("")}</div>`
+        : biz ? esc(biz) : none("수정에서 골라 주세요")}</dd>
+      <dt>좌석</dt><dd>${ed ? numIn("seats", c.seats, "좌석 수", "0", "석") : c.seats ? `${c.seats}석` : none("수정에서 넣어 주세요")}</dd>
+      <dt>쉬는 요일</dt><dd>${ed
+        ? `<div class="mc-days">${WEEK.map((d) => `<button type="button" data-day="${d}" aria-pressed="${c.closed.includes(d)}">${d}</button>`).join("")}</div>`
+        : c.closed.length ? WEEK.filter((d) => c.closed.includes(d)).map((d) => `${d}요일`).join(", ") : "없어요"}</dd>
+      ${me.phone ? `<dt>휴대폰</dt><dd>${esc(maskPhone(me.phone))}</dd>` : ""}
+    </dl>`;
+
+  // 추가한 비용 줄 (칸별로). i 는 extra 전체에서의 순서
+  const extraRows = (sec) => c.extra.map((x, i) => [x, i]).filter(([x]) => extraSec(x) === sec).map(([x, i]) => ed
+    ? `<div class="mc-row"><span class="mc-label"><input class="mc-name" type="text" data-k="extra.${i}.name" value="${esc(x.name)}" placeholder="비용 이름" aria-label="비용 이름"></span>
+        <span class="mc-row-end">${numIn(`extra.${i}.v`, x.v, x.name || "비용")}<button class="mc-del" type="button" data-xdel="${i}" aria-label="${esc(x.name || "비용")} 지우기">×</button></span></div>`
+    : mcShow(esc(x.name || "기타"), x.v)).join("");
+
+  // 고정 비용
+  const fixedRows = (ed
+    ? FIXED_BASE.map(([key, label]) => mcRow(label, numIn(`fixed.${key}`, c.fixed[key], label))).join("")
+    : FIXED_BASE.map(([key, label]) => mcShow(label, c.fixed[key])).join("")) + extraRows("fixed");
+
+  // 판매 비용 (부가세 줄 안에 작은 일반 · 간이 전환)
+  const matAuto = c.material == null && receiptMaterial != null;
+  const taxSeg = `<span class="mc-seg" role="group" aria-label="과세 유형">
+      <button type="button" data-tax="general" aria-pressed="${c.tax !== "simple"}">일반</button><button type="button" data-tax="simple" aria-pressed="${c.tax === "simple"}">간이</button></span>`;
+  const saleRows = (ed
+    ? mcRow("재료비", numIn("material", c.material, "재료비", receiptMaterial != null ? `자동 ${Math.round(receiptMaterial)}` : "0"))
+      + mcRow("카드 수수료", numIn("card", c.card, "카드 수수료", k.card ? `어림 ${Math.round(k.card)}` : "0"))
+    : mcShow("재료비", k.material, matAuto ? mcTag("자동", true) : "")
+      + mcShow("카드 수수료", k.card, c.card == null ? mcTag("어림값") : ""))
+    + (ed || k.vat ? mcRow("부가세", mcVal(k.vat, "약 "), taxSeg) : "") + extraRows("sale");
+
+  // 배달
+  const delivRows = c.delivery ? (ed
+    ? mcRow("배달 매출", numIn("deliv.sales", c.deliv.sales, "배달 매출")) + DELIV.map(([key, label, sub]) => mcRow(DELIV_LABEL(label, sub), numIn(`deliv.${key}`, c.deliv[key], label))).join("")
+    : mcShow("배달 매출", c.deliv.sales) + DELIV.map(([key, label, sub]) => mcShow(DELIV_LABEL(label, sub), c.deliv[key])).join("")) + extraRows("deliv") : "";
+  const delivSwitch = `<span class="mc-switch${c.delivery ? " on" : ""}" role="group" aria-label="배달 여부">
+    <button type="button" data-deliv="0" aria-pressed="${!c.delivery}">안 해요</button><button type="button" data-deliv="1" aria-pressed="${c.delivery}">해요</button></span>`;
+
+  // 비용 추가하기: [고정 비용 | 판매 비용 | 배달] 중 넣을 칸 → 그 칸 추천 항목 + 직접 입력
+  const added = new Set(c.extra.filter((x) => extraSec(x) === addSec).map((x) => x.name));
+  const chips = EXTRA_SUGGEST[addSec].filter((n) => !added.has(n));
+  const addBox = `<div class="mc-addbox">
+      <div class="mc-addto"><span>어디에 넣을까요?</span>
+        <span class="mc-seg" role="group" aria-label="비용을 넣을 칸">${ADD_SECS.map(([key, label]) =>
+          `<button type="button" data-addsec="${key}" aria-pressed="${key === addSec}">${label}</button>`).join("")}</span></div>
+      <div class="mc-chips">${chips.map((n) => `<button type="button" data-xadd="${esc(n)}">${esc(n)}</button>`).join("")}<button type="button" data-xadd="">직접 입력</button></div>    </div>`;
+
+  return `
+    <div class="mc-head"><h4>내 정보</h4>
+      ${ed ? "" : `<button class="mc-edit" type="button" data-cedit>${PEN}<span>수정</span></button>`}</div>
+    ${info}
+    ${costBanner(k)}
+    ${mcSection("fixed", "고정 비용", k.fixed, fixedRows)}
+    ${mcSection("sale", "판매 비용", k.sale, saleRows)}
+    ${mcSection("delivery", "배달", c.delivery ? k.deliv : null, delivRows, delivSwitch)}
+    <button class="mc-add" type="button" data-cadd aria-expanded="${costAdding}">${PLUS}<span>비용 추가하기</span></button>
+    ${costAdding ? addBox : ""}
+    ${ed ? `<button class="mc-done wide" type="button" data-cdone>완료</button>` : ""}`;
+}
+
+function drawCost(focusSel) {
+  const el = $("#myCost");
+  if (!el) return;
+  el.innerHTML = costCard();
+  const f = focusSel && el.querySelector(focusSel);
+  if (f) f.focus();
+}
+
+// 재료비 자동: 최근 30일 영수증 합계 (원 → 만 원)
+async function loadReceiptMaterial() {
+  try {
+    const { receipts } = await getJSON("/api/receipts");
+    const since = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
+    const recent = receipts.filter((p) => p.purchased_on >= since);
+    receiptMaterial = recent.length ? recent.reduce((s, p) => s + (+p.total_amount || 0), 0) / 10000 : null;
+  } catch (e) { receiptMaterial = null; }
+  if (!costEdit) drawCost();
+}
+
+function costClick(e) {
+  const t = e.target.closest("[data-cedit],[data-cdone],[data-day],[data-biz],[data-tax],[data-deliv],[data-cadd],[data-addsec],[data-xadd],[data-xdel],[data-fold]");
+  if (!t || !t.closest("#myCost")) return false;
+  const c = costs(), d = t.dataset;
+  let focus;
+  if ("cedit" in d) { costEdit = true; costFold.clear(); focus = '[data-k="seats"]'; }
+  else if ("cdone" in d) {
+    costEdit = false;
+    c.extra = c.extra.filter((x) => x.name || x.v);   // 이름 · 금액 둘 다 빈 줄은 정리
+    for (const key of ["fixed", "sale", "delivery"]) costFilled(c, key) ? costFold.delete(key) : costFold.add(key);   // 넣은 게 없는 칸은 접어 둠
+    focus = "[data-cedit]";
+  }
+  else if (d.fold) { costFold.has(d.fold) ? costFold.delete(d.fold) : costFold.add(d.fold); focus = `.mc-chev[data-fold="${d.fold}"]`; }
+  else if (d.biz) { c.biz = d.biz; focus = `[data-biz="${d.biz}"]`; }
+  else if (d.day) { c.closed = c.closed.includes(d.day) ? c.closed.filter((x) => x !== d.day) : [...c.closed, d.day]; focus = `[data-day="${d.day}"]`; }
+  else if (d.tax) { c.tax = d.tax; focus = `[data-tax="${d.tax}"]`; }
+  else if (d.deliv) {
+    c.delivery = d.deliv === "1";
+    costFold.delete("delivery");
+    if (c.delivery && !Object.values(c.deliv).some(Boolean)) { costEdit = true; focus = '[data-k="deliv.sales"]'; }   // 처음 켜면 바로 입력
+    else focus = `[data-deliv="${d.deliv}"]`;
+  }
+  else if ("cadd" in d) { costAdding = !costAdding; focus = "[data-cadd]"; }
+  else if (d.addsec) { addSec = d.addsec; focus = `[data-addsec="${d.addsec}"]`; }
+  else if (d.xadd != null) {
+    c.extra.push({ name: d.xadd, v: null, sec: addSec });
+    if (addSec === "deliv") c.delivery = true;   // 배달 칸에 넣으면 배달을 켬
+    costEdit = true; costAdding = false; costFold.delete({ fixed: "fixed", sale: "sale", deliv: "delivery" }[addSec]);
+    const i = c.extra.length - 1;
+    focus = d.xadd ? `[data-k="extra.${i}.v"]` : `[data-k="extra.${i}.name"]`;
+  }
+  else if (d.xdel) c.extra.splice(+d.xdel, 1);
+  saveCosts(c);
+  drawCost(focus);
+  return true;
 }
 
 // ---------------------------------------------------------------
@@ -2732,6 +2960,7 @@ $("#mypageClose").onclick = closeMypage;
 $("#mypageBack").onclick = () => renderMypage("home");
 $("#backdrop").onclick = closeMypage;
 $("#mypageBody").onclick = (e) => {
+  if (costClick(e)) return;
   const acc = e.target.closest("[data-account]");
   if (acc?.dataset.account === "logout") return logout();
   if (acc?.dataset.account === "leave") return openLeave();
@@ -2740,6 +2969,18 @@ $("#mypageBody").onclick = (e) => {
   const r = e.target.closest("[data-rid]");
   if (r) openReceipt(r.dataset.rid);
 };
+// 비용 칸: 치는 대로 기억하고, 본전 요약 · 칸별 합계만 바로 고침 (입력칸은 다시 그리지 않아 커서가 그대로)
+$("#mypageBody").oninput = (e) => {
+  const p = e.target.dataset.k;
+  if (!p) return;
+  setCost(p, e.target.value);
+  const k = costCalc(costs()), be = $("#myCost .mc-be");
+  if (be) be.outerHTML = costBanner(k);
+  for (const [key, v] of [["fixed", k.fixed], ["sale", k.sale], ["delivery", k.deliv]]) { const t = $(`#myCost [data-total="${key}"]`); if (t) t.textContent = man(v); }
+};
+$("#mypageBody").addEventListener("keydown", (e) => {   // 비용 칸에서 Enter = 다 했어요
+  if (e.key === "Enter" && e.target.dataset.k) { e.preventDefault(); $("#myCost [data-cdone]")?.click(); }
+});
 $("#mypageBody").onchange = (e) => {
   const k = e.target.dataset.pref;
   if (!k) return;

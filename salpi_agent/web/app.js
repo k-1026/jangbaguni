@@ -20,7 +20,7 @@ if (ITEM) {
   $("#itemPage").hidden = false;
 }
 // 로그인 상태: 서버(/api/auth/*, Supabase 로그인)가 준 로그인 표를 이 브라우저에 보관 → 서버에 'Authorization: Bearer' 로 보냄
-// '로그인 상태 유지'를 켜면 브라우저를 닫아도 유지(localStorage), 끄면 창을 닫으면 풀림(sessionStorage). 비밀번호는 보관하지 않음
+// '로그인 유지'를 켜면 브라우저를 닫아도 유지(localStorage), 끄면 창을 닫으면 풀림(sessionStorage). 비밀번호는 보관하지 않음
 const LOGIN_KEY = "salpi_login";
 function readLogin() {
   try { return JSON.parse(localStorage.getItem(LOGIN_KEY) || sessionStorage.getItem(LOGIN_KEY) || "null"); } catch (e) { return null; }

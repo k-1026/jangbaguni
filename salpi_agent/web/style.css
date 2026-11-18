@@ -1037,8 +1037,8 @@ body.login-view .login-only, body.signup-view .signup-only { display: flex; }
 .login-eye[aria-pressed="true"] { color: var(--primary); }
 .login-eye svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
 .login-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 0 0 22px; font-size: 13px; font-weight: 700; white-space: nowrap; }
-.login-keep { display: flex; align-items: center; gap: 7px; cursor: pointer; }
-.login-keep input { width: 19px; height: 19px; margin: 0; accent-color: var(--login-deep); }
+.login-keep { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; }
+.login-keep input { width: 17px; height: 17px; margin: 0; accent-color: var(--login-deep); }
 .login-links { display: flex; align-items: center; gap: 6px; }
 .login-links a { color: var(--ink); text-decoration: none; }
 .login-links a:hover { text-decoration: underline; }

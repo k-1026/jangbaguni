@@ -572,11 +572,11 @@ def auth_refresh(body: RefreshIn):
 
 
 @app.get("/api/auth/kakao")
-def auth_kakao(request: Request, next: str = "/", talk: bool = False):
-    """카카오 로그인 화면으로 보냄 (돌아올 곳 = 지금 사이트 주소)."""
+def auth_kakao(request: Request, next: str = "/", talk: bool = False, app: bool = False):
+    """카카오 로그인 화면으로 보냄 (돌아올 곳 = 지금 사이트 주소, app=1 이면 안드로이드 앱)."""
     proto = request.headers.get("x-forwarded-proto") or request.url.scheme
     host = request.headers.get("x-forwarded-host") or request.headers.get("host")
-    return _auth(lambda: RedirectResponse(auth.kakao_url(f"{proto}://{host}", next, talk), status_code=302))
+    return _auth(lambda: RedirectResponse(auth.kakao_url(f"{proto}://{host}", next, talk, app), status_code=302))
 
 
 @app.post("/api/auth/store")

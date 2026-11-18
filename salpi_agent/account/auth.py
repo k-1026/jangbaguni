@@ -206,10 +206,14 @@ def me(token):
     return _profile(user)
 
 
-def kakao_url(site, next_path="/", talk=False):
-    """카카오 로그인 화면 주소. 승인하면 <site>/?page=oauth&next=... 로 돌아오며 주소 # 뒤에 로그인 표가 붙음."""
+APP_OAUTH_URL = "com.salpi.mobile://oauth"   # 안드로이드 앱이 받는 주소 (딥링크) — Supabase Redirect URLs 에 같은 값 등록 필요
+
+
+def kakao_url(site, next_path="/", talk=False, app=False):
+    """카카오 로그인 화면 주소. 승인하면 <site>/?page=oauth&next=... 로 돌아오며 주소 # 뒤에 로그인 표가 붙음.
+    app=True (안드로이드 앱): 웹 대신 앱 주소(APP_OAUTH_URL)로 돌아와 앱이 다시 열림."""
     url, _ = _conf()
-    back = f"{site.rstrip('/')}/?page=oauth&next={quote(next_path if next_path.startswith('/') else '/', safe='')}"
+    back = APP_OAUTH_URL if app else f"{site.rstrip('/')}/?page=oauth&next={quote(next_path if next_path.startswith('/') else '/', safe='')}"
     # talk=True (마이페이지 '카카오로 연결'): 카카오톡 시세 알림(나에게 보내기)용 '카카오톡 메시지 전송' 동의도 받음
     # 평소 로그인에는 붙이지 않음 — 카카오 앱 동의항목에서 켜기 전에 붙이면 카카오 로그인 자체가 오류(KOE205)
     scopes = "&scopes=talk_message" if talk else ""

@@ -26,6 +26,40 @@ export function saveLogin(s, keep = true) {
   return u;
 }
 
+// 카카오 로그인 (앱): 폰 브라우저(Chrome 탭)로 카카오 화면을 열고, 승인하면 com.salpi.mobile://oauth#표 로 앱이 다시 열림
+// 플러그인은 앱 안에 이미 들어 있음. 이 앱은 Capacitor JS 번들 없이 화면을 불러와 registerPlugin 이 없으므로,
+// 네이티브 브리지가 주는 Capacitor.Plugins (없으면 nativePromise / nativeCallback) 를 쓴다
+export const plugin = (name) => {
+  const C = window.Capacitor;
+  if (C.Plugins?.[name]) return C.Plugins[name];
+  if (typeof C.registerPlugin === "function") return C.registerPlugin(name);
+  return {
+    addListener: (eventName, cb) => { C.nativeCallback(name, "addListener", { eventName }, cb); return Promise.resolve({ remove() {} }); },
+    open: (opts) => C.nativePromise(name, "open", opts),
+  };
+};
+export const APP_OAUTH_PREFIX = "com.salpi.mobile://oauth";
+
+export function kakaoLoginStart() {
+  return plugin("Browser").open({ url: `${SITE}/api/auth/kakao?app=1` });
+}
+
+// 앱으로 돌아온 주소에서 로그인 표를 꺼내 저장. 돌려주는 값: { ok: true } | { ok: false, message, needStore? }
+export async function finishKakaoLogin(url) {
+  const h = new URLSearchParams((url.split("#")[1] || ""));
+  if (!h.get("access_token")) return { ok: false, message: h.get("error_description") || "카카오 로그인을 하지 못했어요. 다시 해 주세요." };
+  const token = h.get("access_token");
+  const r = await fetch(`${base}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+  const user = await r.json().catch(() => ({}));
+  if (!r.ok) return { ok: false, message: user.detail || "로그인을 확인하지 못했어요. 다시 해 주세요." };
+  if (!user.store_id) return { ok: false, needStore: true, message: "처음이시네요! 웹에서 가게 정보를 한 번 등록하면 앱에서도 쓸 수 있어요" };
+  const s = { user, access_token: token, refresh_token: h.get("refresh_token"),
+    expires_at: Number(h.get("expires_at")) || Math.floor(Date.now() / 1000) + Number(h.get("expires_in") || 3600) };
+  saveLogin(s, true);
+  cache.clear();
+  return { ok: true };
+}
+
 export function logout() {
   const u = login();
   if (u?.access_token) fetch(`${base}/api/auth/logout`, { method: "POST", headers: { Authorization: `Bearer ${u.access_token}` }, keepalive: true }).catch(() => {});

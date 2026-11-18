@@ -1,0 +1,11 @@
+{
+  "appId": "com.salpi.mobile",
+  "appName": "살피",
+  "webDir": "www",
+  "backgroundColor": "#FFFFFF",
+  "android": { "allowMixedContent": false },
+  "plugins": {
+    "CapacitorHttp": { "enabled": true },
+    "SplashScreen": { "launchShowDuration": 0 }
+  }
+}

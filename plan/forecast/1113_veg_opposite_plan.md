@@ -3,7 +3,7 @@
 > 무엇: 11/13 발표 피드백 "예측 오차 20%대는 높다, 기준을 10%로 잡고 낮춰 보자"에서 **야채(26.2%)** 를 어떻게 낮출지 정리
 > 앞 문서: [1113_forecast_accuracy_goals.md](1113_forecast_accuracy_goals.md) (과일 10% 방법 · 목표 정리) · [1112_forecast_backtest_results.md](1112_forecast_backtest_results.md) (5년 채점)
 > 할 일 목록: [../presentation/1113_feedback_todo.md](../presentation/1113_feedback_todo.md)
-> 숫자: 북부도매시장 야채 15개, **2025-01 ~ 2026-11 (계수를 고를 때 안 쓴 기간)**, 이틀마다 예측해 7일 뒤 실제 값과 비교한 4,107건. `salpi_agent/backtest.py` 와 같은 계산 조각으로 품목 · 월 · 예측 크기별로 나눠 봄
+> 숫자: 북부도매시장 야채 15개, **2025-01 ~ 2026-11 (계수를 고를 때 안 쓴 기간)**, 이틀마다 예측해 7일 뒤 실제 값과 비교한 4,107건. `salpi_agent/price/backtest.py` 와 같은 계산 조각으로 품목 · 월 · 예측 크기별로 나눠 봄
 
 ---
 

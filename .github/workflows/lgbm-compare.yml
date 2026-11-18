@@ -34,4 +34,4 @@ jobs:
 
       - name: 같은 자료로 비교
         working-directory: salpi_agent
-        run: python lgbm_compare.py
+        run: python -m experiments.lgbm_compare

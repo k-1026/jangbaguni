@@ -1461,8 +1461,45 @@ function renderReceiptEdit() {
       $("#receiptResult").innerHTML = `<p class="ok">${mmdd(r.date)} 영수증 ${r.saved_items}줄을 저장했어요. 위 메뉴별 원가율이 새로 계산됐어요.</p>`;
       renderCosts(r, true);
       loadCosts(false);
+      praiseIfSaved(r.purchase_id);
     },
   });
+}
+
+// 칭찬 팝업: 새로 저장한 영수증에서 아낀 돈이 더 낸 돈보다 많을 때만 (나쁜 소식은 구매가 점검 칸에서만)
+// 배지는 "장보기 고수!" 하나로 통일 · 5초 뒤 저절로 닫히고 × 로 바로 닫을 수도 있음
+async function praiseIfSaved(id) {
+  if (!id) return;
+  let j;
+  try { j = await getJSON(`/api/price-judge?purchase_id=${id}`); } catch { return; }
+  praiseFrom(j);
+}
+
+// 구매가 점검 결과(j)로 아낀 돈 - 더 낸 돈을 계산해 이득이면 팝업 (새로 저장할 때 · 예전 영수증 열 때 둘 다)
+function praiseFrom(j) {
+  const net = (j.summary?.saved || 0) - (j.summary?.extra_paid || 0);
+  if (net <= 0) return;
+  const best = j.lines.filter((x) => x.saved > 0).sort((a, b) => b.saved - a.saved)[0];
+  showPraise(net, best);
+}
+
+function showPraise(net, best) {
+  document.querySelector(".praise-pop")?.remove();
+  const pop = document.createElement("div");
+  pop.className = "praise-pop";
+  pop.innerHTML = `<div class="praise-box" role="dialog" aria-label="칭찬 배지">
+    <button class="praise-x" type="button" aria-label="닫기">×</button>
+    <img src="/static/img/salpi_thumbsup.png" alt="엄지 척 하는 살피">
+    <span class="praise-badge">장보기 고수!</span>
+    <p class="praise-msg">이번 영수증에서 <b>${won(net)}</b> 아꼈어요!</p>
+    ${best ? `<p class="praise-best">가장 잘 산 품목 · ${esc(best.item)} <b>${won(best.saved)} 절약</b></p>` : ""}
+    <i class="praise-timer"></i></div>`;
+  document.body.append(pop);
+  let timer;
+  const close = () => { clearTimeout(timer); pop.classList.add("out"); setTimeout(() => pop.remove(), 200); };
+  timer = setTimeout(close, 5000);
+  pop.querySelector(".praise-x").onclick = close;
+  pop.onclick = (e) => { if (e.target === pop) close(); };
 }
 
 const ratioCls = (v) => (v == null ? "" : v >= 40 ? "up" : "down");   // 원가율 40% 기준 (유저플로우 v2)
@@ -1516,18 +1553,60 @@ function costPlan(m, T) {
   </div>`;
 }
 
+// 최근 영수증: 사진 카드 한 줄 (맨 앞 = 새 영수증 올리기 칸) · 양옆 작은 화살표로 넘김
+const RC_PIC = `<svg viewBox="0 0 48 40" aria-hidden="true"><rect x="2" y="2" width="44" height="36" rx="1.5"/><circle cx="11" cy="11" r="3.5"/><path d="M5 35l12-15 7 8 8-12 11 19z"/></svg>`;
+// 사진이 없는 영수증: 품목 몇 줄 · 합계로 작은 영수증 모양을 그려 넣음 (올리기 칸과 헷갈리지 않게)
+const rcMini = (p) => `<span class="rc-mini" aria-hidden="true">
+  <b>${esc(supplierName(p.supplier))}</b><small>${mmdd(p.purchased_on)}</small>
+  ${(p.names || []).slice(0, 3).map((n) => `<i>${esc(n)}</i>`).join("")}${p.items > 3 ? `<i class="more">외 ${p.items - 3}줄</i>` : ""}
+  <em>합계 ${won(p.total_amount)}</em></span>`;
+const RC_TRASH = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4.5h6V7M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>`;
 function receiptList(list) {
-  return `<h3 class="sub-h">최근 영수증</h3><ul class="ctx-list receipt-list">${list.map((p) => `<li>
-    <button class="rc-open" data-rid="${p.id}" title="사진과 품목 보기">${mmdd(p.purchased_on)} · ${esc(supplierName(p.supplier))} · ${p.items}줄 · ${won(p.total_amount)} <i>보기 ›</i></button>
-    <span class="rc-btns"><button class="rc-edit" data-eid="${p.id}" type="button">수정하기</button>
-    ${p.source === "ocr" ? `<button class="rc-remove" data-id="${p.id}" type="button">지우기</button>` : `<small>기본 데이터</small>`}</span></li>`).join("")}</ul>`;
+  const cards = list.map((p) => `<li class="rc-card" data-id="${p.id}">
+    <span class="rc-check" aria-hidden="true"></span>
+    <button class="rc-open rc-thumb" data-rid="${p.id}" type="button" title="사진과 품목 보기">
+      ${p.image_url ? `<img src="${esc(p.image_url)}" alt="${mmdd(p.purchased_on)} 영수증 사진" loading="lazy">` : rcMini(p)}
+    </button>
+    <div class="rc-meta"><span class="rc-date">${+p.purchased_on.slice(5, 7)}월 ${+p.purchased_on.slice(8, 10)}일</span>
+      <b title="${esc(supplierName(p.supplier))}">${esc(supplierName(p.supplier))}</b><span class="rc-price">${won(p.total_amount)}</span></div></li>`).join("");
+  return `<div class="rc-head"><h3 class="sub-h">최근 영수증</h3>
+      ${list.length ? `<span class="rc-tools">
+        <button class="rc-trash" type="button" title="여러 장 골라서 지우기" aria-label="여러 장 골라서 지우기">${RC_TRASH}</button>
+        <span class="rc-sel-bar"><span class="rc-sel-count">지울 영수증을 골라 주세요</span>
+          <button class="rc-remove rc-sel-del" type="button" disabled>지우기</button><button class="rc-sel-cancel" type="button">취소</button></span>
+      </span>` : ""}</div>
+    <div class="rc-strip-wrap">
+      <button class="rc-arrow prev" type="button" aria-label="앞 영수증 보기" disabled><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 6l-6 6 6 6"/></svg></button>
+      <ul class="rc-strip">
+        <li class="rc-card"><button class="rc-thumb rc-add-tile" type="button" title="눌러서 영수증 사진 · PDF 올리기">
+          <span class="rc-add-icon">${RC_PIC}<i aria-hidden="true">+</i></span><b>영수증 올리기</b><small>눌러서 사진 · PDF 선택</small></button></li>
+        ${cards}
+      </ul>
+      <button class="rc-arrow next" type="button" aria-label="다음 영수증 보기" disabled><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>
+    </div>`;
 }
+// 화살표: 더 넘길 게 없으면 흐리게 (자리는 그대로라 줄이 흔들리지 않음)
+function rcArrows() {
+  const s = $("#receiptList .rc-strip");
+  if (!s) return;
+  const max = s.scrollWidth - s.clientWidth - 2;
+  $("#receiptList .rc-arrow.prev").disabled = s.scrollLeft <= 2;
+  $("#receiptList .rc-arrow.next").disabled = s.scrollLeft >= max;
+}
+function showReceiptList(list) {
+  $("#receiptList").classList.remove("selecting");
+  $("#receiptList").innerHTML = receiptList(list);
+  rcArrows();
+  document.querySelectorAll("#receiptList .rc-strip img").forEach((i) => i.addEventListener("load", rcArrows, { once: true }));
+}
+$("#receiptList").addEventListener("scroll", rcArrows, true);
+addEventListener("resize", rcArrows);
 
 async function loadCosts(full = true) {
   try {
     const r = await getJSON("/api/costs");
     if (full) renderCosts(r, false);
-    $("#receiptList").innerHTML = receiptList(r.receipts);
+    showReceiptList(r.receipts);
   } catch (e) {
     if (full) $("#costCard").innerHTML = `<p class="muted">원가율을 불러오지 못했어요. ${esc(e.message)}</p>`;
   }
@@ -1668,7 +1747,7 @@ async function stopMenu(m) {
 function afterMenuChange(r, text) {
   renderCosts(r, false);
   $("#costCard").insertAdjacentHTML("afterbegin", `<p class="ok">${esc(text)}</p>`);
-  $("#receiptList").innerHTML = receiptList(r.receipts);
+  showReceiptList(r.receipts);
   loadMyItems();
   loadDemand();
 }
@@ -1742,15 +1821,41 @@ function closeCamera() { stopCamera(); $("#cameraModal").hidden = true; }
 $("#cameraBtn").onclick = openCamera;
 $("#cameraClose").onclick = closeCamera;
 $("#cameraModal").onclick = (e) => { if (e.target.id === "cameraModal") closeCamera(); };
+// 휴지통 → 고르기 모드: 카드 오른쪽 위 체크 칸으로 여러 장 골라 한 번에 지우기
+const rcPicked = () => [...document.querySelectorAll("#receiptList .rc-card.picked")].map((li) => li.dataset.id);
+function rcSelectMode(on) {
+  $("#receiptList").classList.toggle("selecting", on);
+  document.querySelectorAll("#receiptList .rc-card.picked").forEach((li) => li.classList.remove("picked"));
+  rcSelCount();
+}
+function rcSelCount() {
+  const n = rcPicked().length;
+  $("#receiptList .rc-sel-count").textContent = n ? `${n}장 골랐어요` : "지울 영수증을 골라 주세요";
+  $("#receiptList .rc-sel-del").disabled = !n;
+}
+async function rcDeletePicked() {
+  const ids = rcPicked();
+  if (!ids.length || !confirm(`영수증 ${ids.length}장을 지울까요? 원가율이 다시 계산돼요.`)) return;
+  $("#receiptList .rc-sel-del").disabled = true;
+  const res = await Promise.allSettled(ids.map((id) => sendJSON(`/api/receipt/${id}`, "DELETE")));
+  const fail = res.filter((x) => x.status === "rejected").length;
+  if (fail) alert(`${ids.length}장 중 ${fail}장은 지우지 못했어요. 잠시 뒤 다시 해 주세요.`);
+  loadCosts(true);   // 원가율 · 사진 줄을 한 번에 새로 (고르기 모드도 풀림)
+}
 $("#receiptList").onclick = async (e) => {
+  if (e.target.closest(".rc-trash")) return rcSelectMode(true);
+  if (e.target.closest(".rc-sel-cancel")) return rcSelectMode(false);
+  if (e.target.closest(".rc-sel-del")) return rcDeletePicked();
+  const ar = e.target.closest(".rc-arrow");
+  if (ar) { const s = $("#receiptList .rc-strip"); return s.scrollBy({ left: (ar.classList.contains("next") ? 1 : -1) * s.clientWidth * 0.8, behavior: "smooth" }); }
+  if ($("#receiptList").classList.contains("selecting")) {   // 고르기 모드: 카드를 누르면 체크만
+    const li = e.target.closest(".rc-card[data-id]");
+    if (li) { li.classList.toggle("picked"); rcSelCount(); }
+    return;
+  }
+  if (e.target.closest(".rc-add-tile")) return $("#receiptFile").click();   // 맨 앞 그림 칸 = 새 영수증 올리기
   const o = e.target.closest(".rc-open");
-  if (o) return openReceipt(o.dataset.rid);
-  const ed = e.target.closest(".rc-edit");
-  if (ed) return openReceipt(ed.dataset.eid, true);
-  const b = e.target.closest(".rc-remove");
-  if (!b || !confirm("이 영수증을 지울까요? 원가율이 다시 계산돼요.")) return;
-  try { renderCosts(await sendJSON(`/api/receipt/${b.dataset.id}`, "DELETE"), false); loadCosts(false); }
-  catch (err) { alert(err.message); }
+  if (o) return openReceipt(o.dataset.rid);   // 수정하기 · 지우기는 열린 창 안에
 };
 
 // ---------------------------------------------------------------
@@ -2291,12 +2396,24 @@ function showReceiptView(id, d) {
           <tbody>${d.items.map((x) => `<tr><td>${esc(x.raw_name)}</td><td>${esc(x.item || "재료 아님")}</td><td>${qtyTxt(x)}</td>
             <td class="price">${won(x.amount)}</td><td>${x.unit_price ? won(x.unit_price) : "-"}</td></tr>`).join("")}</tbody>
         </table>
-        <div class="rc-judge" id="rcJudge"><p class="muted small">산 값을 평소 단가 · 대구 시세와 비교하는 중이에요</p></div>
-        <div class="receipt-actions"><button class="btn primary" id="rcViewEdit" type="button">수정하기</button></div>
       </div>
-    </div>`;
+    </div>
+    <!-- 구매가 점검: 창 전체 폭 (한 품목 한 줄이 잘리지 않게) -->
+    <div class="rc-judge" id="rcJudge"><p class="muted small">구매가를 평소 단가 · 대구 시세와 비교하는 중이에요</p></div>
+    <div class="receipt-actions rc-view-btns"><button class="rc-edit" id="rcViewEdit" type="button">수정하기</button>
+      <button class="rc-remove" id="rcViewDel" type="button">지우기</button></div>`;
   $("#rcViewEdit").onclick = () => editReceiptView(id, d);
+  $("#rcViewDel").onclick = async () => {
+    if (!confirm("이 영수증을 지울까요? 원가율이 다시 계산돼요.")) return;
+    try { afterReceiptDelete(await sendJSON(`/api/receipt/${id}`, "DELETE")); closeReceipt(); }
+    catch (err) { alert(err.message); }
+  };
   loadJudge(id);
+}
+// 영수증을 지운 뒤: 나의 가게면 원가율 · 사진 줄, 마이페이지 '나의 영수증'이 열려 있으면 그 목록도 새로
+function afterReceiptDelete(r) {
+  if (STORE_VIEW) { renderCosts(r, false); loadCosts(false); }
+  if ($("#mypage")?.classList.contains("open") && $("#mypageTitle").textContent === "나의 영수증") renderMypage("receipts");
 }
 
 // 싸게/비싸게 판정 (/api/price-judge): 비싸게 · 시세 오름 · 싸게 산 품목만 한 줄씩, 나머지는 "비슷해요 N개"
@@ -2305,14 +2422,20 @@ async function loadJudge(id) {
   const box = $("#rcJudge");
   let j;
   try { j = await getJSON(`/api/price-judge?purchase_id=${id}`); }
-  catch (e) { box.innerHTML = `<p class="muted small">산 값 판정을 불러오지 못했어요</p>`; return; }
+  catch (e) { box.innerHTML = `<p class="muted small">구매가 점검을 불러오지 못했어요</p>`; return; }
   if (!box.isConnected) return;
   const notable = j.lines.filter((x) => x.verdict !== "비슷해요" && x.verdict !== "비교할 값 없음");
-  const s = j.summary;
-  box.innerHTML = `<h4>산 값 판정</h4>
-    ${notable.map((x) => `<p><span class="demand-chip ${JUDGE_CHIP[x.verdict] || ""}">${esc(x.verdict)}</span>
-      <b>${esc(x.item)}</b> ${won(x.unit_price)}/${esc(x.unit)} · ${esc(x.why)}${x.extra_paid ? ` · 평소 값이면 <b>${won(x.extra_paid)}</b> 덜 냈어요` : ""}${x.saved ? ` · <b>${won(x.saved)}</b> 아꼈어요` : ""}</p>`).join("")}
-    <p class="muted small">비슷해요 ${s.similar}개${notable.length ? "" : " · 모두 평소 값에 샀어요"} · 10% 안쪽은 비슷하다고 봐요</p>`;
+  // 한 품목 = 한 줄: 판정 | 재료 | 단가 | 이유(짧은 말로) | 더 낸 돈 · 아낀 돈 — 글자를 자르지 않고 줄마다 칸을 맞춤
+  const shortWhy = (w) => w.replace("우리 가게 평소보다", "평소보다").replace("우리 가게 평소와", "평소와").replace(/대구 소매 평균/g, "소매가");
+  const money = (x) => (x.extra_paid ? `<span class="jm up">${won(x.extra_paid)} 과지출</span>`
+    : x.saved ? `<span class="jm down">${won(x.saved)} 절약</span>` : `<span class="jm"></span>`);
+  box.innerHTML = `<h4>구매가 점검</h4>
+    ${notable.length ? `<div class="judge-rows">${notable.map((x) => `<div class="judge-row">
+      <span class="demand-chip ${JUDGE_CHIP[x.verdict] || ""}">${esc(x.verdict)}</span>
+      <b class="ji">${esc(x.item)}</b><span class="jp">${won(x.unit_price)}/${esc(x.unit)}</span>
+      <span class="jw">${esc(shortWhy(x.why))}</span>${money(x)}</div>`).join("")}</div>` : ""}
+    ${notable.length ? "" : `<p class="muted small">모두 평소 값에 샀어요</p>`}`;   // 눈에 띄는 품목이 없을 때만 한 줄 (칸이 비지 않게)
+  praiseFrom(j);   // 예전 영수증을 열 때도 이득이면 칭찬 팝업
 }
 
 // 저장한 영수증 고치기: 왼쪽에 사진(있으면)을 띄워 두고 오른쪽 표에서 바로 고침
@@ -2343,7 +2466,8 @@ $("#receiptModal").onclick = (e) => { if (e.target.id === "receiptModal") closeR
 // ---------------------------------------------------------------
 // 마이페이지: 로그인한 사장님 정보(/api/auth/me) · 나의 영수증 · 설정(알림 · 권한) · 계정
 // ---------------------------------------------------------------
-if (STORE_VIEW) $("#storeName").textContent = `나의 가게 · ${readLogin()?.store || "내 가게"}`;
+// 제목: "<가게 이름> 사장님의 가게" — 가게 이름만 굵게 (가게 이름이 없으면 "나의 가게" 그대로)
+if (STORE_VIEW && readLogin()?.store) $("#storeName").innerHTML = `<b>${esc(readLogin().store)}</b> 사장님의 가게`;
 // 휴대폰 번호는 가운데를 가려서 보여 줌 (01012345678 → 010-****-5678)
 const maskPhone = (p) => (p && p.length >= 10 ? `${p.slice(0, 3)}-****-${p.slice(-4)}` : "");
 // 마이페이지는 기억해 둔 정보로 바로 그리고 → 서버(/api/auth/me) 답이 오면 기억을 고치고 다시 그림 (빈 화면으로 기다리지 않게)

@@ -1,0 +1,19 @@
+{
+  "name": "salpi-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "살피 모바일 앱 (Capacitor) — mobile/ 화면 파일을 안드로이드 앱으로 감쌈",
+  "scripts": {
+    "sync": "node scripts/sync-www.mjs && cap sync android",
+    "open": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/app": "^7.0.0",
+    "@capacitor/browser": "^7.0.0",
+    "@capacitor/core": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.0.0"
+  }
+}

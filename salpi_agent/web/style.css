@@ -254,6 +254,8 @@ body.item-view .home-only, body.store-view .home-only { display: none; }
 body.store-view .store-only { display: block; }
 .store-only { scroll-margin-top: 64px; }   /* 위쪽 메뉴에서 바로 갈 때 고정 메뉴줄에 제목이 가리지 않게 */
 .store-head h1 { margin: 6px 0 4px; font-size: 28px; }
+.store-head h1:has(b) { font-weight: 500; color: var(--muted); }   /* "사장님의 가게"는 가늘게 · 가게 이름만 굵고 진하게 */
+.store-head h1 b { font-weight: 800; color: var(--ink); }
 /* 나의 가게 버튼: 연한 초록 버튼, 나의 가게 페이지에서는 진한 초록 */
 .store-btn { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 999px; background: var(--primary-container); color: var(--on-primary-container);
   font-size: 14px; font-weight: 700; text-decoration: none; white-space: nowrap; transition: background .15s, box-shadow .15s; }
@@ -631,6 +633,16 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .rc-judge h4 { margin: 0 0 6px; font-size: 14px; }
 .rc-judge p { margin: 4px 0; }
 .rc-judge .demand-chip { display: inline-block; margin: 0 4px 0 0; }
+/* 구매가 점검: 한 품목 = 한 줄 · 글자를 자르지 않음 (칸은 글자 길이만큼 · 화면이 좁으면 칸 안에서 옆으로 밀어 봄) */
+#receiptModalBody > .rc-judge { margin-top: 16px; overflow-x: auto; }
+.judge-rows { display: grid; grid-template-columns: repeat(4, auto) 1fr; column-gap: 14px; row-gap: 6px; align-items: center; width: max-content; min-width: 100%; margin: 2px 0 6px; }
+.judge-row { display: contents; }
+.judge-row > * { white-space: nowrap; }
+.judge-row .demand-chip { margin: 0; }
+.judge-row .jp { font-variant-numeric: tabular-nums; text-align: right; }
+.judge-row .jw { color: var(--muted); }
+.judge-row .jm { font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.judge-row .jm.up { color: #B33A1A; } .judge-row .jm.down { color: #0C6E52; }
 /* 기본 버튼: 테두리 버튼 · 주 버튼은 진한 초록 */
 .btn { border: 1px solid var(--outline); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 9px 20px; font-weight: 700; transition: background .15s; }
 .btn:hover { background: var(--surface-variant); }
@@ -701,10 +713,76 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 #receiptList { margin-top: 18px; }
 .sub-h { font-size: 15px; margin: 16px 0 6px; }
 .receipt-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; }
-.rc-remove { border: 1px solid var(--outline); background: var(--surface); border-radius: 8px; padding: 2px 8px; font-size: 12px; color: var(--up); }
-.rc-btns { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-.rc-edit { border: 1px solid var(--accent); background: var(--surface); border-radius: 8px; padding: 2px 8px; font-size: 12px; font-weight: 700; color: var(--accent); }
+/* 영수증 창 안의 수정하기(주황 테두리) · 지우기(회색 테두리) — 초록 버튼 대신 */
+.rc-remove { border: 1px solid var(--outline); background: var(--surface); border-radius: 8px; padding: 2px 8px; font-size: 12px; color: var(--up); cursor: pointer; }
+.rc-remove:hover { border-color: var(--up); }
+.rc-edit { border: 1px solid var(--accent); background: var(--surface); border-radius: 8px; padding: 2px 8px; font-size: 12px; font-weight: 700; color: var(--accent); cursor: pointer; }
 .rc-edit:hover { background: var(--accent); color: #fff; }
+.rc-view-btns .rc-edit, .rc-view-btns .rc-remove { padding: 7px 16px; font-size: 14px; border-radius: 10px; }
+
+/* 최근 영수증 제목 줄: 오른쪽 위 휴지통 → 누르면 "n장 골랐어요 [지우기] [취소]" */
+.rc-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 16px 0 6px; }
+.rc-head .sub-h { margin: 0; }
+.rc-tools { display: flex; align-items: center; margin-right: calc(32px + 8px + 4px); }   /* 오른쪽 화살표 칸 + 사이 + 줄 안쪽 여백 → 사진 줄 오른쪽 끝에 맞춤 */
+.rc-trash { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; background: none; color: var(--muted); cursor: pointer; }
+.rc-trash svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.rc-trash:hover { color: var(--up); }
+.rc-sel-bar { display: none; align-items: center; gap: 6px; font-size: 13px; }
+.rc-sel-count { color: var(--muted); margin-right: 2px; }
+.rc-sel-bar .rc-remove { padding: 5px 12px; font-size: 13px; border-radius: 8px; }
+.rc-sel-bar .rc-remove:disabled { opacity: .4; cursor: default; }
+.rc-sel-cancel { border: 1px solid var(--outline); background: var(--surface); border-radius: 8px; padding: 5px 12px; font-size: 13px; color: var(--ink); cursor: pointer; }
+.selecting .rc-trash { display: none; }
+.selecting .rc-sel-bar { display: flex; }
+/* 고르기 모드: 카드 오른쪽 위 체크 칸 · 고른 카드는 진한 테두리 · 올리기 칸은 흐리게 */
+.rc-card { position: relative; }
+.rc-check { display: none; position: absolute; top: 12px; right: 8px; z-index: 1; width: 22px; height: 22px; border: 2px solid #fff; border-radius: 50%;
+  background: rgba(0, 0, 0, .25); box-shadow: 0 1px 3px rgba(0, 0, 0, .3); pointer-events: none; }
+.selecting .rc-check { display: block; }
+.selecting .rc-card.picked .rc-check { background: var(--ink); }
+.selecting .rc-card.picked .rc-check::after { content: ""; position: absolute; left: 6px; top: 2px; width: 5px; height: 10px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.selecting .rc-card.picked .rc-thumb { outline: 2px solid var(--ink); outline-offset: -2px; }
+.selecting .rc-add-tile { opacity: .35; pointer-events: none; }
+
+/* 최근 영수증: 사진 카드 한 줄 (맨 앞 = 새 영수증 올리기 그림 칸) · 양옆 작은 화살표 */
+.rc-strip-wrap { display: grid; grid-template-columns: 32px minmax(0, 1fr) 32px; gap: 8px; align-items: start; }   /* 화살표 | 사진 줄 | 화살표 */
+.rc-strip { display: flex; gap: 12px; margin: 0; padding: 4px 4px 8px; list-style: none; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding: 0 4px; scrollbar-width: none; }
+.rc-strip::-webkit-scrollbar { display: none; }
+.rc-card { flex: 0 0 150px; display: flex; flex-direction: column; gap: 6px; scroll-snap-align: start; font-size: 12.5px; }
+.rc-strip .rc-thumb { display: block; width: 100%; aspect-ratio: 1 / 1; padding: 0; overflow: hidden; border: 1px solid var(--outline-variant); border-radius: 12px; background: #F6F6F6; cursor: pointer; }
+.rc-thumb img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; transition: transform .2s; }
+.rc-thumb:hover img { transform: scale(1.04); }
+.rc-thumb svg { width: 60px; height: 50px; fill: none; stroke: #9A9A9A; stroke-width: 2.5; }
+.rc-thumb svg circle, .rc-thumb svg path { fill: #9A9A9A; stroke: none; }
+/* 맨 앞 올리기 칸: 회색 점선 + 더하기 표시 + 안내 글 → 눌러서 올리는 칸인 게 보이게 */
+.rc-strip .rc-add-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 10px;
+  border: 2px dashed #BDBDBD; background: #F6F6F6; color: #6F6F6F; transition: background .15s, border-color .15s, transform .15s; }
+.rc-strip .rc-add-tile:hover { background: #EEEEEE; border-color: #8A8A8A; transform: translateY(-2px); }
+.rc-add-icon { position: relative; display: block; }
+.rc-add-tile .rc-add-icon svg { width: 48px; height: 40px; stroke: #9A9A9A; }
+.rc-add-tile .rc-add-icon svg circle, .rc-add-tile .rc-add-icon svg path { fill: #9A9A9A; }
+.rc-add-icon i { position: absolute; right: -8px; bottom: -6px; width: 22px; height: 22px; border-radius: 50%; background: #7A7A7A; color: #fff;
+  font-style: normal; font-size: 17px; font-weight: 700; line-height: 22px; text-align: center; box-shadow: 0 0 0 2px #F6F6F6; }
+.rc-add-tile b { font-size: 13px; }
+.rc-add-tile small { font-size: 11px; color: var(--muted); }
+/* 사진 없는 영수증 그림: 칸 안에 다 들어가게 (품목은 3줄까지 + "외 n줄") · 예전 목록용 .rc-open i 꾸밈(주황 · 12px)을 막음 */
+.rc-mini { display: flex; height: 100%; flex-direction: column; gap: 1px; padding: 9px 11px; overflow: hidden; background: #FFFDF8; color: var(--ink);
+  font-size: 10.5px; line-height: 1.4; text-align: left; border-bottom: 4px dotted var(--outline); }
+.rc-mini b { flex-shrink: 0; font-size: 11.5px; text-align: center; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.rc-mini small { flex-shrink: 0; text-align: center; color: var(--muted); font-size: 10px; padding-bottom: 3px; margin-bottom: 2px; border-bottom: 1px dashed var(--outline); }
+.rc-strip .rc-mini i { display: block; flex-shrink: 0; margin: 0; color: var(--ink); font-size: 10.5px; font-style: normal; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.rc-strip .rc-mini i.more { color: var(--muted); }
+.rc-mini em { flex-shrink: 0; margin-top: auto; padding-top: 3px; border-top: 1px dashed var(--outline); font-style: normal; font-weight: 700; text-align: right; }
+/* 카드 아래 글: 날짜(작게) / 판매처(굵게) / 합계(초록) — 줄을 나눠 한눈에 */
+.rc-meta { display: flex; flex-direction: column; gap: 1px; line-height: 1.35; padding: 0 2px; }
+.rc-meta .rc-date { color: var(--muted); font-size: 11.5px; }
+.rc-meta b { font-size: 13px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.rc-meta .rc-price { color: var(--primary); font-size: 12.5px; font-weight: 800; }
+/* 화살표: 사진 위가 아니라 줄 양옆 자리에 (사진 칸 가운데 높이) · 더 넘길 게 없으면 흐리게 */
+.rc-arrow { margin-top: calc(4px + 75px - 16px); width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; border: 1px solid var(--outline); border-radius: 50%;
+  background: var(--surface); box-shadow: var(--e1); color: var(--ink); font-size: 20px; line-height: 1; cursor: pointer; }
+.rc-arrow:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+.rc-arrow:disabled { opacity: .3; cursor: default; box-shadow: none; }
 
 /* 식봄 상품 카드 (재료 페이지 · 검색에서 씀) */
 .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px 14px; }
@@ -1136,3 +1214,22 @@ body.login-view .login-only, body.signup-view .signup-only { display: flex; }
 
 /* 카카오로 처음 온 사장님: 회원가입 카드에서 휴대폰 · 아이디 · 비밀번호 칸과 간편 가입 버튼을 숨기고 이름 · 가게 · 약관만 */
 .kakao-mode .su-local { display: none; }
+
+/* 칭찬 팝업: 싸게 사서 아낀 돈이 더 많을 때 엄지 척 살피 + 배지 + 멘트, 5초 뒤 저절로 닫힘 */
+.praise-pop { position: fixed; inset: 0; z-index: 90; background: rgba(255,255,255,.72); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; padding: 16px; animation: praise-fade .2s ease-out; }
+.praise-pop.out { opacity: 0; transition: opacity .2s; }
+.praise-box { position: relative; width: min(340px, 100%); background: var(--surface); border-radius: 24px; padding: 26px 24px 22px; text-align: center; box-shadow: var(--e3); overflow: hidden; animation: praise-in .6s ease-out; }
+.praise-box img { width: 132px; height: auto; display: block; margin: 0 auto 10px; animation: praise-bounce .9s .25s ease-out both; }
+.praise-x { position: absolute; top: 10px; right: 10px; width: 36px; height: 36px; border: 0; border-radius: 50%; background: none; font-size: 24px; line-height: 1; color: var(--muted); cursor: pointer; }
+.praise-x:hover { background: var(--surface-variant); color: var(--ink); }
+.praise-badge { display: block; margin: 2px 0 0; font-size: 30px; font-weight: 900; letter-spacing: -1px; line-height: 1.2; background: linear-gradient(135deg, #F08A3E, var(--accent-hover)); -webkit-background-clip: text; background-clip: text; color: transparent; animation: praise-title .5s .45s ease-out both; }
+.praise-msg { margin: 12px 0 4px; font-size: 18px; font-weight: 700; color: var(--ink); word-break: keep-all; }
+.praise-msg b { color: #0C6E52; font-weight: 900; }
+.praise-best { margin: 0; font-size: 13.5px; color: var(--muted); word-break: keep-all; }
+.praise-best b { color: #0C6E52; }
+.praise-timer { position: absolute; left: 0; bottom: 0; height: 4px; width: 100%; background: var(--accent); transform-origin: left; animation: praise-time 5s linear forwards; }
+@keyframes praise-fade { from { opacity: 0; } }
+@keyframes praise-in { 0% { opacity: 0; transform: scale(.3); } 45% { opacity: 1; transform: scale(1.1); } 65% { transform: scale(.94); } 82% { transform: scale(1.03); } 100% { transform: none; } }
+@keyframes praise-bounce { 0% { transform: translateY(0) rotate(0); } 25% { transform: translateY(-26px) rotate(-8deg); } 45% { transform: translateY(0) rotate(0); } 60% { transform: translateY(-12px) rotate(6deg); } 75% { transform: translateY(0) rotate(0); } 88% { transform: translateY(-4px); } 100% { transform: none; } }
+@keyframes praise-title { 0% { opacity: 0; transform: scale(.4); } 60% { opacity: 1; transform: scale(1.18); } 100% { transform: none; } }
+@keyframes praise-time { to { transform: scaleX(0); } }

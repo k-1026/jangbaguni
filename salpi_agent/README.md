@@ -54,6 +54,9 @@
 | `forecast_log.py` | 예측 기록 · 채점: 하루 한 번 그날 화면 예측을 Supabase `forecast_log` 에 저장 → 7일 뒤 실제 가격과 채점, 식봄 판매가를 `price_snapshots` 에 저장 |
 | `backtest.py` | 예측 공식 되돌려 채점: 과거 날짜마다 "그날 예측했다면?"을 다시 계산해 7일 뒤 실제 값과 비교 (`analysis.py` 계산 조각을 그대로 씀, 2~5분) |
 | `menu_cost.py` | 메뉴 1인분 원가 · 원가율, 표준 레시피, 참고 단가 |
+| `demand.py` | 내일 준비: 메뉴별 내일 그릇 수 → 재료 필요량 → 재고 뺀 발주량. 시연 가게는 학습 모델(`demand_model.py`), 그 밖은 규칙 |
+| `dummy_store.py` | 시연 가게 1년 치 가상 데이터(메뉴 · 레시피 · 판매량 · 영수증 · 재고) 만들기 → `data/dummy_store/`, `--apply` 면 Supabase 시연 가게에 넣기 |
+| `demand_learn.py` · `demand_model.py` | 판매량 학습: 가상 판매 기록으로 부스팅을 학습 · 6달 시험(규칙과 비교) → `models/demand_demo.json` / 서버에서 numpy 없이 읽어 내일 예측 ([결과](../plan/forecast/1118_demand_learning.md)) |
 | `agent.py` | 제미나이 에이전트: 도구 호출 → 살피 말투로 설명 (`brand/SKILL.md` 적용), 바쁠 때 다른 모델로 자동 전환 |
 | `server.py` | 웹 서버 (화면 + `/api/...`) |
 | `web/` | 화면 (`index.html` · `style.css` · `app.js`), `web/img/` 는 brand 폴더의 배경 없는 살피 이미지를 웹용으로 줄인 것 |

@@ -1095,7 +1095,8 @@ function demandReason(factors) {
   if (v == null || Math.abs(v) < 0.02) return "평소와 비슷하게 팔릴 날이에요";
   const p = Math.round(Math.abs(v) * 100);
   if (name === "최근 2주 흐름") return `최근 2주 판매가 그 전보다 ${p}% ${v > 0 ? "늘었어요" : "줄었어요"}`;
-  return `${name}은 평소보다 ${p}% ${v > 0 ? "많이" : "적게"} 팔려요`;
+  if (name.endsWith("요일") || name === "공휴일") return `${name}은 평소보다 ${p}% ${v > 0 ? "많이" : "적게"} 팔려요`;
+  return `${name} 영향으로 평소보다 ${p}% ${v > 0 ? "많이" : "적게"} 팔릴 것 같아요`;   // 학습 모델 이유 (기온 · 삼성 홈경기 · 월급날 무렵 등)
 }
 
 const weekday = (s) => "일월화수목금토"[new Date(`${s}T00:00:00`).getDay()];
@@ -1122,7 +1123,7 @@ async function loadDemand() {
   const day = `${mmdd(d.target_date)}(${d.target_weekday})`;
   // 메뉴끼리 그릇 수를 막대 높이로 비교할 수 있게 같은 눈금을 씀 (위 여백은 숫자 자리)
   const max = Math.max(...d.menus.flatMap((m) => [m.predicted, ...m.recent.map((x) => x.qty)]), 1) * 1.2;
-  $("#storeBasis").textContent = `판매 기록 ${mmdd(d.last_sales_date)}까지`;
+  $("#storeBasis").textContent = `판매 기록 ${mmdd(d.last_sales_date)}까지${d.model ? " · 학습 모델 (가상 판매 기록)" : ""}`;
   $("#storeBasis").title = d.method;
   $("#menuForecast").innerHTML = `
     <div class="demand-top">

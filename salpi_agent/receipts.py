@@ -361,7 +361,7 @@ def my_ingredients(store_id):
 
 
 # ---------------------------------------------------------------
-# 4) 최근 영수증 목록 · 지우기 (시연에서 영수증 읽기로 넣은 것만 지울 수 있음)
+# 4) 최근 영수증 목록 · 지우기 (기본 데이터 영수증도 지울 수 있음)
 # ---------------------------------------------------------------
 
 def recent(store_id, limit=8):
@@ -410,9 +410,9 @@ def detail(store_id, purchase_id):
 
 
 def remove(store_id, purchase_id):
-    gone = db.delete("purchases", id=f"eq.{purchase_id}", store_id=f"eq.{store_id}", source="eq.ocr")
+    gone = db.delete("purchases", id=f"eq.{purchase_id}", store_id=f"eq.{store_id}")   # 기본(시연) 영수증도 지울 수 있음
     if not gone:
-        raise ValueError("영수증 읽기로 넣은 영수증만 지울 수 있어요")
+        raise ValueError("영수증을 찾지 못했어요")
     for g in gone:
         if g.get("image_path"):
             db.remove_file(g["image_path"])

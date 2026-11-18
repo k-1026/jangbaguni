@@ -1503,7 +1503,7 @@ function receiptList(list) {
     </button>
     <div class="rc-meta"><b>${mmdd(p.purchased_on)} · ${esc(supplierName(p.supplier))}</b><span>${p.items}줄 · ${won(p.total_amount)}</span></div>
     <span class="rc-btns"><button class="rc-edit" data-eid="${p.id}" type="button">수정하기</button>
-    ${p.source === "ocr" ? `<button class="rc-remove" data-id="${p.id}" type="button">지우기</button>` : `<small>기본 데이터</small>`}</span></li>`).join("");
+    <button class="rc-remove" data-id="${p.id}" type="button">지우기</button></span></li>`).join("");
   return `<h3 class="sub-h">최근 영수증</h3>
     <div class="rc-strip-wrap">
       <ul class="rc-strip">

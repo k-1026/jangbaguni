@@ -2527,18 +2527,18 @@ async function renderMypage(view) {
         <input type="checkbox" class="switch" data-pref="${k}" ${prefs[k] ? "checked" : ""}></label>`).join("")}
     </section>
     <section class="my-card" id="appCard">
-      <h4>살피 앱 · 알림</h4>
-      <p class="muted small">살피를 휴대폰에 앱으로 설치하고, 매일 아침 시세 알림을 휴대폰 알림으로 받아요.</p>
+      <h4>살피 앱</h4>
       <div id="appBody"><p class="muted small">확인하는 중이에요</p></div>
     </section>
     <section class="my-card" id="kakaoCard">
       <h4>카카오톡 시세 알림</h4>
-      <p class="muted small">매일 아침 내 메뉴 재료의 다음 주 시세 · 원가율 40% 넘은 메뉴를 내 카카오톡 '나와의 채팅'으로 보내 드려요.</p>
+      <p class="muted small">매일 아침 내 카카오톡 '나와의 채팅'으로 보내 드려요.</p>
+      <ul class="my-bullets"><li>내 메뉴 재료의 다음 주 시세</li><li>원가율 40% 넘은 메뉴</li></ul>
       <div id="kakaoBody"><p class="muted small">확인하는 중이에요</p></div>
     </section>
     <section class="my-card" id="permCard">
       <h4>권한 설정</h4>
-      <p class="muted small">영수증을 카메라로 찍거나, 창을 닫아 둬도 시세 알림을 받으려면 권한이 필요해요.</p>
+      <p class="muted small">영수증 찍기와 시세 알림에 필요한 권한이에요.</p>
       <div class="toggle-row"><span><b>카메라</b><small id="camState">확인하는 중</small></span><span id="camAct"></span></div>
       <div class="toggle-row"><span><b>브라우저 알림</b><small id="notiState">확인하는 중</small></span><span id="notiAct"></span></div>
     </section>`;
@@ -2572,7 +2572,7 @@ function myHome(me, offline) {
       <button class="my-link" data-view="receipts"><span>나의 영수증</span><i>›</i></button>
     </section>
     <section class="my-card">
-      <button class="my-link" type="button" data-view="settings"><span>설정 <small class="muted">알림 · 권한</small></span><i>›</i></button>
+      <button class="my-link" type="button" data-view="settings"><span>설정 <small>알림 · 권한</small></span><i>›</i></button>
     </section>
     <section class="my-card my-account">
       <button class="my-link" type="button" data-account="logout"><span>로그아웃</span><i>›</i></button>
@@ -2605,10 +2605,10 @@ async function showAppPush() {
   const box = $("#appBody"), token = readLogin()?.access_token;
   if (!box) return;
   const install = IS_APP ? `<div class="toggle-row"><span><b>살피 앱</b><small>홈 화면 앱으로 쓰고 있어요</small></span><span class="perm-on">설치됨</span></div>`
-    : installPrompt ? `<div class="toggle-row"><span><b>살피 앱 설치</b><small>홈 화면에 살피 아이콘이 생기고 앱처럼 열려요</small></span>
+    : installPrompt ? `<div class="toggle-row"><span><b>앱 설치</b><small>살피를 휴대폰에 앱으로 설치해요</small></span>
         <button class="btn primary" id="appInstall" type="button">앱 설치</button></div>`
-    : IS_IOS ? `<div class="toggle-row"><span><b>살피 앱 설치 (아이폰)</b><small>Safari 아래 공유 버튼 → "홈 화면에 추가" → 그 앱에서 알림을 켜 주세요</small></span></div>`
-    : `<div class="toggle-row"><span><b>살피 앱 설치</b><small>크롬 메뉴(⋮) → "앱 설치" 또는 "홈 화면에 추가"</small></span></div>`;
+    : IS_IOS ? `<div class="toggle-row"><span><b>앱 설치 (아이폰)</b><small>Safari 아래 공유 버튼 → "홈 화면에 추가" → 그 앱에서 알림을 켜 주세요</small></span></div>`
+    : `<div class="toggle-row"><span><b>앱 설치</b><small>크롬 메뉴(⋮) → "앱 설치" 또는 "홈 화면에 추가"</small></span></div>`;
   if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
     box.innerHTML = install + `<p class="muted small">${IS_IOS && !IS_APP ? "아이폰은 홈 화면에 추가한 살피 앱에서만 알림을 켤 수 있어요." : "이 브라우저는 앱 알림을 쓸 수 없어요."}</p>`;
     return;
@@ -2625,8 +2625,9 @@ async function showAppPush() {
       <button class="btn" id="pushTest" type="button">보내기</button></div>`
     : Notification.permission === "denied"
       ? `<p class="rc-warn">알림이 막혀 있어요. 휴대폰 설정 → 앱(또는 크롬) → 살피 → 알림을 허용해 주세요.</p>`
-      : `<div class="toggle-row"><span><b>앱 알림</b><small>${st.ready ? "매일 아침 내 메뉴 재료 시세 · 원가율 알림을 휴대폰 알림으로 받아요" : "서버에 앱 알림 열쇠가 아직 없어요"}</small></span>
-          <button class="btn primary" id="pushOn" type="button" ${st.ready ? "" : "disabled"}>앱 알림 켜기</button></div>`);
+      : `<div class="toggle-row"><span><b>앱 알림</b><small>매일 아침 시세 알림을 휴대폰 알림으로 받아요.</small></span>
+          <button class="btn primary" id="pushOn" type="button" ${st.ready ? "" : "disabled"}>알림 켜기</button></div>
+        ${st.ready ? "" : `<p class="muted small">서버에 앱 알림 열쇠가 아직 없어요</p>`}`);
   if ($("#appInstall")) $("#appInstall").onclick = async () => { installPrompt.prompt(); await installPrompt.userChoice; installPrompt = null; showAppPush(); };
   if ($("#pushOn")) $("#pushOn").onclick = async () => {
     try {
@@ -2663,7 +2664,7 @@ async function showKakao() {
         sessionStorage.removeItem("salpi_kakao_ok"); sessionStorage.removeItem("salpi_kakao_err"); } catch (e) {}
   if (!st.connected) {
     // 아이디로 가입한 사장님도 됨: 살피 로그인은 그대로, 카카오톡 권한만 붙임
-    box.innerHTML = `<div class="toggle-row"><span><b>아직 연결 전</b><small>카카오 계정으로 '카카오톡 메시지 전송'에 동의하면 받아요 (살피 로그인은 그대로)</small></span>
+    box.innerHTML = `<div class="toggle-row"><span><b>아직 연결 전</b><small>카카오톡 연결 후 동의하면 받아요.</small></span>
       <button class="btn primary" id="kakaoLink" type="button" ${st.ready ? "" : "disabled"}>카카오톡 연결</button></div>
       ${st.ready ? "" : `<p class="muted small">서버에 카카오 키가 아직 없어요</p>`}
       ${err ? `<p class="rc-warn">연결하지 못했어요: ${esc(err)}</p>` : ""}`;

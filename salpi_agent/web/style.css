@@ -882,6 +882,7 @@ body.chat-open .fab-count { display: none; }
 .drawer-body { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 .my-card { background: var(--surface); border: 0; border-radius: 16px; padding: 16px; box-shadow: var(--e1); }
 .my-card h4 { margin: 0 0 10px; font-size: 16px; }
+.my-card h4 + .muted { margin: -4px 0 12px; }   /* 제목 바로 밑 설명: 제목에 붙이고 아래 구분선과는 띄움 */
 .my-card.profile { display: flex; align-items: center; gap: 12px; }
 .my-card.profile img { width: 56px; height: 56px; border-radius: 50%; background: var(--surface-variant); object-fit: cover; }
 .my-card.profile b { display: block; font-size: 17px; } .my-card.profile small { color: var(--muted); }
@@ -890,6 +891,7 @@ body.chat-open .fab-count { display: none; }
 .my-link { width: 100%; display: flex; justify-content: space-between; align-items: center; border: 0; border-top: 1px solid var(--outline-variant); background: none;
   padding: 12px 2px 2px; font-size: 15px; font-weight: 700; color: var(--ink); }
 a.my-link { color: inherit; text-decoration: none; }
+.my-link small { font-size: 14px; }   /* '설정 알림 · 권한' 처럼 옆에 붙는 작은 글자: 제목과 같은 검은색 */
 .my-link:hover { color: var(--primary); }
 .my-card > .my-link:first-child { border-top: 0; padding-top: 0; }   /* 카드 맨 위 줄은 구분선 없이 (설정 · 계정) */
 .my-link.danger { color: var(--up); }
@@ -897,6 +899,10 @@ a.my-link { color: inherit; text-decoration: none; }
 .my-link i, .my-receipts i { font-style: normal; color: var(--muted); font-size: 20px; }
 .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--outline-variant); cursor: pointer; }
 .my-card .toggle-row:last-child { padding-bottom: 0; }   /* 카드 아래 여백이 두 번 겹치지 않게 */
+#appBody > .toggle-row:first-child { border-top: 0; padding-top: 0; }   /* '살피 앱' 카드: 제목 바로 밑 줄은 구분선 없이 */
+.toggle-row .btn { flex: none; min-width: 84px; padding: 6px 12px; font-size: 13px; white-space: nowrap; }   /* 설정 줄 오른쪽 버튼: 작게 · 같은 크기 · 한 줄 (옆 설명이 한 줄로 들어가게) */
+.my-bullets { margin: -6px 0 12px; padding-left: 18px; color: var(--muted); font-size: 12px; line-height: 1.7; }   /* 카드 설명 밑 항목 목록 */
+.toggle-row .btn.primary:disabled { opacity: 1; cursor: not-allowed; }   /* 아직 못 쓰는 버튼도 같은 초록색 (이유는 아래 회색 글로 안내) */
 .toggle-row b { display: block; font-size: 14px; } .toggle-row small { color: var(--muted); font-size: 12px; }
 /* 켜고 끄기 스위치 (머티리얼 스위치) */
 .switch { appearance: none; -webkit-appearance: none; flex: none; width: 48px; height: 28px; border-radius: 999px; background: var(--surface-variant); border: 2px solid #7A847D;

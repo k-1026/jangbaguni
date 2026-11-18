@@ -2652,7 +2652,8 @@ const numIn = (path, v, label, ph = "0", unit = "만 원") => `<span class="mc-i
 // 보기 화면: 금액을 넣은 줄만 진하게, 안 넣은 줄은 흐리게 (off)
 const mcRow = (label, value, tag = "", off = false) => `<div class="mc-row${off ? " off" : ""}"><span class="mc-label">${label}${tag}</span>${value}</div>`;
 const mcVal = (v, pre = "") => (v ? `<span class="v">${pre}${man(v)}</span>` : `<span class="v none">—</span>`);
-const mcShow = (label, v, tag = "", pre = "") => mcRow(label, mcVal(v, pre), v ? tag : "", !v);
+// 보기 화면: 금액이 있는 줄만 보여 줌 (안 넣은 줄은 아예 숨김)
+const mcShow = (label, v, tag = "", pre = "") => (v ? mcRow(label, mcVal(v, pre), tag) : "");
 const mcTag = (t, auto) => `<em class="mc-tag${auto ? " auto" : ""}">${t}</em>`;
 const CHEV = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>`;
 const PLUS = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>`;
@@ -2721,7 +2722,7 @@ function costCard() {
       + mcRow("카드 수수료", numIn("card", c.card, "카드 수수료", k.card ? `어림 ${Math.round(k.card)}` : "0"))
     : mcShow("재료비", k.material, matAuto ? mcTag("자동", true) : "")
       + mcShow("카드 수수료", k.card, c.card == null ? mcTag("어림값") : ""))
-    + mcRow("부가세", mcVal(k.vat, "약 "), taxSeg, !k.vat) + extraRows("sale");
+    + (ed || k.vat ? mcRow("부가세", mcVal(k.vat, "약 "), taxSeg) : "") + extraRows("sale");
 
   // 배달
   const delivRows = c.delivery ? (ed

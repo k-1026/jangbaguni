@@ -106,13 +106,21 @@ $("#loginBtn").href = LOGIN_URL;
 // 카카오에서 돌아옴 (/?page=oauth#access_token=...): 가게가 있으면 바로 로그인, 처음이면 가게 정보만 받는 가입 화면으로
 const OAUTH_KEY = "salpi_oauth";   // 가게 정보를 받기 전까지 카카오 로그인 표를 잠깐 보관 (이 창에서만)
 const kakaoStart = () => location.assign(`/api/auth/kakao?next=${encodeURIComponent(LOGIN_NEXT)}`);
-if (!ITEM && PAGE === "oauth" && !SIGNED_IN) (async () => {
+// 이미 로그인한 사장님이 마이페이지 '카카오로 연결'(카카오톡 메시지 동의)로 돌아올 때도 여기를 지나야 카카오 표가 저장됨 (11/18 고침)
+if (!ITEM && PAGE === "oauth") (async () => {
   const h = new URLSearchParams(location.hash.slice(1));
   const fail = (m) => location.replace(`/?page=login&next=${encodeURIComponent(LOGIN_NEXT)}&err=${encodeURIComponent(m)}`);
   if (!h.get("access_token")) return fail(h.get("error_description") || "카카오 로그인을 하지 못했어요. 다시 해 주세요.");
   const s = { access_token: h.get("access_token"), refresh_token: h.get("refresh_token"),
     expires_at: Number(h.get("expires_at")) || Math.floor(Date.now() / 1000) + Number(h.get("expires_in") || 3600) };
   try { s.user = await authCall("/api/auth/me", { method: "GET", token: s.access_token }); } catch (e) { return fail(e.message); }
+  // 카카오톡 시세 알림용 카카오 표 저장 ('카카오톡 메시지 전송'에 동의했을 때만 옴, 실패해도 로그인은 그대로)
+  let linkErr = "";
+  if (h.get("provider_refresh_token")) {
+    try { await authCall("/api/kakao/connect", { token: s.access_token, body: { provider_token: h.get("provider_token") || "", provider_refresh_token: h.get("provider_refresh_token") } }); }
+    catch (e) { linkErr = e.message; }
+  } else linkErr = "카카오가 메시지 권한 표를 보내 주지 않았어요 ('카카오톡 메시지 전송' 동의를 확인해 주세요)";
+  try { if (sessionStorage.getItem("salpi_kakao_link")) { sessionStorage.removeItem("salpi_kakao_link"); if (linkErr) sessionStorage.setItem("salpi_kakao_err", linkErr); } } catch (e) {}
   if (s.user.store_id) { saveLogin(sessionToLogin(s), true); return location.replace(LOGIN_NEXT); }
   try { sessionStorage.setItem(OAUTH_KEY, JSON.stringify(s)); } catch (e) {}
   location.replace(`/?page=signup&kakao=1&next=${encodeURIComponent(LOGIN_NEXT)}`);
@@ -489,7 +497,7 @@ function itemSlide(r, idx) {
     <div>
       <h3>${esc(r.item)} 시세</h3>
       <p class="price-now"><strong>${won(r.wholesale_kg)}/kg</strong>
-        <span class="${cls(r.wholesale_change_pct, 3)}">1주 전보다 ${pct(r.wholesale_change_pct)}</span></p>
+        <span class="${cls(r.wholesale_change_pct, 3)}">1주 전보다 ${pct(r.wholesale_change_pct)}</span>${PER100_ITEMS.has(r.item) && r.wholesale_kg ? ` <span>· 100g ${won(r.wholesale_kg / 10)}</span>` : ""}</p>
     </div>
     <div class="legend">
       <span><i class="lg line"></i>도매 kg당</span><span><i class="lg fc"></i>7일 예측</span>
@@ -587,7 +595,9 @@ const extraByItem = (name) => extraList().find((r) => r.item === name);
 const extraRows = () => extraList().filter((r) => r.group === boardTab && r.price);
 const basisName = (r) => r.basis_label || (r.price_basis === "중도매" ? "북부도매시장 중도매가" : "대구 소매 평균");
 // 고기는 kg당 값이 커서 100g당 값도 같이 (정육점 표기와 같게)
-const per100 = (r) => (r.group === "육류" && r.unit === "kg" ? ` · 100g ${won(r.price / 10)}` : "");
+// 가지 · 레몬은 1개 무게 근거가 약하고 낱개로 사는 양이 적어 100g당이 더 와닿음
+const PER100_ITEMS = new Set(["가지", "레몬"]);
+const per100 = (r) => ((r.group === "육류" || PER100_ITEMS.has(r.item)) && r.unit === "kg" ? ` · 100g ${won(r.price / 10)}` : "");
 
 const extraExp = (r) => r.forecast?.expected_change_pct ?? 0;
 // 농산물 차트 · 예측 칸을 그대로 쓰도록 모양을 맞춤 (price → kg_price, expected_price_range → expected_kg_price_range)
@@ -2380,6 +2390,11 @@ async function renderMypage(view) {
         <span><b>${title}</b><small>${desc}</small></span>
         <input type="checkbox" class="switch" data-pref="${k}" ${prefs[k] ? "checked" : ""}></label>`).join("")}
     </section>
+    <section class="my-card" id="kakaoCard">
+      <h4>카카오톡 시세 알림</h4>
+      <p class="muted small">매일 아침 내 메뉴 재료의 다음 주 시세 · 원가율 40% 넘은 메뉴를 내 카카오톡 '나와의 채팅'으로 보내 드려요.</p>
+      <div id="kakaoBody"><p class="muted small">확인하는 중이에요</p></div>
+    </section>
     <section class="my-card" id="permCard">
       <h4>권한 설정</h4>
       <p class="muted small">영수증을 카메라로 찍거나, 창을 닫아 둬도 시세 알림을 받으려면 권한이 필요해요.</p>
@@ -2388,6 +2403,7 @@ async function renderMypage(view) {
     </section>`;
     showCameraPerm();
     showNotiPerm();
+    showKakao();
     return;
   }
   const draw = (me, offline) => { if ($("#mypage").classList.contains("open") && $("#mypageTitle").textContent === "마이페이지") box.innerHTML = myHome(me, offline); };
@@ -2420,6 +2436,37 @@ function myHome(me, offline) {
       <button class="my-link" type="button" data-account="logout"><span>로그아웃</span><i>›</i></button>
       <button class="my-link danger" type="button" data-account="leave"><span>회원탈퇴</span><i>›</i></button>
     </section>`;
+}
+
+// 카카오톡 시세 알림: 카카오 로그인 + '카카오톡 메시지 전송' 동의가 있으면 켜기 · 끄기 · 지금 보내 보기
+async function showKakao() {
+  const box = $("#kakaoBody"), token = readLogin()?.access_token;
+  if (!box) return;
+  let st;
+  try { st = await authCall("/api/kakao/status", { method: "GET", token }); }
+  catch (e) { box.innerHTML = `<p class="muted small">${esc(e.message)}</p>`; return; }
+  if (!st.kakao_login) { box.innerHTML = `<p class="muted small">카카오로 로그인한 계정만 받을 수 있어요.</p>`; return; }
+  if (!st.connected) {
+    box.innerHTML = `<div class="toggle-row"><span><b>아직 연결 전</b><small>카카오로 다시 로그인하고 '카카오톡 메시지 전송'에 동의해 주세요</small></span>
+      <button class="btn primary" id="kakaoRelogin" type="button">카카오로 연결</button></div>`;
+    let err = ""; try { err = sessionStorage.getItem("salpi_kakao_err") || ""; sessionStorage.removeItem("salpi_kakao_err"); } catch (e) {}
+    if (err) box.insertAdjacentHTML("beforeend", `<p class="rc-warn">지난번 연결 실패: ${esc(err)}</p>`);
+    $("#kakaoRelogin").onclick = () => { try { sessionStorage.setItem("salpi_kakao_link", "1"); } catch (e) {} location.assign(`/api/auth/kakao?talk=1&next=${encodeURIComponent("/?page=store")}`); };
+    return;
+  }
+  box.innerHTML = `<label class="toggle-row"><span><b>매일 아침 받기</b><small>${st.last_sent ? `마지막으로 보낸 때 ${esc(st.last_sent.replace("T", " "))}` : "아직 보낸 적 없어요"}${st.last_error ? ` · 지난번 실패: ${esc(st.last_error)}` : ""}</small></span>
+      <input type="checkbox" class="switch" id="kakaoOn" ${st.on ? "checked" : ""}></label>
+    <div class="toggle-row"><span><b>지금 보내 보기</b><small id="kakaoTestMsg">${st.ready ? "내 카톡으로 지금 시세 알림을 보내요" : "서버에 카카오 키가 아직 없어요"}</small></span>
+      <button class="btn" id="kakaoTest" type="button" ${st.ready ? "" : "disabled"}>보내기</button></div>`;
+  $("#kakaoOn").onchange = async (e) => {
+    try { await authCall("/api/kakao/on", { token, body: { on: e.target.checked } }); } catch (err) { e.target.checked = !e.target.checked; }
+  };
+  $("#kakaoTest").onclick = async () => {
+    const msg = $("#kakaoTestMsg");
+    msg.textContent = "보내는 중이에요";
+    try { await authCall("/api/kakao/test", { token }); msg.textContent = "보냈어요. 카카오톡 '나와의 채팅'을 확인해 주세요"; }
+    catch (e) { msg.textContent = e.message; }
+  };
 }
 
 // 브라우저 알림 권한: 허용하면 새 시세 알림을 화면 밖(작업 표시줄 · 휴대폰 알림)으로도 띄움

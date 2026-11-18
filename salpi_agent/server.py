@@ -5,6 +5,7 @@
 
 import os
 import base64
+import json
 import threading
 import time
 from contextlib import asynccontextmanager
@@ -25,6 +26,7 @@ import demand
 import forecast_log
 import forecast_model
 import foodspring
+import kakao_alert
 import mart_price
 import menus
 import price_judge
@@ -43,7 +45,7 @@ async def lifespan(_app):
     """서버가 켜지면 뒤에서 시세를 미리 받아 둠 (첫 화면이 빨리 뜨게)."""
     def warm():
         try:
-            memo("overview", _overview)
+            shared("overview", _overview)
             _daily("forecast")
         except Exception:
             pass   # 키가 없거나 API 장애면 화면에서 안내
@@ -73,6 +75,69 @@ def memo(key, fn, ttl=3600):
         return value
 
 
+# ---------------------------------------------------------------
+# 서버가 새로 켜져도 빠르게: 계산 결과를 Supabase 보관함(models/cache/)에도 둠
+# Vercel 은 한동안 요청이 없으면 서버를 끄고, 다시 켜면 메모리가 비어 첫 화면이 공공 API 를 처음부터 부름 (11/18 재 보니 46초)
+# → 보관함의 마지막 결과를 바로 보여 주고(약 0.3초), ttl 이 지났으면 뒤에서 새로 계산해 바꿔 둠 (다음 요청부터 새 값)
+# keep 시간보다 오래된 보관값은 쓰지 않고 그 자리에서 계산 (예: 며칠 꺼져 있던 뒤)
+# ---------------------------------------------------------------
+CACHE_BUCKET = "models"
+_refreshing = set()
+
+
+def _save_shared(key, ts, value):
+    try:
+        supabase_db.upload(CACHE_BUCKET, f"cache/{key}.json",
+                           json.dumps({"saved_at": ts, "value": value}, ensure_ascii=False).encode("utf-8"), "application/json")
+    except Exception as e:   # 보관 실패해도 화면은 그대로
+        print(f"[빠른 보관] {key} 저장 실패: {e}", flush=True)
+
+
+def _refresh(key, fn):
+    with _memo_lock:
+        if key in _refreshing:
+            return
+        _refreshing.add(key)
+
+    def run():
+        try:
+            value = fn()
+            ts = time.time()
+            _memo[key] = (ts, value)
+            _save_shared(key, ts, value)
+        except Exception as e:
+            print(f"[빠른 보관] {key} 새로 계산 실패: {e}", flush=True)
+        finally:
+            _refreshing.discard(key)
+    threading.Thread(target=run, daemon=True).start()
+
+
+def shared(key, fn, ttl=3600, keep=24 * 3600):
+    """memo + 보관함. 메모리에 있으면 그대로, 없으면 보관함 → 그것도 없거나 너무 오래됐으면 계산."""
+    hit = _memo.get(key)
+    if hit and time.time() - hit[0] < ttl:
+        return hit[1]
+    if not hit:
+        try:
+            raw = supabase_db.download(CACHE_BUCKET, f"cache/{key}.json")
+            blob = json.loads(raw) if raw else None
+        except Exception:
+            blob = None
+        if blob and time.time() - blob["saved_at"] < keep:
+            _memo[key] = hit = (blob["saved_at"], blob["value"])
+            if time.time() - hit[0] < ttl:
+                return hit[1]
+    if hit:   # 오래됐지만 보여 줄 수 있음 → 지금 값을 주고 뒤에서 새로
+        _refresh(key, fn)
+        return hit[1]
+
+    def compute():
+        value = fn()
+        threading.Thread(target=_save_shared, args=(key, time.time(), value), daemon=True).start()
+        return value
+    return memo(key, compute, ttl)
+
+
 def _overview():
     """첫 화면에 필요한 것 전부 (재료별 시세 · 날짜별 기록 · 예측) — 화면은 이 한 번으로 모든 대시보드를 그림."""
     rows = analysis.market_overview()
@@ -97,7 +162,8 @@ def index():
 # 키 확인용: 값은 절대 보내지 않고 "넣었는지"만 알려 줌 (Vercel 환경 변수 확인)
 KEY_NAMES = ["AT_SALE_API_KEY", "AT_PERDAY_API_KEY", "AT_REALTIME_API_KEY", "KMA_ASOS_API_KEY", "KASI_SPCDE_API_KEY",
              "KTO_TOUR_API_KEY", "KAMIS_CERT_KEY", "KAMIS_CERT_ID", "GEMINI_API_KEY", "SUPABASE_URL", "SUPABASE_SECRET_KEY",
-             "KCA_PRICE_API_KEY", "KMA_VILAGE_API_KEY", "KMA_MID_API_KEY"]
+             "KCA_PRICE_API_KEY", "KMA_VILAGE_API_KEY", "KMA_MID_API_KEY", "KOSIS_API_KEY", "MOIS_RESTAURANT_API_KEY",
+             "KAKAO_REST_API_KEY", "KAKAO_CLIENT_SECRET"]
 
 
 @app.get("/api/health")
@@ -107,7 +173,7 @@ def health():
 
 @app.get("/api/overview")
 def overview():
-    out = _guard(lambda: {"items": memo("overview", _overview)})
+    out = _guard(lambda: {"items": shared("overview", _overview)})
     _daily("forecast")
     return out
 
@@ -122,7 +188,7 @@ def item(name: str):
 @app.get("/api/meat-seafood")
 def meat_seafood():
     """육류 · 수산물 대구 가격과 1주 · 4주 변화 (aT 일별 도·소매가, 예측 없음)."""
-    out = _guard(lambda: memo("meat_seafood", lambda: {"items": analysis.extra_overview()}))
+    out = _guard(lambda: shared("meat_seafood", lambda: {"items": analysis.extra_overview()}))
     _daily("forecast")
     return out
 
@@ -178,7 +244,15 @@ def daily_jobs():
     forecast_model.reset()
     with _memo_lock:
         _memo.pop("overview", None)
-    return _guard(lambda: {**_run_forecast_job(), **_run_shop_job()})
+
+    def run():
+        # 새 모델로 첫 화면 시세를 다시 계산해 보관함에도 둠 → 아침에 처음 여는 사람도 기다리지 않음
+        for key, fn in (("overview", _overview), ("meat_seafood", lambda: {"items": analysis.extra_overview()})):
+            ts, value = time.time(), fn()
+            _memo[key] = (ts, value)
+            _save_shared(key, ts, value)
+        return {**_run_forecast_job(), **_run_shop_job()}
+    return _guard(run)
 
 
 @app.get("/api/model")
@@ -210,7 +284,7 @@ def event(content_id: str):
 @app.get("/api/mart")
 def mart():
     """대형마트 판매가 (한국소비자원 참가격, 음식 재료만). 2주마다 조사돼서 6시간 보관."""
-    return _guard(lambda: memo("mart", mart_price.mart_prices, ttl=6 * 3600))
+    return _guard(lambda: shared("mart", mart_price.mart_prices, ttl=6 * 3600, keep=3 * 24 * 3600))
 
 
 @app.get("/api/cheaper")
@@ -316,12 +390,21 @@ def receipt_read(body: ReceiptIn):
 @app.post("/api/receipt/save")
 def receipt_save(body: ReceiptSave):
     data, mime = _image(body.image, body.mime)
-    return _receipt_guard(lambda: receipts.save(supabase_db.DEMO_STORE, body.model_dump(), data, mime))
+    return _receipt_guard(lambda: _store_changed(receipts.save(supabase_db.DEMO_STORE, body.model_dump(), data, mime)))
 
 
 @app.get("/api/costs")
 def costs():
-    return _receipt_guard(lambda: {**receipts.cost_report(supabase_db.DEMO_STORE), "receipts": receipts.recent(supabase_db.DEMO_STORE)})
+    # 원가율은 영수증 · 메뉴가 바뀔 때만 달라짐 → 10분 보관, 영수증 저장 · 고치기 · 지우기 · 메뉴 바꾸기 때 비움 (매번 3.5초 → 0.1초)
+    return _receipt_guard(lambda: memo("costs", lambda: {**receipts.cost_report(supabase_db.DEMO_STORE),
+                                                         "receipts": receipts.recent(supabase_db.DEMO_STORE)}, ttl=600))
+
+
+def _store_changed(result):
+    """영수증 · 메뉴가 바뀌면 원가율 · 내일 준비 보관값을 비움."""
+    for k in [k for k in _memo if k == "costs" or k.startswith("demand:")]:
+        _memo.pop(k, None)
+    return result
 
 
 @app.get("/api/receipt/{purchase_id}")
@@ -338,7 +421,7 @@ class ReceiptEdit(BaseModel):
 @app.put("/api/receipt/{purchase_id}")
 def receipt_edit(purchase_id: int, body: ReceiptEdit):
     """저장한 영수증 고치기 (최근 영수증 → 수정하기 팝업)."""
-    return _receipt_guard(lambda: receipts.edit(supabase_db.DEMO_STORE, purchase_id, body.model_dump()))
+    return _receipt_guard(lambda: _store_changed(receipts.edit(supabase_db.DEMO_STORE, purchase_id, body.model_dump())))
 
 
 @app.get("/api/my-items")
@@ -356,6 +439,7 @@ class MenuIn(BaseModel):
 def _menu_changed(result):
     """메뉴를 바꾸면 '내 메뉴 재료' 보관값을 비우고, 화면이 다시 그릴 원가율을 함께 돌려줌."""
     _memo.pop("my_items", None)
+    _store_changed(None)
     return {**result, **receipts.cost_report(supabase_db.DEMO_STORE), "receipts": receipts.recent(supabase_db.DEMO_STORE)}
 
 
@@ -388,7 +472,7 @@ def receipt_list():
 
 @app.delete("/api/receipt/{purchase_id}")
 def receipt_delete(purchase_id: int):
-    return _receipt_guard(lambda: receipts.remove(supabase_db.DEMO_STORE, purchase_id))
+    return _receipt_guard(lambda: _store_changed(receipts.remove(supabase_db.DEMO_STORE, purchase_id)))
 
 
 # ---------------------------------------------------------------
@@ -456,17 +540,54 @@ def auth_refresh(body: RefreshIn):
 
 
 @app.get("/api/auth/kakao")
-def auth_kakao(request: Request, next: str = "/"):
+def auth_kakao(request: Request, next: str = "/", talk: bool = False):
     """카카오 로그인 화면으로 보냄 (돌아올 곳 = 지금 사이트 주소)."""
     proto = request.headers.get("x-forwarded-proto") or request.url.scheme
     host = request.headers.get("x-forwarded-host") or request.headers.get("host")
-    return _auth(lambda: RedirectResponse(auth.kakao_url(f"{proto}://{host}", next), status_code=302))
+    return _auth(lambda: RedirectResponse(auth.kakao_url(f"{proto}://{host}", next, talk), status_code=302))
 
 
 @app.post("/api/auth/store")
 def auth_store(body: StoreSetupIn, authorization: str | None = Header(None)):
     """카카오로 처음 온 사장님의 가게 · 약관 한 번 받기."""
     return _auth(lambda: {"user": auth.setup_store(_bearer(authorization), body.model_dump())})
+
+
+class KakaoConnectIn(BaseModel):
+    provider_token: str = ""
+    provider_refresh_token: str = ""
+
+
+class KakaoOnIn(BaseModel):
+    on: bool
+
+
+@app.post("/api/kakao/connect")
+def kakao_connect(body: KakaoConnectIn, authorization: str | None = Header(None)):
+    """카카오 로그인에서 돌아온 카카오 표 저장 → 카카오톡 시세 알림을 보낼 수 있게."""
+    return _auth(lambda: kakao_alert.connect(_bearer(authorization), body.provider_token, body.provider_refresh_token))
+
+
+@app.get("/api/kakao/status")
+def kakao_status(authorization: str | None = Header(None)):
+    return _auth(lambda: kakao_alert.status(_bearer(authorization)))
+
+
+@app.post("/api/kakao/on")
+def kakao_on(body: KakaoOnIn, authorization: str | None = Header(None)):
+    return _auth(lambda: kakao_alert.set_on(_bearer(authorization), body.on))
+
+
+@app.post("/api/kakao/test")
+def kakao_test(authorization: str | None = Header(None)):
+    """마이페이지 '지금 보내 보기' — 내 카톡 '나와의 채팅'으로 지금 시세 알림."""
+    return _auth(lambda: kakao_alert.test(_bearer(authorization)))
+
+
+@app.post("/api/jobs/kakao")
+def jobs_kakao():
+    """예약 실행용: 아침 카카오톡 시세 알림 (매일 새벽 학습 · /api/jobs/daily 뒤에 불림). 한 사람에게 하루 한 번만."""
+    return _guard(lambda: kakao_alert.send_all(_price_outlook()))
 
 
 @app.get("/api/auth/me")

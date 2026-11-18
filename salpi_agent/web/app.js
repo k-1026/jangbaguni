@@ -1467,8 +1467,7 @@ function renderReceiptEdit() {
 }
 
 // 칭찬 팝업: 새로 저장한 영수증에서 아낀 돈이 더 낸 돈보다 많을 때만 (나쁜 소식은 구매가 점검 칸에서만)
-// 아낀 금액에 따라 배지 3단계 · 5초 뒤 저절로 닫히고 × 로 바로 닫을 수도 있음
-const PRAISE_BADGES = [[50000, "🏆", "살림 9단"], [10000, "🛒", "장보기 고수"], [0, "🌱", "알뜰 새싹"]];
+// 배지는 "🛒 장보기 고수!" 하나로 통일 · 5초 뒤 저절로 닫히고 × 로 바로 닫을 수도 있음
 async function praiseIfSaved(id) {
   if (!id) return;
   let j;
@@ -1486,13 +1485,12 @@ function praiseFrom(j) {
 
 function showPraise(net, best) {
   document.querySelector(".praise-pop")?.remove();
-  const [, icon, title] = PRAISE_BADGES.find(([min]) => net >= min);
   const pop = document.createElement("div");
   pop.className = "praise-pop";
   pop.innerHTML = `<div class="praise-box" role="dialog" aria-label="칭찬 배지">
     <button class="praise-x" type="button" aria-label="닫기">×</button>
     <img src="/static/img/salpi_thumbsup.png" alt="엄지 척 하는 살피">
-    <span class="praise-badge">${icon} ${title}</span>
+    <span class="praise-badge">🛒 장보기 고수!</span>
     <p class="praise-msg">이번 영수증에서 <b>${won(net)}</b> 아꼈어요!</p>
     ${best ? `<p class="praise-best">가장 잘 산 품목 · ${esc(best.item)} <b>${won(best.saved)} 절약</b></p>` : ""}
     <i class="praise-timer"></i></div>`;

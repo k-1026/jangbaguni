@@ -48,7 +48,7 @@ function demandBody(dm) {
 
 export function mount(outlet, rest = []) {
   const vm = storeVM(), d = disposer();
-  if (!vm.signedIn()) { outlet.innerHTML = `<div class="m-page"><h1 class="m-title">나의 가게</h1>${loginGate("나의 가게", "/m/#/store")}</div>`; return { dispose() {} }; }
+  if (!vm.signedIn()) { outlet.innerHTML = `<div class="m-page"><h1 class="m-title">나의 가게</h1>${loginGate("나의 가게", "store")}</div>`; return { dispose() {} }; }
   outlet.innerHTML = `<div class="m-page store">
     <h1 class="m-title">나의 가게</h1>
     ${card("영수증 분석", `<div id="rc"></div>`, { cls: "receipt" })}

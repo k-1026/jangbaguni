@@ -5,3 +5,4 @@ export { splash } from "./Splash.js";
 export { bottomNav, TABS } from "./BottomNav.js";
 export { swiper } from "./Swiper.js";
 export { drawPrice, drawBars, clear } from "./Chart.js";
+export { appHeader } from "./Header.js";

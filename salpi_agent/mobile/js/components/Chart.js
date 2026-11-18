@@ -41,19 +41,31 @@ export function drawBars(canvas, bars) {
   const g = canvas.getContext("2d");
   g.scale(dpr, dpr);
   const css = getComputedStyle(canvas);
-  const max = Math.max(5, ...bars.map((b) => Math.abs(b.v)));
-  const rowH = Math.min(18, (h - 4) / bars.length), mid = w * 0.5;
-  g.font = "11px 'Noto Sans KR', sans-serif"; g.textBaseline = "middle";
-  bars.forEach((b, i) => {
-    const y = 2 + i * rowH, len = (Math.abs(b.v) / max) * (w * 0.32);
-    g.fillStyle = b.v >= 0 ? (css.getPropertyValue("--up") || "#D93A30") : (css.getPropertyValue("--down") || "#0F8A6A");
-    g.fillRect(b.v >= 0 ? mid : mid - len, y + 3, len, rowH - 6);
-    g.fillStyle = css.getPropertyValue("--ink") || "#1B201C";
-    g.textAlign = b.v >= 0 ? "right" : "left";
-    g.fillText(b.label, b.v >= 0 ? mid - 6 : mid + 6, y + rowH / 2);
-    g.textAlign = b.v >= 0 ? "left" : "right";
-    g.fillStyle = css.getPropertyValue("--muted") || "#5B645E";
-    g.fillText(`${b.v > 0 ? "+" : ""}${b.v.toFixed(1)}%`, b.v >= 0 ? mid + len + 4 : mid - len - 4, y + rowH / 2);
+  const up = css.getPropertyValue("--up") || "#E2453C", down = css.getPropertyValue("--down") || "#1E9E7A";
+  const ink = css.getPropertyValue("--ink") || "#1B201C", muted = css.getPropertyValue("--muted") || "#5B645E";
+  // 웹 대시보드와 같은 방향: 세로 막대, 큰 값(오른 것)이 왼쪽 → 작은 값(내린 것)이 오른쪽
+  const rows = [...bars].sort((a, b) => b.v - a.v);
+  const lo = Math.min(0, ...rows.map((b) => b.v)), hi = Math.max(0, ...rows.map((b) => b.v));
+  const span = Math.max(5, hi - lo);
+  const left = 34, right = 4, top = 14;
+  const LINE = 11, labelH = 8 + LINE * Math.max(2, ...rows.map((b) => [...b.label].length));   // 품목 이름: 글자 하나가 한 줄, 가장 긴 이름만큼 아래 자리   // 왼쪽 % 눈금 · 아래 품목 이름 자리
+  const plotH = h - top - labelH, step = (w - left - right) / rows.length;
+  const yOf = (v) => top + ((hi - v) / span) * plotH;
+  g.font = "10px 'Noto Sans KR', sans-serif"; g.textBaseline = "middle"; g.textAlign = "right";
+  g.fillStyle = muted; g.strokeStyle = "#F0EDE6"; g.lineWidth = 1;
+  [hi, 0, lo].filter((v, i, a) => a.indexOf(v) === i).forEach((v) => {   // 위 · 0 · 아래 눈금
+    const y = yOf(v);
+    g.beginPath(); g.moveTo(left, y); g.lineTo(w - right, y); g.stroke();
+    g.fillText(`${Math.round(v)}%`, left - 4, y);
+  });
+  const bw = Math.max(3, Math.min(22, step * 0.62));
+  rows.forEach((b, i) => {
+    const cx = left + step * (i + 0.5), y0 = yOf(0), y1 = yOf(b.v);
+    g.fillStyle = b.v >= 0 ? up : down;
+    g.fillRect(cx - bw / 2, Math.min(y0, y1), bw, Math.max(1, Math.abs(y1 - y0)));
+    // 품목 이름: 모든 글자를 세로로 (토 / 마 / 토) — 눈러 세우지 않아 읽기 쉽고 이웃 이름끼리 겹치지 않음
+    g.fillStyle = ink; g.font = "700 10px 'Noto Sans KR', sans-serif"; g.textAlign = "center"; g.textBaseline = "top";
+    [...b.label].forEach((ch, k) => g.fillText(ch, cx, h - labelH + 6 + k * LINE));
   });
 }
 

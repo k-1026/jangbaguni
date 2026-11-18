@@ -7,8 +7,8 @@ import { homeVM, KINDS, MODES } from "../viewmodels/HomeVM.js";
 
 const overviewSlide = (rows, mode, kind) => `
   <div class="m-dash-head"><span class="m-badge">${esc(MODES[mode])}</span><h3>${esc(kind)} 지난주 대비 변화</h3></div>
-  <canvas class="m-chart bars" style="height:${Math.min(220, 22 + rows.length * 16)}px" aria-label="품목별 1주 변화"></canvas>
-  <p class="m-note">오른 것 빨강 · 내린 것 초록 · 옆으로 넘기면 품목별 7일 예측</p>`;
+  <canvas class="m-chart bars" style="height:220px" aria-label="품목별 1주 변화"></canvas>
+  <p class="m-note">왼쪽 오른 것(빨강) · 오른쪽 내린 것(초록) · 옆으로 넘기면 품목별 7일 예측</p>`;
 
 export function mount(outlet) {
   const vm = homeVM(), d = disposer();
@@ -56,7 +56,7 @@ export function mount(outlet) {
       render: (s) => (s.all ? overviewSlide(s.rows, mode, kind) : itemBody(s)),
       onShow: (el, s) => {
         const c = el.querySelector("canvas");
-        if (s.all) drawBars(c, s.rows.filter((r) => r.week != null).slice(0, 12).map((r) => ({ label: r.name, v: r.week })));
+        if (s.all) drawBars(c, s.rows.filter((r) => r.week != null).map((r) => ({ label: r.name, v: r.week })));
         else drawPrice(c, s.points.slice(-21), s.range);
       },
       onHide: (el) => clear(el.querySelector("canvas")),

@@ -1,7 +1,7 @@
 // 로그인: 아이디(또는 휴대폰 번호) + 비밀번호. 회원가입 · 카카오 로그인은 웹 화면으로 열어 줌
 import { disposer } from "../core/observable.js";
 import { esc } from "../core/dom.js";
-import { Api, siteUrl } from "../core/api.js";
+import { Api, siteUrl, IS_NATIVE, kakaoLoginStart } from "../core/api.js";
 import { card, toast } from "../components/index.js";
 
 export function mount(outlet, rest = []) {
@@ -16,8 +16,11 @@ export function mount(outlet, rest = []) {
       <p class="m-warn" id="msg" hidden></p>
       <button type="submit" class="m-btn primary wide">로그인</button>
     </form>`)}
-    ${card("", `<a class="m-link" href="${esc(siteUrl("/?page=login"))}" target="_blank" rel="noopener">회원가입 · 카카오로 로그인 (웹에서 열려요)<i>›</i></a>`)}
+    ${IS_NATIVE ? card("", `<button type="button" id="kakao" class="m-btn wide">카카오로 로그인</button>`) : ""}
+    ${card("", `<a class="m-link" href="${esc(siteUrl("/?page=login"))}" target="_blank" rel="noopener">${IS_NATIVE ? "회원가입 (웹에서 열려요)" : "회원가입 · 카카오로 로그인 (웹에서 열려요)"}<i>›</i></a>`)}
   </div>`;
+  const kakao = outlet.querySelector("#kakao");
+  if (kakao) d.on(kakao, "click", () => kakaoLoginStart().catch((err) => toast(err.message, 4000)));
   const f = outlet.querySelector("#f"), msg = outlet.querySelector("#msg"), submit = f.querySelector("[type=submit]");
   d.on(f, "submit", async (e) => {
     e.preventDefault();

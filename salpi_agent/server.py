@@ -166,7 +166,7 @@ def index():
 KEY_NAMES = ["AT_SALE_API_KEY", "AT_PERDAY_API_KEY", "AT_REALTIME_API_KEY", "KMA_ASOS_API_KEY", "KASI_SPCDE_API_KEY",
              "KTO_TOUR_API_KEY", "KAMIS_CERT_KEY", "KAMIS_CERT_ID", "GEMINI_API_KEY", "SUPABASE_URL", "SUPABASE_SECRET_KEY",
              "KCA_PRICE_API_KEY", "KMA_VILAGE_API_KEY", "KMA_MID_API_KEY", "KOSIS_API_KEY", "MOIS_RESTAURANT_API_KEY",
-             "KAKAO_REST_API_KEY", "KAKAO_CLIENT_SECRET", "VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY"]
+             "KAKAO_REST_API_KEY", "KAKAO_CLIENT_SECRET", "VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY", "FCM_SERVICE_ACCOUNT"]
 
 
 # 설치형 앱(PWA): 앱 정보 · 백그라운드 작업 파일은 사이트 맨 위 주소에 있어야 앱 전체를 맡을 수 있음
@@ -199,8 +199,15 @@ def service_worker():
 
 
 @app.get("/api/health")
-def health():
-    return {"keys": {k: bool(os.getenv(k, "").strip()) for k in KEY_NAMES}}
+def health(fcm: int = 0):
+    out = {"keys": {k: bool(os.getenv(k, "").strip()) for k in KEY_NAMES}}
+    if fcm:   # /api/health?fcm=1 — 안드로이드 앱 알림 열쇠로 Google 인증이 실제로 되는지 (열쇠 값은 보내지 않음)
+        try:
+            app_push.fcm._access_token()
+            out["fcm"] = {"ok": True, "project": app_push.fcm._account()["project_id"]}
+        except Exception as e:
+            out["fcm"] = {"ok": False, "error": str(e)[:200]}
+    return out
 
 
 @app.get("/api/overview")
@@ -572,11 +579,11 @@ def auth_refresh(body: RefreshIn):
 
 
 @app.get("/api/auth/kakao")
-def auth_kakao(request: Request, next: str = "/", talk: bool = False):
-    """카카오 로그인 화면으로 보냄 (돌아올 곳 = 지금 사이트 주소)."""
+def auth_kakao(request: Request, next: str = "/", talk: bool = False, app: bool = False):
+    """카카오 로그인 화면으로 보냄 (돌아올 곳 = 지금 사이트 주소, app=1 이면 안드로이드 앱)."""
     proto = request.headers.get("x-forwarded-proto") or request.url.scheme
     host = request.headers.get("x-forwarded-host") or request.headers.get("host")
-    return _auth(lambda: RedirectResponse(auth.kakao_url(f"{proto}://{host}", next, talk), status_code=302))
+    return _auth(lambda: RedirectResponse(auth.kakao_url(f"{proto}://{host}", next, talk, app), status_code=302))
 
 
 @app.post("/api/auth/store")
@@ -672,9 +679,24 @@ def push_unsubscribe(body: PushOffIn, authorization: str | None = Header(None)):
     return _auth(lambda: app_push.unsubscribe(_bearer(authorization), body.endpoint))
 
 
+class FcmIn(BaseModel):
+    token: str | None = None
+
+
+@app.post("/api/push/fcm/subscribe")
+def push_fcm_subscribe(body: FcmIn, authorization: str | None = Header(None)):
+    """안드로이드 앱: 이 기기의 Firebase 알림 표 저장."""
+    return _auth(lambda: app_push.fcm_subscribe(_bearer(authorization), body.token))
+
+
+@app.post("/api/push/fcm/unsubscribe")
+def push_fcm_unsubscribe(body: FcmIn, authorization: str | None = Header(None)):
+    return _auth(lambda: app_push.fcm_unsubscribe(_bearer(authorization), body.token))
+
+
 @app.post("/api/push/test")
 def push_test(authorization: str | None = Header(None)):
-    """설정 '지금 보내 보기' — 이 계정의 기기 모두에 지금 앱 알림."""
+    """설정 '지금 보내 보기' — 이 계정의 기기 모두(웹 · 안드로이드 앱)에 지금 앱 알림."""
     return _auth(lambda: app_push.test(_bearer(authorization), _price_outlook()))
 
 

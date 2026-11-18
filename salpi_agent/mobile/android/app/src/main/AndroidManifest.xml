@@ -22,6 +22,14 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- 카카오 로그인 후 브라우저에서 앱으로 돌아오는 길: com.salpi.mobile://oauth -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.salpi.mobile" android:host="oauth" />
+            </intent-filter>
+
         </activity>
 
         <provider
@@ -33,9 +41,16 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
+
+        <!-- 앱 알림(Firebase 푸시) 기본 채널 · 색: 서버가 보내는 시세 알림은 salpi_alerts 채널로 -->
+        <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="salpi_alerts" />
+        <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/ic_stat_salpi" />
+        <meta-data android:name="com.google.firebase.messaging.default_notification_color" android:resource="@color/salpi_notification" />
     </application>
 
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 앱 알림(푸시): 안드로이드 13 이상은 사용자가 알림을 허용해야 보임 -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 </manifest>

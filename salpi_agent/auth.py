@@ -206,11 +206,14 @@ def me(token):
     return _profile(user)
 
 
-def kakao_url(site, next_path="/"):
+def kakao_url(site, next_path="/", talk=False):
     """카카오 로그인 화면 주소. 승인하면 <site>/?page=oauth&next=... 로 돌아오며 주소 # 뒤에 로그인 표가 붙음."""
     url, _ = _conf()
     back = f"{site.rstrip('/')}/?page=oauth&next={quote(next_path if next_path.startswith('/') else '/', safe='')}"
-    return f"{url}/auth/v1/authorize?provider=kakao&redirect_to={quote(back, safe='')}"
+    # talk=True (마이페이지 '카카오로 연결'): 카카오톡 시세 알림(나에게 보내기)용 '카카오톡 메시지 전송' 동의도 받음
+    # 평소 로그인에는 붙이지 않음 — 카카오 앱 동의항목에서 켜기 전에 붙이면 카카오 로그인 자체가 오류(KOE205)
+    scopes = "&scopes=talk_message" if talk else ""
+    return f"{url}/auth/v1/authorize?provider=kakao{scopes}&redirect_to={quote(back, safe='')}"
 
 
 def setup_store(token, d):

@@ -2741,7 +2741,7 @@ function costCard() {
 
   return `
     <div class="mc-head"><h4>내 정보</h4>
-      ${ed ? `<button class="mc-done" type="button" data-cdone>완료</button>` : `<button class="mc-edit" type="button" data-cedit>${PEN}<span>수정</span></button>`}</div>
+      ${ed ? "" : `<button class="mc-edit" type="button" data-cedit>${PEN}<span>수정</span></button>`}</div>
     ${info}
     ${costBanner(k)}
     ${mcSection("fixed", "고정 비용", k.fixed, fixedRows)}

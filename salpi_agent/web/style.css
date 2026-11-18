@@ -962,6 +962,8 @@ a.my-link { color: inherit; text-decoration: none; }
 .mc-label small { color: var(--muted); font-size: 13px; }
 .mc-row .v { color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
 .mc-row .v.none { color: #9AA19C; }
+/* 금액을 안 넣은 줄은 흐리게 → 넣은 줄만 눈에 들어오게 */
+.mc-row.off .mc-label, .mc-row.off .v { color: #B9BEBA; }
 .mc-row-end { display: flex; align-items: center; gap: 4px; }
 .mc-tag { padding: 2px 9px; border-radius: 999px; background: var(--surface); color: var(--muted); font-size: 12.5px; font-style: normal; white-space: nowrap; }
 .mc-tag.auto { background: var(--primary-container); color: var(--on-primary-container); }
@@ -974,6 +976,10 @@ a.my-link { color: inherit; text-decoration: none; }
 .mc-name { width: 100%; max-width: 140px; }
 .mc-in input:focus, .mc-name:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-container); }
 .mc-in input::placeholder, .mc-name::placeholder { color: #A5ABA7; }
+/* 입력칸도 비어 있으면 흐리게, 숫자를 넣으면 진하게 */
+.mc-in input:placeholder-shown { border-color: var(--outline-variant); background: #FBFCFA; }
+.mc-in input:not(:placeholder-shown) { border-color: #9DA59F; font-weight: 600; }
+.mc-row:has(.mc-in input:placeholder-shown) .mc-label { color: #A5ABA7; }
 .mc-in i { font-style: normal; color: var(--muted); font-size: 14px; white-space: nowrap; }
 .mc-del { width: 30px; height: 30px; border: 0; border-radius: 50%; background: none; color: var(--muted); font-size: 20px; line-height: 1; }
 .mc-del:hover { background: #FFF0EE; color: var(--up); }
@@ -982,22 +988,29 @@ a.my-link { color: inherit; text-decoration: none; }
 .mc-days { display: flex; flex-wrap: wrap; gap: 3px; }
 .mc-days button { width: 30px; height: 30px; padding: 0; border: 1px solid var(--outline); border-radius: 50%; background: var(--surface); color: var(--ink); font-size: 14px; }
 .mc-days button[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: #fff; font-weight: 700; }
-.mc-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 6px 0 10px; }
-.mc-seg button { height: 46px; border: 1.5px solid var(--outline); border-radius: 10px; background: var(--surface); color: var(--ink); font-size: 16px; transition: background .15s, border-color .15s; }
-.mc-seg button[aria-pressed="true"] { border-color: #7CC85A; background: #D8EECB; color: #2C6A07; }
-.mc-switch { display: inline-flex; flex: none; border: 1.5px solid var(--outline); border-radius: 999px; overflow: hidden; background: var(--surface); cursor: default; }
-.mc-switch button { border: 0; padding: 6px 16px; background: none; color: var(--ink); font-size: 15px; transition: background .15s, color .15s; }
-.mc-switch button[aria-pressed="true"] { background: var(--primary); color: #fff; font-weight: 600; }
+/* 일반 · 간이: 부가세 줄 안의 작은 전환 버튼 */
+.mc-seg { display: inline-flex; padding: 2px; border-radius: 8px; background: #ECEFEA; }
+.mc-seg button { height: 26px; padding: 0 10px; border: 0; border-radius: 6px; background: none; color: var(--muted); font-size: 13px; transition: background .15s, color .15s; }
+.mc-seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); font-weight: 700; box-shadow: 0 1px 2px rgba(20, 30, 22, .15); }
+/* 배달 안 해요 · 해요: 흰 손잡이가 좌우로 미끄러지는 알약 스위치 */
+.mc-switch { position: relative; display: inline-grid; grid-template-columns: 1fr 1fr; flex: none; padding: 3px; border-radius: 999px; background: #E6EAE4; cursor: default; }
+.mc-switch::before { content: ""; position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 3px); border-radius: 999px; background: var(--surface);
+  box-shadow: 0 1px 3px rgba(20, 30, 22, .18); transition: transform .25s cubic-bezier(.3, .7, .3, 1), background .25s; }
+.mc-switch.on { background: var(--primary-container); }
+.mc-switch.on::before { transform: translateX(100%); }
+.mc-switch button { position: relative; z-index: 1; min-width: 58px; height: 30px; padding: 0 12px; border: 0; background: none; color: var(--muted); font-size: 14px; transition: color .2s; }
+.mc-switch button[aria-pressed="true"] { color: var(--ink); font-weight: 700; }
+.mc-switch.on button[aria-pressed="true"] { color: var(--primary); }
 
 /* 비용 추가 */
-.mc-add { width: 100%; height: 56px; margin-top: 24px; display: flex; align-items: center; justify-content: center; gap: 6px;
-  border: 1.5px dashed var(--outline); border-radius: 12px; background: none; color: var(--primary); font-size: 17px; transition: background .15s, border-color .15s; }
-.mc-add svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.mc-add { width: 100%; height: 42px; margin-top: 18px; display: flex; align-items: center; justify-content: center; gap: 4px;
+  border: 1.5px dashed var(--outline); border-radius: 10px; background: none; color: var(--primary); font-size: 15px; transition: background .15s, border-color .15s; }
+.mc-add svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 .mc-add:hover, .mc-add[aria-expanded="true"] { border-color: var(--primary); background: var(--primary-container); }
 .mc-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .mc-chips button { padding: 9px 16px; border: 1.5px solid var(--outline); border-radius: 999px; background: var(--surface); color: var(--ink); font-size: 15px; white-space: nowrap; transition: border-color .15s, color .15s; }
 .mc-chips button:hover { border-color: var(--primary); color: var(--primary); }
-.mc-note { margin: 16px 0 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
+.my-offline { margin: -4px 4px 0; }
 .mc :is(button, input):focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
 /* 팝업 창 (영수증 자세히 · 행사 · 카메라) */

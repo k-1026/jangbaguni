@@ -2566,12 +2566,8 @@ function myHome(me, offline) {
       <img src="${esc(me.avatar || "/static/img/owner_face.png")}" alt="" referrerpolicy="no-referrer" onerror="this.src='/static/img/owner_face.png'">
       <div><b>${me.name ? `${esc(me.name)} 사장님` : "사장님"}</b>${how ? `<small>${esc(how)}</small>` : ""}</div>
     </section>
+    ${offline ? `<p class="muted small my-offline">서버에 연결하지 못해 기억해 둔 정보만 보여 드려요.</p>` : ""}
     <section class="my-card mc" id="myCost">${costCard()}</section>
-    <section class="my-card">
-      ${offline ? `<p class="muted small">서버에 연결하지 못해 기억해 둔 정보만 보여 드려요.</p>` : ""}
-      <a class="my-link" href="/?page=store"><span>나의 가게</span><i>›</i></a>
-      <button class="my-link" data-view="receipts"><span>나의 영수증</span><i>›</i></button>
-    </section>
     <section class="my-card">
       <button class="my-link" type="button" data-view="settings"><span>설정 <small>알림 · 권한</small></span><i>›</i></button>
     </section>
@@ -2587,7 +2583,7 @@ function myHome(me, offline) {
 // ---------------------------------------------------------------
 const COST_KEY = () => { const u = readLogin(); return `salpi_costs_${u?.profile?.id || u?.id || "me"}`; };
 const WEEK = ["월", "화", "수", "목", "금", "토", "일"];
-const FIXED_BASE = [["rent", "임대료"], ["manage", "관리비"], ["staff", "직원 인건비"], ["power", "전기료"], ["gas", "가스비"], ["water", "수도세"]];
+const FIXED_BASE = [["rent", "임대료"], ["manage", "관리비"], ["staff", "인건비"], ["power", "전기료"], ["gas", "가스비"], ["water", "수도세"]];
 const FIXED_EXTRA = ["4대보험", "광고비", "세무 기장료", "대출 이자", "음식물 쓰레기"];
 const DELIV = [["fee", "중개 수수료", ""], ["ride", "배달비", "사장님 부담"], ["pack", "포장 용기", ""]];
 const COST_DEFAULT = { seats: null, closed: ["일"], sales: null, fixed: {}, extra: [], material: null, card: null, tax: "general", delivery: false, deliv: {} };
@@ -2615,38 +2611,38 @@ function man(v) {
   return `${(v >= 100 ? Math.round(v) : Math.round(v * 10) / 10).toLocaleString("ko-KR")}만 원`;
 }
 
-// 본전 계산: 고정 비용 ÷ (1 − 매출 대비 판매 · 배달 비용 비율) ÷ 한 달 영업일
-// 카드 수수료 어림 = 매출 × 1.2% (카드 결제 80% × 수수료 1.5%)
-// 부가세 어림 (한 달치) = 일반 과세자 (매출 − 재료비) ÷ 11 · 간이 과세자 매출 × 1.5% (음식점 부가가치율 15% × 10%)
+// 본전 계산: 넣은 비용을 모두 내고 남는 한 달 매출 S 를 거꾸로 구함 (매출은 묻지 않음)
+//   S = 고정 + 재료비 + 배달 비용 + 카드 수수료(S) + 부가세(S)
+//   카드 수수료 어림 = S × 1.2% (카드 결제 80% × 수수료 1.5%) — 직접 넣으면 그 금액
+//   부가세 어림 = 일반 과세자 (S − 재료비) ÷ 11 · 간이 과세자 S × 1.5% (음식점 부가가치율 15% × 10%)
+//   하루 본전 = S ÷ 한 달 영업일
 function costCalc(c) {
   const n = (v) => +v || 0;
   const fixed = FIXED_BASE.reduce((s, [k]) => s + n(c.fixed[k]), 0) + c.extra.reduce((s, x) => s + n(x.v), 0);
-  const sales = n(c.sales);
   const material = c.material == null ? n(receiptMaterial) : n(c.material);
-  const card = c.card == null ? sales * 0.012 : n(c.card);
-  const vat = c.tax === "simple" ? sales * 0.015 : Math.max(0, sales - material) / 11;
   const deliv = c.delivery ? DELIV.reduce((s, [k]) => s + n(c.deliv[k]), 0) : 0;
+  const cardRate = c.card == null ? 0.012 : 0;
+  const base = fixed + material + deliv + (c.card == null ? 0 : n(c.card));
+  const S = !base ? 0 : c.tax === "simple" ? base / (1 - cardRate - 0.015) : (base - material / 11) / (1 - cardRate - 1 / 11);
+  const card = c.card == null ? S * cardRate : n(c.card);
+  const vat = c.tax === "simple" ? S * 0.015 : Math.max(0, S - material) / 11;
   const days = Math.round(30.4 * (7 - c.closed.length) / 7);
-  const rate = sales ? (material + card + vat + deliv) / sales : 0.45;   // 매출을 모르면 판매 비용을 매출의 45%로 어림
-  const be = rate < 1 && days ? fixed / (1 - rate) / days : null;
-  return { fixed, sales, material, card, vat, deliv, sale: material + card + vat, days, be, now: sales && days ? sales / days : null };
+  return { fixed, material, card, vat, deliv, sale: material + card + vat, days, monthly: S, be: days && S ? S / days : null };
 }
 
 function costBanner(k) {
   if (!k.days) return `<div class="mc-be loss"><b>쉬는 요일을 확인해 주세요</b><small>영업하는 날이 하루도 없어요</small></div>`;
-  if (!k.fixed) return `<div class="mc-be empty"><b>고정 비용을 넣어 주세요</b><small>하루에 얼마를 팔아야 본전인지 알려 드려요</small></div>`;
-  if (k.be == null) return `<div class="mc-be loss"><b>지금은 팔수록 손해예요</b><small>재료비 · 수수료 · 세금이 매출보다 많아요. 숫자를 확인해 주세요</small></div>`;
-  const gap = k.now != null ? k.now - k.be : null;
-  const tail = gap == null ? "한 달 매출을 넣으면 더 정확해요"
-    : gap >= 0 ? `지금 하루 약 ${man(k.now)} · <b>${man(gap)} 여유</b>` : `지금 하루 약 ${man(k.now)} · <b>${man(-gap)} 모자라요</b>`;
-  return `<div class="mc-be ${gap != null && gap < 0 ? "short" : ""}"><b>하루 <em>${man(k.be)}</em> 넘게 팔면 본전이에요</b>
-    <small>한 달 ${k.days}일 영업 기준 · ${tail}</small></div>`;
+  if (!k.be) return `<div class="mc-be empty"><b>비용을 넣어 주세요</b><small>하루에 얼마를 팔아야 본전인지 알려 드려요</small></div>`;
+  return `<div class="mc-be"><b>하루 <em>${man(k.be)}</em> 넘게 팔면 본전이에요</b>
+    <small>한 달 ${k.days}일 영업 기준 · 한 달 매출 ${man(k.monthly)}</small></div>`;
 }
 
 const numIn = (path, v, label, ph = "0", unit = "만 원") => `<span class="mc-in"><input type="number" inputmode="decimal" min="0" step="any"
   data-k="${path}" value="${v ?? ""}" placeholder="${esc(ph)}" aria-label="${esc(label)}"><i>${unit}</i></span>`;
-const mcRow = (label, value, tag = "") => `<div class="mc-row"><span class="mc-label">${label}${tag}</span>${value}</div>`;
+// 보기 화면: 금액을 넣은 줄만 진하게, 안 넣은 줄은 흐리게 (off)
+const mcRow = (label, value, tag = "", off = false) => `<div class="mc-row${off ? " off" : ""}"><span class="mc-label">${label}${tag}</span>${value}</div>`;
 const mcVal = (v, pre = "") => (v ? `<span class="v">${pre}${man(v)}</span>` : `<span class="v none">—</span>`);
+const mcShow = (label, v, tag = "", pre = "") => mcRow(label, mcVal(v, pre), v ? tag : "", !v);
 const mcTag = (t, auto) => `<em class="mc-tag${auto ? " auto" : ""}">${t}</em>`;
 const CHEV = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>`;
 const PLUS = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>`;
@@ -2678,7 +2674,6 @@ function costCard() {
       <dt>쉬는 요일</dt><dd>${ed
         ? `<div class="mc-days">${WEEK.map((d) => `<button type="button" data-day="${d}" aria-pressed="${c.closed.includes(d)}">${d}</button>`).join("")}</div>`
         : c.closed.length ? WEEK.filter((d) => c.closed.includes(d)).map((d) => `${d}요일`).join(" · ") : "없어요"}</dd>
-      <dt>한 달 매출</dt><dd>${ed ? numIn("sales", c.sales, "한 달 매출", "어림값") : c.sales ? `약 ${man(c.sales)}` : `<span class="none">수정에서 넣어 주세요</span>`}</dd>
       ${me.phone ? `<dt>휴대폰</dt><dd>${esc(maskPhone(me.phone))}</dd>` : ""}
     </dl>`;
 
@@ -2687,27 +2682,25 @@ function costCard() {
     ? FIXED_BASE.map(([key, label]) => mcRow(label, numIn(`fixed.${key}`, c.fixed[key], label))).join("")
       + c.extra.map((x, i) => `<div class="mc-row"><span class="mc-label"><input class="mc-name" type="text" data-k="extra.${i}.name" value="${esc(x.name)}" placeholder="비용 이름" aria-label="비용 이름"></span>
           <span class="mc-row-end">${numIn(`extra.${i}.v`, x.v, x.name || "비용")}<button class="mc-del" type="button" data-xdel="${i}" aria-label="${esc(x.name || "비용")} 지우기">×</button></span></div>`).join("")
-    : FIXED_BASE.map(([key, label]) => mcRow(label, mcVal(c.fixed[key]))).join("")
-      + c.extra.map((x) => mcRow(esc(x.name || "기타"), mcVal(x.v))).join("");
+    : FIXED_BASE.map(([key, label]) => mcShow(label, c.fixed[key])).join("")
+      + c.extra.map((x) => mcShow(esc(x.name || "기타"), x.v)).join("");
 
-  // 판매 비용
+  // 판매 비용 (부가세 줄 안에 작은 일반 · 간이 전환)
   const matAuto = c.material == null && receiptMaterial != null;
+  const taxSeg = `<span class="mc-seg" role="group" aria-label="과세 유형">
+      <button type="button" data-tax="general" aria-pressed="${c.tax !== "simple"}">일반</button><button type="button" data-tax="simple" aria-pressed="${c.tax === "simple"}">간이</button></span>`;
   const saleRows = (ed
     ? mcRow("재료비", numIn("material", c.material, "재료비", receiptMaterial != null ? `자동 ${Math.round(receiptMaterial)}` : "0"))
-      + mcRow("카드 수수료", numIn("card", c.card, "카드 수수료", c.sales ? `어림 ${Math.round(c.sales * 0.012)}` : "0"))
-    : mcRow("재료비", c.material == null && receiptMaterial == null ? `<span class="v none">—</span>` : mcVal(k.material), matAuto ? mcTag("자동", true) : "")
-      + mcRow("카드 수수료", mcVal(k.card), c.card == null && c.sales ? mcTag("어림값") : ""))
-    + mcRow("부가세", mcVal(k.vat, "약 "), mcTag("어림값")) + `
-    <div class="mc-seg" role="group" aria-label="과세 유형">
-      <button type="button" data-tax="general" aria-pressed="${c.tax !== "simple"}">일반 과세자</button>
-      <button type="button" data-tax="simple" aria-pressed="${c.tax === "simple"}">간이 과세자</button>
-    </div>`;
+      + mcRow("카드 수수료", numIn("card", c.card, "카드 수수료", k.card ? `어림 ${Math.round(k.card)}` : "0"))
+    : mcShow("재료비", k.material, matAuto ? mcTag("자동", true) : "")
+      + mcShow("카드 수수료", k.card, c.card == null ? mcTag("어림값") : ""))
+    + mcRow("부가세", mcVal(k.vat, "약 "), taxSeg, !k.vat);
 
   // 배달
   const delivRows = c.delivery ? (ed
     ? mcRow("배달 매출", numIn("deliv.sales", c.deliv.sales, "배달 매출")) + DELIV.map(([key, label, sub]) => mcRow(DELIV_LABEL(label, sub), numIn(`deliv.${key}`, c.deliv[key], label))).join("")
-    : mcRow("배달 매출", mcVal(c.deliv.sales)) + DELIV.map(([key, label, sub]) => mcRow(DELIV_LABEL(label, sub), mcVal(c.deliv[key]))).join("")) : "";
-  const delivSwitch = `<span class="mc-switch" role="group" aria-label="배달 여부">
+    : mcShow("배달 매출", c.deliv.sales) + DELIV.map(([key, label, sub]) => mcShow(DELIV_LABEL(label, sub), c.deliv[key])).join("")) : "";
+  const delivSwitch = `<span class="mc-switch${c.delivery ? " on" : ""}" role="group" aria-label="배달 여부">
     <button type="button" data-deliv="0" aria-pressed="${!c.delivery}">안 해요</button><button type="button" data-deliv="1" aria-pressed="${c.delivery}">해요</button></span>`;
 
   const added = new Set(c.extra.map((x) => x.name));
@@ -2723,8 +2716,7 @@ function costCard() {
     ${mcSection("delivery", "배달", c.delivery ? k.deliv : null, delivRows, delivSwitch)}
     <button class="mc-add" type="button" data-cadd aria-expanded="${costAdding}">${PLUS}<span>비용 추가하기</span></button>
     ${costAdding ? `<div class="mc-chips">${chips.map((n) => `<button type="button" data-xadd="${esc(n)}">${esc(n)}</button>`).join("")}<button type="button" data-xadd="">직접 입력</button></div>` : ""}
-    ${ed ? `<button class="mc-done wide" type="button" data-cdone>완료</button>` : ""}
-    <p class="mc-note">부가세 · 카드 수수료는 한 달로 나눈 어림값이에요. 비용은 이 기기에만 저장돼요.</p>`;
+    ${ed ? `<button class="mc-done wide" type="button" data-cdone>완료</button>` : ""}`;
 }
 
 function drawCost(focusSel) {

@@ -1094,7 +1094,8 @@ function demandReason(factors) {
   if (v == null || Math.abs(v) < 0.02) return "평소와 비슷하게 팔릴 날이에요";
   const p = Math.round(Math.abs(v) * 100);
   if (name === "최근 2주 흐름") return `최근 2주 판매가 그 전보다 ${p}% ${v > 0 ? "늘었어요" : "줄었어요"}`;
-  return `${name}은 평소보다 ${p}% ${v > 0 ? "많이" : "적게"} 팔려요`;
+  if (name.endsWith("요일") || name === "공휴일") return `${name}은 평소보다 ${p}% ${v > 0 ? "많이" : "적게"} 팔려요`;
+  return `${name} 영향으로 평소보다 ${p}% ${v > 0 ? "많이" : "적게"} 팔릴 것 같아요`;   // 학습 모델 이유 (기온 · 삼성 홈경기 · 월급날 무렵 등)
 }
 
 const weekday = (s) => "일월화수목금토"[new Date(`${s}T00:00:00`).getDay()];
@@ -1121,7 +1122,7 @@ async function loadDemand() {
   const day = `${mmdd(d.target_date)}(${d.target_weekday})`;
   // 메뉴끼리 그릇 수를 막대 높이로 비교할 수 있게 같은 눈금을 씀 (위 여백은 숫자 자리)
   const max = Math.max(...d.menus.flatMap((m) => [m.predicted, ...m.recent.map((x) => x.qty)]), 1) * 1.2;
-  $("#storeBasis").textContent = `판매 기록 ${mmdd(d.last_sales_date)}까지`;
+  $("#storeBasis").textContent = `판매 기록 ${mmdd(d.last_sales_date)}까지${d.model ? " · 학습 모델 (가상 판매 기록)" : ""}`;
   $("#storeBasis").title = d.method;
   $("#menuForecast").innerHTML = `
     <div class="demand-top">
@@ -1442,7 +1443,7 @@ function renderReceiptEdit() {
   });
 }
 
-const ratioCls = (v) => (v == null ? "" : v > 35 ? "up" : v > 30 ? "warnc" : "down");
+const ratioCls = (v) => (v == null ? "" : v >= 40 ? "up" : "down");   // 원가율 40% 기준 (유저플로우 v2)
 
 function renderCosts(r, withChange) {
   const T = r.target_ratio_pct;
@@ -1463,7 +1464,9 @@ function renderCosts(r, withChange) {
           <div><dt>1인분 재료비</dt><dd>${won(m.cost_per_serving)}</dd></div>
           <div><dt>남는 금액</dt><dd>${won(m.margin)}</dd></div>
         </dl>
-        ${m.swap ? `<div class="cost-swap">
+        ${m.next_ratio_pct != null && Math.abs(m.next_ratio_pct - v) >= 0.5 ? `<p class="cost-next">다음 주 예상 원가율 <b>${m.next_ratio_pct}%</b> (야채 시세 예측 반영)</p>` : ""}
+        ${m.high ? costPlan(m, T) : ""}
+        ${m.swap && !m.high ? `<div class="cost-swap">
           <b class="swap-title">대체 재료 제안</b>
           <div class="swap-body">
             <div class="swap-main">
@@ -1476,6 +1479,19 @@ function renderCosts(r, withChange) {
       </article>`;
     }).join("")}</div>
     <p class="muted small">레시피에 주재료만 들어 있어 실제보다 원가율이 조금 낮게 나와요.</p>`;
+}
+
+// 원가율 40% 이상(지금 또는 다음 주): 마진 지키는 방법 세 가지를 함께 보여 줌 — 고르는 건 사장님 (유저플로우 v2)
+function costPlan(m, T) {
+  const p = m.price_up, s = m.swap, k = m.push_menu;
+  return `<div class="cost-plan">
+    <b class="swap-title">마진 지키는 방법 3가지 <small>원가율 ${T}% 이상</small></b>
+    <ol>
+      <li><b>가격 조정</b> ${p ? `판매가 ${won(m.price)} → <b>${won(p.price)}</b> (+${won(p.raise)}) · 원가율 ${p.new_ratio_pct}% · 남는 돈 ${won(p.new_margin)}${p.basis === "다음 주 예상 원가" ? " · 다음 주 오를 값까지 반영" : ""}` : "계산할 수 없어요"}</li>
+      <li><b>대체 재료</b> ${s ? `${esc(s.from)} ${s.share_pct}%를 <b>${esc(s.to)}</b>(으)로 바꾸면 1인분 ${won(s.saving_per_serving)} 아껴 원가율 ${s.new_ratio_pct}%` : "지금은 바꿀 만한 재료가 없어요 (후보 재료도 다음 주에 오를 예정이거나 값을 몰라요)"}</li>
+      <li><b>메뉴 제안</b> ${k ? `<b>${esc(k.menu)}</b>를 밀어 보세요 · 한 그릇에 ${won(k.margin)} 남아요 (원가율 ${k.cost_ratio_pct}%)` : "원가율이 괜찮은 다른 메뉴가 없어요"}</li>
+    </ol>
+  </div>`;
 }
 
 function receiptList(list) {
@@ -2253,10 +2269,28 @@ function showReceiptView(id, d) {
           <tbody>${d.items.map((x) => `<tr><td>${esc(x.raw_name)}</td><td>${esc(x.item || "재료 아님")}</td><td>${qtyTxt(x)}</td>
             <td class="price">${won(x.amount)}</td><td>${x.unit_price ? won(x.unit_price) : "-"}</td></tr>`).join("")}</tbody>
         </table>
+        <div class="rc-judge" id="rcJudge"><p class="muted small">산 값을 평소 단가 · 대구 시세와 비교하는 중이에요</p></div>
         <div class="receipt-actions"><button class="btn primary" id="rcViewEdit" type="button">수정하기</button></div>
       </div>
     </div>`;
   $("#rcViewEdit").onclick = () => editReceiptView(id, d);
+  loadJudge(id);
+}
+
+// 싸게/비싸게 판정 (/api/price-judge): 비싸게 · 시세 오름 · 싸게 산 품목만 한 줄씩, 나머지는 "비슷해요 N개"
+const JUDGE_CHIP = { "비싸게 샀어요": "up", "싸게 샀어요": "down" };
+async function loadJudge(id) {
+  const box = $("#rcJudge");
+  let j;
+  try { j = await getJSON(`/api/price-judge?purchase_id=${id}`); }
+  catch (e) { box.innerHTML = `<p class="muted small">산 값 판정을 불러오지 못했어요</p>`; return; }
+  if (!box.isConnected) return;
+  const notable = j.lines.filter((x) => x.verdict !== "비슷해요" && x.verdict !== "비교할 값 없음");
+  const s = j.summary;
+  box.innerHTML = `<h4>산 값 판정</h4>
+    ${notable.map((x) => `<p><span class="demand-chip ${JUDGE_CHIP[x.verdict] || ""}">${esc(x.verdict)}</span>
+      <b>${esc(x.item)}</b> ${won(x.unit_price)}/${esc(x.unit)} · ${esc(x.why)}${x.extra_paid ? ` · 평소 값이면 <b>${won(x.extra_paid)}</b> 덜 냈어요` : ""}${x.saved ? ` · <b>${won(x.saved)}</b> 아꼈어요` : ""}</p>`).join("")}
+    <p class="muted small">비슷해요 ${s.similar}개${notable.length ? "" : " · 모두 평소 값에 샀어요"} · 10% 안쪽은 비슷하다고 봐요</p>`;
 }
 
 // 저장한 영수증 고치기: 왼쪽에 사진(있으면)을 띄워 두고 오른쪽 표에서 바로 고침

@@ -708,7 +708,7 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 
 /* 최근 영수증: 사진 카드 한 줄 (맨 앞 = 새 영수증 올리기 그림 칸) · 양옆 작은 화살표 */
 .rc-strip-wrap { display: grid; grid-template-columns: 32px minmax(0, 1fr) 32px; gap: 8px; align-items: start; }   /* 화살표 | 사진 줄 | 화살표 */
-.rc-strip { display: flex; gap: 12px; margin: 0; padding: 2px 2px 8px; list-style: none; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.rc-strip { display: flex; gap: 12px; margin: 0; padding: 4px 4px 8px; list-style: none; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding: 0 4px; scrollbar-width: none; }
 .rc-strip::-webkit-scrollbar { display: none; }
 .rc-card { flex: 0 0 150px; display: flex; flex-direction: column; gap: 6px; scroll-snap-align: start; font-size: 12.5px; }
 .rc-strip .rc-thumb { display: block; width: 100%; aspect-ratio: 1 / 1; padding: 0; overflow: hidden; border: 1px solid var(--outline-variant); border-radius: 12px; background: #F6F6F6; cursor: pointer; }

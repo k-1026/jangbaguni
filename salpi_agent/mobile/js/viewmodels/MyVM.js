@@ -1,10 +1,23 @@
 // 마이페이지 상태: 내 정보 · 앱 설치 · 앱 알림(휴대폰 알림)
 import { observable, resource } from "../core/observable.js";
-import { Api, login, logout } from "../core/api.js";
+import { Api, login, logout, IS_NATIVE } from "../core/api.js";
 
-const IS_APP = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+const IS_APP = () => IS_NATIVE || matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 const IS_IOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-const CAN_PUSH = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+// 휴대폰 푸시(웹 푸시)는 브라우저/설치형 웹앱에서만 — 안드로이드 앱(Capacitor) 안에서는 아직 지원하지 않음
+const CAN_PUSH = () => !IS_NATIVE && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+
+// 시세 알림 종류 · 기본값 (데스크톱 웹 마이페이지와 같은 저장 자리 salpi_alert_prefs)
+const PREFS_KEY = "salpi_alert_prefs";
+export const ALERT_TYPES = [
+  ["all", "모든 시세가 오르고 내릴 때", "지난주보다 3% 넘게 움직인 농산물을 알려 드려요"],
+  ["up", "값이 오를 때만", "지난주보다 10% 넘게 오른 농산물"],
+  ["down", "값이 내렸을 때만", "지난주보다 10% 넘게 내린 농산물"],
+  ["unusual", "평소랑 다를 때만", "하루 사이에 평소보다 크게 움직인 농산물"],
+  ["weekly", "주 1회 대시보드 리포트", "한 주 시세를 한 번에 정리해 드려요"],
+];
+const DEFAULT_PREFS = { mine: true, all: false, up: true, down: false, unusual: true, weekly: true };
+const readPrefs = () => { try { return { ...DEFAULT_PREFS, ...JSON.parse(localStorage.getItem(PREFS_KEY) || "{}") }; } catch (e) { return { ...DEFAULT_PREFS }; } };
 
 // 안드로이드 크롬이 주는 "앱 설치" 기회 (main.js 가 받아 둠)
 export const installPrompt = observable(null);
@@ -20,8 +33,25 @@ export function createMyVM() {
     return reg ? reg.pushManager.getSubscription() : null;
   }
 
+  const prefs = observable(readPrefs());
+  const kakao = observable({ loading: true, error: null, data: null });
+
   return {
-    me, push, installPrompt,
+    me, push, installPrompt, prefs, kakao,
+    setPref(key, on) {
+      const next = { ...prefs.get(), [key]: on };
+      try { localStorage.setItem(PREFS_KEY, JSON.stringify(next)); } catch (e) { /* 저장 못 함 */ }
+      prefs.set(next);
+    },
+    async refreshKakao() {
+      if (!login()) return;
+      try { kakao.set({ loading: false, error: null, data: await Api.kakaoStatus() }); }
+      catch (e) { kakao.set({ loading: false, error: e.message, data: null }); }
+    },
+    async kakaoOn(on) { await Api.kakaoOn(on); return this.refreshKakao(); },
+    async kakaoConnect() { return (await Api.kakaoLink()).url; },
+    async kakaoTest() { return Api.kakaoTest(); },
+    async kakaoUnlink() { await Api.kakaoUnlink(); return this.refreshKakao(); },
     signedIn: () => !!login(),
     isApp: IS_APP, isIOS: IS_IOS, canPush: CAN_PUSH,
     load() { return me.load(); },

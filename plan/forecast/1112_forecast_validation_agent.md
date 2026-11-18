@@ -2,7 +2,7 @@
 
 > 목적: 살피가 말한 "다음 주 오를 / 내릴 / 비슷할"이 **실제로 얼마나 맞았는지** 농산물 · 수산물 · 육류 모두 숫자로 확인한다
 > 채점 기준은 [1108_forecast_formula_v2.md](1108_forecast_formula_v2.md) 의 채점표(범위 적중률 70% → 80%)를 그대로 쓴다
-> 기준 코드: `salpi_agent/analysis.py` — 농산물 `forecast_item`, 수산물 · 육류 `extra_forecast`
+> 기준 코드: `salpi_agent/price/analysis.py` — 농산물 `forecast_item`, 수산물 · 육류 `extra_forecast`
 
 ---
 

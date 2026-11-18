@@ -1,8 +1,8 @@
 // 살피 앱 백그라운드 작업 (서비스 워커) — /sw.js 로 열려서 사이트 전체(/)를 맡음
 // 1) 앱 알림: 서버가 보낸 아침 시세 알림(push)을 휴대폰 알림으로 띄우고, 누르면 살피를 엶
 // 2) 빠르게 열기: 화면 파일(app.js · style.css · 아이콘)은 저장해 두고 뒤에서 새로 받음. 시세 · 원가 같은 /api 는 늘 서버에서
-const CACHE = "salpi-v2";
-const SHELL = ["/m/", "/static/m/app.css?v=1", "/static/m/js/main.js?v=1", "/static/m/img/splash_logo.webp",
+const CACHE = "salpi-v3";   // 모바일 파일 주소가 /mobile/ 로 바뀌어 새로 받게
+const SHELL = ["/m/", "/mobile/app.css?v=1", "/mobile/js/main.js?v=1", "/mobile/img/splash_logo.webp",
   "/static/img/icon-192.png", "/static/img/salpi_face.png", "/manifest.webmanifest"];
 
 self.addEventListener("install", (e) => {

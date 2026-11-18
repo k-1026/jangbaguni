@@ -63,7 +63,7 @@
  ]}
 ```
 - kg당 가격 순, **산 값보다 싼 곳만**. `affiliate: true` 면 "제휴" 표시, `retail: true` 면 "소매가" 표시
-- ✅ 서버 있음 (11/17, `salpi_agent/cheaper.py`). 위 칸에 더해 오는 것:
+- ✅ 서버 있음 (11/17, `salpi_agent/price/cheaper.py`). 위 칸에 더해 오는 것:
 
 ```json
 {"item": "양파", "unit": "kg", "paid_per_unit": 2300, "paid_source": "최근 영수증", "paid_date": "2026-11-04", "paid_approx": false,

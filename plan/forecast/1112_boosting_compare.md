@@ -2,7 +2,7 @@
 
 > 무엇: 계수를 후보 값 시험으로 고른 지금 공식이 최선인지, 회귀 · 부스팅으로 바꾸면 나아지는지 같은 자료 · 같은 채점표로 비교
 > 앞 문서: [1112_forecast_backtest_results.md](1112_forecast_backtest_results.md) (5년 채점 · 공식 수정) · [1108_forecast_formula_v2.md](1108_forecast_formula_v2.md) ("예측 모델 2종과 오차 비교" 계획)
-> 다시 돌리기: `python salpi_agent/boost_compare.py` (API 호출 없음, 약 1분)
+> 다시 돌리기: `salpi_agent` 폴더에서 `python -m experiments.boost_compare` (API 호출 없음, 약 1분)
 
 ---
 
@@ -37,7 +37,7 @@
 | **부스팅 · 새 요인** | + 최근 2주 흐름 · 비 · 한파 · 폭염 일수 · 변동성 · 최근 3일 변화 · **계절**(지난 해 같은 날의 7일 변화) · **명절까지 남은 날** · 월 |
 | 부스팅 · + 서울 도매가 | + KAMIS 서울 도매 조사가 (7일 변화 · 4주 평균과의 차이 · 대구와의 가격 차) |
 
-- 부스팅은 `salpi_agent/gbdt.py` (numpy만 쓰는 히스토그램 부스팅, LightGBM 방식). 이 PC의 보안 정책이 LightGBM · scikit-learn DLL을 막아 직접 구현함 → 외부 라이브러리가 필요 없어 GitHub Actions 등에서도 그대로 돌아감
+- 부스팅은 `salpi_agent/price/gbdt.py` (numpy만 쓰는 히스토그램 부스팅, LightGBM 방식). 이 PC의 보안 정책이 LightGBM · scikit-learn DLL을 막아 직접 구현함 → 외부 라이브러리가 필요 없어 GitHub Actions 등에서도 그대로 돌아감
 - 명절 날짜(설 · 추석 2021~2026)는 `boost_compare.py` 의 `MAJOR_HOLIDAYS` 표
 
 ---

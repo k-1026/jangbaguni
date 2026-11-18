@@ -5,7 +5,7 @@
   1주(월~금)씩 부름 → 요청 종류마다 약 310번 (하루 1,000번 한도 안). 이미 받은 주는 건너뜀 (중간에 끊겨도 다시 실행)
 - 소매가: aT 일별 도·소매가 perDay (.env 의 AT_PERDAY_API_KEY), 대구 · 1등급(한우) — 화면과 같은 기준
 - 결과: 1112_meat_weekly_2021-2026.csv  (week, item, auction_price, auction_count, retail_price)
-  채점은 salpi_agent/backtest.py 가 이 파일을 읽음
+  채점은 salpi_agent/price/backtest.py 가 이 파일을 읽음
 """
 import csv
 import os

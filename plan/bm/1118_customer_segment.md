@@ -2,7 +2,7 @@
 
 > 무엇: 대구 일반음식점 30,507곳을 **k-평균 군집(비지도 학습)**으로 묶고, 페르소나 10명이 어느 묶음에 드는지 확인한 뒤 살피가 먼저 노릴 묶음을 정함
 > 자료: [data/raw/1118_daegu_restaurants.csv](../../data/raw/1118_daegu_restaurants.csv) — 공공데이터포털 [대구광역시_음식점 등록현황_20250523](https://www.data.go.kr/data/3056779/fileData.do) (업소명 · 업종 · 업태 · 주소)
-> 코드: [salpi_agent/segment.py](../../salpi_agent/segment.py) · 결과 표: [data/segment/](../../data/segment/)
+> 코드: [salpi_agent/experiments/segment.py](../../salpi_agent/experiments/segment.py) · 결과 표: [data/segment/](../../data/segment/)
 > 앞 문서: [최종 계획 M7 · 3절 #8](../1116_final_sprint_plan.md) · [가상 사장님 시뮬레이션](../../data/simulation/1108_open_simulation_result.md) (페르소나 10명)
 
 ---
@@ -99,7 +99,7 @@
 
 ```
 cd salpi_agent
-.venv\Scripts\python segment.py      # 약 3분, data/segment/ 에 표 3개
+.venv\Scripts\python -m experiments.segment      # 약 3분, data/segment/ 에 표 3개
 ```
 
 - 씨앗값 고정이라 같은 결과. 업태 낱말 규칙(`NAME_RULES`) · 프랜차이즈 기준(5곳) · 맞춤 점수는 팀 가정이라 바꾸면 결과도 바뀜

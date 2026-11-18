@@ -39,7 +39,7 @@
 | # | 할 일 | 상태 | 지금 있는 것 | 남은 것 |
 |---|---|---|---|---|
 | 9 | To-Be 시나리오 + 유저 플로우 + spec.md v1 | ⬜ | (analysis.md에 "11/10 spec.md" 예정만 적혀 있음) | spec.md v1 |
-| 10 | 추천 서비스 spec + 데이터 흐름도 (입력 → 추천 → 주문 → 수요예측) | 🟡 | 코드로는 흐름이 있음: 공공 시세 → [analysis.py](../salpi_agent/analysis.py) 예측 · 지금 사기 추천, 판매 기록 → [demand.py](../salpi_agent/demand.py) 내일 그릇 수 → 발주 추천 저장, DB 설계 [schema.sql](../supabase/schema.sql) | 흐름도 그림 + 문서 |
+| 10 | 추천 서비스 spec + 데이터 흐름도 (입력 → 추천 → 주문 → 수요예측) | 🟡 | 코드로는 흐름이 있음: 공공 시세 → [analysis.py](../salpi_agent/price/analysis.py) 예측 · 지금 사기 추천, 판매 기록 → [demand.py](../salpi_agent/demand/demand.py) 내일 그릇 수 → 발주 추천 저장, DB 설계 [schema.sql](../supabase/schema.sql) | 흐름도 그림 + 문서 |
 | 27 | spec.md 고도화(v2) → 스펙 기반 MVP v2 재구축 · 배포 | ⬜ | — | 9번 다음 |
 
 ## 4. 프로토타입 · 웹서비스 (13~16, 28~32)
@@ -52,7 +52,7 @@
 | 16 | 샘플 데이터로 추천 흐름이 동작하는 프로토타입 | ✅ | 14번과 같음 + 재료 페이지 7일 예측 · 근거 카드 | — |
 | 28 | 추천 프로토타입 v2: 취향 설문 → 룰 기반 추천 동작 | 🟡 | 룰 기반 추천은 동작, 마이페이지에 지역 · 업종 | 처음 쓰는 사장님용 설문(업종 · 메뉴 · 주로 사는 재료) → 추천에 반영 |
 | 29 | 상품 · 사용자 DB 기반 개인화 추천 웹앱 | 🟡 | 가게 · 메뉴 · 판매 기록(DB) 기반 추천 | 로그인이 없어 사장님별로 나뉘지 않음 (`app.js` 의 `SIGNED_IN`) |
-| 30 | MVP v2에 Supabase DB 연동 → 웹서비스 v1 | ✅ | [supabase_db.py](../salpi_agent/supabase_db.py) · 영수증 사진 보관 · Vercel 배포 | — |
+| 30 | MVP v2에 Supabase DB 연동 → 웹서비스 v1 | ✅ | [supabase_db.py](../salpi_agent/sources/supabase_db.py) · 영수증 사진 보관 · Vercel 배포 | — |
 | 31 | 추천 로직 개선(필터 · 가중치) + 주문 로그 저장 | 🟡 | 발주 추천을 `order_recommendations` 에 저장, 행동 기록 표 `event_logs` 설계 | 사장님이 실제로 주문했는지 기록, 가중치 조정 |
 | 32 | 모바일 반응형 or 모바일 앱 | ✅ | 화면 너비별 배치 [style.css](../salpi_agent/web/style.css) (1200 · 1000 · 700px), 카메라로 영수증 찍기 | (휴대폰 실제 기기 점검은 36번에서) |
 
@@ -61,7 +61,7 @@
 | # | 할 일 | 상태 | 지금 있는 것 | 남은 것 |
 |---|---|---|---|---|
 | 21 | 수요 트렌드 리포트 (공공데이터 수치 차트) | 🟡 | 사이트 대시보드가 공공 시세 · 날씨 · 행사 차트 | 리포트(문서) 형태로 한 건 |
-| 26 | 영수증 · 주문서 → 구조화 데이터 추출 | ✅ | [receipts.py](../salpi_agent/receipts.py) (사진 → 품목 · 수량 · 금액 → 확인 → 저장), 가상 영수증 5장 · 정답지 [receipts_demo/](../salpi_agent/receipts_demo/) | (주문서 양식은 아직) |
+| 26 | 영수증 · 주문서 → 구조화 데이터 추출 | ✅ | [receipts.py](../salpi_agent/store/receipts.py) (사진 → 품목 · 수량 · 금액 → 확인 → 저장), 가상 영수증 5장 · 정답지 [receipts_demo/](../salpi_agent/receipts_demo/) | (주문서 양식은 아직) |
 | 33 | 샘플 데이터셋 분석 → 인사이트 리포트 + 인터랙티브 HTML 대시보드 | 🟡 | 시뮬레이션 리포트 [report.md](../data/simulation/output/report.md) · [blend_report.md](../data/simulation/output/blend_report.md) | 인사이트 정리, HTML 대시보드 |
 | 34 | 수요예측 베이스라인 (모델 2종 오차 비교) + 추천 베이스라인 평가 | 🟡 | 규칙 기반 판매량 예측 1종(범위는 지난 4주 오차로), 학습 모델 고안안 [1106 발표 흐름 5절 ②](presentation/1106_presentation_flow.md) | 두 번째 모델 · 오차 비교표, 추천 평가 |
 | 37 | 추천 품질 평가(샘플 사용자 테스트) · 서비스 안정화 | ⬜ | — | 15번 결과로 평가 |
@@ -70,7 +70,7 @@
 
 | # | 할 일 | 상태 | 지금 있는 것 | 남은 것 |
 |---|---|---|---|---|
-| 19 | 상품 정보 → JSON 변환 스킬, 리뷰 분류 스킬 | ⬜ | 살피 말투 스킬 [brand/SKILL.md](../brand/SKILL.md), 식봄 상품 읽기 코드 [foodspring.py](../salpi_agent/foodspring.py) | 두 스킬 파일 |
+| 19 | 상품 정보 → JSON 변환 스킬, 리뷰 분류 스킬 | ⬜ | 살피 말투 스킬 [brand/SKILL.md](../brand/SKILL.md), 식봄 상품 읽기 코드 [foodspring.py](../salpi_agent/sources/foodspring.py) | 두 스킬 파일 |
 | 20 | 산업 리포트 스킬 → 인터랙티브 HTML 리포트 1건 → 주간 예약 | ⬜ | 기업 리서치 문서 [research/company/](../research/company/) | 스킬 · 리포트 · 예약 |
 | 35 | 개인 업무 자동화 1개 (n8n 또는 Claude Code 예약 작업) | 🟡 | 평일 저녁 자동 배포 [daily-release.yml](../.github/workflows/daily-release.yml) | 과제 형태(수집 → 요약 → 발송) 자동화 1개 |
 

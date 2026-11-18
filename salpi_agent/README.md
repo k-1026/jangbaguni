@@ -45,24 +45,61 @@
 3. **지금 사면 이득인 야채 알려줘** → 미리 살 것 · 지금 싼 것 · 기다릴 것
 
 ## 파일
-| 파일 | 하는 일 |
+같은 일을 하는 파일끼리 폴더로 묶었습니다. 맨 위에는 `server.py`(웹 서버, Vercel이 여기서 시작)와 설정 파일만 있습니다.
+
+```
+salpi_agent/
+  server.py      웹 서버 (화면 + /api/...)
+  web/           데스크톱 화면          → 주소 /, 파일은 /static/...
+  mobile/        모바일 앱 화면 (MVVM)   → 주소 /m/, 파일은 /mobile/...
+  sources/       바깥 자료 받기 · 저장소
+  price/         시세 분석 · 예측 · 학습
+  demand/        내일 판매량 · 발주량 예측
+  store/         영수증 · 메뉴 원가
+  chat/          AI 상담 (살피 챗봇)
+  account/       로그인 · 카카오 · 앱 알림
+  experiments/   가끔 돌려 보는 비교 · 분석
+  cache/         받은 자료 임시 저장 (저장소에 안 올림)
+```
+
+폴더 안 파일을 직접 실행할 때는 **`salpi_agent` 폴더에서** `.venv\Scripts\python -m 폴더.파일이름` 으로 실행합니다 (예: `.venv\Scripts\python -m price.learner --dry-run`).
+다른 파일을 부를 때도 `from price import analysis` 처럼 폴더 이름을 붙입니다.
+
+| 폴더 · 파일 | 하는 일 |
 |---|---|
+| **sources/** | |
 | `data_sources.py` | 공공 API 호출 · 캐시, 지원 품목 목록(`ITEMS`), 식봄 검색 주소 |
 | `mart_price.py` | 대형마트 판매가: 참가격 최신 달 파일에서 음식 재료만 골라 회사별 가격 · 2주 전 대비 계산 |
 | `foodspring.py` | 식봄 검색 결과에서 실제 상품 · 가격 · 이미지 · 상품 주소 읽기 (6시간마다 갱신) |
+| `supabase_db.py` | Supabase 표 · 보관함 읽기/쓰기 |
+| **price/** | |
 | `analysis.py` | 시세 변화 · 날짜별 상세 · 다음 7일 예측 · 지금 사기 추천 (숫자는 여기서만 만듦) |
+| `units.py` | 단위 바꾸기 (kg · 개 · 단 등) |
+| `forecast_model.py` · `learner.py` · `gbdt.py` | 스스로 배우는 예측: 매일 새벽 다시 학습 · 시험 · 교체 (`learner.py`, GitHub 자동 작업) → 서버가 모델을 읽어 예측 |
 | `forecast_log.py` | 예측 기록 · 채점: 하루 한 번 그날 화면 예측을 Supabase `forecast_log` 에 저장 → 7일 뒤 실제 가격과 채점, 식봄 판매가를 `price_snapshots` 에 저장 |
 | `backtest.py` | 예측 공식 되돌려 채점: 과거 날짜마다 "그날 예측했다면?"을 다시 계산해 7일 뒤 실제 값과 비교 (`analysis.py` 계산 조각을 그대로 씀, 2~5분) |
-| `menu_cost.py` | 메뉴 1인분 원가 · 원가율, 표준 레시피, 참고 단가 |
+| `price_judge.py` | 싸게/비싸게 판정 (`/api/price-judge`): 영수증 품목마다 산 값을 우리 가게 평소 단가(앞 영수증 8장 가운데값) · 대구 시세와 비교. 10% 안쪽은 비슷해요, 평소보다 비싸도 소매가보다 싸면 '시세가 올랐어요' |
+| `cheaper.py` | 더 싸게 파는 곳 찾기 (`/api/cheaper`) |
+| **demand/** | |
 | `demand.py` | 내일 준비: 메뉴별 내일 그릇 수 → 재료 필요량 → 재고 뺀 발주량. 시연 가게는 학습 모델(`demand_model.py`), 그 밖은 규칙 |
 | `dummy_store.py` | 시연 가게 1년 치 가상 데이터(메뉴 · 레시피 · 판매량 · 영수증 · 재고) 만들기 → `data/dummy_store/`, `--apply` 면 Supabase 시연 가게에 넣기 |
-| `demand_learn.py` · `demand_model.py` | 판매량 학습: 가상 판매 기록으로 부스팅을 학습 · 6달 시험(규칙과 비교) → `models/demand_demo.json` / 서버에서 numpy 없이 읽어 내일 예측 ([결과](../plan/forecast/1118_demand_learning.md)) |
+| `demand_learn.py` · `demand_model.py` | 판매량 학습: 가상 판매 기록으로 부스팅을 학습 · 6달 시험(규칙과 비교) → `demand/models/demand_demo.json` / 서버에서 numpy 없이 읽어 내일 예측 ([결과](../plan/forecast/1118_demand_learning.md)) |
+| **store/** | |
+| `receipts.py` · `receipts_demo/` | 영수증 읽기 · 저장, 시연용 가상 영수증 이미지 |
+| `menu_cost.py` · `menus.py` | 메뉴 1인분 원가 · 원가율, 표준 레시피, 참고 단가 / 가게 메뉴 저장 |
+| **chat/** | |
 | `agent.py` | 제미나이 에이전트: **안내 + 담당 3개**(📈 시세 · 💰 원가 · 마진 · 📦 내일 준비). 안내가 버튼 질문은 규칙으로, 자유 질문은 가벼운 모델로 담당을 고르고(실패하면 낱말 규칙), 섞인 질문은 담당들을 동시에 불러 답을 붙임. 담당마다 도구 5~9개 → 살피 말투로 설명 (`brand/SKILL.md` 적용), 바쁠 때 다른 모델로 자동 전환 ([설명](../plan/bm/1118_agent_split.md)) |
-| `price_judge.py` | 싸게/비싸게 판정 (`/api/price-judge`): 영수증 품목마다 산 값을 우리 가게 평소 단가(앞 영수증 8장 가운데값) · 대구 시세와 비교. 10% 안쪽은 비슷해요, 평소보다 비싸도 소매가보다 싸면 '시세가 올랐어요' |
-| `app_push.py` · `web/sw.js` · `web/manifest.webmanifest` | **설치형 앱(PWA) · 앱 알림**: 홈 화면에 살피 앱 설치, 매일 아침 시세 알림을 휴대폰 알림으로 (`/api/push/*`, 열쇠 `VAPID_*`) ([설치 안내](../plan/1118_mobile_app.md)) |
+| `chat_log.py` | 챗봇 대화 저장 |
+| **account/** | |
+| `auth.py` | 로그인 (아이디 · 카카오) |
 | `kakao_alert.py` | 카카오톡 "나에게 보내기" 시세 알림 (아이디 · 카카오 계정 모두 연결, 카톡 정책상 알림은 안 울림) |
-| `server.py` | 웹 서버 (화면 + `/api/...`) |
-| `web/` | 화면 (`index.html` · `style.css` · `app.js`), `web/img/` 는 brand 폴더의 배경 없는 살피 이미지를 웹용으로 줄인 것 |
+| `app_push.py` · `web/sw.js` · `web/manifest.webmanifest` | **설치형 앱(PWA) · 앱 알림**: 홈 화면에 살피 앱 설치, 매일 아침 시세 알림을 휴대폰 알림으로 (`/api/push/*`, 열쇠 `VAPID_*`) ([설치 안내](../plan/1118_mobile_app.md)) |
+| **experiments/** | |
+| `boost_compare.py` · `lgbm_compare.py` · `method_match.py` | 예측 기법 비교 (`method_match.py` 는 월요일 자동 작업) |
+| `segment.py` | 대구 음식점 고객 세그먼트 묶기 → `data/segment/` |
+| **화면** | |
+| `web/` | 데스크톱 화면 (`index.html` · `style.css` · `app.js`), `web/img/` 는 brand 폴더의 배경 없는 살피 이미지를 웹용으로 줄인 것 (모바일 화면도 같이 씀) |
+| `mobile/` | 모바일 앱 화면 (`index.html` · `app.css` · `js/`), 안드로이드 앱(`android/`)이 여는 화면 |
 
 ## 알아 둘 점
 - 예측은 학습 모델이 아니라 **이유를 하나씩 보여 주는 규칙 기반 추정**입니다

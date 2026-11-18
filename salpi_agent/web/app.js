@@ -1496,10 +1496,15 @@ function costPlan(m, T) {
 
 // 최근 영수증: 사진 카드 한 줄 (맨 앞 = 새 영수증 올리기 칸) · 양옆 작은 화살표로 넘김
 const RC_PIC = `<svg viewBox="0 0 48 40" aria-hidden="true"><rect x="2" y="2" width="44" height="36" rx="1.5"/><circle cx="11" cy="11" r="3.5"/><path d="M5 35l12-15 7 8 8-12 11 19z"/></svg>`;
+// 사진이 없는 영수증: 품목 몇 줄 · 합계로 작은 영수증 모양을 그려 넣음 (올리기 칸과 헷갈리지 않게)
+const rcMini = (p) => `<span class="rc-mini" aria-hidden="true">
+  <b>${esc(supplierName(p.supplier))}</b><small>${mmdd(p.purchased_on)}</small>
+  ${(p.names || []).map((n) => `<i>${esc(n)}</i>`).join("")}${p.items > (p.names || []).length ? `<i>외 ${p.items - p.names.length}줄</i>` : ""}
+  <em>합계 ${won(p.total_amount)}</em></span>`;
 function receiptList(list) {
   const cards = list.map((p) => `<li class="rc-card">
     <button class="rc-open rc-thumb" data-rid="${p.id}" type="button" title="사진과 품목 보기">
-      ${p.image_url ? `<img src="${esc(p.image_url)}" alt="${mmdd(p.purchased_on)} 영수증 사진" loading="lazy">` : `<span class="rc-nophoto">${RC_PIC}<small>사진 없음</small></span>`}
+      ${p.image_url ? `<img src="${esc(p.image_url)}" alt="${mmdd(p.purchased_on)} 영수증 사진" loading="lazy">` : rcMini(p)}
     </button>
     <div class="rc-meta"><b>${mmdd(p.purchased_on)} · ${esc(supplierName(p.supplier))}</b><span>${p.items}줄 · ${won(p.total_amount)}</span></div>
     <span class="rc-btns"><button class="rc-edit" data-eid="${p.id}" type="button">수정하기</button>

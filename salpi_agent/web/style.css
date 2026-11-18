@@ -956,6 +956,8 @@ a.my-link { color: inherit; text-decoration: none; }
 .mc-chev:hover { background: var(--surface-variant); color: var(--ink); }
 .mc-chev svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .2s; }
 .mc-sec.folded .mc-chev svg { transform: rotate(180deg); }
+/* 넣은 금액이 없는 칸: 제목 · 합계를 흐리게 */
+.mc-sec.empty h5, .mc-sec.empty .mc-total { color: #A5ABA7; }
 .mc-box { margin-top: 8px; padding: 8px 18px; border-radius: 12px; background: #F8F9F6; }
 .mc-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 46px; font-size: 16px; }
 .mc-label { display: flex; align-items: center; gap: 8px; min-width: 0; color: #4A524D; white-space: nowrap; }
@@ -1012,7 +1014,6 @@ a.my-link { color: inherit; text-decoration: none; }
 .mc-addbox { margin-top: 10px; padding: 14px; border-radius: 12px; background: #F8F9F6; }
 .mc-addto { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; font-size: 15px; color: #4A524D; }
 .mc-addto .mc-seg button { height: 30px; padding: 0 12px; font-size: 14px; }
-.mc-hint { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
 /* 추천 항목: 어느 칸이든 두 줄 안에 들어가게 작게 */
 .mc-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
 .mc-chips button { padding: 6px 11px; border: 1px solid var(--outline); border-radius: 999px; background: var(--surface); color: var(--ink); font-size: 14px; white-space: nowrap; transition: border-color .15s, color .15s; }

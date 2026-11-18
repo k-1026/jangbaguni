@@ -2550,7 +2550,7 @@ async function renderMypage(view) {
   }
   const draw = (me, offline) => { if ($("#mypage").classList.contains("open") && $("#mypageTitle").textContent === "마이페이지") box.innerHTML = myHome(me, offline); };
   const cached = cachedProfile();
-  costEdit = false; costAdding = false; addSec = "fixed"; costFold = new Set(load(COST_FOLD_KEY, []));
+  costEdit = false; costAdding = false; addSec = "fixed"; costFold = new Set(["fixed", "sale", "delivery"]);   // 처음 들어오면 비용 칸은 모두 접힌 채로
   draw(cached);
   freshProfile().then((me) => { if (JSON.stringify(me) !== JSON.stringify(cached)) draw(me); }).catch(() => draw(cached, true));
   loadReceiptMaterial();
@@ -2597,7 +2597,6 @@ let addSec = "fixed";   // 비용 추가하기에서 고른 칸
 const DELIV = [["fee", "중개 수수료", ""], ["ride", "배달비", "사장님 부담"], ["pack", "포장 용기", ""]];
 const COST_DEFAULT = { seats: null, closed: ["일"], sales: null, fixed: {}, extra: [], material: null, card: null, tax: "general", delivery: false, deliv: {} };
 const PEN = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>`;
-const COST_FOLD_KEY = "salpi_cost_fold";   // 접어 둔 칸 (고정 · 판매 · 배달)
 let costEdit = false, costAdding = false, costMe = null, receiptMaterial = null;   // costEdit: '수정'을 눌러 모든 칸이 입력칸인지
 let costFold = new Set();
 
@@ -2659,10 +2658,21 @@ const CHEV = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6
 const PLUS = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>`;
 const DELIV_LABEL = (label, sub) => `${label}${sub ? ` <small>(${sub})</small>` : ""}`;
 
+// 칸에 사장님이 직접 넣은 금액이 하나라도 있나 (영수증 자동 재료비 · 어림값은 빼고)
+function costFilled(c, key) {
+  const has = (v) => +v > 0;
+  const ex = c.extra.some((x) => (x.sec || "fixed") === { fixed: "fixed", sale: "sale", delivery: "deliv" }[key] && has(x.v));
+  if (key === "fixed") return ex || Object.values(c.fixed).some(has);
+  if (key === "sale") return ex || has(c.material) || has(c.card);
+  return c.delivery && (ex || Object.values(c.deliv).some(has));
+}
+
 // 칸 하나 (제목 · 합계 · 접기 꺾쇠). 제목 줄 어디를 눌러도 접히고 펼쳐짐
+// 넣은 금액이 없는 칸은 보기 화면에서 흐리게 (empty)
 function mcSection(key, title, total, body, extra = "") {
   const open = !costFold.has(key);
-  return `<div class="mc-sec${open ? "" : " folded"}">
+  const empty = !costEdit && !costFilled(costs(), key);
+  return `<div class="mc-sec${open ? "" : " folded"}${empty ? " empty" : ""}">
     <div class="mc-sec-head" data-fold="${key}">
       <h5>${title}</h5>${extra}
       ${total == null ? "" : `<span class="mc-total" data-total="${key}">${man(total)}</span>`}
@@ -2727,9 +2737,7 @@ function costCard() {
       <div class="mc-addto"><span>어디에 넣을까요?</span>
         <span class="mc-seg" role="group" aria-label="비용을 넣을 칸">${ADD_SECS.map(([key, label]) =>
           `<button type="button" data-addsec="${key}" aria-pressed="${key === addSec}">${label}</button>`).join("")}</span></div>
-      <div class="mc-chips">${chips.map((n) => `<button type="button" data-xadd="${esc(n)}">${esc(n)}</button>`).join("")}<button type="button" data-xadd="">직접 입력</button></div>
-      ${addSec === "deliv" && !c.delivery ? `<p class="mc-hint">고르면 배달이 '해요'로 바뀌어요</p>` : ""}
-    </div>`;
+      <div class="mc-chips">${chips.map((n) => `<button type="button" data-xadd="${esc(n)}">${esc(n)}</button>`).join("")}<button type="button" data-xadd="">직접 입력</button></div>    </div>`;
 
   return `
     <div class="mc-head"><h4>내 정보</h4>
@@ -2769,8 +2777,13 @@ function costClick(e) {
   const c = costs(), d = t.dataset;
   let focus;
   if ("cedit" in d) { costEdit = true; costFold.clear(); focus = '[data-k="seats"]'; }
-  else if ("cdone" in d) { costEdit = false; c.extra = c.extra.filter((x) => x.name || x.v); focus = "[data-cedit]"; }   // 이름 · 금액 둘 다 빈 줄은 정리
-  else if (d.fold) { costFold.has(d.fold) ? costFold.delete(d.fold) : costFold.add(d.fold); store(COST_FOLD_KEY, [...costFold]); focus = `.mc-chev[data-fold="${d.fold}"]`; }
+  else if ("cdone" in d) {
+    costEdit = false;
+    c.extra = c.extra.filter((x) => x.name || x.v);   // 이름 · 금액 둘 다 빈 줄은 정리
+    for (const key of ["fixed", "sale", "delivery"]) costFilled(c, key) ? costFold.delete(key) : costFold.add(key);   // 넣은 게 없는 칸은 접어 둠
+    focus = "[data-cedit]";
+  }
+  else if (d.fold) { costFold.has(d.fold) ? costFold.delete(d.fold) : costFold.add(d.fold); focus = `.mc-chev[data-fold="${d.fold}"]`; }
   else if (d.biz) { c.biz = d.biz; focus = `[data-biz="${d.biz}"]`; }
   else if (d.day) { c.closed = c.closed.includes(d.day) ? c.closed.filter((x) => x !== d.day) : [...c.closed, d.day]; focus = `[data-day="${d.day}"]`; }
   else if (d.tax) { c.tax = d.tax; focus = `[data-tax="${d.tax}"]`; }

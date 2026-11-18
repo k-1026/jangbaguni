@@ -2527,11 +2527,13 @@ async function renderMypage(view) {
         <input type="checkbox" class="switch" data-pref="${k}" ${prefs[k] ? "checked" : ""}></label>`).join("")}
     </section>
     <section class="my-card" id="appCard">
+      <h4>살피 앱</h4>
       <div id="appBody"><p class="muted small">확인하는 중이에요</p></div>
     </section>
     <section class="my-card" id="kakaoCard">
       <h4>카카오톡 시세 알림</h4>
-      <p class="muted small">매일 아침 내 메뉴 재료의 다음 주 시세 · 원가율 40% 넘은 메뉴를 내 카카오톡 '나와의 채팅'으로 보내 드려요.</p>
+      <p class="muted small">매일 아침 내 카카오톡 '나와의 채팅'으로 보내 드려요.</p>
+      <ul class="my-bullets"><li>내 메뉴 재료의 다음 주 시세</li><li>원가율 40% 넘은 메뉴</li></ul>
       <div id="kakaoBody"><p class="muted small">확인하는 중이에요</p></div>
     </section>
     <section class="my-card" id="permCard">
@@ -2662,7 +2664,7 @@ async function showKakao() {
         sessionStorage.removeItem("salpi_kakao_ok"); sessionStorage.removeItem("salpi_kakao_err"); } catch (e) {}
   if (!st.connected) {
     // 아이디로 가입한 사장님도 됨: 살피 로그인은 그대로, 카카오톡 권한만 붙임
-    box.innerHTML = `<div class="toggle-row"><span><b>아직 연결 전</b><small>카카오 계정으로 '카카오톡 메시지 전송'에 동의하면 받아요 (살피 로그인은 그대로)</small></span>
+    box.innerHTML = `<div class="toggle-row"><span><b>아직 연결 전</b><small>카카오 계정으로 '카카오톡 메시지 전송'에 동의하면 받아요</small></span>
       <button class="btn primary" id="kakaoLink" type="button" ${st.ready ? "" : "disabled"}>카카오톡 연결</button></div>
       ${st.ready ? "" : `<p class="muted small">서버에 카카오 키가 아직 없어요</p>`}
       ${err ? `<p class="rc-warn">연결하지 못했어요: ${esc(err)}</p>` : ""}`;

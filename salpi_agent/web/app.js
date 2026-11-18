@@ -65,6 +65,18 @@ try {
   }
 } catch (e) {}
 const SIGNED_IN = !!readLogin();
+// 카카오톡 연결에서 돌아옴 (/api/kakao/callback → /?page=store&kakao=ok | kakao_err=이유): 결과를 기억하고 주소는 깨끗이
+(() => {
+  const q = new URLSearchParams(location.search);
+  if (!q.has("kakao") && !q.has("kakao_err")) return;
+  try {
+    if (q.get("kakao") === "ok") sessionStorage.setItem("salpi_kakao_ok", "1");
+    if (q.get("kakao_err")) sessionStorage.setItem("salpi_kakao_err", q.get("kakao_err"));
+    sessionStorage.setItem("salpi_kakao_show", "1");
+  } catch (e) {}
+  q.delete("kakao"); q.delete("kakao_err");
+  history.replaceState(null, "", `${location.pathname}${q.toString() ? `?${q}` : ""}${location.hash}`);
+})();
 const PAGE = new URLSearchParams(location.search).get("page");
 // 로그인 뒤 돌아갈 곳: 우리 사이트 안 주소(/ 로 시작)만 받음
 const safeNext = (u) => (u && u.startsWith("/") && !u.startsWith("//") ? u : "/");
@@ -2445,19 +2457,29 @@ async function showKakao() {
   let st;
   try { st = await authCall("/api/kakao/status", { method: "GET", token }); }
   catch (e) { box.innerHTML = `<p class="muted small">${esc(e.message)}</p>`; return; }
-  if (!st.kakao_login) { box.innerHTML = `<p class="muted small">카카오로 로그인한 계정만 받을 수 있어요.</p>`; return; }
+  // 카카오에서 돌아온 결과 (/api/kakao/callback → ?kakao=ok · kakao_err=이유) — 한 번만 보여 줌
+  let done = "", err = "";
+  try { done = sessionStorage.getItem("salpi_kakao_ok") || ""; err = sessionStorage.getItem("salpi_kakao_err") || "";
+        sessionStorage.removeItem("salpi_kakao_ok"); sessionStorage.removeItem("salpi_kakao_err"); } catch (e) {}
   if (!st.connected) {
-    box.innerHTML = `<div class="toggle-row"><span><b>아직 연결 전</b><small>카카오로 다시 로그인하고 '카카오톡 메시지 전송'에 동의해 주세요</small></span>
-      <button class="btn primary" id="kakaoRelogin" type="button">카카오로 연결</button></div>`;
-    let err = ""; try { err = sessionStorage.getItem("salpi_kakao_err") || ""; sessionStorage.removeItem("salpi_kakao_err"); } catch (e) {}
-    if (err) box.insertAdjacentHTML("beforeend", `<p class="rc-warn">지난번 연결 실패: ${esc(err)}</p>`);
-    $("#kakaoRelogin").onclick = () => { try { sessionStorage.setItem("salpi_kakao_link", "1"); } catch (e) {} location.assign(`/api/auth/kakao?talk=1&next=${encodeURIComponent("/?page=store")}`); };
+    // 아이디로 가입한 사장님도 됨: 살피 로그인은 그대로, 카카오톡 권한만 붙임
+    box.innerHTML = `<div class="toggle-row"><span><b>아직 연결 전</b><small>카카오 계정으로 '카카오톡 메시지 전송'에 동의하면 받아요 (살피 로그인은 그대로)</small></span>
+      <button class="btn primary" id="kakaoLink" type="button" ${st.ready ? "" : "disabled"}>카카오톡 연결</button></div>
+      ${st.ready ? "" : `<p class="muted small">서버에 카카오 키가 아직 없어요</p>`}
+      ${err ? `<p class="rc-warn">연결하지 못했어요: ${esc(err)}</p>` : ""}`;
+    $("#kakaoLink").onclick = async () => {
+      try { location.assign((await authCall("/api/kakao/link", { token })).url); }
+      catch (e) { box.insertAdjacentHTML("beforeend", `<p class="rc-warn">${esc(e.message)}</p>`); }
+    };
     return;
   }
-  box.innerHTML = `<label class="toggle-row"><span><b>매일 아침 받기</b><small>${st.last_sent ? `마지막으로 보낸 때 ${esc(st.last_sent.replace("T", " "))}` : "아직 보낸 적 없어요"}${st.last_error ? ` · 지난번 실패: ${esc(st.last_error)}` : ""}</small></span>
+  box.innerHTML = `${done ? `<p class="ok">카카오톡과 연결했어요. '지금 보내 보기'로 확인해 보세요</p>` : ""}
+    <label class="toggle-row"><span><b>매일 아침 받기</b><small>${st.last_sent ? `마지막으로 보낸 때 ${esc(st.last_sent.replace("T", " "))}` : "아직 보낸 적 없어요"}${st.last_error ? ` · 지난번 실패: ${esc(st.last_error)}` : ""}</small></span>
       <input type="checkbox" class="switch" id="kakaoOn" ${st.on ? "checked" : ""}></label>
     <div class="toggle-row"><span><b>지금 보내 보기</b><small id="kakaoTestMsg">${st.ready ? "내 카톡으로 지금 시세 알림을 보내요" : "서버에 카카오 키가 아직 없어요"}</small></span>
-      <button class="btn" id="kakaoTest" type="button" ${st.ready ? "" : "disabled"}>보내기</button></div>`;
+      <button class="btn" id="kakaoTest" type="button" ${st.ready ? "" : "disabled"}>보내기</button></div>
+    <div class="toggle-row"><span><b>연결 끊기</b><small>카카오톡 알림을 그만 받고 저장한 카카오 권한을 지워요</small></span>
+      <button class="btn" id="kakaoUnlink" type="button">끊기</button></div>`;
   $("#kakaoOn").onchange = async (e) => {
     try { await authCall("/api/kakao/on", { token, body: { on: e.target.checked } }); } catch (err) { e.target.checked = !e.target.checked; }
   };
@@ -2466,6 +2488,9 @@ async function showKakao() {
     msg.textContent = "보내는 중이에요";
     try { await authCall("/api/kakao/test", { token }); msg.textContent = "보냈어요. 카카오톡 '나와의 채팅'을 확인해 주세요"; }
     catch (e) { msg.textContent = e.message; }
+  };
+  $("#kakaoUnlink").onclick = async () => {
+    try { await authCall("/api/kakao/unlink", { token }); showKakao(); } catch (e) { $("#kakaoTestMsg").textContent = e.message; }
   };
 }
 
@@ -2782,3 +2807,4 @@ $("#eventCard").onclick = (e) => {
 // 시연용 주소: 마이페이지 코드 · 알림 설정 값이 모두 읽힌 뒤에 열어야 해서 파일 맨 끝에 둠
 if (location.hash === "#my") openMypage();               // 시연용: 마이페이지가 열린 채로
 if (location.hash === "#settings") openMypage("settings");   // 시연용: 마이페이지 › 설정(알림 · 권한)이 열린 채로
+try { if (sessionStorage.getItem("salpi_kakao_show")) { sessionStorage.removeItem("salpi_kakao_show"); if (SIGNED_IN) openMypage("settings"); } } catch (e) {}   // 카카오톡 연결 결과를 바로 보여 줌

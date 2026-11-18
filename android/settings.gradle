@@ -1,0 +1,17 @@
+// 살피 안드로이드 앱 (TWA: 살피 모바일 화면 /m/ 을 크롬 엔진으로 여는 앱) — 안드로이드 스튜디오에서 이 android 폴더를 열기
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+rootProject.name = "Salpi"
+include ":app"

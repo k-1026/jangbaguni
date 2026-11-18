@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>살피</title>
+  <meta name="theme-color" content="#FFFFFF">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/static/img/icon-192.png">
+  <link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="살피">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="preload" href="/mobile/img/splash_logo.webp" as="image">
+  <link rel="stylesheet" href="/mobile/app.css?v=1">
+</head>
+<body>
+  <!-- 스플래시: 흰 바탕에 살피 로고 (첫 시세가 오면 사라지고 DOM 에서 지움) -->
+  <div id="m-splash" class="m-splash" aria-hidden="true"><img src="/mobile/img/splash_logo.webp" alt="" width="260" height="111"></div>
+  <main id="m-main" class="m-main"></main>
+  <nav id="m-nav" class="m-nav" aria-label="살피 메뉴"></nav>
+  <script type="module" src="/mobile/js/main.js?v=1"></script>
+</body>
+</html>

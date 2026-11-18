@@ -37,7 +37,7 @@
 
 | 구분 | 내용 |
 |---|---|
-| 코드 | `salpi_agent/forecast_log.py` (저장 · 채점 · 요약), `salpi_agent/server.py` (하루 한 번 실행 · API) |
+| 코드 | `salpi_agent/price/forecast_log.py` (저장 · 채점 · 요약), `salpi_agent/server.py` (하루 한 번 실행 · API) |
 | 표 | `supabase/schema.sql` F절 (`forecast_log` · `price_snapshots`) — 11/12 Supabase에 만듦 |
 | 하루 한 번 | 서버가 그날 이미 했는지 기억 → 두 번 저장하지 않음. 같은 날 · 품목은 **처음 저장한 값을 바꾸지 않음** |
 | 실패하면 | Supabase 키가 없거나 연결이 안 되면 저장만 건너뛰고 화면은 그대로. 다음 요청 때 다시 시도 |

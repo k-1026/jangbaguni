@@ -3,7 +3,7 @@
 > 무엇: 사람이 정한 고정 공식 대신, **매일 새벽 AI가 다시 배우고 · 시험하고 · 더 잘 맞을 때만 스스로 바꾸는** 7일 시세 예측
 > 계기: "고정된 산식보다 AI 학습 모델로, 변동이 AI를 통해 자율적으로 이루어지게" 피드백
 > 앞 문서: [부스팅 비교](1112_boosting_compare.md) · [시세 검증 에이전트 계획](1112_forecast_validation_agent.md) · [AI 에이전트 파이프라인](../bm/1112_agent_pipeline.md)
-> 코드: [learner.py](../../salpi_agent/learner.py) (학습 담당) · [forecast_model.py](../../salpi_agent/forecast_model.py) (화면 예측) · [daily-learn.yml](../../.github/workflows/daily-learn.yml) (매일 06:00)
+> 코드: [learner.py](../../salpi_agent/price/learner.py) (학습 담당) · [forecast_model.py](../../salpi_agent/price/forecast_model.py) (화면 예측) · [daily-learn.yml](../../.github/workflows/daily-learn.yml) (매일 06:00)
 
 ---
 
@@ -72,7 +72,7 @@ flowchart TD
 
 ---
 
-## 3-1. 13개 기법 품목별 매칭 (11/16, [method_match.py](../../salpi_agent/method_match.py))
+## 3-1. 13개 기법 품목별 매칭 (11/16, [method_match.py](../../salpi_agent/experiments/method_match.py))
 
 **질문**: 어떤 예측 기법이 맞는지 미리 모르니, 13개를 다 돌려 품목마다 실제와 가장 가까운 기법을 데이터로 고르면 더 잘 맞을까?
 
@@ -128,7 +128,7 @@ flowchart TD
 ## 3-3. 우리 부스팅 vs 진짜 LightGBM · XGBoost (11/17)
 
 **왜**: 우리 부스팅(`gbdt.py`)은 이 PC 보안 정책 때문에 LightGBM 방식을 직접 옮겨 만든 것 → **표준 라이브러리와 같은 수준인지** 확인
-**어떻게**: 깃허브 실행 컴퓨터(라이브러리 설치 가능)에서 **매일 학습과 같은 자료 · 같은 시험 기간(2025-11-10 ~ 2026-11-09) · 같은 지표 · 같은 나무 수 고르기**로 비교 ([lgbm_compare.py](../../salpi_agent/lgbm_compare.py) · [실행 설정](../../.github/workflows/lgbm-compare.yml)). "같은 설정" = 오늘 챔피언 설정을 각 라이브러리 이름으로 옮김, "기본 설정" = 라이브러리 기본값 그대로 (우리에게 유리하게 맞춘 게 아닌지 확인)
+**어떻게**: 깃허브 실행 컴퓨터(라이브러리 설치 가능)에서 **매일 학습과 같은 자료 · 같은 시험 기간(2025-11-10 ~ 2026-11-09) · 같은 지표 · 같은 나무 수 고르기**로 비교 ([lgbm_compare.py](../../salpi_agent/experiments/lgbm_compare.py) · [실행 설정](../../.github/workflows/lgbm-compare.yml)). "같은 설정" = 오늘 챔피언 설정을 각 라이브러리 이름으로 옮김, "기본 설정" = 라이브러리 기본값 그대로 (우리에게 유리하게 맞춘 게 아닌지 확인)
 
 | 야채 (4,496건) | 정반대 ↓ | 평균 오차 ↓ | 범위 적중 | 방향 맞음 (참고) | 학습 시간 |
 |---|---|---|---|---|---|
@@ -175,7 +175,7 @@ flowchart TD
 | 무엇 | 어떻게 |
 |---|---|
 | 지금 모델 · 최근 학습 기록 (AI 진단 · 실험 · 교체) | 사이트 `/api/model` |
-| 내 컴퓨터에서 결과만 보기 | `salpi_agent\.venv\Scripts\python learner.py --dry-run` |
+| 내 컴퓨터에서 결과만 보기 | `salpi_agent` 폴더에서 `.venv\Scripts\python -m price.learner --dry-run` |
 | 바로 한 번 돌리기 | GitHub → Actions → "매일 새벽 AI 예측 학습" → Run workflow |
 | 필요한 Secrets | `AT_SALE_API_KEY` · `KMA_ASOS_API_KEY` · `SUPABASE_URL` · `SUPABASE_SECRET_KEY` · `GEMINI_API_KEY` |
 

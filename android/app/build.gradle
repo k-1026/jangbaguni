@@ -1,0 +1,42 @@
+plugins {
+    id "com.android.application"
+}
+
+// 앱이 열 주소: 합치기 전에는 미리보기 사이트, 합친 뒤에는 실제 사이트로 바꾸면 됨 (이 두 줄만)
+def siteHost = "jangbaguni-ten.vercel.app"
+def launchUrl = "https://${siteHost}/m/?source=android"
+
+android {
+    namespace "com.salpi.app"
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.salpi.app"
+        minSdk 21
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0"
+
+        manifestPlaceholders = [hostName: siteHost, launchUrl: launchUrl]
+        resValue "string", "host_name", siteHost
+        resValue "string", "launch_url", launchUrl
+        // 주소창 없이 열리려면 사이트 /.well-known/assetlinks.json 에 이 앱의 서명 지문이 있어야 함 (plan/1118_mobile_app.md 5절)
+        resValue "string", "asset_statements",
+            "[{\\\"relation\\\": [\\\"delegate_permission/common.handle_all_urls\\\"], \\\"target\\\": {\\\"namespace\\\": \\\"web\\\", \\\"site\\\": \\\"https://${siteHost}\\\"}}]"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    // 구글 공식 TWA 도구: 크롬으로 사이트를 앱처럼 열고, 사이트 알림을 이 앱 알림으로 받음
+    implementation "com.google.androidbrowserhelper:androidbrowserhelper:2.5.0"
+}

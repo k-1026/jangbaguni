@@ -1,6 +1,6 @@
 # 가상 가게 데이터 (시연용 · 실제 가게 아님)
 
-- 만든 곳: [salpi_agent/dummy_store.py](../../salpi_agent/dummy_store.py) — 실제 사장님의 메뉴 · 영수증 · 판매량을 구할 수 없어서 판매량 학습을 시연하려고 만든 **가상 데이터**
+- 만든 곳: [salpi_agent/demand/dummy_store.py](../../salpi_agent/demand/dummy_store.py) — 실제 사장님의 메뉴 · 영수증 · 판매량을 구할 수 없어서 판매량 학습을 시연하려고 만든 **가상 데이터**
 - 가게: 살피 시연 한식당 (대구 달서구, 일요일 휴무) · 기간: 1년 (마지막 날 = 만든 날 어제)
 - 설명 · 학습 결과: [plan/forecast/1118_demand_learning.md](../../plan/forecast/1118_demand_learning.md)
 
@@ -13,4 +13,4 @@
 | receipts.csv | 매주 월요일 영수증 줄 (야채 단가는 실제 북부도매시장 경락가 × 가게 웃돈) |
 | inventory.csv | 마지막 날 남은 재고 |
 
-다시 만들기: `salpi_agent\.venv\Scripts\python dummy_store.py` (Supabase 시연 가게에도 넣으려면 `--apply`)
+다시 만들기: `salpi_agent` 폴더에서 `.venv\Scripts\python -m demand.dummy_store` (Supabase 시연 가게에도 넣으려면 `--apply`)

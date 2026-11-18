@@ -18,26 +18,27 @@ from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-import analysis
-import auth
-import chat_log
-import cheaper as cheaper_sellers
-import demand
-import forecast_log
-import forecast_model
-import foodspring
-import app_push
-import kakao_alert
-import mart_price
-import menus
-import price_judge
-import receipts
-import supabase_db
-from agent import SalpiAgent
-from data_sources import ITEMS, ApiError, ApiKeyMissing, event_detail, holidays, month_events, weather_forecast
+from price import analysis
+from account import auth
+from chat import chat_log
+from price import cheaper as cheaper_sellers
+from demand import demand
+from price import forecast_log
+from price import forecast_model
+from sources import foodspring
+from account import app_push
+from account import kakao_alert
+from sources import mart_price
+from store import menus
+from price import price_judge
+from store import receipts
+from sources import supabase_db
+from chat.agent import SalpiAgent
+from sources.data_sources import ITEMS, ApiError, ApiKeyMissing, event_detail, holidays, month_events, weather_forecast
 
 ROOT = Path(__file__).resolve().parent
-WEB = ROOT / "web"
+WEB = ROOT / "web"         # 데스크톱 화면
+MOBILE = ROOT / "mobile"   # 모바일 앱 화면 (MVVM)
 
 
 
@@ -56,7 +57,8 @@ async def lifespan(_app):
 
 app = FastAPI(title="살피", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=WEB), name="static")
-app.mount("/receipts_demo", StaticFiles(directory=ROOT / "receipts_demo"), name="receipts_demo")   # 시연용 가상 영수증
+app.mount("/mobile", StaticFiles(directory=MOBILE), name="mobile")   # 모바일 화면 파일 (주소는 /m/)
+app.mount("/receipts_demo", StaticFiles(directory=ROOT / "store" / "receipts_demo"), name="receipts_demo")   # 시연용 가상 영수증
 
 # ---------------------------------------------------------------
 # 계산 결과 1시간 보관 (같은 화면을 여러 명이 열어도 다시 계산하지 않음)
@@ -168,11 +170,21 @@ KEY_NAMES = ["AT_SALE_API_KEY", "AT_PERDAY_API_KEY", "AT_REALTIME_API_KEY", "KMA
 
 
 # 설치형 앱(PWA): 앱 정보 · 백그라운드 작업 파일은 사이트 맨 위 주소에 있어야 앱 전체를 맡을 수 있음
-# 모바일 앱 화면 (MVVM, web/m/) — 데스크톱 화면(/)과 파일을 따로 둬서 서로 건드리지 않음
+# 모바일 앱 화면 (MVVM, mobile/) — 데스크톱 화면(/)과 파일을 따로 둬서 서로 건드리지 않음
 @app.get("/m")
 @app.get("/m/")
 def mobile_app():
-    return FileResponse(WEB / "m" / "index.html", headers={"Cache-Control": "no-cache"})
+    return FileResponse(MOBILE / "index.html", headers={"Cache-Control": "no-cache"})
+
+
+# 안드로이드 앱(android/, TWA)이 주소창 없이 열리려면 "이 사이트는 이 앱 것" 확인 파일이 필요
+# ANDROID_SHA256 = 앱 서명 지문(SHA-256, 콜론 포함). 여러 개면 쉼표로 (디버그 · 출시 열쇠). 없으면 빈 목록 → 앱은 주소창이 보인 채로 열림
+@app.get("/.well-known/assetlinks.json")
+def assetlinks():
+    prints = [x.strip().upper() for x in os.getenv("ANDROID_SHA256", "").split(",") if x.strip()]
+    return [{"relation": ["delegate_permission/common.handle_all_urls"],
+             "target": {"namespace": "android_app", "package_name": os.getenv("ANDROID_PACKAGE", "com.salpi.app"),
+                        "sha256_cert_fingerprints": prints}}] if prints else []
 
 
 @app.get("/manifest.webmanifest")

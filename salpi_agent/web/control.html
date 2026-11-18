@@ -209,7 +209,7 @@ const STAGES = {
   B:[
     {id:"b1",t:"프로토타입 (웹 v1)",p:"11/3–11/6",fixed:"done",out:["salpi_agent/","salpi_agent/web/","supabase/schema.sql"],
       result:["시세 대시보드 · 챗봇 · 영수증 OCR","Supabase · Vercel 배포"]},
-    {id:"b2",t:"AI 예측 · 자료",p:"11/12–11/26",own:"이하영 · 윤가언",out:["plan/forecast/1116_self_learning_forecast.md","salpi_agent/learner.py · gbdt.py","data/raw/"],
+    {id:"b2",t:"AI 예측 · 자료",p:"11/12–11/26",own:"이하영 · 윤가언",out:["plan/forecast/1116_self_learning_forecast.md","salpi_agent/price/learner.py · gbdt.py","data/raw/"],
       match:it=>it.cats.includes("ai") && !/검증|정확도|시차|정답표/.test(it.text)},
     {id:"b3",t:"화면 · 서버 기능",p:"11/16–11/27",own:"이성이 · 이하영",out:["plan/1116_api_contract.md","salpi_agent/web/","salpi_agent/*.py"],
       match:it=>(it.cats.includes("front")||it.cats.includes("back")) && !/시연|점검|녹화|측정|비교표/.test(it.text)},

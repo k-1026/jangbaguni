@@ -33,10 +33,10 @@ export const plugin = (name) => {
   const C = window.Capacitor;
   if (C.Plugins?.[name]) return C.Plugins[name];
   if (typeof C.registerPlugin === "function") return C.registerPlugin(name);
-  return {
-    addListener: (eventName, cb) => { C.nativeCallback(name, "addListener", { eventName }, cb); return Promise.resolve({ remove() {} }); },
-    open: (opts) => C.nativePromise(name, "open", opts),
-  };
+  // 그 밖의 기능(requestPermissions · register · createChannel …)은 이름 그대로 네이티브에 넘김
+  return new Proxy({}, { get: (_t, method) => method === "addListener"
+    ? (eventName, cb) => { C.nativeCallback(name, "addListener", { eventName }, cb); return Promise.resolve({ remove() {} }); }
+    : (opts) => C.nativePromise(name, method, opts || {}) });
 };
 export const APP_OAUTH_PREFIX = "com.salpi.mobile://oauth";
 
@@ -110,6 +110,8 @@ export const Api = {
   pushSubscribe: (sub) => post("/api/push/subscribe", sub),
   pushUnsubscribe: (endpoint) => post("/api/push/unsubscribe", { endpoint }),
   pushTest: () => post("/api/push/test", {}),
+  fcmSubscribe: (token) => post("/api/push/fcm/subscribe", { token }),
+  fcmUnsubscribe: (token) => post("/api/push/fcm/unsubscribe", { token }),
   kakaoStatus: () => call("/api/kakao/status", { auth: true }),
   kakaoOn: (on) => post("/api/kakao/on", { on }),
   kakaoLink: () => post("/api/kakao/link", {}),

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "194054282414",
+    "project_id": "salpi-bab5b",
+    "storage_bucket": "salpi-bab5b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:194054282414:android:490d1632523376039da13f",
+        "android_client_info": {
+          "package_name": "com.salpi.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA0FlkIU5NaAirDIZIMEQ1I27msilHG6ns"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

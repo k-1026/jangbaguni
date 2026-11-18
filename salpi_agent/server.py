@@ -27,6 +27,7 @@ import forecast_model
 import foodspring
 import mart_price
 import menus
+import price_judge
 import receipts
 import supabase_db
 from agent import SalpiAgent
@@ -218,6 +219,15 @@ def cheaper(item: str, paid: float | None = None):
     paid 를 주면 그 값과 비교 (예: /api/cheaper?item=양파&paid=2300). 10분 보관."""
     return _guard(lambda: memo(f"cheaper:{item}:{paid}",
                                lambda: cheaper_sellers.cheaper(item, paid, supabase_db.DEMO_STORE), ttl=600))
+
+
+@app.get("/api/price-judge")
+def price_judge_api(purchase_id: int | None = None):
+    """싸게/비싸게 판정: 영수증 품목마다 산 값을 우리 가게 평소 단가 · 대구 시세와 비교 (없으면 가장 최근 영수증)."""
+    try:
+        return _guard(lambda: price_judge.judge(supabase_db.DEMO_STORE, purchase_id))
+    except ValueError as e:
+        raise HTTPException(404, str(e))
 
 
 def _forecast_or_empty():

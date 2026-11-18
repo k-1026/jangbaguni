@@ -2366,9 +2366,15 @@ async function loadJudge(id) {
   if (!box.isConnected) return;
   const notable = j.lines.filter((x) => x.verdict !== "비슷해요" && x.verdict !== "비교할 값 없음");
   const s = j.summary;
+  // 한 품목 = 한 줄: 판정 | 재료 | 단가 | 이유(짧게, 길면 … · 올리면 전체) | 더 낸 돈 · 아낀 돈 — 줄마다 칸을 맞춤
+  const shortWhy = (w) => w.replace("우리 가게 평소보다", "평소보다").replace("우리 가게 평소와", "평소와").replace(/대구 소매 평균/g, "소매가");
+  const money = (x) => (x.extra_paid ? `<span class="jm up">${won(x.extra_paid)} 더 냄</span>`
+    : x.saved ? `<span class="jm down">${won(x.saved)} 아낌</span>` : `<span class="jm"></span>`);
   box.innerHTML = `<h4>구매가 점검</h4>
-    ${notable.map((x) => `<p><span class="demand-chip ${JUDGE_CHIP[x.verdict] || ""}">${esc(x.verdict)}</span>
-      <b>${esc(x.item)}</b> ${won(x.unit_price)}/${esc(x.unit)} · ${esc(x.why)}${x.extra_paid ? ` · 평소 값이면 <b>${won(x.extra_paid)}</b> 덜 냈어요` : ""}${x.saved ? ` · <b>${won(x.saved)}</b> 아꼈어요` : ""}</p>`).join("")}
+    ${notable.length ? `<div class="judge-rows">${notable.map((x) => `<div class="judge-row">
+      <span class="demand-chip ${JUDGE_CHIP[x.verdict] || ""}">${esc(x.verdict)}</span>
+      <b class="ji" title="${esc(x.item)}">${esc(x.item)}</b><span class="jp">${won(x.unit_price)}/${esc(x.unit)}</span>
+      <span class="jw" title="${esc(x.why)}">${esc(shortWhy(x.why))}</span>${money(x)}</div>`).join("")}</div>` : ""}
     <p class="muted small">비슷해요 ${s.similar}개${notable.length ? "" : " · 모두 평소 값에 샀어요"} · 10% 안쪽은 비슷하다고 봐요</p>`;
 }
 

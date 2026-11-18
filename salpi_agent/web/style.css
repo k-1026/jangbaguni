@@ -932,16 +932,16 @@ a.my-link { color: inherit; text-decoration: none; }
 .mc-done:hover { background: var(--primary-hover); }
 .mc-done.wide { width: 100%; height: 46px; justify-content: center; margin-top: 16px; border-radius: 12px; font-size: 16px; }
 
-.my-card .mc-info { display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: center; gap: 12px 32px; margin: 0; font-size: 16px; line-height: 1.5; }
+.my-card .mc-info { display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: center; gap: 7px 32px; margin: 0; font-size: 16px; line-height: 1.5; }
 .my-card .mc-info dt { color: var(--muted); white-space: nowrap; }
 .my-card .mc-info dd { margin: 0; color: var(--ink); word-break: keep-all; }
 .my-card .mc-info .none { color: #9AA19C; font-size: 15px; }
 
 /* 본전 한 줄 요약 */
-.mc-be { margin: 20px 0 6px; padding: 18px 20px; border-radius: 14px; background: #D8EECB; color: #2C6A07; }
-.mc-be > b { display: block; font-size: 18px; font-weight: 600; line-height: 1.45; word-break: keep-all; }
+.mc-be { margin: 16px 0 4px; padding: 11px 16px; border-radius: 12px; background: #D8EECB; color: #2C6A07; }
+.mc-be > b { display: block; font-size: 16px; font-weight: 600; line-height: 1.4; word-break: keep-all; }
 .mc-be > b em { font-style: normal; font-weight: 800; }
-.mc-be small { display: block; margin-top: 4px; font-size: 14px; line-height: 1.5; }
+.mc-be small { display: block; margin-top: 2px; font-size: 13px; line-height: 1.4; }
 .mc-be.short { background: #FFF1DC; color: #8A4B00; }
 .mc-be.loss { background: #FFECE9; color: var(--up); }
 .mc-be.empty { background: var(--surface-variant); color: var(--muted); }

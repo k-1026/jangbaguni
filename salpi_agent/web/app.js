@@ -2369,8 +2369,8 @@ async function loadJudge(id) {
   const s = j.summary;
   // 한 품목 = 한 줄: 판정 | 재료 | 단가 | 이유(짧은 말로) | 더 낸 돈 · 아낀 돈 — 글자를 자르지 않고 줄마다 칸을 맞춤
   const shortWhy = (w) => w.replace("우리 가게 평소보다", "평소보다").replace("우리 가게 평소와", "평소와").replace(/대구 소매 평균/g, "소매가");
-  const money = (x) => (x.extra_paid ? `<span class="jm up">${won(x.extra_paid)} 더 냄</span>`
-    : x.saved ? `<span class="jm down">${won(x.saved)} 아낌</span>` : `<span class="jm"></span>`);
+  const money = (x) => (x.extra_paid ? `<span class="jm up">${won(x.extra_paid)} 과지출</span>`
+    : x.saved ? `<span class="jm down">${won(x.saved)} 절약</span>` : `<span class="jm"></span>`);
   box.innerHTML = `<h4>구매가 점검</h4>
     ${notable.length ? `<div class="judge-rows">${notable.map((x) => `<div class="judge-row">
       <span class="demand-chip ${JUDGE_CHIP[x.verdict] || ""}">${esc(x.verdict)}</span>

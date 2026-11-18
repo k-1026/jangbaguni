@@ -2376,7 +2376,13 @@ async function loadJudge(id) {
       <span class="demand-chip ${JUDGE_CHIP[x.verdict] || ""}">${esc(x.verdict)}</span>
       <b class="ji">${esc(x.item)}</b><span class="jp">${won(x.unit_price)}/${esc(x.unit)}</span>
       <span class="jw">${esc(shortWhy(x.why))}</span>${money(x)}</div>`).join("")}</div>` : ""}
-    <p class="muted small">비슷해요 ${s.similar}개${notable.length ? "" : " · 모두 평소 값에 샀어요"} · 10% 안쪽은 비슷하다고 봐요</p>`;
+    <div class="judge-foot"><p class="muted small">비슷해요 ${s.similar}개${notable.length ? "" : " · 모두 평소 값에 샀어요"} · 10% 안쪽은 비슷하다고 봐요</p>
+      ${judgeTotal(s)}</div>`;
+}
+// 이번 영수증 합계: 과지출 · 절약 (둘 다 없으면 안 보임)
+function judgeTotal(s) {
+  const parts = [s.extra_paid ? `<span class="up">${won(s.extra_paid)} 과지출</span>` : "", s.saved ? `<span class="down">${won(s.saved)} 절약</span>` : ""].filter(Boolean);
+  return parts.length ? `<p class="judge-total">이번 영수증 ${parts.join(" · ")}</p>` : "";
 }
 
 // 저장한 영수증 고치기: 왼쪽에 사진(있으면)을 띄워 두고 오른쪽 표에서 바로 고침

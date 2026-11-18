@@ -1511,21 +1511,21 @@ function receiptList(list) {
     <button class="rc-remove" data-id="${p.id}" type="button">지우기</button></span></li>`).join("");
   return `<h3 class="sub-h">최근 영수증</h3>
     <div class="rc-strip-wrap">
+      <button class="rc-arrow prev" type="button" aria-label="앞 영수증 보기" disabled>‹</button>
       <ul class="rc-strip">
         <li class="rc-card"><button class="rc-thumb rc-add-tile" type="button" title="새 영수증 올리기" aria-label="새 영수증 올리기">${RC_PIC}</button></li>
         ${cards}
       </ul>
-      <button class="rc-arrow prev" type="button" aria-label="앞 영수증 보기" hidden>‹</button>
-      <button class="rc-arrow next" type="button" aria-label="다음 영수증 보기" hidden>›</button>
+      <button class="rc-arrow next" type="button" aria-label="다음 영수증 보기" disabled>›</button>
     </div>`;
 }
-// 화살표: 더 넘길 게 있을 때만 보임
+// 화살표: 더 넘길 게 없으면 흐리게 (자리는 그대로라 줄이 흔들리지 않음)
 function rcArrows() {
   const s = $("#receiptList .rc-strip");
   if (!s) return;
   const max = s.scrollWidth - s.clientWidth - 2;
-  $("#receiptList .rc-arrow.prev").hidden = s.scrollLeft <= 2;
-  $("#receiptList .rc-arrow.next").hidden = s.scrollLeft >= max;
+  $("#receiptList .rc-arrow.prev").disabled = s.scrollLeft <= 2;
+  $("#receiptList .rc-arrow.next").disabled = s.scrollLeft >= max;
 }
 function showReceiptList(list) {
   $("#receiptList").innerHTML = receiptList(list);

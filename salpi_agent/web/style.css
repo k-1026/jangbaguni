@@ -707,7 +707,7 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .rc-edit:hover { background: var(--accent); color: #fff; }
 
 /* 최근 영수증: 사진 카드 한 줄 (맨 앞 = 새 영수증 올리기 그림 칸) · 양옆 작은 화살표 */
-.rc-strip-wrap { position: relative; }
+.rc-strip-wrap { display: grid; grid-template-columns: 32px minmax(0, 1fr) 32px; gap: 8px; align-items: start; }   /* 화살표 | 사진 줄 | 화살표 */
 .rc-strip { display: flex; gap: 12px; margin: 0; padding: 2px 2px 8px; list-style: none; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
 .rc-strip::-webkit-scrollbar { display: none; }
 .rc-card { flex: 0 0 150px; display: flex; flex-direction: column; gap: 6px; scroll-snap-align: start; font-size: 12.5px; }
@@ -727,11 +727,11 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .rc-meta { display: flex; flex-direction: column; gap: 2px; line-height: 1.35; }
 .rc-meta b { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .rc-meta span { color: var(--muted); }
-.rc-arrow { position: absolute; top: 77px; width: 32px; height: 32px; padding: 0; border: 1px solid var(--outline); border-radius: 50%;
-  background: var(--surface); box-shadow: var(--e2); color: var(--ink); font-size: 20px; line-height: 1; transform: translateY(-50%); cursor: pointer; }
-.rc-arrow.prev { left: -10px; } .rc-arrow.next { right: -10px; }
-.rc-arrow:hover { border-color: var(--primary); color: var(--primary); }
-.rc-arrow[hidden] { display: none; }
+/* 화살표: 사진 위가 아니라 줄 양옆 자리에 (사진 칸 가운데 높이) · 더 넘길 게 없으면 흐리게 */
+.rc-arrow { margin-top: calc(4px + 75px - 16px); width: 32px; height: 32px; padding: 0; border: 1px solid var(--outline); border-radius: 50%;
+  background: var(--surface); box-shadow: var(--e1); color: var(--ink); font-size: 20px; line-height: 1; cursor: pointer; }
+.rc-arrow:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+.rc-arrow:disabled { opacity: .3; cursor: default; box-shadow: none; }
 
 /* 식봄 상품 카드 (재료 페이지 · 검색에서 씀) */
 .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px 14px; }

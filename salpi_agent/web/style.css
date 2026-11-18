@@ -703,10 +703,12 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 #receiptList { margin-top: 18px; }
 .sub-h { font-size: 15px; margin: 16px 0 6px; }
 .receipt-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; }
-.rc-remove { border: 1px solid var(--outline); background: var(--surface); border-radius: 8px; padding: 2px 8px; font-size: 12px; color: var(--up); }
-.rc-btns { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-.rc-edit { border: 1px solid var(--accent); background: var(--surface); border-radius: 8px; padding: 2px 8px; font-size: 12px; font-weight: 700; color: var(--accent); }
+/* 영수증 창 안의 수정하기(주황 테두리) · 지우기(회색 테두리) — 초록 버튼 대신 */
+.rc-remove { border: 1px solid var(--outline); background: var(--surface); border-radius: 8px; padding: 2px 8px; font-size: 12px; color: var(--up); cursor: pointer; }
+.rc-remove:hover { border-color: var(--up); }
+.rc-edit { border: 1px solid var(--accent); background: var(--surface); border-radius: 8px; padding: 2px 8px; font-size: 12px; font-weight: 700; color: var(--accent); cursor: pointer; }
 .rc-edit:hover { background: var(--accent); color: #fff; }
+.rc-view-btns .rc-edit, .rc-view-btns .rc-remove { padding: 7px 16px; font-size: 14px; border-radius: 10px; }
 
 /* 최근 영수증: 사진 카드 한 줄 (맨 앞 = 새 영수증 올리기 그림 칸) · 양옆 작은 화살표 */
 .rc-strip-wrap { display: grid; grid-template-columns: 32px minmax(0, 1fr) 32px; gap: 8px; align-items: start; }   /* 화살표 | 사진 줄 | 화살표 */

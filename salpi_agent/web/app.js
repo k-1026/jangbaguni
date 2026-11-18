@@ -1507,9 +1507,7 @@ function receiptList(list) {
       ${p.image_url ? `<img src="${esc(p.image_url)}" alt="${mmdd(p.purchased_on)} 영수증 사진" loading="lazy">` : rcMini(p)}
     </button>
     <div class="rc-meta"><span class="rc-date">${+p.purchased_on.slice(5, 7)}월 ${+p.purchased_on.slice(8, 10)}일</span>
-      <b title="${esc(supplierName(p.supplier))}">${esc(supplierName(p.supplier))}</b><span class="rc-price">${won(p.total_amount)}</span></div>
-    <span class="rc-btns"><button class="rc-edit" data-eid="${p.id}" type="button">수정하기</button>
-    <button class="rc-remove" data-id="${p.id}" type="button">지우기</button></span></li>`).join("");
+      <b title="${esc(supplierName(p.supplier))}">${esc(supplierName(p.supplier))}</b><span class="rc-price">${won(p.total_amount)}</span></div></li>`).join("");
   return `<h3 class="sub-h">최근 영수증</h3>
     <div class="rc-strip-wrap">
       <button class="rc-arrow prev" type="button" aria-label="앞 영수증 보기" disabled>‹</button>
@@ -1761,13 +1759,7 @@ $("#receiptList").onclick = async (e) => {
   const ar = e.target.closest(".rc-arrow");
   if (ar) { const s = $("#receiptList .rc-strip"); return s.scrollBy({ left: (ar.classList.contains("next") ? 1 : -1) * s.clientWidth * 0.8, behavior: "smooth" }); }
   const o = e.target.closest(".rc-open");
-  if (o) return openReceipt(o.dataset.rid);
-  const ed = e.target.closest(".rc-edit");
-  if (ed) return openReceipt(ed.dataset.eid, true);
-  const b = e.target.closest(".rc-remove");
-  if (!b || !confirm("이 영수증을 지울까요? 원가율이 다시 계산돼요.")) return;
-  try { renderCosts(await sendJSON(`/api/receipt/${b.dataset.id}`, "DELETE"), false); loadCosts(false); }
-  catch (err) { alert(err.message); }
+  if (o) return openReceipt(o.dataset.rid);   // 수정하기 · 지우기는 열린 창 안에
 };
 
 // ---------------------------------------------------------------
@@ -2309,11 +2301,22 @@ function showReceiptView(id, d) {
             <td class="price">${won(x.amount)}</td><td>${x.unit_price ? won(x.unit_price) : "-"}</td></tr>`).join("")}</tbody>
         </table>
         <div class="rc-judge" id="rcJudge"><p class="muted small">산 값을 평소 단가 · 대구 시세와 비교하는 중이에요</p></div>
-        <div class="receipt-actions"><button class="btn primary" id="rcViewEdit" type="button">수정하기</button></div>
+        <div class="receipt-actions rc-view-btns"><button class="rc-edit" id="rcViewEdit" type="button">수정하기</button>
+          <button class="rc-remove" id="rcViewDel" type="button">지우기</button></div>
       </div>
     </div>`;
   $("#rcViewEdit").onclick = () => editReceiptView(id, d);
+  $("#rcViewDel").onclick = async () => {
+    if (!confirm("이 영수증을 지울까요? 원가율이 다시 계산돼요.")) return;
+    try { afterReceiptDelete(await sendJSON(`/api/receipt/${id}`, "DELETE")); closeReceipt(); }
+    catch (err) { alert(err.message); }
+  };
   loadJudge(id);
+}
+// 영수증을 지운 뒤: 나의 가게면 원가율 · 사진 줄, 마이페이지 '나의 영수증'이 열려 있으면 그 목록도 새로
+function afterReceiptDelete(r) {
+  if (STORE_VIEW) { renderCosts(r, false); loadCosts(false); }
+  if ($("#mypage")?.classList.contains("open") && $("#mypageTitle").textContent === "나의 영수증") renderMypage("receipts");
 }
 
 // 싸게/비싸게 판정 (/api/price-judge): 비싸게 · 시세 오름 · 싸게 산 품목만 한 줄씩, 나머지는 "비슷해요 N개"

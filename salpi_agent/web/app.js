@@ -175,7 +175,7 @@ if (SIGNUP_VIEW) {
   const msg = authMsg($("#signupMsg"));
   const fail = (text, el) => { msg(text); el?.focus(); };
   eyeToggle($("#suEye"), $("#suPw"));
-  soonButtons($("#signupForm"), msg);   // 카카오 · 네이버 · 구글 가입은 아직 연결 전
+  soonButtons($("#signupForm"), msg);   // 아직 연결 전인 버튼은 '준비 중' 안내
   $("#signupToLogin").href = authLink("login");
   $("#suKakao").onclick = kakaoStart;
   // 카카오로 처음 온 사장님: 이름 · 가게 · 약관만 받음 (휴대폰 · 아이디 · 비밀번호는 카카오가 대신)

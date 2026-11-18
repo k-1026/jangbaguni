@@ -1057,10 +1057,6 @@ body.login-view .login-only, body.signup-view .signup-only { display: flex; }
 .login-social svg { width: 19px; height: 19px; }
 .login-social.kakao { background: #FEE500; color: #191919; }
 .login-social.kakao svg { fill: #191919; }
-.login-social.naver { background: #03C75A; color: #fff; }
-.login-social.naver svg { width: 15px; height: 15px; fill: #fff; }
-.login-social.google { border: 1px solid var(--outline); background: var(--surface); color: var(--ink); }
-.login-social.google:hover { filter: none; background: var(--surface-variant); }
 
 /* 회원가입 (/?page=signup): 로그인 카드를 그대로 쓰고, 칸이 많아 조금 더 넓게 · 입력칸은 연한 초록으로 채움 */
 .signup-card { max-width: 460px; }

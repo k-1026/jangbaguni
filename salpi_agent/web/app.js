@@ -1473,6 +1473,11 @@ async function praiseIfSaved(id) {
   if (!id) return;
   let j;
   try { j = await getJSON(`/api/price-judge?purchase_id=${id}`); } catch { return; }
+  praiseFrom(j);
+}
+
+// 구매가 점검 결과(j)로 아낀 돈 - 더 낸 돈을 계산해 이득이면 팝업 (새로 저장할 때 · 예전 영수증 열 때 둘 다)
+function praiseFrom(j) {
   const net = (j.summary?.saved || 0) - (j.summary?.extra_paid || 0);
   if (net <= 0) return;
   const best = j.lines.filter((x) => x.saved > 0).sort((a, b) => b.saved - a.saved)[0];
@@ -2432,6 +2437,7 @@ async function loadJudge(id) {
       <b class="ji">${esc(x.item)}</b><span class="jp">${won(x.unit_price)}/${esc(x.unit)}</span>
       <span class="jw">${esc(shortWhy(x.why))}</span>${money(x)}</div>`).join("")}</div>` : ""}
     ${notable.length ? "" : `<p class="muted small">모두 평소 값에 샀어요</p>`}`;   // 눈에 띄는 품목이 없을 때만 한 줄 (칸이 비지 않게)
+  praiseFrom(j);   // 예전 영수증을 열 때도 이득이면 칭찬 팝업
 }
 
 // 저장한 영수증 고치기: 왼쪽에 사진(있으면)을 띄워 두고 오른쪽 표에서 바로 고침

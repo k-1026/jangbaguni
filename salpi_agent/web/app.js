@@ -2659,13 +2659,12 @@ const CHEV = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6
 const PLUS = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>`;
 const DELIV_LABEL = (label, sub) => `${label}${sub ? ` <small>(${sub})</small>` : ""}`;
 
-// 칸에 사장님이 직접 넣은 금액이 하나라도 있나 (영수증 자동 재료비 · 어림값은 빼고)
+// 칸에 보이는 줄(금액이 있는 줄)이 하나라도 있나 — 영수증 자동 재료비 · 어림값도 금액이 있으면 포함
 function costFilled(c, key) {
-  const has = (v) => +v > 0;
-  const ex = c.extra.some((x) => (x.sec || "fixed") === { fixed: "fixed", sale: "sale", delivery: "deliv" }[key] && has(x.v));
-  if (key === "fixed") return ex || Object.values(c.fixed).some(has);
-  if (key === "sale") return ex || has(c.material) || has(c.card);
-  return c.delivery && (ex || Object.values(c.deliv).some(has));
+  const k = costCalc(c);
+  if (key === "fixed") return k.fixed > 0;
+  if (key === "sale") return k.sale > 0;
+  return c.delivery && (k.deliv > 0 || +c.deliv.sales > 0);
 }
 
 // 칸 하나 (제목 · 합계 · 접기 꺾쇠). 제목 줄 어디를 눌러도 접히고 펼쳐짐

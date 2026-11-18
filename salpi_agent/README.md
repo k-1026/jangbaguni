@@ -94,6 +94,7 @@ salpi_agent/
 | `auth.py` | 로그인 (아이디 · 카카오) |
 | `kakao_alert.py` | 카카오톡 "나에게 보내기" 시세 알림 (아이디 · 카카오 계정 모두 연결, 카톡 정책상 알림은 안 울림) |
 | `app_push.py` · `web/sw.js` · `web/manifest.webmanifest` | **설치형 앱(PWA) · 앱 알림**: 홈 화면에 살피 앱 설치, 매일 아침 시세 알림을 휴대폰 알림으로 (`/api/push/*`, 열쇠 `VAPID_*`) ([설치 안내](../plan/1118_mobile_app.md)) |
+| `fcm.py` | **안드로이드 앱(Capacitor) 알림**: Firebase(FCM)로 앱에 알림. 앱 '앱 알림 켜기' → 기기 표 저장(`/api/push/fcm/*`), '지금 보내 보기'(`/api/push/test`) · 매일 아침 알림이 웹 푸시와 함께 감. 열쇠 `FCM_SERVICE_ACCOUNT` + 앱에 `mobile/android/app/google-services.json` |
 | **experiments/** | |
 | `boost_compare.py` · `lgbm_compare.py` · `method_match.py` | 예측 기법 비교 (`method_match.py` 는 월요일 자동 작업) |
 | `segment.py` | 대구 음식점 고객 세그먼트 묶기 → `data/segment/` |

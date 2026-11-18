@@ -1,19 +1,26 @@
-"""카카오톡 시세 알림 — 카카오 로그인한 사장님 본인 카톡으로 "나에게 보내기" (카카오톡 메시지 API).
+"""카카오톡 시세 알림 — 사장님 본인 카톡으로 "나에게 보내기" (카카오톡 메시지 API).
 
-알림톡(사업자 채널 · 심사 필요) 대신, 사장님이 카카오 로그인 때 '카카오톡 메시지 전송'에 동의하면
+알림톡(사업자 채널 · 심사 필요) 대신, 사장님이 '카카오톡 연결'에서 '카카오톡 메시지 전송'에 동의하면
 그 사장님 카톡의 '나와의 채팅'으로 아침 시세 알림을 보낸다. 숫자는 모두 계산(시세 예측 · 원가율)에서 나옴.
+아이디로 가입한 사장님도 받을 수 있음: 살피 로그인은 그대로 두고 카카오톡 권한만 붙임 (11/18)
 
 흐름
-  1. 카카오 로그인 (auth.kakao_url 에 scopes=talk_message) → 돌아온 주소 # 뒤의 provider_token · provider_refresh_token 을
-     화면이 /api/kakao/connect 로 보냄 → 계정의 app_metadata.kakao_talk 에 저장 (사장님이 직접 못 고치는 칸)
+  1. 카카오톡 연결 (마이페이지 › 설정): /api/kakao/link 가 카카오 인증 주소를 줌 (state = 이 계정 번호에 서명, 10분)
+     → 카카오에서 동의 → /api/kakao/callback 이 받은 code 로 카카오 표를 받아 그 계정의 app_metadata.kakao_talk 에 저장
+     (Supabase 카카오 로그인을 거치지 않아서, 아이디 계정이든 카카오 계정이든 똑같이 됨)
+     예전 길: 카카오 로그인 때 받은 provider_refresh_token 을 /api/kakao/connect 로 저장 (카카오 로그인 계정만)
   2. 매일 아침 /api/jobs/kakao (새벽 학습 · /api/jobs/daily 뒤, daily-learn.yml) → send_all(): 알림을 켠 카카오 계정마다 메시지를 만들어 보냄
      카카오 표(access token)는 6~12시간이면 끝나서, 보낼 때마다 refresh token 으로 새로 받음
   3. 마이페이지 › 설정 › "카카오톡 시세 알림": 켜기 · 끄기 · 지금 보내 보기
 
 필요한 것 (.env · Vercel): KAKAO_REST_API_KEY (카카오 앱 REST API 키 = Supabase 카카오 연결의 Client ID),
 KAKAO_CLIENT_SECRET (카카오 앱에서 Client Secret 을 켰을 때만), SITE_URL (메시지 버튼이 열 주소, 기본 실제 사이트)
-카카오 개발자 콘솔: 동의항목 '카카오톡 메시지 전송'(talk_message) 켜기 · 플랫폼 Web 사이트 도메인에 SITE_URL 등록
+카카오 개발자 사이트: 동의항목 '카카오톡 메시지 전송'(talk_message) 켜기 · 웹 도메인에 SITE_URL 등록 ·
+  REST API 키의 리다이렉트 URI 에 <사이트>/api/kakao/callback 등록 (실제 사이트 · 내 컴퓨터 http://localhost:8000 각각)
 """
+import base64
+import hashlib
+import hmac
 import json
 import os
 import time
@@ -27,6 +34,7 @@ from data_sources import ApiError
 
 KST = timezone(timedelta(hours=9))
 TOKEN_URL = "https://kauth.kakao.com/oauth/token"
+AUTH_URL = "https://kauth.kakao.com/oauth/authorize"
 SEND_URL = "https://kapi.kakao.com/v2/api/talk/memo/default/send"
 MAX_TEXT = 200   # 카카오 텍스트 메시지 한도
 RISE, FALL = 2.0, -2.0   # 다음 7일 예상 변화율(%) — 이만큼 넘을 때만 알림
@@ -48,11 +56,79 @@ def _save(user, talk):
     return r.json()
 
 
+def _secret():
+    key = os.getenv("SUPABASE_SECRET_KEY", "").strip()
+    if not key:
+        raise ApiError(".env 의 SUPABASE_SECRET_KEY 가 비어 있어요")
+    return key.encode()
+
+
+def _sign(payload):
+    raw = base64.urlsafe_b64encode(json.dumps(payload, separators=(",", ":")).encode()).decode().rstrip("=")
+    sig = hmac.new(_secret(), raw.encode(), hashlib.sha256).hexdigest()[:32]
+    return f"{raw}.{sig}"
+
+
+def _unsign(state):
+    raw, _, sig = (state or "").partition(".")
+    if not raw or not hmac.compare_digest(sig, hmac.new(_secret(), raw.encode(), hashlib.sha256).hexdigest()[:32]):
+        raise auth.AuthError("연결 요청이 올바르지 않아요. 마이페이지에서 다시 해 주세요.")
+    data = json.loads(base64.urlsafe_b64decode(raw + "=" * (-len(raw) % 4)))
+    if data.get("exp", 0) < time.time():
+        raise auth.AuthError("연결 시간이 지났어요(10분). 마이페이지에서 다시 해 주세요.")
+    return data
+
+
+def _client():
+    key = os.getenv("KAKAO_REST_API_KEY", "").strip()
+    if not key:
+        raise ApiError(".env 의 KAKAO_REST_API_KEY 가 비어 있어요 (카카오 앱 REST API 키)")
+    return key
+
+
+def link_url(token, site):
+    """카카오톡 연결: 지금 로그인한 계정(아이디 · 카카오 모두)에 붙일 카카오 인증 주소."""
+    user = auth.user_of(token)
+    state = _sign({"u": user["id"], "exp": int(time.time()) + 600})
+    from urllib.parse import urlencode
+    return f"{AUTH_URL}?" + urlencode({"client_id": _client(), "redirect_uri": f"{site}/api/kakao/callback",
+                                       "response_type": "code", "scope": "talk_message", "state": state})
+
+
+def callback(code, state, site):
+    """카카오에서 돌아옴: code → 카카오 표 → state 의 계정에 저장."""
+    data = _unsign(state)
+    body = {"grant_type": "authorization_code", "client_id": _client(), "redirect_uri": f"{site}/api/kakao/callback",
+            "code": code or ""}
+    if os.getenv("KAKAO_CLIENT_SECRET", "").strip():
+        body["client_secret"] = os.getenv("KAKAO_CLIENT_SECRET").strip()
+    r = requests.post(TOKEN_URL, data=body, timeout=15)
+    if not r.ok:
+        raise ApiError(f"카카오 연결을 마치지 못했어요 ({r.status_code}: {r.text[:120]})")
+    tok = r.json()
+    if "talk_message" not in (tok.get("scope") or "talk_message"):
+        raise auth.AuthError("'카카오톡 메시지 전송'에 동의해야 알림을 받을 수 있어요. 다시 연결해 주세요.")
+    user = _admin_user(data["u"])
+    old = (user.get("app_metadata") or {}).get("kakao_talk") or {}
+    _save(user, {"refresh_token": tok.get("refresh_token"), "access_token": tok.get("access_token"),
+                 "expires_at": int(time.time()) + int(tok.get("expires_in", 3600)), "on": old.get("on", True),
+                 "connected_at": int(time.time()), "via": "link"})
+
+
+def unlink(token):
+    """카카오톡 연결 끊기 (저장한 카카오 표를 지움)."""
+    user = auth.user_of(token)
+    app = {k: v for k, v in (user.get("app_metadata") or {}).items() if k != "kakao_talk"}
+    app["kakao_talk"] = {}
+    r = auth._call("PUT", f"admin/users/{user['id']}", admin=True, json={"app_metadata": app})
+    if not r.ok:
+        raise ApiError(f"연결을 끊지 못했어요 ({r.status_code})")
+    return status(token)
+
+
 def connect(token, provider_token, provider_refresh_token):
     """카카오 로그인에서 받은 카카오 표 저장. 처음 연결하면 알림을 켠 상태로."""
     user = auth.user_of(token)
-    if (user.get("app_metadata") or {}).get("provider") != "kakao":
-        raise auth.AuthError("카카오로 로그인한 계정만 카카오톡 알림을 받을 수 있어요.")
     if not provider_refresh_token:
         raise auth.AuthError("카카오 표가 없어요. 카카오로 다시 로그인해 주세요.")
     old = (user.get("app_metadata") or {}).get("kakao_talk") or {}
@@ -74,7 +150,7 @@ def set_on(token, on):
     user = auth.user_of(token)
     talk = (user.get("app_metadata") or {}).get("kakao_talk") or {}
     if not talk.get("refresh_token"):
-        raise auth.AuthError("먼저 카카오로 다시 로그인해서 '카카오톡 메시지 전송'에 동의해 주세요.")
+        raise auth.AuthError("먼저 '카카오톡 연결'을 눌러 '카카오톡 메시지 전송'에 동의해 주세요.")
     _save(user, {**talk, "on": bool(on)})
     return status(token)
 
@@ -168,12 +244,12 @@ def send_to(user, outlook=None):
     return text
 
 
-def test(token):
-    """마이페이지 '지금 보내 보기'."""
+def test(token, outlook=None):
+    """마이페이지 '지금 보내 보기'. outlook: 대시보드가 이미 계산한 7일 예측 (있으면 다시 계산하지 않아 빠름)."""
     user = auth.user_of(token)
     if not ((user.get("app_metadata") or {}).get("kakao_talk") or {}).get("refresh_token"):
-        raise auth.AuthError("먼저 카카오로 다시 로그인해서 '카카오톡 메시지 전송'에 동의해 주세요.")
-    return {"sent": True, "text": send_to(_admin_user(user["id"]))}
+        raise auth.AuthError("먼저 '카카오톡 연결'을 눌러 '카카오톡 메시지 전송'에 동의해 주세요.")
+    return {"sent": True, "text": send_to(_admin_user(user["id"]), outlook)}
 
 
 def _admin_user(user_id):

@@ -246,7 +246,6 @@ if (SIGNUP_VIEW) {
     e.preventDefault();
     const name = $("#suName").value.trim(), id = $("#suId").value.trim(), pw = $("#suPw").value, store = $("#suStore").value.trim();
     const gu = $("#suGu").value;   // 대구 구 · 군만 받음 (살피는 대구 시세 서비스)
-    const place = ["대구", gu, $("#suPlaceMore").value.trim()].filter(Boolean).join(" ");
     if (!name) return fail("이름을 입력해 주세요.", $("#suName"));
     if (KAKAO_MODE) {
       if (!store) return fail("가게 이름을 입력해 주세요.", $("#suStore"));
@@ -254,7 +253,7 @@ if (SIGNUP_VIEW) {
       if (terms.some((t) => t.dataset.required !== undefined && !t.checked)) return fail("필수 약관에 동의해 주세요.");
       try {
         const r = await authCall("/api/auth/store", { token: pending.access_token, body: { name, store, district: gu,
-          place: $("#suPlaceMore").value.trim(), alarm: $("#suAlarm").checked, terms_ok: true } });
+          alarm: $("#suAlarm").checked, terms_ok: true } });
         if (!saveLogin(sessionToLogin({ ...pending, user: r.user }), true)) return fail("이 브라우저에서는 로그인 상태를 기억할 수 없어요.");
         try { sessionStorage.removeItem(OAUTH_KEY); } catch (err) {}
         location.replace(LOGIN_NEXT);
@@ -272,7 +271,7 @@ if (SIGNUP_VIEW) {
     if (btn) btn.disabled = true;
     try {
       const s = await authCall("/api/auth/signup", { body: { name, phone: phoneDigits(), login_id: id, password: pw, store, district: gu,
-        place: $("#suPlaceMore").value.trim(), alarm: $("#suAlarm").checked, terms_ok: true } });
+        alarm: $("#suAlarm").checked, terms_ok: true } });
       if (!saveLogin(sessionToLogin(s), true)) return fail("이 브라우저에서는 로그인 상태를 기억할 수 없어요.");
       location.replace(LOGIN_NEXT);
     } catch (err) {

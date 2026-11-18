@@ -23,7 +23,7 @@ KST = timezone(timedelta(hours=9))
 MODELS = [os.getenv("GEMINI_MODEL", "gemini-3.5-flash")] + [
     m.strip() for m in os.getenv("GEMINI_FALLBACK_MODELS", "gemini-3-flash-preview,gemini-flash-latest,gemini-3.5-flash-lite").split(",")
     if m.strip()]
-TARGET_RATIO = 30   # 목표 원가율(%)
+TARGET_RATIO = 40   # 원가율 기준(%): 자영업자 카페 답(30 · 35 · 40%) 중 가장 보수적 값 · 업계 평균 재료비 비중 40.7%
 # 대체 재료 후보 (값이 오르면 검토해 볼 만한 것만, 판단은 사장님이)
 # 바꿨을 때 원가 · 마진을 계산할 수 있는 것만 둠: ① 같은 무게로 바꿔 넣을 수 있고 (생채소 ↔ 생채소) ② 가격을 알 수 있음 (도매 시세 or 우리 가게 영수증)
 #   뺀 것 (11/16): 쪽파 · 돼지고기 뒷다리 = 가격 자료 없음 / 청양고추 → 건고추 · 고춧가루 = 생것과 마른 것이라 같은 무게로 못 바꿈
@@ -284,37 +284,70 @@ def cost_report(store_id=db.DEMO_STORE):
         parts.sort(key=lambda p: -p["cost"])
         risers = sorted((p for p in parts if p["cost_up"] >= 30), key=lambda p: -p["cost_up"])   # 1인분 30원 미만은 알릴 만큼 아님
         riser = risers[0] if risers else None
+        # 다음 주 예상 원가율: 시세가 있는 재료(야채)는 7일 예측만큼 단가가 바뀐다고 보고 다시 계산 (유저플로우 v2 왼쪽 갈래)
+        next_cost = cost
+        for p in parts:
+            fc = _wholesale(p["item"], cache)
+            if fc:
+                next_cost += p["_per"] * p["latest_price"] * fc["expected_change_pct"] / 100
+        next_ratio = round(next_cost / m["price"] * 100, 1) if m["price"] and ratio is not None else None
+        high = ratio is not None and (ratio >= TARGET_RATIO or (next_ratio or 0) >= TARGET_RATIO)
         if ratio is None:
             verdict = "가격 모름"
-        elif ratio <= TARGET_RATIO:
-            verdict = "충분해요"
-        elif ratio <= 35:
-            verdict = "빠듯해요"
+        elif ratio < TARGET_RATIO:
+            verdict = "괜찮아요" if (next_ratio or 0) < TARGET_RATIO else "다음 주 높아져요"
         else:
             verdict = "높아요"
-        # 순서: 대체 재료 추천 → 그 이유(오른 재료) → 판매가 제안
-        tips, swap = [], None
+        # 순서: 대체 재료 추천 → 그 이유(오른 재료) → 판매가 제안 (메뉴 제안은 모든 메뉴를 본 뒤 아래에서)
+        tips, swap, price_up = [], None, None
         why = lambda r: (f"{_josa(r['item'], '이', '가')} {r['since'][5:].replace('-', '/')} 이후 {r['change_pct']:+.0f}% 올라 "
                          f"1인분 재료비가 {r['cost_up']:,}원 늘었어요")
         # 많이 오른 재료부터: 바꿨을 때 원가를 계산할 수 있는 대체 재료가 있는 첫 재료 (화면의 '대체 재료 추천' 상자)
         for r in risers:
-            if (ratio or 0) > TARGET_RATIO or (r["change_pct"] or 0) >= 20:
+            if high or (r["change_pct"] or 0) >= 20:
                 swap = _swap(r, r["_per"], cost, m["price"], store_price, cache)
                 if swap:
                     swap["reason"] = why(r)
                     tips.append(f"{r['item']} 절반을 {_josa(swap['to'], '으로', '로')} 바꾸면 1인분 {swap['saving_per_serving']:,}원 아껴 "
                                 f"원가율 {ratio}% → {swap['new_ratio_pct']}%예요")
                     break
+        if high and not swap:   # 오른 재료에 대체 후보가 없으면(예: 돼지고기) 바꿀 수 있는 다른 재료 중 가장 많이 아끼는 것
+            for p in parts:
+                s = _swap(p, p["_per"], cost, m["price"], store_price, cache)
+                if s and (not swap or s["saving_per_serving"] > swap["saving_per_serving"]):
+                    swap = {**s, "reason": f"원가율이 {TARGET_RATIO}%를 넘어 바꿀 수 있는 재료부터 찾았어요"}
+            if swap:
+                tips.append(f"{swap['from']} 절반을 {_josa(swap['to'], '으로', '로')} 바꾸면 1인분 {swap['saving_per_serving']:,}원 아껴 "
+                            f"원가율 {ratio}% → {swap['new_ratio_pct']}%예요")
         if riser:
             tips.append(why(riser))
-        if ratio is not None and ratio > TARGET_RATIO:
-            tips.append(f"판매가를 {math.ceil(cost / (TARGET_RATIO / 100) / 500) * 500:,}원으로 올리면 원가율 {TARGET_RATIO}% 안쪽이에요")
+        if high:
+            base = max(cost, next_cost)   # 다음 주에 오를 것까지 버티는 값
+            new_price = math.ceil(base / (TARGET_RATIO / 100) / 500) * 500
+            if base / new_price * 100 >= TARGET_RATIO:
+                new_price += 500
+            price_up = {"price": new_price, "raise": new_price - m["price"], "new_ratio_pct": round(base / new_price * 100, 1),
+                        "new_margin": round(new_price - cost), "basis": "다음 주 예상 원가" if next_cost > cost + 1 else "지금 원가"}
+            tips.append(f"판매가를 {new_price:,}원으로 {new_price - m['price']:,}원 올리면 원가율 {price_up['new_ratio_pct']}%로 "
+                        f"{TARGET_RATIO}% 아래예요")
         out.append({"menu_id": m["menu_id"], "menu": m["menu_name"], "price": m["price"], "cost_per_serving": round(cost),
-                    "cost_ratio_pct": ratio, "margin": round(m["price"] - cost), "verdict": verdict,
-                    "items_without_price": m["items_without_price"], "top_items": [{k: v for k, v in p.items() if k != "_per"} for p in parts[:3]],
-                    "riser": {k: v for k, v in riser.items() if k != "_per"} if riser else None, "tips": tips, "swap": swap})
+                    "cost_ratio_pct": ratio, "next_ratio_pct": next_ratio, "margin": round(m["price"] - cost), "verdict": verdict,
+                    "high": high, "items_without_price": m["items_without_price"],
+                    "top_items": [{k: v for k, v in p.items() if k != "_per"} for p in parts[:3]],
+                    "riser": {k: v for k, v in riser.items() if k != "_per"} if riser else None, "tips": tips, "swap": swap,
+                    "price_up": price_up, "push_menu": None})
+    # 메뉴 제안: 원가율이 높은 메뉴가 있으면, 지금 · 다음 주 모두 40% 아래인 메뉴 중 한 그릇에 가장 많이 남는 메뉴를 밀어 보자고 제안
+    good = [x for x in out if x["cost_ratio_pct"] is not None and not x["high"]]
+    best = max(good, key=lambda x: x["margin"], default=None)
+    for x in out:
+        if x["high"] and best:
+            x["push_menu"] = {"menu": best["menu"], "margin": best["margin"], "cost_ratio_pct": best["cost_ratio_pct"],
+                              "next_ratio_pct": best["next_ratio_pct"], "margin_gap": best["margin"] - x["margin"]}
+            x["tips"].append(f"{_josa(best['menu'], '은', '는')} 한 그릇에 {best['margin']:,}원 남아요(원가율 {best['cost_ratio_pct']}%). "
+                             f"오늘의 메뉴 · 세트로 밀어 보세요")
     return {"target_ratio_pct": TARGET_RATIO, "menus": out,
-            "method": "재료마다 가장 최근 영수증 단가 × 1인분 양(손질 손실 포함). 판매가 제안은 500원 단위 올림"}
+            "method": "재료마다 가장 최근 영수증 단가 × 1인분 양(손질 손실 포함). 다음 주 예상은 야채만 7일 시세 예측 반영. "
+                      f"원가율 {TARGET_RATIO}% 이상(지금 또는 다음 주)이면 가격 조정 · 대체 재료 · 메뉴 제안. 판매가 제안은 500원 단위 올림"}
 
 
 def my_ingredients(store_id):

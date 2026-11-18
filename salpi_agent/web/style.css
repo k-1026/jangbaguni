@@ -899,6 +899,9 @@ a.my-link { color: inherit; text-decoration: none; }
 .my-link i, .my-receipts i { font-style: normal; color: var(--muted); font-size: 20px; }
 .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--outline-variant); cursor: pointer; }
 .my-card .toggle-row:last-child { padding-bottom: 0; }   /* 카드 아래 여백이 두 번 겹치지 않게 */
+#appBody > .toggle-row:first-child { border-top: 0; padding-top: 0; }   /* 제목 없는 '살피 앱' 카드: 맨 위 줄은 구분선 없이 */
+.toggle-row .btn { flex: none; min-width: 128px; white-space: nowrap; }   /* 설정 줄 오른쪽 버튼: 같은 크기 · 한 줄 */
+.toggle-row .btn.primary:disabled { opacity: 1; cursor: not-allowed; }   /* 아직 못 쓰는 버튼도 같은 초록색 (이유는 아래 회색 글로 안내) */
 .toggle-row b { display: block; font-size: 14px; } .toggle-row small { color: var(--muted); font-size: 12px; }
 /* 켜고 끄기 스위치 (머티리얼 스위치) */
 .switch { appearance: none; -webkit-appearance: none; flex: none; width: 48px; height: 28px; border-radius: 999px; background: var(--surface-variant); border: 2px solid #7A847D;

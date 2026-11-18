@@ -2527,8 +2527,6 @@ async function renderMypage(view) {
         <input type="checkbox" class="switch" data-pref="${k}" ${prefs[k] ? "checked" : ""}></label>`).join("")}
     </section>
     <section class="my-card" id="appCard">
-      <h4>살피 앱 · 알림</h4>
-      <p class="muted small">살피를 휴대폰에 앱으로 설치하고, 매일 아침 시세 알림을 휴대폰 알림으로 받아요.</p>
       <div id="appBody"><p class="muted small">확인하는 중이에요</p></div>
     </section>
     <section class="my-card" id="kakaoCard">
@@ -2605,7 +2603,7 @@ async function showAppPush() {
   const box = $("#appBody"), token = readLogin()?.access_token;
   if (!box) return;
   const install = IS_APP ? `<div class="toggle-row"><span><b>살피 앱</b><small>홈 화면 앱으로 쓰고 있어요</small></span><span class="perm-on">설치됨</span></div>`
-    : installPrompt ? `<div class="toggle-row"><span><b>살피 앱 설치</b><small>홈 화면에 살피 아이콘이 생기고 앱처럼 열려요</small></span>
+    : installPrompt ? `<div class="toggle-row"><span><b>살피 앱 설치</b><small>살피를 휴대폰에 앱으로 설치해요</small></span>
         <button class="btn primary" id="appInstall" type="button">앱 설치</button></div>`
     : IS_IOS ? `<div class="toggle-row"><span><b>살피 앱 설치 (아이폰)</b><small>Safari 아래 공유 버튼 → "홈 화면에 추가" → 그 앱에서 알림을 켜 주세요</small></span></div>`
     : `<div class="toggle-row"><span><b>살피 앱 설치</b><small>크롬 메뉴(⋮) → "앱 설치" 또는 "홈 화면에 추가"</small></span></div>`;
@@ -2625,8 +2623,9 @@ async function showAppPush() {
       <button class="btn" id="pushTest" type="button">보내기</button></div>`
     : Notification.permission === "denied"
       ? `<p class="rc-warn">알림이 막혀 있어요. 휴대폰 설정 → 앱(또는 크롬) → 살피 → 알림을 허용해 주세요.</p>`
-      : `<div class="toggle-row"><span><b>앱 알림</b><small>${st.ready ? "매일 아침 내 메뉴 재료 시세 · 원가율 알림을 휴대폰 알림으로 받아요" : "서버에 앱 알림 열쇠가 아직 없어요"}</small></span>
-          <button class="btn primary" id="pushOn" type="button" ${st.ready ? "" : "disabled"}>앱 알림 켜기</button></div>`);
+      : `<div class="toggle-row"><span><b>앱 알림</b><small>매일 아침 시세 알림을 휴대폰 알림으로 받아요.</small></span>
+          <button class="btn primary" id="pushOn" type="button" ${st.ready ? "" : "disabled"}>알림 켜기</button></div>
+        ${st.ready ? "" : `<p class="muted small">서버에 앱 알림 열쇠가 아직 없어요</p>`}`);
   if ($("#appInstall")) $("#appInstall").onclick = async () => { installPrompt.prompt(); await installPrompt.userChoice; installPrompt = null; showAppPush(); };
   if ($("#pushOn")) $("#pushOn").onclick = async () => {
     try {

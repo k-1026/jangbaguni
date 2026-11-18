@@ -2362,11 +2362,11 @@ async function loadJudge(id) {
   const box = $("#rcJudge");
   let j;
   try { j = await getJSON(`/api/price-judge?purchase_id=${id}`); }
-  catch (e) { box.innerHTML = `<p class="muted small">산 값 판정을 불러오지 못했어요</p>`; return; }
+  catch (e) { box.innerHTML = `<p class="muted small">구매가 점검을 불러오지 못했어요</p>`; return; }
   if (!box.isConnected) return;
   const notable = j.lines.filter((x) => x.verdict !== "비슷해요" && x.verdict !== "비교할 값 없음");
   const s = j.summary;
-  box.innerHTML = `<h4>산 값 판정</h4>
+  box.innerHTML = `<h4>구매가 점검</h4>
     ${notable.map((x) => `<p><span class="demand-chip ${JUDGE_CHIP[x.verdict] || ""}">${esc(x.verdict)}</span>
       <b>${esc(x.item)}</b> ${won(x.unit_price)}/${esc(x.unit)} · ${esc(x.why)}${x.extra_paid ? ` · 평소 값이면 <b>${won(x.extra_paid)}</b> 덜 냈어요` : ""}${x.saved ? ` · <b>${won(x.saved)}</b> 아꼈어요` : ""}</p>`).join("")}
     <p class="muted small">비슷해요 ${s.similar}개${notable.length ? "" : " · 모두 평소 값에 샀어요"} · 10% 안쪽은 비슷하다고 봐요</p>`;

@@ -978,9 +978,7 @@ a.my-link { color: inherit; text-decoration: none; }
 .mc-in input::placeholder, .mc-name::placeholder { color: #A5ABA7; }
 /* 입력칸도 비어 있으면 흐리게, 숫자를 넣으면 진하게 */
 .mc-in input:placeholder-shown { border-color: var(--outline-variant); background: #FBFCFA; }
-.mc-in input:not(:placeholder-shown) { border-color: #9DA59F; font-weight: 600; }
-.mc-row:has(.mc-in input:placeholder-shown) .mc-label { color: #A5ABA7; }
-.mc-in i { font-style: normal; color: var(--muted); font-size: 14px; white-space: nowrap; }
+.mc-in input:not(:placeholder-shown) { border-color: #9DA59F; font-weight: 600; }.mc-in i { font-style: normal; color: var(--muted); font-size: 14px; white-space: nowrap; }
 .mc-del { width: 30px; height: 30px; border: 0; border-radius: 50%; background: none; color: var(--muted); font-size: 20px; line-height: 1; }
 .mc-del:hover { background: #FFF0EE; color: var(--up); }
 

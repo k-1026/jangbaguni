@@ -175,6 +175,16 @@ def mobile_app():
     return FileResponse(WEB / "m" / "index.html", headers={"Cache-Control": "no-cache"})
 
 
+# 안드로이드 앱(android/, TWA)이 주소창 없이 열리려면 "이 사이트는 이 앱 것" 확인 파일이 필요
+# ANDROID_SHA256 = 앱 서명 지문(SHA-256, 콜론 포함). 여러 개면 쉼표로 (디버그 · 출시 열쇠). 없으면 빈 목록 → 앱은 주소창이 보인 채로 열림
+@app.get("/.well-known/assetlinks.json")
+def assetlinks():
+    prints = [x.strip().upper() for x in os.getenv("ANDROID_SHA256", "").split(",") if x.strip()]
+    return [{"relation": ["delegate_permission/common.handle_all_urls"],
+             "target": {"namespace": "android_app", "package_name": os.getenv("ANDROID_PACKAGE", "com.salpi.app"),
+                        "sha256_cert_fingerprints": prints}}] if prints else []
+
+
 @app.get("/manifest.webmanifest")
 def manifest():
     return FileResponse(WEB / "manifest.webmanifest", media_type="application/manifest+json")

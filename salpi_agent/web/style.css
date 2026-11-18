@@ -1039,7 +1039,7 @@ body.login-view .login-only, body.signup-view .signup-only { display: flex; }
 .login-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 0 0 22px; font-size: 13px; font-weight: 700; white-space: nowrap; }
 .login-keep { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; }
 .login-keep input { width: 17px; height: 17px; margin: 0; accent-color: var(--login-deep); }
-.login-links { display: flex; align-items: center; gap: 6px; }
+.login-links { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 14px; font-size: 12px; font-weight: 700; white-space: nowrap; }
 .login-links a { color: var(--ink); text-decoration: none; }
 .login-links a:hover { text-decoration: underline; }
 .login-links i { font-style: normal; color: var(--outline); }

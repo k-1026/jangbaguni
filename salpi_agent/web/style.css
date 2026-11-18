@@ -716,15 +716,15 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .rc-thumb:hover img { transform: scale(1.04); }
 .rc-thumb svg { width: 60px; height: 50px; fill: none; stroke: #9A9A9A; stroke-width: 2.5; }
 .rc-thumb svg circle, .rc-thumb svg path { fill: #9A9A9A; stroke: none; }
-/* 맨 앞 올리기 칸: 점선 + 연한 초록 + 더하기 표시 + 안내 글 → 눌러서 올리는 칸인 게 보이게 */
+/* 맨 앞 올리기 칸: 회색 점선 + 더하기 표시 + 안내 글 → 눌러서 올리는 칸인 게 보이게 */
 .rc-strip .rc-add-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 10px;
-  border: 2px dashed var(--primary); background: var(--primary-container); color: var(--primary); transition: background .15s, transform .15s; }
-.rc-strip .rc-add-tile:hover { background: #D6EBBF; transform: translateY(-2px); }
+  border: 2px dashed #BDBDBD; background: #F6F6F6; color: #6F6F6F; transition: background .15s, border-color .15s, transform .15s; }
+.rc-strip .rc-add-tile:hover { background: #EEEEEE; border-color: #8A8A8A; transform: translateY(-2px); }
 .rc-add-icon { position: relative; display: block; }
-.rc-add-tile .rc-add-icon svg { width: 48px; height: 40px; stroke: var(--primary); opacity: .55; }
-.rc-add-tile .rc-add-icon svg circle, .rc-add-tile .rc-add-icon svg path { fill: var(--primary); }
-.rc-add-icon i { position: absolute; right: -8px; bottom: -6px; width: 22px; height: 22px; border-radius: 50%; background: var(--primary); color: #fff;
-  font-style: normal; font-size: 17px; font-weight: 700; line-height: 22px; text-align: center; box-shadow: 0 0 0 2px var(--primary-container); }
+.rc-add-tile .rc-add-icon svg { width: 48px; height: 40px; stroke: #9A9A9A; }
+.rc-add-tile .rc-add-icon svg circle, .rc-add-tile .rc-add-icon svg path { fill: #9A9A9A; }
+.rc-add-icon i { position: absolute; right: -8px; bottom: -6px; width: 22px; height: 22px; border-radius: 50%; background: #7A7A7A; color: #fff;
+  font-style: normal; font-size: 17px; font-weight: 700; line-height: 22px; text-align: center; box-shadow: 0 0 0 2px #F6F6F6; }
 .rc-add-tile b { font-size: 13px; }
 .rc-add-tile small { font-size: 11px; color: var(--muted); }
 .rc-mini { display: flex; height: 100%; flex-direction: column; gap: 2px; padding: 10px 12px; background: #FFFDF8; color: var(--ink);

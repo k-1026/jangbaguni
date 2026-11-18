@@ -2538,7 +2538,7 @@ async function renderMypage(view) {
     </section>
     <section class="my-card" id="permCard">
       <h4>권한 설정</h4>
-      <p class="muted small">영수증을 카메라로 찍거나, 창을 닫아 둬도 시세 알림을 받으려면 권한이 필요해요.</p>
+      <p class="muted small">영수증 찍기와 시세 알림에 필요한 권한이에요.</p>
       <div class="toggle-row"><span><b>카메라</b><small id="camState">확인하는 중</small></span><span id="camAct"></span></div>
       <div class="toggle-row"><span><b>브라우저 알림</b><small id="notiState">확인하는 중</small></span><span id="notiAct"></span></div>
     </section>`;
@@ -2605,10 +2605,10 @@ async function showAppPush() {
   const box = $("#appBody"), token = readLogin()?.access_token;
   if (!box) return;
   const install = IS_APP ? `<div class="toggle-row"><span><b>살피 앱</b><small>홈 화면 앱으로 쓰고 있어요</small></span><span class="perm-on">설치됨</span></div>`
-    : installPrompt ? `<div class="toggle-row"><span><b>살피 앱 설치</b><small>살피를 휴대폰에 앱으로 설치해요</small></span>
+    : installPrompt ? `<div class="toggle-row"><span><b>앱 설치</b><small>살피를 휴대폰에 앱으로 설치해요</small></span>
         <button class="btn primary" id="appInstall" type="button">앱 설치</button></div>`
-    : IS_IOS ? `<div class="toggle-row"><span><b>살피 앱 설치 (아이폰)</b><small>Safari 아래 공유 버튼 → "홈 화면에 추가" → 그 앱에서 알림을 켜 주세요</small></span></div>`
-    : `<div class="toggle-row"><span><b>살피 앱 설치</b><small>크롬 메뉴(⋮) → "앱 설치" 또는 "홈 화면에 추가"</small></span></div>`;
+    : IS_IOS ? `<div class="toggle-row"><span><b>앱 설치 (아이폰)</b><small>Safari 아래 공유 버튼 → "홈 화면에 추가" → 그 앱에서 알림을 켜 주세요</small></span></div>`
+    : `<div class="toggle-row"><span><b>앱 설치</b><small>크롬 메뉴(⋮) → "앱 설치" 또는 "홈 화면에 추가"</small></span></div>`;
   if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
     box.innerHTML = install + `<p class="muted small">${IS_IOS && !IS_APP ? "아이폰은 홈 화면에 추가한 살피 앱에서만 알림을 켤 수 있어요." : "이 브라우저는 앱 알림을 쓸 수 없어요."}</p>`;
     return;

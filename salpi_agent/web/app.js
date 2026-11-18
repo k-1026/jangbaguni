@@ -113,6 +113,10 @@ if (!ITEM && PAGE === "oauth" && !SIGNED_IN) (async () => {
   const s = { access_token: h.get("access_token"), refresh_token: h.get("refresh_token"),
     expires_at: Number(h.get("expires_at")) || Math.floor(Date.now() / 1000) + Number(h.get("expires_in") || 3600) };
   try { s.user = await authCall("/api/auth/me", { method: "GET", token: s.access_token }); } catch (e) { return fail(e.message); }
+  // 카카오톡 시세 알림용 카카오 표 저장 ('카카오톡 메시지 전송'에 동의했을 때만 옴, 실패해도 로그인은 그대로)
+  if (h.get("provider_refresh_token")) {
+    try { await authCall("/api/kakao/connect", { token: s.access_token, body: { provider_token: h.get("provider_token") || "", provider_refresh_token: h.get("provider_refresh_token") } }); } catch (e) {}
+  }
   if (s.user.store_id) { saveLogin(sessionToLogin(s), true); return location.replace(LOGIN_NEXT); }
   try { sessionStorage.setItem(OAUTH_KEY, JSON.stringify(s)); } catch (e) {}
   location.replace(`/?page=signup&kakao=1&next=${encodeURIComponent(LOGIN_NEXT)}`);
@@ -2382,6 +2386,11 @@ async function renderMypage(view) {
         <span><b>${title}</b><small>${desc}</small></span>
         <input type="checkbox" class="switch" data-pref="${k}" ${prefs[k] ? "checked" : ""}></label>`).join("")}
     </section>
+    <section class="my-card" id="kakaoCard">
+      <h4>카카오톡 시세 알림</h4>
+      <p class="muted small">매일 아침 내 메뉴 재료의 다음 주 시세 · 원가율 40% 넘은 메뉴를 내 카카오톡 '나와의 채팅'으로 보내 드려요.</p>
+      <div id="kakaoBody"><p class="muted small">확인하는 중이에요</p></div>
+    </section>
     <section class="my-card" id="permCard">
       <h4>권한 설정</h4>
       <p class="muted small">영수증을 카메라로 찍거나, 창을 닫아 둬도 시세 알림을 받으려면 권한이 필요해요.</p>
@@ -2390,6 +2399,7 @@ async function renderMypage(view) {
     </section>`;
     showCameraPerm();
     showNotiPerm();
+    showKakao();
     return;
   }
   const draw = (me, offline) => { if ($("#mypage").classList.contains("open") && $("#mypageTitle").textContent === "마이페이지") box.innerHTML = myHome(me, offline); };
@@ -2422,6 +2432,35 @@ function myHome(me, offline) {
       <button class="my-link" type="button" data-account="logout"><span>로그아웃</span><i>›</i></button>
       <button class="my-link danger" type="button" data-account="leave"><span>회원탈퇴</span><i>›</i></button>
     </section>`;
+}
+
+// 카카오톡 시세 알림: 카카오 로그인 + '카카오톡 메시지 전송' 동의가 있으면 켜기 · 끄기 · 지금 보내 보기
+async function showKakao() {
+  const box = $("#kakaoBody"), token = readLogin()?.access_token;
+  if (!box) return;
+  let st;
+  try { st = await authCall("/api/kakao/status", { method: "GET", token }); }
+  catch (e) { box.innerHTML = `<p class="muted small">${esc(e.message)}</p>`; return; }
+  if (!st.kakao_login) { box.innerHTML = `<p class="muted small">카카오로 로그인한 계정만 받을 수 있어요.</p>`; return; }
+  if (!st.connected) {
+    box.innerHTML = `<div class="toggle-row"><span><b>아직 연결 전</b><small>카카오로 다시 로그인하고 '카카오톡 메시지 전송'에 동의해 주세요</small></span>
+      <button class="btn primary" id="kakaoRelogin" type="button">카카오로 연결</button></div>`;
+    $("#kakaoRelogin").onclick = () => location.assign(`/api/auth/kakao?talk=1&next=${encodeURIComponent("/?page=store")}`);
+    return;
+  }
+  box.innerHTML = `<label class="toggle-row"><span><b>매일 아침 받기</b><small>${st.last_sent ? `마지막으로 보낸 때 ${esc(st.last_sent.replace("T", " "))}` : "아직 보낸 적 없어요"}${st.last_error ? ` · 지난번 실패: ${esc(st.last_error)}` : ""}</small></span>
+      <input type="checkbox" class="switch" id="kakaoOn" ${st.on ? "checked" : ""}></label>
+    <div class="toggle-row"><span><b>지금 보내 보기</b><small id="kakaoTestMsg">${st.ready ? "내 카톡으로 지금 시세 알림을 보내요" : "서버에 카카오 키가 아직 없어요"}</small></span>
+      <button class="btn" id="kakaoTest" type="button" ${st.ready ? "" : "disabled"}>보내기</button></div>`;
+  $("#kakaoOn").onchange = async (e) => {
+    try { await authCall("/api/kakao/on", { token, body: { on: e.target.checked } }); } catch (err) { e.target.checked = !e.target.checked; }
+  };
+  $("#kakaoTest").onclick = async () => {
+    const msg = $("#kakaoTestMsg");
+    msg.textContent = "보내는 중이에요";
+    try { await authCall("/api/kakao/test", { token }); msg.textContent = "보냈어요. 카카오톡 '나와의 채팅'을 확인해 주세요"; }
+    catch (e) { msg.textContent = e.message; }
+  };
 }
 
 // 브라우저 알림 권한: 허용하면 새 시세 알림을 화면 밖(작업 표시줄 · 휴대폰 알림)으로도 띄움

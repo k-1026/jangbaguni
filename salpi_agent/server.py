@@ -26,6 +26,7 @@ import demand
 import forecast_log
 import forecast_model
 import foodspring
+import kakao_alert
 import mart_price
 import menus
 import price_judge
@@ -538,17 +539,54 @@ def auth_refresh(body: RefreshIn):
 
 
 @app.get("/api/auth/kakao")
-def auth_kakao(request: Request, next: str = "/"):
+def auth_kakao(request: Request, next: str = "/", talk: bool = False):
     """카카오 로그인 화면으로 보냄 (돌아올 곳 = 지금 사이트 주소)."""
     proto = request.headers.get("x-forwarded-proto") or request.url.scheme
     host = request.headers.get("x-forwarded-host") or request.headers.get("host")
-    return _auth(lambda: RedirectResponse(auth.kakao_url(f"{proto}://{host}", next), status_code=302))
+    return _auth(lambda: RedirectResponse(auth.kakao_url(f"{proto}://{host}", next, talk), status_code=302))
 
 
 @app.post("/api/auth/store")
 def auth_store(body: StoreSetupIn, authorization: str | None = Header(None)):
     """카카오로 처음 온 사장님의 가게 · 약관 한 번 받기."""
     return _auth(lambda: {"user": auth.setup_store(_bearer(authorization), body.model_dump())})
+
+
+class KakaoConnectIn(BaseModel):
+    provider_token: str = ""
+    provider_refresh_token: str = ""
+
+
+class KakaoOnIn(BaseModel):
+    on: bool
+
+
+@app.post("/api/kakao/connect")
+def kakao_connect(body: KakaoConnectIn, authorization: str | None = Header(None)):
+    """카카오 로그인에서 돌아온 카카오 표 저장 → 카카오톡 시세 알림을 보낼 수 있게."""
+    return _auth(lambda: kakao_alert.connect(_bearer(authorization), body.provider_token, body.provider_refresh_token))
+
+
+@app.get("/api/kakao/status")
+def kakao_status(authorization: str | None = Header(None)):
+    return _auth(lambda: kakao_alert.status(_bearer(authorization)))
+
+
+@app.post("/api/kakao/on")
+def kakao_on(body: KakaoOnIn, authorization: str | None = Header(None)):
+    return _auth(lambda: kakao_alert.set_on(_bearer(authorization), body.on))
+
+
+@app.post("/api/kakao/test")
+def kakao_test(authorization: str | None = Header(None)):
+    """마이페이지 '지금 보내 보기' — 내 카톡 '나와의 채팅'으로 지금 시세 알림."""
+    return _auth(lambda: kakao_alert.test(_bearer(authorization)))
+
+
+@app.post("/api/jobs/kakao")
+def jobs_kakao():
+    """예약 실행용: 아침 카카오톡 시세 알림 (매일 새벽 학습 · /api/jobs/daily 뒤에 불림). 한 사람에게 하루 한 번만."""
+    return _guard(lambda: kakao_alert.send_all(_price_outlook()))
 
 
 @app.get("/api/auth/me")

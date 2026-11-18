@@ -1,0 +1,12 @@
+# 안드로이드 스튜디오가 만드는 것 (올리지 않음)
+.gradle/
+.idea/
+build/
+app/build/
+local.properties
+*.iml
+captures/
+.cxx/
+# 서명 열쇠는 절대 올리지 않음
+*.jks
+*.keystore

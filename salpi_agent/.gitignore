@@ -1,3 +1,7 @@
 .venv/
 cache/
 __pycache__/
+.idea/
+# Firebase 서버 열쇠(서비스 계정) — 절대 올리지 않음. Vercel 환경 변수 FCM_SERVICE_ACCOUNT 로만
+*firebase-adminsdk*.json
+*service-account*.json

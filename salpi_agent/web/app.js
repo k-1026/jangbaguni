@@ -20,7 +20,7 @@ if (ITEM) {
   $("#itemPage").hidden = false;
 }
 // 로그인 상태: 서버(/api/auth/*, Supabase 로그인)가 준 로그인 표를 이 브라우저에 보관 → 서버에 'Authorization: Bearer' 로 보냄
-// '로그인 상태 유지'를 켜면 브라우저를 닫아도 유지(localStorage), 끄면 창을 닫으면 풀림(sessionStorage). 비밀번호는 보관하지 않음
+// '로그인 유지'를 켜면 브라우저를 닫아도 유지(localStorage), 끄면 창을 닫으면 풀림(sessionStorage). 비밀번호는 보관하지 않음
 const LOGIN_KEY = "salpi_login";
 function readLogin() {
   try { return JSON.parse(localStorage.getItem(LOGIN_KEY) || sessionStorage.getItem(LOGIN_KEY) || "null"); } catch (e) { return null; }
@@ -65,6 +65,18 @@ try {
   }
 } catch (e) {}
 const SIGNED_IN = !!readLogin();
+// 카카오톡 연결에서 돌아옴 (/api/kakao/callback → /?page=store&kakao=ok | kakao_err=이유): 결과를 기억하고 주소는 깨끗이
+(() => {
+  const q = new URLSearchParams(location.search);
+  if (!q.has("kakao") && !q.has("kakao_err")) return;
+  try {
+    if (q.get("kakao") === "ok") sessionStorage.setItem("salpi_kakao_ok", "1");
+    if (q.get("kakao_err")) sessionStorage.setItem("salpi_kakao_err", q.get("kakao_err"));
+    sessionStorage.setItem("salpi_kakao_show", "1");
+  } catch (e) {}
+  q.delete("kakao"); q.delete("kakao_err");
+  history.replaceState(null, "", `${location.pathname}${q.toString() ? `?${q}` : ""}${location.hash}`);
+})();
 const PAGE = new URLSearchParams(location.search).get("page");
 // 로그인 뒤 돌아갈 곳: 우리 사이트 안 주소(/ 로 시작)만 받음
 const safeNext = (u) => (u && u.startsWith("/") && !u.startsWith("//") ? u : "/");
@@ -106,13 +118,21 @@ $("#loginBtn").href = LOGIN_URL;
 // 카카오에서 돌아옴 (/?page=oauth#access_token=...): 가게가 있으면 바로 로그인, 처음이면 가게 정보만 받는 가입 화면으로
 const OAUTH_KEY = "salpi_oauth";   // 가게 정보를 받기 전까지 카카오 로그인 표를 잠깐 보관 (이 창에서만)
 const kakaoStart = () => location.assign(`/api/auth/kakao?next=${encodeURIComponent(LOGIN_NEXT)}`);
-if (!ITEM && PAGE === "oauth" && !SIGNED_IN) (async () => {
+// 이미 로그인한 사장님이 마이페이지 '카카오로 연결'(카카오톡 메시지 동의)로 돌아올 때도 여기를 지나야 카카오 표가 저장됨 (11/18 고침)
+if (!ITEM && PAGE === "oauth") (async () => {
   const h = new URLSearchParams(location.hash.slice(1));
   const fail = (m) => location.replace(`/?page=login&next=${encodeURIComponent(LOGIN_NEXT)}&err=${encodeURIComponent(m)}`);
   if (!h.get("access_token")) return fail(h.get("error_description") || "카카오 로그인을 하지 못했어요. 다시 해 주세요.");
   const s = { access_token: h.get("access_token"), refresh_token: h.get("refresh_token"),
     expires_at: Number(h.get("expires_at")) || Math.floor(Date.now() / 1000) + Number(h.get("expires_in") || 3600) };
   try { s.user = await authCall("/api/auth/me", { method: "GET", token: s.access_token }); } catch (e) { return fail(e.message); }
+  // 카카오톡 시세 알림용 카카오 표 저장 ('카카오톡 메시지 전송'에 동의했을 때만 옴, 실패해도 로그인은 그대로)
+  let linkErr = "";
+  if (h.get("provider_refresh_token")) {
+    try { await authCall("/api/kakao/connect", { token: s.access_token, body: { provider_token: h.get("provider_token") || "", provider_refresh_token: h.get("provider_refresh_token") } }); }
+    catch (e) { linkErr = e.message; }
+  } else linkErr = "카카오가 메시지 권한 표를 보내 주지 않았어요 ('카카오톡 메시지 전송' 동의를 확인해 주세요)";
+  try { if (sessionStorage.getItem("salpi_kakao_link")) { sessionStorage.removeItem("salpi_kakao_link"); if (linkErr) sessionStorage.setItem("salpi_kakao_err", linkErr); } } catch (e) {}
   if (s.user.store_id) { saveLogin(sessionToLogin(s), true); return location.replace(LOGIN_NEXT); }
   try { sessionStorage.setItem(OAUTH_KEY, JSON.stringify(s)); } catch (e) {}
   location.replace(`/?page=signup&kakao=1&next=${encodeURIComponent(LOGIN_NEXT)}`);
@@ -175,7 +195,7 @@ if (SIGNUP_VIEW) {
   const msg = authMsg($("#signupMsg"));
   const fail = (text, el) => { msg(text); el?.focus(); };
   eyeToggle($("#suEye"), $("#suPw"));
-  soonButtons($("#signupForm"), msg);   // 카카오 · 네이버 · 구글 가입은 아직 연결 전
+  soonButtons($("#signupForm"), msg);   // 아직 연결 전인 버튼은 '준비 중' 안내
   $("#signupToLogin").href = authLink("login");
   $("#suKakao").onclick = kakaoStart;
   // 카카오로 처음 온 사장님: 이름 · 가게 · 약관만 받음 (휴대폰 · 아이디 · 비밀번호는 카카오가 대신)
@@ -246,7 +266,6 @@ if (SIGNUP_VIEW) {
     e.preventDefault();
     const name = $("#suName").value.trim(), id = $("#suId").value.trim(), pw = $("#suPw").value, store = $("#suStore").value.trim();
     const gu = $("#suGu").value;   // 대구 구 · 군만 받음 (살피는 대구 시세 서비스)
-    const place = ["대구", gu, $("#suPlaceMore").value.trim()].filter(Boolean).join(" ");
     if (!name) return fail("이름을 입력해 주세요.", $("#suName"));
     if (KAKAO_MODE) {
       if (!store) return fail("가게 이름을 입력해 주세요.", $("#suStore"));
@@ -254,7 +273,7 @@ if (SIGNUP_VIEW) {
       if (terms.some((t) => t.dataset.required !== undefined && !t.checked)) return fail("필수 약관에 동의해 주세요.");
       try {
         const r = await authCall("/api/auth/store", { token: pending.access_token, body: { name, store, district: gu,
-          place: $("#suPlaceMore").value.trim(), alarm: $("#suAlarm").checked, terms_ok: true } });
+          alarm: $("#suAlarm").checked, terms_ok: true } });
         if (!saveLogin(sessionToLogin({ ...pending, user: r.user }), true)) return fail("이 브라우저에서는 로그인 상태를 기억할 수 없어요.");
         try { sessionStorage.removeItem(OAUTH_KEY); } catch (err) {}
         location.replace(LOGIN_NEXT);
@@ -272,7 +291,7 @@ if (SIGNUP_VIEW) {
     if (btn) btn.disabled = true;
     try {
       const s = await authCall("/api/auth/signup", { body: { name, phone: phoneDigits(), login_id: id, password: pw, store, district: gu,
-        place: $("#suPlaceMore").value.trim(), alarm: $("#suAlarm").checked, terms_ok: true } });
+        alarm: $("#suAlarm").checked, terms_ok: true } });
       if (!saveLogin(sessionToLogin(s), true)) return fail("이 브라우저에서는 로그인 상태를 기억할 수 없어요.");
       location.replace(LOGIN_NEXT);
     } catch (err) {
@@ -490,7 +509,7 @@ function itemSlide(r, idx) {
     <div>
       <h3>${esc(r.item)} 시세</h3>
       <p class="price-now"><strong>${won(r.wholesale_kg)}/kg</strong>
-        <span class="${cls(r.wholesale_change_pct, 3)}">1주 전보다 ${pct(r.wholesale_change_pct)}</span></p>
+        <span class="${cls(r.wholesale_change_pct, 3)}">1주 전보다 ${pct(r.wholesale_change_pct)}</span>${PER100_ITEMS.has(r.item) && r.wholesale_kg ? ` <span>· 100g ${won(r.wholesale_kg / 10)}</span>` : ""}</p>
     </div>
     <div class="legend">
       <span><i class="lg line"></i>도매 kg당</span><span><i class="lg fc"></i>7일 예측</span>
@@ -588,7 +607,9 @@ const extraByItem = (name) => extraList().find((r) => r.item === name);
 const extraRows = () => extraList().filter((r) => r.group === boardTab && r.price);
 const basisName = (r) => r.basis_label || (r.price_basis === "중도매" ? "북부도매시장 중도매가" : "대구 소매 평균");
 // 고기는 kg당 값이 커서 100g당 값도 같이 (정육점 표기와 같게)
-const per100 = (r) => (r.group === "육류" && r.unit === "kg" ? ` · 100g ${won(r.price / 10)}` : "");
+// 가지 · 레몬은 1개 무게 근거가 약하고 낱개로 사는 양이 적어 100g당이 더 와닿음
+const PER100_ITEMS = new Set(["가지", "레몬"]);
+const per100 = (r) => ((r.group === "육류" || PER100_ITEMS.has(r.item)) && r.unit === "kg" ? ` · 100g ${won(r.price / 10)}` : "");
 
 const extraExp = (r) => r.forecast?.expected_change_pct ?? 0;
 // 농산물 차트 · 예측 칸을 그대로 쓰도록 모양을 맞춤 (price → kg_price, expected_price_range → expected_kg_price_range)
@@ -1095,7 +1116,8 @@ function demandReason(factors) {
   if (v == null || Math.abs(v) < 0.02) return "평소와 비슷하게 팔릴 날이에요";
   const p = Math.round(Math.abs(v) * 100);
   if (name === "최근 2주 흐름") return `최근 2주 판매가 그 전보다 ${p}% ${v > 0 ? "늘었어요" : "줄었어요"}`;
-  return `${name}은 평소보다 ${p}% ${v > 0 ? "많이" : "적게"} 팔려요`;
+  if (name.endsWith("요일") || name === "공휴일") return `${name}은 평소보다 ${p}% ${v > 0 ? "많이" : "적게"} 팔려요`;
+  return `${name} 영향으로 평소보다 ${p}% ${v > 0 ? "많이" : "적게"} 팔릴 것 같아요`;   // 학습 모델 이유 (기온 · 삼성 홈경기 · 월급날 무렵 등)
 }
 
 const weekday = (s) => "일월화수목금토"[new Date(`${s}T00:00:00`).getDay()];
@@ -1122,7 +1144,7 @@ async function loadDemand() {
   const day = `${mmdd(d.target_date)}(${d.target_weekday})`;
   // 메뉴끼리 그릇 수를 막대 높이로 비교할 수 있게 같은 눈금을 씀 (위 여백은 숫자 자리)
   const max = Math.max(...d.menus.flatMap((m) => [m.predicted, ...m.recent.map((x) => x.qty)]), 1) * 1.2;
-  $("#storeBasis").textContent = `판매 기록 ${mmdd(d.last_sales_date)}까지`;
+  $("#storeBasis").textContent = `판매 기록 ${mmdd(d.last_sales_date)}까지${d.model ? " · 학습 모델 (가상 판매 기록)" : ""}`;
   $("#storeBasis").title = d.method;
   $("#menuForecast").innerHTML = `
     <div class="demand-top">
@@ -1439,11 +1461,48 @@ function renderReceiptEdit() {
       $("#receiptResult").innerHTML = `<p class="ok">${mmdd(r.date)} 영수증 ${r.saved_items}줄을 저장했어요. 위 메뉴별 원가율이 새로 계산됐어요.</p>`;
       renderCosts(r, true);
       loadCosts(false);
+      praiseIfSaved(r.purchase_id);
     },
   });
 }
 
-const ratioCls = (v) => (v == null ? "" : v > 35 ? "up" : v > 30 ? "warnc" : "down");
+// 칭찬 팝업: 새로 저장한 영수증에서 아낀 돈이 더 낸 돈보다 많을 때만 (나쁜 소식은 구매가 점검 칸에서만)
+// 배지는 "장보기 고수!" 하나로 통일 · 5초 뒤 저절로 닫히고 × 로 바로 닫을 수도 있음
+async function praiseIfSaved(id) {
+  if (!id) return;
+  let j;
+  try { j = await getJSON(`/api/price-judge?purchase_id=${id}`); } catch { return; }
+  praiseFrom(j);
+}
+
+// 구매가 점검 결과(j)로 아낀 돈 - 더 낸 돈을 계산해 이득이면 팝업 (새로 저장할 때 · 예전 영수증 열 때 둘 다)
+function praiseFrom(j) {
+  const net = (j.summary?.saved || 0) - (j.summary?.extra_paid || 0);
+  if (net <= 0) return;
+  const best = j.lines.filter((x) => x.saved > 0).sort((a, b) => b.saved - a.saved)[0];
+  showPraise(net, best);
+}
+
+function showPraise(net, best) {
+  document.querySelector(".praise-pop")?.remove();
+  const pop = document.createElement("div");
+  pop.className = "praise-pop";
+  pop.innerHTML = `<div class="praise-box" role="dialog" aria-label="칭찬 배지">
+    <button class="praise-x" type="button" aria-label="닫기">×</button>
+    <img src="/static/img/salpi_thumbsup.png" alt="엄지 척 하는 살피">
+    <span class="praise-badge">장보기 고수!</span>
+    <p class="praise-msg">이번 영수증에서 <b>${won(net)}</b> 아꼈어요!</p>
+    ${best ? `<p class="praise-best">가장 잘 산 품목 · ${esc(best.item)} <b>${won(best.saved)} 절약</b></p>` : ""}
+    <i class="praise-timer"></i></div>`;
+  document.body.append(pop);
+  let timer;
+  const close = () => { clearTimeout(timer); pop.classList.add("out"); setTimeout(() => pop.remove(), 200); };
+  timer = setTimeout(close, 5000);
+  pop.querySelector(".praise-x").onclick = close;
+  pop.onclick = (e) => { if (e.target === pop) close(); };
+}
+
+const ratioCls = (v) => (v == null ? "" : v >= 40 ? "up" : "down");   // 원가율 40% 기준 (유저플로우 v2)
 
 function renderCosts(r, withChange) {
   const T = r.target_ratio_pct;
@@ -1464,7 +1523,9 @@ function renderCosts(r, withChange) {
           <div><dt>1인분 재료비</dt><dd>${won(m.cost_per_serving)}</dd></div>
           <div><dt>남는 금액</dt><dd>${won(m.margin)}</dd></div>
         </dl>
-        ${m.swap ? `<div class="cost-swap">
+        ${m.next_ratio_pct != null && Math.abs(m.next_ratio_pct - v) >= 0.5 ? `<p class="cost-next">다음 주 예상 원가율 <b>${m.next_ratio_pct}%</b> (야채 시세 예측 반영)</p>` : ""}
+        ${m.high ? costPlan(m, T) : ""}
+        ${m.swap && !m.high ? `<div class="cost-swap">
           <b class="swap-title">대체 재료 제안</b>
           <div class="swap-body">
             <div class="swap-main">
@@ -1479,18 +1540,73 @@ function renderCosts(r, withChange) {
     <p class="muted small">레시피에 주재료만 들어 있어 실제보다 원가율이 조금 낮게 나와요.</p>`;
 }
 
-function receiptList(list) {
-  return `<h3 class="sub-h">최근 영수증</h3><ul class="ctx-list receipt-list">${list.map((p) => `<li>
-    <button class="rc-open" data-rid="${p.id}" title="사진과 품목 보기">${mmdd(p.purchased_on)} · ${esc(supplierName(p.supplier))} · ${p.items}줄 · ${won(p.total_amount)} <i>보기 ›</i></button>
-    <span class="rc-btns"><button class="rc-edit" data-eid="${p.id}" type="button">수정하기</button>
-    ${p.source === "ocr" ? `<button class="rc-remove" data-id="${p.id}" type="button">지우기</button>` : `<small>기본 데이터</small>`}</span></li>`).join("")}</ul>`;
+// 원가율 40% 이상(지금 또는 다음 주): 마진 지키는 방법 세 가지를 함께 보여 줌 — 고르는 건 사장님 (유저플로우 v2)
+function costPlan(m, T) {
+  const p = m.price_up, s = m.swap, k = m.push_menu;
+  return `<div class="cost-plan">
+    <b class="swap-title">마진 지키는 방법 3가지 <small>원가율 ${T}% 이상</small></b>
+    <ol>
+      <li><b>가격 조정</b> ${p ? `판매가 ${won(m.price)} → <b>${won(p.price)}</b> (+${won(p.raise)}) · 원가율 ${p.new_ratio_pct}% · 남는 돈 ${won(p.new_margin)}${p.basis === "다음 주 예상 원가" ? " · 다음 주 오를 값까지 반영" : ""}` : "계산할 수 없어요"}</li>
+      <li><b>대체 재료</b> ${s ? `${esc(s.from)} ${s.share_pct}%를 <b>${esc(s.to)}</b>(으)로 바꾸면 1인분 ${won(s.saving_per_serving)} 아껴 원가율 ${s.new_ratio_pct}%` : "지금은 바꿀 만한 재료가 없어요 (후보 재료도 다음 주에 오를 예정이거나 값을 몰라요)"}</li>
+      <li><b>메뉴 제안</b> ${k ? `<b>${esc(k.menu)}</b>를 밀어 보세요 · 한 그릇에 ${won(k.margin)} 남아요 (원가율 ${k.cost_ratio_pct}%)` : "원가율이 괜찮은 다른 메뉴가 없어요"}</li>
+    </ol>
+  </div>`;
 }
+
+// 최근 영수증: 사진 카드 한 줄 (맨 앞 = 새 영수증 올리기 칸) · 양옆 작은 화살표로 넘김
+const RC_PIC = `<svg viewBox="0 0 48 40" aria-hidden="true"><rect x="2" y="2" width="44" height="36" rx="1.5"/><circle cx="11" cy="11" r="3.5"/><path d="M5 35l12-15 7 8 8-12 11 19z"/></svg>`;
+// 사진이 없는 영수증: 품목 몇 줄 · 합계로 작은 영수증 모양을 그려 넣음 (올리기 칸과 헷갈리지 않게)
+const rcMini = (p) => `<span class="rc-mini" aria-hidden="true">
+  <b>${esc(supplierName(p.supplier))}</b><small>${mmdd(p.purchased_on)}</small>
+  ${(p.names || []).slice(0, 3).map((n) => `<i>${esc(n)}</i>`).join("")}${p.items > 3 ? `<i class="more">외 ${p.items - 3}줄</i>` : ""}
+  <em>합계 ${won(p.total_amount)}</em></span>`;
+const RC_TRASH = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4.5h6V7M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>`;
+function receiptList(list) {
+  const cards = list.map((p) => `<li class="rc-card" data-id="${p.id}">
+    <span class="rc-check" aria-hidden="true"></span>
+    <button class="rc-open rc-thumb" data-rid="${p.id}" type="button" title="사진과 품목 보기">
+      ${p.image_url ? `<img src="${esc(p.image_url)}" alt="${mmdd(p.purchased_on)} 영수증 사진" loading="lazy">` : rcMini(p)}
+    </button>
+    <div class="rc-meta"><span class="rc-date">${+p.purchased_on.slice(5, 7)}월 ${+p.purchased_on.slice(8, 10)}일</span>
+      <b title="${esc(supplierName(p.supplier))}">${esc(supplierName(p.supplier))}</b><span class="rc-price">${won(p.total_amount)}</span></div></li>`).join("");
+  return `<div class="rc-head"><h3 class="sub-h">최근 영수증</h3>
+      ${list.length ? `<span class="rc-tools">
+        <button class="rc-trash" type="button" title="여러 장 골라서 지우기" aria-label="여러 장 골라서 지우기">${RC_TRASH}</button>
+        <span class="rc-sel-bar"><span class="rc-sel-count">지울 영수증을 골라 주세요</span>
+          <button class="rc-remove rc-sel-del" type="button" disabled>지우기</button><button class="rc-sel-cancel" type="button">취소</button></span>
+      </span>` : ""}</div>
+    <div class="rc-strip-wrap">
+      <button class="rc-arrow prev" type="button" aria-label="앞 영수증 보기" disabled><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 6l-6 6 6 6"/></svg></button>
+      <ul class="rc-strip">
+        <li class="rc-card"><button class="rc-thumb rc-add-tile" type="button" title="눌러서 영수증 사진 · PDF 올리기">
+          <span class="rc-add-icon">${RC_PIC}<i aria-hidden="true">+</i></span><b>영수증 올리기</b><small>눌러서 사진 · PDF 선택</small></button></li>
+        ${cards}
+      </ul>
+      <button class="rc-arrow next" type="button" aria-label="다음 영수증 보기" disabled><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>
+    </div>`;
+}
+// 화살표: 더 넘길 게 없으면 흐리게 (자리는 그대로라 줄이 흔들리지 않음)
+function rcArrows() {
+  const s = $("#receiptList .rc-strip");
+  if (!s) return;
+  const max = s.scrollWidth - s.clientWidth - 2;
+  $("#receiptList .rc-arrow.prev").disabled = s.scrollLeft <= 2;
+  $("#receiptList .rc-arrow.next").disabled = s.scrollLeft >= max;
+}
+function showReceiptList(list) {
+  $("#receiptList").classList.remove("selecting");
+  $("#receiptList").innerHTML = receiptList(list);
+  rcArrows();
+  document.querySelectorAll("#receiptList .rc-strip img").forEach((i) => i.addEventListener("load", rcArrows, { once: true }));
+}
+$("#receiptList").addEventListener("scroll", rcArrows, true);
+addEventListener("resize", rcArrows);
 
 async function loadCosts(full = true) {
   try {
     const r = await getJSON("/api/costs");
     if (full) renderCosts(r, false);
-    $("#receiptList").innerHTML = receiptList(r.receipts);
+    showReceiptList(r.receipts);
   } catch (e) {
     if (full) $("#costCard").innerHTML = `<p class="muted">원가율을 불러오지 못했어요. ${esc(e.message)}</p>`;
   }
@@ -1631,7 +1747,7 @@ async function stopMenu(m) {
 function afterMenuChange(r, text) {
   renderCosts(r, false);
   $("#costCard").insertAdjacentHTML("afterbegin", `<p class="ok">${esc(text)}</p>`);
-  $("#receiptList").innerHTML = receiptList(r.receipts);
+  showReceiptList(r.receipts);
   loadMyItems();
   loadDemand();
 }
@@ -1705,15 +1821,41 @@ function closeCamera() { stopCamera(); $("#cameraModal").hidden = true; }
 $("#cameraBtn").onclick = openCamera;
 $("#cameraClose").onclick = closeCamera;
 $("#cameraModal").onclick = (e) => { if (e.target.id === "cameraModal") closeCamera(); };
+// 휴지통 → 고르기 모드: 카드 오른쪽 위 체크 칸으로 여러 장 골라 한 번에 지우기
+const rcPicked = () => [...document.querySelectorAll("#receiptList .rc-card.picked")].map((li) => li.dataset.id);
+function rcSelectMode(on) {
+  $("#receiptList").classList.toggle("selecting", on);
+  document.querySelectorAll("#receiptList .rc-card.picked").forEach((li) => li.classList.remove("picked"));
+  rcSelCount();
+}
+function rcSelCount() {
+  const n = rcPicked().length;
+  $("#receiptList .rc-sel-count").textContent = n ? `${n}장 골랐어요` : "지울 영수증을 골라 주세요";
+  $("#receiptList .rc-sel-del").disabled = !n;
+}
+async function rcDeletePicked() {
+  const ids = rcPicked();
+  if (!ids.length || !confirm(`영수증 ${ids.length}장을 지울까요? 원가율이 다시 계산돼요.`)) return;
+  $("#receiptList .rc-sel-del").disabled = true;
+  const res = await Promise.allSettled(ids.map((id) => sendJSON(`/api/receipt/${id}`, "DELETE")));
+  const fail = res.filter((x) => x.status === "rejected").length;
+  if (fail) alert(`${ids.length}장 중 ${fail}장은 지우지 못했어요. 잠시 뒤 다시 해 주세요.`);
+  loadCosts(true);   // 원가율 · 사진 줄을 한 번에 새로 (고르기 모드도 풀림)
+}
 $("#receiptList").onclick = async (e) => {
+  if (e.target.closest(".rc-trash")) return rcSelectMode(true);
+  if (e.target.closest(".rc-sel-cancel")) return rcSelectMode(false);
+  if (e.target.closest(".rc-sel-del")) return rcDeletePicked();
+  const ar = e.target.closest(".rc-arrow");
+  if (ar) { const s = $("#receiptList .rc-strip"); return s.scrollBy({ left: (ar.classList.contains("next") ? 1 : -1) * s.clientWidth * 0.8, behavior: "smooth" }); }
+  if ($("#receiptList").classList.contains("selecting")) {   // 고르기 모드: 카드를 누르면 체크만
+    const li = e.target.closest(".rc-card[data-id]");
+    if (li) { li.classList.toggle("picked"); rcSelCount(); }
+    return;
+  }
+  if (e.target.closest(".rc-add-tile")) return $("#receiptFile").click();   // 맨 앞 그림 칸 = 새 영수증 올리기
   const o = e.target.closest(".rc-open");
-  if (o) return openReceipt(o.dataset.rid);
-  const ed = e.target.closest(".rc-edit");
-  if (ed) return openReceipt(ed.dataset.eid, true);
-  const b = e.target.closest(".rc-remove");
-  if (!b || !confirm("이 영수증을 지울까요? 원가율이 다시 계산돼요.")) return;
-  try { renderCosts(await sendJSON(`/api/receipt/${b.dataset.id}`, "DELETE"), false); loadCosts(false); }
-  catch (err) { alert(err.message); }
+  if (o) return openReceipt(o.dataset.rid);   // 수정하기 · 지우기는 열린 창 안에
 };
 
 // ---------------------------------------------------------------
@@ -2254,10 +2396,46 @@ function showReceiptView(id, d) {
           <tbody>${d.items.map((x) => `<tr><td>${esc(x.raw_name)}</td><td>${esc(x.item || "재료 아님")}</td><td>${qtyTxt(x)}</td>
             <td class="price">${won(x.amount)}</td><td>${x.unit_price ? won(x.unit_price) : "-"}</td></tr>`).join("")}</tbody>
         </table>
-        <div class="receipt-actions"><button class="btn primary" id="rcViewEdit" type="button">수정하기</button></div>
       </div>
-    </div>`;
+    </div>
+    <!-- 구매가 점검: 창 전체 폭 (한 품목 한 줄이 잘리지 않게) -->
+    <div class="rc-judge" id="rcJudge"><p class="muted small">구매가를 평소 단가 · 대구 시세와 비교하는 중이에요</p></div>
+    <div class="receipt-actions rc-view-btns"><button class="rc-edit" id="rcViewEdit" type="button">수정하기</button>
+      <button class="rc-remove" id="rcViewDel" type="button">지우기</button></div>`;
   $("#rcViewEdit").onclick = () => editReceiptView(id, d);
+  $("#rcViewDel").onclick = async () => {
+    if (!confirm("이 영수증을 지울까요? 원가율이 다시 계산돼요.")) return;
+    try { afterReceiptDelete(await sendJSON(`/api/receipt/${id}`, "DELETE")); closeReceipt(); }
+    catch (err) { alert(err.message); }
+  };
+  loadJudge(id);
+}
+// 영수증을 지운 뒤: 나의 가게면 원가율 · 사진 줄, 마이페이지 '나의 영수증'이 열려 있으면 그 목록도 새로
+function afterReceiptDelete(r) {
+  if (STORE_VIEW) { renderCosts(r, false); loadCosts(false); }
+  if ($("#mypage")?.classList.contains("open") && $("#mypageTitle").textContent === "나의 영수증") renderMypage("receipts");
+}
+
+// 싸게/비싸게 판정 (/api/price-judge): 비싸게 · 시세 오름 · 싸게 산 품목만 한 줄씩, 나머지는 "비슷해요 N개"
+const JUDGE_CHIP = { "비싸게 샀어요": "up", "싸게 샀어요": "down" };
+async function loadJudge(id) {
+  const box = $("#rcJudge");
+  let j;
+  try { j = await getJSON(`/api/price-judge?purchase_id=${id}`); }
+  catch (e) { box.innerHTML = `<p class="muted small">구매가 점검을 불러오지 못했어요</p>`; return; }
+  if (!box.isConnected) return;
+  const notable = j.lines.filter((x) => x.verdict !== "비슷해요" && x.verdict !== "비교할 값 없음");
+  // 한 품목 = 한 줄: 판정 | 재료 | 단가 | 이유(짧은 말로) | 더 낸 돈 · 아낀 돈 — 글자를 자르지 않고 줄마다 칸을 맞춤
+  const shortWhy = (w) => w.replace("우리 가게 평소보다", "평소보다").replace("우리 가게 평소와", "평소와").replace(/대구 소매 평균/g, "소매가");
+  const money = (x) => (x.extra_paid ? `<span class="jm up">${won(x.extra_paid)} 과지출</span>`
+    : x.saved ? `<span class="jm down">${won(x.saved)} 절약</span>` : `<span class="jm"></span>`);
+  box.innerHTML = `<h4>구매가 점검</h4>
+    ${notable.length ? `<div class="judge-rows">${notable.map((x) => `<div class="judge-row">
+      <span class="demand-chip ${JUDGE_CHIP[x.verdict] || ""}">${esc(x.verdict)}</span>
+      <b class="ji">${esc(x.item)}</b><span class="jp">${won(x.unit_price)}/${esc(x.unit)}</span>
+      <span class="jw">${esc(shortWhy(x.why))}</span>${money(x)}</div>`).join("")}</div>` : ""}
+    ${notable.length ? "" : `<p class="muted small">모두 평소 값에 샀어요</p>`}`;   // 눈에 띄는 품목이 없을 때만 한 줄 (칸이 비지 않게)
+  praiseFrom(j);   // 예전 영수증을 열 때도 이득이면 칭찬 팝업
 }
 
 // 저장한 영수증 고치기: 왼쪽에 사진(있으면)을 띄워 두고 오른쪽 표에서 바로 고침
@@ -2288,7 +2466,8 @@ $("#receiptModal").onclick = (e) => { if (e.target.id === "receiptModal") closeR
 // ---------------------------------------------------------------
 // 마이페이지: 로그인한 사장님 정보(/api/auth/me) · 나의 영수증 · 설정(알림 · 권한) · 계정
 // ---------------------------------------------------------------
-if (STORE_VIEW) $("#storeName").textContent = `나의 가게 · ${readLogin()?.store || "내 가게"}`;
+// 제목: "<가게 이름> 사장님의 가게" — 가게 이름만 굵게 (가게 이름이 없으면 "나의 가게" 그대로)
+if (STORE_VIEW && readLogin()?.store) $("#storeName").innerHTML = `<b>${esc(readLogin().store)}</b> 사장님의 가게`;
 // 휴대폰 번호는 가운데를 가려서 보여 줌 (01012345678 → 010-****-5678)
 const maskPhone = (p) => (p && p.length >= 10 ? `${p.slice(0, 3)}-****-${p.slice(-4)}` : "");
 // 마이페이지는 기억해 둔 정보로 바로 그리고 → 서버(/api/auth/me) 답이 오면 기억을 고치고 다시 그림 (빈 화면으로 기다리지 않게)
@@ -2347,14 +2526,26 @@ async function renderMypage(view) {
         <span><b>${title}</b><small>${desc}</small></span>
         <input type="checkbox" class="switch" data-pref="${k}" ${prefs[k] ? "checked" : ""}></label>`).join("")}
     </section>
+    <section class="my-card" id="appCard">
+      <h4>살피 앱</h4>
+      <div id="appBody"><p class="muted small">확인하는 중이에요</p></div>
+    </section>
+    <section class="my-card" id="kakaoCard">
+      <h4>카카오톡 시세 알림</h4>
+      <p class="muted small">매일 아침 내 카카오톡 '나와의 채팅'으로 보내 드려요.</p>
+      <ul class="my-bullets"><li>내 메뉴 재료의 다음 주 시세</li><li>원가율 40% 넘은 메뉴</li></ul>
+      <div id="kakaoBody"><p class="muted small">확인하는 중이에요</p></div>
+    </section>
     <section class="my-card" id="permCard">
       <h4>권한 설정</h4>
-      <p class="muted small">영수증을 카메라로 찍거나, 창을 닫아 둬도 시세 알림을 받으려면 권한이 필요해요.</p>
+      <p class="muted small">영수증 찍기와 시세 알림에 필요한 권한이에요.</p>
       <div class="toggle-row"><span><b>카메라</b><small id="camState">확인하는 중</small></span><span id="camAct"></span></div>
       <div class="toggle-row"><span><b>브라우저 알림</b><small id="notiState">확인하는 중</small></span><span id="notiAct"></span></div>
     </section>`;
     showCameraPerm();
     showNotiPerm();
+    showAppPush();
+    showKakao();
     return;
   }
   const draw = (me, offline) => { if ($("#mypage").classList.contains("open") && $("#mypageTitle").textContent === "마이페이지") box.innerHTML = myHome(me, offline); };
@@ -2382,7 +2573,7 @@ function myHome(me, offline) {
       <button class="my-link" data-view="receipts"><span>나의 영수증</span><i>›</i></button>
     </section>
     <section class="my-card">
-      <button class="my-link" type="button" data-view="settings"><span>설정 <small class="muted">알림 · 권한</small></span><i>›</i></button>
+      <button class="my-link" type="button" data-view="settings"><span>설정 <small>알림 · 권한</small></span><i>›</i></button>
     </section>
     <section class="my-card my-account">
       <button class="my-link" type="button" data-account="logout"><span>로그아웃</span><i>›</i></button>
@@ -2582,6 +2773,121 @@ function costClick(e) {
   saveCosts(c);
   drawCost(focus);
   return true;
+}
+
+// ---------------------------------------------------------------
+// 설치형 앱 (PWA): 백그라운드 작업 등록 · "앱 설치" 버튼 · 앱 알림 켜기
+// ---------------------------------------------------------------
+let installPrompt = null;
+const IS_APP = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;   // 홈 화면 앱으로 열었나
+const IS_IOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
+addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installPrompt = e; if ($("#appBody")) showAppPush(); });
+addEventListener("appinstalled", () => { installPrompt = null; if ($("#appBody")) showAppPush(); });
+
+const b64ToBytes = (s) => {
+  const raw = atob((s + "=".repeat((4 - (s.length % 4)) % 4)).replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from(raw, (c) => c.charCodeAt(0));
+};
+async function mySub() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return null;
+  const reg = await navigator.serviceWorker.getRegistration("/");
+  return reg ? reg.pushManager.getSubscription() : null;
+}
+
+// 마이페이지 › 설정 › "살피 앱 · 알림"
+async function showAppPush() {
+  const box = $("#appBody"), token = readLogin()?.access_token;
+  if (!box) return;
+  const install = IS_APP ? `<div class="toggle-row"><span><b>살피 앱</b><small>홈 화면 앱으로 쓰고 있어요</small></span><span class="perm-on">설치됨</span></div>`
+    : installPrompt ? `<div class="toggle-row"><span><b>앱 설치</b><small>살피를 휴대폰에 앱으로 설치해요</small></span>
+        <button class="btn primary" id="appInstall" type="button">앱 설치</button></div>`
+    : IS_IOS ? `<div class="toggle-row"><span><b>앱 설치 (아이폰)</b><small>Safari 아래 공유 버튼 → "홈 화면에 추가" → 그 앱에서 알림을 켜 주세요</small></span></div>`
+    : `<div class="toggle-row"><span><b>앱 설치</b><small>크롬 메뉴(⋮) → "앱 설치" 또는 "홈 화면에 추가"</small></span></div>`;
+  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+    box.innerHTML = install + `<p class="muted small">${IS_IOS && !IS_APP ? "아이폰은 홈 화면에 추가한 살피 앱에서만 알림을 켤 수 있어요." : "이 브라우저는 앱 알림을 쓸 수 없어요."}</p>`;
+    return;
+  }
+  let st;
+  try { st = await authCall("/api/push/status", { method: "GET", token }); }
+  catch (e) { box.innerHTML = install + `<p class="muted small">${esc(e.message)}</p>`; return; }
+  const sub = await mySub().catch(() => null);
+  const on = !!sub && Notification.permission === "granted";
+  box.innerHTML = install + (on ? `
+    <div class="toggle-row"><span><b>앱 알림 켜짐</b><small>${st.last_sent ? `마지막 알림 ${esc(st.last_sent.replace("T", " "))}` : "매일 아침 시세 알림이 이 기기로 와요"}${st.devices > 1 ? ` · 기기 ${st.devices}대` : ""}</small></span>
+      <button class="btn" id="pushOff" type="button">끄기</button></div>
+    <div class="toggle-row"><span><b>지금 보내 보기</b><small id="pushMsg">이 계정의 기기로 지금 알림을 보내요</small></span>
+      <button class="btn" id="pushTest" type="button">보내기</button></div>`
+    : Notification.permission === "denied"
+      ? `<p class="rc-warn">알림이 막혀 있어요. 휴대폰 설정 → 앱(또는 크롬) → 살피 → 알림을 허용해 주세요.</p>`
+      : `<div class="toggle-row"><span><b>앱 알림</b><small>매일 아침 시세 알림을 휴대폰 알림으로 받아요.</small></span>
+          <button class="btn primary" id="pushOn" type="button" ${st.ready ? "" : "disabled"}>알림 켜기</button></div>
+        ${st.ready ? "" : `<p class="muted small">서버에 앱 알림 열쇠가 아직 없어요</p>`}`);
+  if ($("#appInstall")) $("#appInstall").onclick = async () => { installPrompt.prompt(); await installPrompt.userChoice; installPrompt = null; showAppPush(); };
+  if ($("#pushOn")) $("#pushOn").onclick = async () => {
+    try {
+      if ((await Notification.requestPermission()) !== "granted") return showAppPush();
+      const reg = await navigator.serviceWorker.register("/sw.js");
+      await navigator.serviceWorker.ready;
+      const s = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(st.public_key) });
+      await authCall("/api/push/subscribe", { token, body: s.toJSON() });
+      showAppPush();
+    } catch (e) { box.insertAdjacentHTML("beforeend", `<p class="rc-warn">앱 알림을 켜지 못했어요: ${esc(e.message)}</p>`); }
+  };
+  if ($("#pushOff")) $("#pushOff").onclick = async () => {
+    try { await authCall("/api/push/unsubscribe", { token, body: { endpoint: sub.endpoint } }); await sub.unsubscribe(); } catch (e) {}
+    showAppPush();
+  };
+  if ($("#pushTest")) $("#pushTest").onclick = async () => {
+    const msg = $("#pushMsg");
+    msg.textContent = "보내는 중이에요";
+    try { const r = await authCall("/api/push/test", { token }); msg.textContent = `보냈어요 (기기 ${r.sent}대). 휴대폰 알림을 확인해 주세요`; }
+    catch (e) { msg.textContent = e.message; }
+  };
+}
+
+// 카카오톡 시세 알림: 카카오 로그인 + '카카오톡 메시지 전송' 동의가 있으면 켜기 · 끄기 · 지금 보내 보기
+async function showKakao() {
+  const box = $("#kakaoBody"), token = readLogin()?.access_token;
+  if (!box) return;
+  let st;
+  try { st = await authCall("/api/kakao/status", { method: "GET", token }); }
+  catch (e) { box.innerHTML = `<p class="muted small">${esc(e.message)}</p>`; return; }
+  // 카카오에서 돌아온 결과 (/api/kakao/callback → ?kakao=ok · kakao_err=이유) — 한 번만 보여 줌
+  let done = "", err = "";
+  try { done = sessionStorage.getItem("salpi_kakao_ok") || ""; err = sessionStorage.getItem("salpi_kakao_err") || "";
+        sessionStorage.removeItem("salpi_kakao_ok"); sessionStorage.removeItem("salpi_kakao_err"); } catch (e) {}
+  if (!st.connected) {
+    // 아이디로 가입한 사장님도 됨: 살피 로그인은 그대로, 카카오톡 권한만 붙임
+    box.innerHTML = `<div class="toggle-row"><span><b>아직 연결 전</b><small>카카오톡 연결 후 동의하면 받아요.</small></span>
+      <button class="btn primary" id="kakaoLink" type="button" ${st.ready ? "" : "disabled"}>카카오톡 연결</button></div>
+      ${st.ready ? "" : `<p class="muted small">서버에 카카오 키가 아직 없어요</p>`}
+      ${err ? `<p class="rc-warn">연결하지 못했어요: ${esc(err)}</p>` : ""}`;
+    $("#kakaoLink").onclick = async () => {
+      try { location.assign((await authCall("/api/kakao/link", { token })).url); }
+      catch (e) { box.insertAdjacentHTML("beforeend", `<p class="rc-warn">${esc(e.message)}</p>`); }
+    };
+    return;
+  }
+  box.innerHTML = `${done ? `<p class="ok">카카오톡과 연결했어요. '지금 보내 보기'로 확인해 보세요</p>` : ""}
+    <label class="toggle-row"><span><b>매일 아침 받기</b><small>${st.last_sent ? `마지막으로 보낸 때 ${esc(st.last_sent.replace("T", " "))}` : "아직 보낸 적 없어요"}${st.last_error ? ` · 지난번 실패: ${esc(st.last_error)}` : ""}</small></span>
+      <input type="checkbox" class="switch" id="kakaoOn" ${st.on ? "checked" : ""}></label>
+    <div class="toggle-row"><span><b>지금 보내 보기</b><small id="kakaoTestMsg">${st.ready ? "내 카톡으로 지금 시세 알림을 보내요" : "서버에 카카오 키가 아직 없어요"}</small></span>
+      <button class="btn" id="kakaoTest" type="button" ${st.ready ? "" : "disabled"}>보내기</button></div>
+    <div class="toggle-row"><span><b>연결 끊기</b><small>카카오톡 알림을 그만 받고 저장한 카카오 권한을 지워요</small></span>
+      <button class="btn" id="kakaoUnlink" type="button">끊기</button></div>`;
+  $("#kakaoOn").onchange = async (e) => {
+    try { await authCall("/api/kakao/on", { token, body: { on: e.target.checked } }); } catch (err) { e.target.checked = !e.target.checked; }
+  };
+  $("#kakaoTest").onclick = async () => {
+    const msg = $("#kakaoTestMsg");
+    msg.textContent = "보내는 중이에요";
+    try { await authCall("/api/kakao/test", { token }); await showKakao(); $("#kakaoTestMsg").textContent = "보냈어요. 카카오톡 '나와의 채팅'을 확인해 주세요 (카톡 정책상 알림은 울리지 않아요)"; }
+    catch (e) { msg.textContent = e.message; }
+  };
+  $("#kakaoUnlink").onclick = async () => {
+    try { await authCall("/api/kakao/unlink", { token }); showKakao(); } catch (e) { $("#kakaoTestMsg").textContent = e.message; }
+  };
 }
 
 // 브라우저 알림 권한: 허용하면 새 시세 알림을 화면 밖(작업 표시줄 · 휴대폰 알림)으로도 띄움
@@ -2910,3 +3216,4 @@ $("#eventCard").onclick = (e) => {
 // 시연용 주소: 마이페이지 코드 · 알림 설정 값이 모두 읽힌 뒤에 열어야 해서 파일 맨 끝에 둠
 if (location.hash === "#my") openMypage();               // 시연용: 마이페이지가 열린 채로
 if (location.hash === "#settings") openMypage("settings");   // 시연용: 마이페이지 › 설정(알림 · 권한)이 열린 채로
+try { if (sessionStorage.getItem("salpi_kakao_show")) { sessionStorage.removeItem("salpi_kakao_show"); if (SIGNED_IN) openMypage("settings"); } } catch (e) {}   // 카카오톡 연결 결과를 바로 보여 줌

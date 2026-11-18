@@ -5,6 +5,7 @@
 
 import os
 import base64
+import json
 import threading
 import time
 from contextlib import asynccontextmanager
@@ -17,23 +18,27 @@ from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-import analysis
-import auth
-import chat_log
-import cheaper as cheaper_sellers
-import demand
-import forecast_log
-import forecast_model
-import foodspring
-import mart_price
-import menus
-import receipts
-import supabase_db
-from agent import SalpiAgent
-from data_sources import ITEMS, ApiError, ApiKeyMissing, event_detail, holidays, month_events, weather_forecast
+from price import analysis
+from account import auth
+from chat import chat_log
+from price import cheaper as cheaper_sellers
+from demand import demand
+from price import forecast_log
+from price import forecast_model
+from sources import foodspring
+from account import app_push
+from account import kakao_alert
+from sources import mart_price
+from store import menus
+from price import price_judge
+from store import receipts
+from sources import supabase_db
+from chat.agent import SalpiAgent
+from sources.data_sources import ITEMS, ApiError, ApiKeyMissing, event_detail, holidays, month_events, weather_forecast
 
 ROOT = Path(__file__).resolve().parent
-WEB = ROOT / "web"
+WEB = ROOT / "web"         # 데스크톱 화면
+MOBILE = ROOT / "mobile"   # 모바일 앱 화면 (MVVM)
 
 
 
@@ -42,7 +47,7 @@ async def lifespan(_app):
     """서버가 켜지면 뒤에서 시세를 미리 받아 둠 (첫 화면이 빨리 뜨게)."""
     def warm():
         try:
-            memo("overview", _overview)
+            shared("overview", _overview)
             _daily("forecast")
         except Exception:
             pass   # 키가 없거나 API 장애면 화면에서 안내
@@ -52,7 +57,8 @@ async def lifespan(_app):
 
 app = FastAPI(title="살피", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=WEB), name="static")
-app.mount("/receipts_demo", StaticFiles(directory=ROOT / "receipts_demo"), name="receipts_demo")   # 시연용 가상 영수증
+app.mount("/mobile", StaticFiles(directory=MOBILE), name="mobile")   # 모바일 화면 파일 (주소는 /m/)
+app.mount("/receipts_demo", StaticFiles(directory=ROOT / "store" / "receipts_demo"), name="receipts_demo")   # 시연용 가상 영수증
 
 # ---------------------------------------------------------------
 # 계산 결과 1시간 보관 (같은 화면을 여러 명이 열어도 다시 계산하지 않음)
@@ -70,6 +76,69 @@ def memo(key, fn, ttl=3600):
         value = fn()
         _memo[key] = (time.time(), value)
         return value
+
+
+# ---------------------------------------------------------------
+# 서버가 새로 켜져도 빠르게: 계산 결과를 Supabase 보관함(models/cache/)에도 둠
+# Vercel 은 한동안 요청이 없으면 서버를 끄고, 다시 켜면 메모리가 비어 첫 화면이 공공 API 를 처음부터 부름 (11/18 재 보니 46초)
+# → 보관함의 마지막 결과를 바로 보여 주고(약 0.3초), ttl 이 지났으면 뒤에서 새로 계산해 바꿔 둠 (다음 요청부터 새 값)
+# keep 시간보다 오래된 보관값은 쓰지 않고 그 자리에서 계산 (예: 며칠 꺼져 있던 뒤)
+# ---------------------------------------------------------------
+CACHE_BUCKET = "models"
+_refreshing = set()
+
+
+def _save_shared(key, ts, value):
+    try:
+        supabase_db.upload(CACHE_BUCKET, f"cache/{key}.json",
+                           json.dumps({"saved_at": ts, "value": value}, ensure_ascii=False).encode("utf-8"), "application/json")
+    except Exception as e:   # 보관 실패해도 화면은 그대로
+        print(f"[빠른 보관] {key} 저장 실패: {e}", flush=True)
+
+
+def _refresh(key, fn):
+    with _memo_lock:
+        if key in _refreshing:
+            return
+        _refreshing.add(key)
+
+    def run():
+        try:
+            value = fn()
+            ts = time.time()
+            _memo[key] = (ts, value)
+            _save_shared(key, ts, value)
+        except Exception as e:
+            print(f"[빠른 보관] {key} 새로 계산 실패: {e}", flush=True)
+        finally:
+            _refreshing.discard(key)
+    threading.Thread(target=run, daemon=True).start()
+
+
+def shared(key, fn, ttl=3600, keep=24 * 3600):
+    """memo + 보관함. 메모리에 있으면 그대로, 없으면 보관함 → 그것도 없거나 너무 오래됐으면 계산."""
+    hit = _memo.get(key)
+    if hit and time.time() - hit[0] < ttl:
+        return hit[1]
+    if not hit:
+        try:
+            raw = supabase_db.download(CACHE_BUCKET, f"cache/{key}.json")
+            blob = json.loads(raw) if raw else None
+        except Exception:
+            blob = None
+        if blob and time.time() - blob["saved_at"] < keep:
+            _memo[key] = hit = (blob["saved_at"], blob["value"])
+            if time.time() - hit[0] < ttl:
+                return hit[1]
+    if hit:   # 오래됐지만 보여 줄 수 있음 → 지금 값을 주고 뒤에서 새로
+        _refresh(key, fn)
+        return hit[1]
+
+    def compute():
+        value = fn()
+        threading.Thread(target=_save_shared, args=(key, time.time(), value), daemon=True).start()
+        return value
+    return memo(key, compute, ttl)
 
 
 def _overview():
@@ -96,17 +165,54 @@ def index():
 # 키 확인용: 값은 절대 보내지 않고 "넣었는지"만 알려 줌 (Vercel 환경 변수 확인)
 KEY_NAMES = ["AT_SALE_API_KEY", "AT_PERDAY_API_KEY", "AT_REALTIME_API_KEY", "KMA_ASOS_API_KEY", "KASI_SPCDE_API_KEY",
              "KTO_TOUR_API_KEY", "KAMIS_CERT_KEY", "KAMIS_CERT_ID", "GEMINI_API_KEY", "SUPABASE_URL", "SUPABASE_SECRET_KEY",
-             "KCA_PRICE_API_KEY", "KMA_VILAGE_API_KEY", "KMA_MID_API_KEY"]
+             "KCA_PRICE_API_KEY", "KMA_VILAGE_API_KEY", "KMA_MID_API_KEY", "KOSIS_API_KEY", "MOIS_RESTAURANT_API_KEY",
+             "KAKAO_REST_API_KEY", "KAKAO_CLIENT_SECRET", "VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY", "FCM_SERVICE_ACCOUNT"]
+
+
+# 설치형 앱(PWA): 앱 정보 · 백그라운드 작업 파일은 사이트 맨 위 주소에 있어야 앱 전체를 맡을 수 있음
+# 모바일 앱 화면 (MVVM, mobile/) — 데스크톱 화면(/)과 파일을 따로 둬서 서로 건드리지 않음
+@app.get("/m")
+@app.get("/m/")
+def mobile_app():
+    return FileResponse(MOBILE / "index.html", headers={"Cache-Control": "no-cache"})
+
+
+# 안드로이드 앱(android/, TWA)이 주소창 없이 열리려면 "이 사이트는 이 앱 것" 확인 파일이 필요
+# ANDROID_SHA256 = 앱 서명 지문(SHA-256, 콜론 포함). 여러 개면 쉼표로 (디버그 · 출시 열쇠). 없으면 빈 목록 → 앱은 주소창이 보인 채로 열림
+@app.get("/.well-known/assetlinks.json")
+def assetlinks():
+    prints = [x.strip().upper() for x in os.getenv("ANDROID_SHA256", "").split(",") if x.strip()]
+    return [{"relation": ["delegate_permission/common.handle_all_urls"],
+             "target": {"namespace": "android_app", "package_name": os.getenv("ANDROID_PACKAGE", "com.salpi.app"),
+                        "sha256_cert_fingerprints": prints}}] if prints else []
+
+
+@app.get("/manifest.webmanifest")
+def manifest():
+    return FileResponse(WEB / "manifest.webmanifest", media_type="application/manifest+json")
+
+
+@app.get("/sw.js")
+def service_worker():
+    return FileResponse(WEB / "sw.js", media_type="text/javascript",
+                        headers={"Service-Worker-Allowed": "/", "Cache-Control": "no-cache"})
 
 
 @app.get("/api/health")
-def health():
-    return {"keys": {k: bool(os.getenv(k, "").strip()) for k in KEY_NAMES}}
+def health(fcm: int = 0):
+    out = {"keys": {k: bool(os.getenv(k, "").strip()) for k in KEY_NAMES}}
+    if fcm:   # /api/health?fcm=1 — 안드로이드 앱 알림 열쇠로 Google 인증이 실제로 되는지 (열쇠 값은 보내지 않음)
+        try:
+            app_push.fcm._access_token()
+            out["fcm"] = {"ok": True, "project": app_push.fcm._account()["project_id"]}
+        except Exception as e:
+            out["fcm"] = {"ok": False, "error": str(e)[:200]}
+    return out
 
 
 @app.get("/api/overview")
 def overview():
-    out = _guard(lambda: {"items": memo("overview", _overview)})
+    out = _guard(lambda: {"items": shared("overview", _overview)})
     _daily("forecast")
     return out
 
@@ -121,7 +227,7 @@ def item(name: str):
 @app.get("/api/meat-seafood")
 def meat_seafood():
     """육류 · 수산물 대구 가격과 1주 · 4주 변화 (aT 일별 도·소매가, 예측 없음)."""
-    out = _guard(lambda: memo("meat_seafood", lambda: {"items": analysis.extra_overview()}))
+    out = _guard(lambda: shared("meat_seafood", lambda: {"items": analysis.extra_overview()}))
     _daily("forecast")
     return out
 
@@ -177,7 +283,15 @@ def daily_jobs():
     forecast_model.reset()
     with _memo_lock:
         _memo.pop("overview", None)
-    return _guard(lambda: {**_run_forecast_job(), **_run_shop_job()})
+
+    def run():
+        # 새 모델로 첫 화면 시세를 다시 계산해 보관함에도 둠 → 아침에 처음 여는 사람도 기다리지 않음
+        for key, fn in (("overview", _overview), ("meat_seafood", lambda: {"items": analysis.extra_overview()})):
+            ts, value = time.time(), fn()
+            _memo[key] = (ts, value)
+            _save_shared(key, ts, value)
+        return {**_run_forecast_job(), **_run_shop_job()}
+    return _guard(run)
 
 
 @app.get("/api/model")
@@ -209,7 +323,7 @@ def event(content_id: str):
 @app.get("/api/mart")
 def mart():
     """대형마트 판매가 (한국소비자원 참가격, 음식 재료만). 2주마다 조사돼서 6시간 보관."""
-    return _guard(lambda: memo("mart", mart_price.mart_prices, ttl=6 * 3600))
+    return _guard(lambda: shared("mart", mart_price.mart_prices, ttl=6 * 3600, keep=3 * 24 * 3600))
 
 
 @app.get("/api/cheaper")
@@ -218,6 +332,15 @@ def cheaper(item: str, paid: float | None = None):
     paid 를 주면 그 값과 비교 (예: /api/cheaper?item=양파&paid=2300). 10분 보관."""
     return _guard(lambda: memo(f"cheaper:{item}:{paid}",
                                lambda: cheaper_sellers.cheaper(item, paid, supabase_db.DEMO_STORE), ttl=600))
+
+
+@app.get("/api/price-judge")
+def price_judge_api(purchase_id: int | None = None):
+    """싸게/비싸게 판정: 영수증 품목마다 산 값을 우리 가게 평소 단가 · 대구 시세와 비교 (없으면 가장 최근 영수증)."""
+    try:
+        return _guard(lambda: price_judge.judge(supabase_db.DEMO_STORE, purchase_id))
+    except ValueError as e:
+        raise HTTPException(404, str(e))
 
 
 def _forecast_or_empty():
@@ -306,12 +429,21 @@ def receipt_read(body: ReceiptIn):
 @app.post("/api/receipt/save")
 def receipt_save(body: ReceiptSave):
     data, mime = _image(body.image, body.mime)
-    return _receipt_guard(lambda: receipts.save(supabase_db.DEMO_STORE, body.model_dump(), data, mime))
+    return _receipt_guard(lambda: _store_changed(receipts.save(supabase_db.DEMO_STORE, body.model_dump(), data, mime)))
 
 
 @app.get("/api/costs")
 def costs():
-    return _receipt_guard(lambda: {**receipts.cost_report(supabase_db.DEMO_STORE), "receipts": receipts.recent(supabase_db.DEMO_STORE)})
+    # 원가율은 영수증 · 메뉴가 바뀔 때만 달라짐 → 10분 보관, 영수증 저장 · 고치기 · 지우기 · 메뉴 바꾸기 때 비움 (매번 3.5초 → 0.1초)
+    return _receipt_guard(lambda: memo("costs", lambda: {**receipts.cost_report(supabase_db.DEMO_STORE),
+                                                         "receipts": receipts.recent(supabase_db.DEMO_STORE)}, ttl=600))
+
+
+def _store_changed(result):
+    """영수증 · 메뉴가 바뀌면 원가율 · 내일 준비 보관값을 비움."""
+    for k in [k for k in _memo if k == "costs" or k.startswith("demand:")]:
+        _memo.pop(k, None)
+    return result
 
 
 @app.get("/api/receipt/{purchase_id}")
@@ -328,7 +460,7 @@ class ReceiptEdit(BaseModel):
 @app.put("/api/receipt/{purchase_id}")
 def receipt_edit(purchase_id: int, body: ReceiptEdit):
     """저장한 영수증 고치기 (최근 영수증 → 수정하기 팝업)."""
-    return _receipt_guard(lambda: receipts.edit(supabase_db.DEMO_STORE, purchase_id, body.model_dump()))
+    return _receipt_guard(lambda: _store_changed(receipts.edit(supabase_db.DEMO_STORE, purchase_id, body.model_dump())))
 
 
 @app.get("/api/my-items")
@@ -346,6 +478,7 @@ class MenuIn(BaseModel):
 def _menu_changed(result):
     """메뉴를 바꾸면 '내 메뉴 재료' 보관값을 비우고, 화면이 다시 그릴 원가율을 함께 돌려줌."""
     _memo.pop("my_items", None)
+    _store_changed(None)
     return {**result, **receipts.cost_report(supabase_db.DEMO_STORE), "receipts": receipts.recent(supabase_db.DEMO_STORE)}
 
 
@@ -378,7 +511,7 @@ def receipt_list():
 
 @app.delete("/api/receipt/{purchase_id}")
 def receipt_delete(purchase_id: int):
-    return _receipt_guard(lambda: receipts.remove(supabase_db.DEMO_STORE, purchase_id))
+    return _receipt_guard(lambda: _store_changed(receipts.remove(supabase_db.DEMO_STORE, purchase_id)))
 
 
 # ---------------------------------------------------------------
@@ -446,17 +579,143 @@ def auth_refresh(body: RefreshIn):
 
 
 @app.get("/api/auth/kakao")
-def auth_kakao(request: Request, next: str = "/"):
-    """카카오 로그인 화면으로 보냄 (돌아올 곳 = 지금 사이트 주소)."""
+def auth_kakao(request: Request, next: str = "/", talk: bool = False, app: bool = False):
+    """카카오 로그인 화면으로 보냄 (돌아올 곳 = 지금 사이트 주소, app=1 이면 안드로이드 앱)."""
     proto = request.headers.get("x-forwarded-proto") or request.url.scheme
     host = request.headers.get("x-forwarded-host") or request.headers.get("host")
-    return _auth(lambda: RedirectResponse(auth.kakao_url(f"{proto}://{host}", next), status_code=302))
+    return _auth(lambda: RedirectResponse(auth.kakao_url(f"{proto}://{host}", next, talk, app), status_code=302))
 
 
 @app.post("/api/auth/store")
 def auth_store(body: StoreSetupIn, authorization: str | None = Header(None)):
     """카카오로 처음 온 사장님의 가게 · 약관 한 번 받기."""
     return _auth(lambda: {"user": auth.setup_store(_bearer(authorization), body.model_dump())})
+
+
+class KakaoConnectIn(BaseModel):
+    provider_token: str = ""
+    provider_refresh_token: str = ""
+
+
+class KakaoOnIn(BaseModel):
+    on: bool
+
+
+@app.post("/api/kakao/connect")
+def kakao_connect(body: KakaoConnectIn, authorization: str | None = Header(None)):
+    """카카오 로그인에서 돌아온 카카오 표 저장 → 카카오톡 시세 알림을 보낼 수 있게."""
+    return _auth(lambda: kakao_alert.connect(_bearer(authorization), body.provider_token, body.provider_refresh_token))
+
+
+@app.get("/api/kakao/status")
+def kakao_status(authorization: str | None = Header(None)):
+    return _auth(lambda: kakao_alert.status(_bearer(authorization)))
+
+
+@app.post("/api/kakao/on")
+def kakao_on(body: KakaoOnIn, authorization: str | None = Header(None)):
+    return _auth(lambda: kakao_alert.set_on(_bearer(authorization), body.on))
+
+
+def _site(request):
+    proto = request.headers.get("x-forwarded-proto") or request.url.scheme
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+    return f"{proto}://{host}"
+
+
+@app.post("/api/kakao/link")
+def kakao_link(request: Request, authorization: str | None = Header(None)):
+    """카카오톡 연결 (아이디 · 카카오 계정 모두): 카카오 인증 주소를 돌려줌 → 화면이 그리로 보냄."""
+    return _auth(lambda: {"url": kakao_alert.link_url(_bearer(authorization), _site(request))})
+
+
+@app.get("/api/kakao/callback")
+def kakao_callback(request: Request, code: str = "", state: str = "", error: str = "", error_description: str = ""):
+    """카카오에서 돌아옴 → 카카오 표 저장 → 나의 가게로 (결과는 주소 ?kakao=ok / kakao_err=이유)."""
+    from urllib.parse import quote
+    if error:
+        msg = "동의를 취소했어요" if error == "access_denied" else (error_description or error)
+        return RedirectResponse(f"/?page=store&kakao_err={quote(msg)}", status_code=302)
+    try:
+        kakao_alert.callback(code, state, _site(request))
+    except (auth.AuthError, ApiError, ApiKeyMissing) as e:
+        return RedirectResponse(f"/?page=store&kakao_err={quote(str(e)[:200])}", status_code=302)
+    return RedirectResponse("/?page=store&kakao=ok", status_code=302)
+
+
+@app.post("/api/kakao/unlink")
+def kakao_unlink(authorization: str | None = Header(None)):
+    return _auth(lambda: kakao_alert.unlink(_bearer(authorization)))
+
+
+@app.post("/api/kakao/test")
+def kakao_test(authorization: str | None = Header(None)):
+    """마이페이지 '지금 보내 보기' — 내 카톡 '나와의 채팅'으로 지금 시세 알림."""
+    return _auth(lambda: kakao_alert.test(_bearer(authorization), _price_outlook()))
+
+
+class PushSubIn(BaseModel):
+    endpoint: str = ""
+    keys: dict = {}
+
+
+class PushOffIn(BaseModel):
+    endpoint: str | None = None
+
+
+@app.get("/api/push/status")
+def push_status(authorization: str | None = Header(None)):
+    """앱 알림: 열쇠가 있는지 · 이 계정에 켜 둔 기기 수."""
+    return _auth(lambda: app_push.status(_bearer(authorization)))
+
+
+@app.post("/api/push/subscribe")
+def push_subscribe(body: PushSubIn, authorization: str | None = Header(None)):
+    return _auth(lambda: app_push.subscribe(_bearer(authorization), body.model_dump()))
+
+
+@app.post("/api/push/unsubscribe")
+def push_unsubscribe(body: PushOffIn, authorization: str | None = Header(None)):
+    return _auth(lambda: app_push.unsubscribe(_bearer(authorization), body.endpoint))
+
+
+class FcmIn(BaseModel):
+    token: str | None = None
+
+
+@app.post("/api/push/fcm/subscribe")
+def push_fcm_subscribe(body: FcmIn, authorization: str | None = Header(None)):
+    """안드로이드 앱: 이 기기의 Firebase 알림 표 저장."""
+    return _auth(lambda: app_push.fcm_subscribe(_bearer(authorization), body.token))
+
+
+@app.post("/api/push/fcm/unsubscribe")
+def push_fcm_unsubscribe(body: FcmIn, authorization: str | None = Header(None)):
+    return _auth(lambda: app_push.fcm_unsubscribe(_bearer(authorization), body.token))
+
+
+@app.post("/api/push/test")
+def push_test(authorization: str | None = Header(None)):
+    """설정 '지금 보내 보기' — 이 계정의 기기 모두(웹 · 안드로이드 앱)에 지금 앱 알림."""
+    return _auth(lambda: app_push.test(_bearer(authorization), _price_outlook()))
+
+
+@app.post("/api/jobs/alerts")
+def jobs_alerts():
+    """예약 실행용 (daily-learn.yml, 새벽 학습 뒤): 아침 앱 알림 + 카카오톡 알림. 한 사람에게 하루 한 번."""
+    outlook, out = _price_outlook(), {}
+    for name, fn in (("push", app_push.send_all), ("kakao", kakao_alert.send_all)):
+        try:
+            out.update(fn(outlook))
+        except Exception as e:   # 하나가 실패해도 나머지는 보냄
+            out[f"{name}_error"] = str(e)[:200]
+    return out
+
+
+@app.post("/api/jobs/kakao")
+def jobs_kakao():
+    """예약 실행용: 아침 카카오톡 시세 알림 (매일 새벽 학습 · /api/jobs/daily 뒤에 불림). 한 사람에게 하루 한 번만."""
+    return _guard(lambda: kakao_alert.send_all(_price_outlook()))
 
 
 @app.get("/api/auth/me")

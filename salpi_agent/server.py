@@ -26,6 +26,7 @@ import demand
 import forecast_log
 import forecast_model
 import foodspring
+import app_push
 import kakao_alert
 import mart_price
 import menus
@@ -163,7 +164,19 @@ def index():
 KEY_NAMES = ["AT_SALE_API_KEY", "AT_PERDAY_API_KEY", "AT_REALTIME_API_KEY", "KMA_ASOS_API_KEY", "KASI_SPCDE_API_KEY",
              "KTO_TOUR_API_KEY", "KAMIS_CERT_KEY", "KAMIS_CERT_ID", "GEMINI_API_KEY", "SUPABASE_URL", "SUPABASE_SECRET_KEY",
              "KCA_PRICE_API_KEY", "KMA_VILAGE_API_KEY", "KMA_MID_API_KEY", "KOSIS_API_KEY", "MOIS_RESTAURANT_API_KEY",
-             "KAKAO_REST_API_KEY", "KAKAO_CLIENT_SECRET"]
+             "KAKAO_REST_API_KEY", "KAKAO_CLIENT_SECRET", "VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY"]
+
+
+# 설치형 앱(PWA): 앱 정보 · 백그라운드 작업 파일은 사이트 맨 위 주소에 있어야 앱 전체를 맡을 수 있음
+@app.get("/manifest.webmanifest")
+def manifest():
+    return FileResponse(WEB / "manifest.webmanifest", media_type="application/manifest+json")
+
+
+@app.get("/sw.js")
+def service_worker():
+    return FileResponse(WEB / "sw.js", media_type="text/javascript",
+                        headers={"Service-Worker-Allowed": "/", "Cache-Control": "no-cache"})
 
 
 @app.get("/api/health")
@@ -612,7 +625,50 @@ def kakao_unlink(authorization: str | None = Header(None)):
 @app.post("/api/kakao/test")
 def kakao_test(authorization: str | None = Header(None)):
     """마이페이지 '지금 보내 보기' — 내 카톡 '나와의 채팅'으로 지금 시세 알림."""
-    return _auth(lambda: kakao_alert.test(_bearer(authorization)))
+    return _auth(lambda: kakao_alert.test(_bearer(authorization), _price_outlook()))
+
+
+class PushSubIn(BaseModel):
+    endpoint: str = ""
+    keys: dict = {}
+
+
+class PushOffIn(BaseModel):
+    endpoint: str | None = None
+
+
+@app.get("/api/push/status")
+def push_status(authorization: str | None = Header(None)):
+    """앱 알림: 열쇠가 있는지 · 이 계정에 켜 둔 기기 수."""
+    return _auth(lambda: app_push.status(_bearer(authorization)))
+
+
+@app.post("/api/push/subscribe")
+def push_subscribe(body: PushSubIn, authorization: str | None = Header(None)):
+    return _auth(lambda: app_push.subscribe(_bearer(authorization), body.model_dump()))
+
+
+@app.post("/api/push/unsubscribe")
+def push_unsubscribe(body: PushOffIn, authorization: str | None = Header(None)):
+    return _auth(lambda: app_push.unsubscribe(_bearer(authorization), body.endpoint))
+
+
+@app.post("/api/push/test")
+def push_test(authorization: str | None = Header(None)):
+    """설정 '지금 보내 보기' — 이 계정의 기기 모두에 지금 앱 알림."""
+    return _auth(lambda: app_push.test(_bearer(authorization), _price_outlook()))
+
+
+@app.post("/api/jobs/alerts")
+def jobs_alerts():
+    """예약 실행용 (daily-learn.yml, 새벽 학습 뒤): 아침 앱 알림 + 카카오톡 알림. 한 사람에게 하루 한 번."""
+    outlook, out = _price_outlook(), {}
+    for name, fn in (("push", app_push.send_all), ("kakao", kakao_alert.send_all)):
+        try:
+            out.update(fn(outlook))
+        except Exception as e:   # 하나가 실패해도 나머지는 보냄
+            out[f"{name}_error"] = str(e)[:200]
+    return out
 
 
 @app.post("/api/jobs/kakao")

@@ -244,12 +244,12 @@ def send_to(user, outlook=None):
     return text
 
 
-def test(token):
-    """마이페이지 '지금 보내 보기'."""
+def test(token, outlook=None):
+    """마이페이지 '지금 보내 보기'. outlook: 대시보드가 이미 계산한 7일 예측 (있으면 다시 계산하지 않아 빠름)."""
     user = auth.user_of(token)
     if not ((user.get("app_metadata") or {}).get("kakao_talk") or {}).get("refresh_token"):
         raise auth.AuthError("먼저 '카카오톡 연결'을 눌러 '카카오톡 메시지 전송'에 동의해 주세요.")
-    return {"sent": True, "text": send_to(_admin_user(user["id"]))}
+    return {"sent": True, "text": send_to(_admin_user(user["id"]), outlook)}
 
 
 def _admin_user(user_id):

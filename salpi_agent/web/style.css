@@ -635,7 +635,7 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .rc-judge .demand-chip { display: inline-block; margin: 0 4px 0 0; }
 /* 구매가 점검: 한 품목 = 한 줄 · 글자를 자르지 않음 (칸은 글자 길이만큼 · 화면이 좁으면 칸 안에서 옆으로 밀어 봄) */
 #receiptModalBody > .rc-judge { margin-top: 16px; overflow-x: auto; }
-.judge-rows { display: grid; grid-template-columns: repeat(5, auto); column-gap: 14px; row-gap: 6px; align-items: center; width: max-content; margin: 2px 0 6px; }   /* 금액을 이유 바로 옆에 (오른쪽 끝으로 밀지 않음) */
+.judge-rows { display: grid; grid-template-columns: repeat(4, auto) 1fr; column-gap: 14px; row-gap: 6px; align-items: center; width: max-content; min-width: 100%; margin: 2px 0 6px; }
 .judge-row { display: contents; }
 .judge-row > * { white-space: nowrap; }
 .judge-row .demand-chip { margin: 0; }
@@ -643,11 +643,6 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .judge-row .jw { color: var(--muted); }
 .judge-row .jm { font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
 .judge-row .jm.up { color: #B33A1A; } .judge-row .jm.down { color: #0C6E52; }
-/* 아래 줄: 왼쪽 안내 · 오른쪽 이번 영수증 합계 (남는 오른쪽 공간을 씀) */
-.judge-foot { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; }
-.judge-foot p { margin: 0; }
-.judge-total { font-size: 13px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.judge-total .up { color: #B33A1A; } .judge-total .down { color: #0C6E52; }
 /* 기본 버튼: 테두리 버튼 · 주 버튼은 진한 초록 */
 .btn { border: 1px solid var(--outline); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 9px 20px; font-weight: 700; transition: background .15s; }
 .btn:hover { background: var(--surface-variant); }

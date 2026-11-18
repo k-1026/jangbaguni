@@ -635,7 +635,7 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .rc-judge .demand-chip { display: inline-block; margin: 0 4px 0 0; }
 /* 구매가 점검: 한 품목 = 한 줄 · 글자를 자르지 않음 (칸은 글자 길이만큼 · 화면이 좁으면 칸 안에서 옆으로 밀어 봄) */
 #receiptModalBody > .rc-judge { margin-top: 16px; overflow-x: auto; }
-.judge-rows { display: grid; grid-template-columns: repeat(4, auto) 1fr; column-gap: 14px; row-gap: 6px; align-items: center; width: max-content; min-width: 100%; margin: 2px 0 6px; }
+.judge-rows { display: grid; grid-template-columns: repeat(5, auto); column-gap: 14px; row-gap: 6px; align-items: center; width: max-content; margin: 2px 0 6px; }   /* 금액을 이유 바로 옆에 (오른쪽 끝으로 밀지 않음) */
 .judge-row { display: contents; }
 .judge-row > * { white-space: nowrap; }
 .judge-row .demand-chip { margin: 0; }

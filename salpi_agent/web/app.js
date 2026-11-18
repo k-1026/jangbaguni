@@ -2644,7 +2644,7 @@ function costBanner(k) {
   if (!k.days) return `<div class="mc-be loss"><b>쉬는 요일을 확인해 주세요</b><small>영업하는 날이 하루도 없어요</small></div>`;
   if (!k.be) return `<div class="mc-be empty"><b>비용을 넣어 주세요</b><small>하루에 얼마를 팔아야 본전인지 알려 드려요</small></div>`;
   return `<div class="mc-be"><b>하루 <em>${man(k.be)}</em> 넘게 팔면 본전이에요</b>
-    <small>한 달 ${k.days}일 영업 기준 · 한 달 매출 ${man(k.monthly)}</small></div>`;
+    <small>한 달 ${k.days}일 영업 기준</small></div>`;
 }
 
 const numIn = (path, v, label, ph = "0", unit = "만 원") => `<span class="mc-in"><input type="number" inputmode="decimal" min="0" step="any"

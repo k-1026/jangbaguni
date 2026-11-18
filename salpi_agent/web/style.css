@@ -727,12 +727,14 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
   font-style: normal; font-size: 17px; font-weight: 700; line-height: 22px; text-align: center; box-shadow: 0 0 0 2px #F6F6F6; }
 .rc-add-tile b { font-size: 13px; }
 .rc-add-tile small { font-size: 11px; color: var(--muted); }
-.rc-mini { display: flex; height: 100%; flex-direction: column; gap: 2px; padding: 10px 12px; background: #FFFDF8; color: var(--ink);
-  font-size: 10.5px; line-height: 1.35; text-align: left; border-bottom: 4px dotted var(--outline); }
-.rc-mini b { font-size: 11.5px; text-align: center; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.rc-mini small { text-align: center; color: var(--muted); padding-bottom: 4px; margin-bottom: 2px; border-bottom: 1px dashed var(--outline); }
-.rc-mini i { font-style: normal; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.rc-mini em { margin-top: auto; padding-top: 4px; border-top: 1px dashed var(--outline); font-style: normal; font-weight: 700; text-align: right; }
+/* 사진 없는 영수증 그림: 칸 안에 다 들어가게 (품목은 3줄까지 + "외 n줄") · 예전 목록용 .rc-open i 꾸밈(주황 · 12px)을 막음 */
+.rc-mini { display: flex; height: 100%; flex-direction: column; gap: 1px; padding: 9px 11px; overflow: hidden; background: #FFFDF8; color: var(--ink);
+  font-size: 10.5px; line-height: 1.4; text-align: left; border-bottom: 4px dotted var(--outline); }
+.rc-mini b { flex-shrink: 0; font-size: 11.5px; text-align: center; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.rc-mini small { flex-shrink: 0; text-align: center; color: var(--muted); font-size: 10px; padding-bottom: 3px; margin-bottom: 2px; border-bottom: 1px dashed var(--outline); }
+.rc-strip .rc-mini i { display: block; flex-shrink: 0; margin: 0; color: var(--ink); font-size: 10.5px; font-style: normal; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.rc-strip .rc-mini i.more { color: var(--muted); }
+.rc-mini em { flex-shrink: 0; margin-top: auto; padding-top: 3px; border-top: 1px dashed var(--outline); font-style: normal; font-weight: 700; text-align: right; }
 /* 카드 아래 글: 날짜(작게) / 판매처(굵게) / 합계(초록) — 줄을 나눠 한눈에 */
 .rc-meta { display: flex; flex-direction: column; gap: 1px; line-height: 1.35; padding: 0 2px; }
 .rc-meta .rc-date { color: var(--muted); font-size: 11.5px; }

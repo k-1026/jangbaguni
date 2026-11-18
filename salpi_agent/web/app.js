@@ -1499,7 +1499,7 @@ const RC_PIC = `<svg viewBox="0 0 48 40" aria-hidden="true"><rect x="2" y="2" wi
 // 사진이 없는 영수증: 품목 몇 줄 · 합계로 작은 영수증 모양을 그려 넣음 (올리기 칸과 헷갈리지 않게)
 const rcMini = (p) => `<span class="rc-mini" aria-hidden="true">
   <b>${esc(supplierName(p.supplier))}</b><small>${mmdd(p.purchased_on)}</small>
-  ${(p.names || []).map((n) => `<i>${esc(n)}</i>`).join("")}${p.items > (p.names || []).length ? `<i>외 ${p.items - p.names.length}줄</i>` : ""}
+  ${(p.names || []).slice(0, 3).map((n) => `<i>${esc(n)}</i>`).join("")}${p.items > 3 ? `<i class="more">외 ${p.items - 3}줄</i>` : ""}
   <em>합계 ${won(p.total_amount)}</em></span>`;
 function receiptList(list) {
   const cards = list.map((p) => `<li class="rc-card">

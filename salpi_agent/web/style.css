@@ -679,8 +679,10 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .no-photo small { color: var(--muted); }
 .receipt-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
 /* 영수증 자세히: 맨 오른쪽 칸에 판정 칩 + 맨 아래 합계 줄 */
-.receipt-view > div:has(> .rc-table) { min-width: 0; overflow-x: auto; }   /* 창이 좁은 화면에서는 표만 옆으로 밀어서 봄 (잘리지 않게) */
-#receiptModal .modal-box { width: min(940px, 100%); }   /* 판정 칩 옆 금액까지 한 줄로 들어가게 */
+/* 창을 넓히고 사진 칸을 줄여 표(판정 칩 · 금액까지)가 스크롤 없이 다 보이게 — 아주 좁은 화면(휴대폰)에서만 표를 옆으로 밀어서 봄 */
+#receiptModal .modal-box { width: min(1060px, 100%); }
+#receiptModal .receipt-view:not(.rc-edit-view) { grid-template-columns: 240px minmax(0, 1fr); }
+.receipt-view > div:has(> .rc-table) { min-width: 0; }
 .rc-table .rc-why { margin-left: 6px; font-size: 12px; }
 .rc-table .rc-why .up { color: var(--up); } .rc-table .rc-why .down { color: var(--down); }
 .rc-table td.rc-judge-cell { padding-left: 4px; text-align: left; }
@@ -1196,7 +1198,8 @@ main { overflow-x: clip; }   /* 화면 폭 배경이 가로 스크롤을 만들�
   .store-grid { grid-template-columns: 1fr; }
   .detail, .store-grid, #store .store-grid { grid-template-columns: 1fr; }
   .demo-receipts { grid-template-columns: repeat(3, 1fr); }
-  .receipt-view, .rc-edit-view { grid-template-columns: 1fr; }
+  .receipt-view, .rc-edit-view, #receiptModal .receipt-view:not(.rc-edit-view) { grid-template-columns: 1fr; }
+  .receipt-view > div:has(> .rc-table) { overflow-x: auto; }
   .rc-edit-view > a, .rc-edit-view > .no-photo { position: static; }
   .rc-edit-view > a img { max-height: 260px; }
   .forecast-card { grid-template-columns: 1fr; }

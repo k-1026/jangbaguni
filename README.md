@@ -1,5 +1,8 @@
+**PPT 캔바 링크**:https://canva.link/zxl9end3uctibh6
+**배포 화면**:https://jangbaguni-ten.vercel.app/
+**관제 화면**: https://jangbaguni-ten.vercel.app/static/control.html (단계별 진행 · 사람별 할 일 · 체크는 Issue #86)
+
 # 🗓️ 살피 최종 일정
-🖥️ **관제 화면**: https://jangbaguni-ten.vercel.app/static/control.html (단계별 진행 · 사람별 할 일 · 체크는 Issue #86)
 
 - **📌 11/17(화) ppt git에 올리기**
 - **📌 11/19(목) 오전 중간 발표**

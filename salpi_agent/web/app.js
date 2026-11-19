@@ -1551,7 +1551,7 @@ function costPlan(m) {
   return `<div class="cost-plan">
     <b class="swap-title">원가율 낮추는 방법</b>
     <ol>
-      <li><b>가격 조정</b><span class="cp-sep">|</span>${p ? `판매가 ${won(m.price)} → <b>${won(p.price)}</b> · 원가율 ${p.new_ratio_pct}% · 남는 돈 ${won(p.new_margin)}${p.basis === "다음 주 예상 원가" ? " · 다음 주 오를 값까지 반영" : ""}` : "계산할 수 없어요"}</li>
+      <li><b>가격 조정</b><span class="cp-sep">|</span>${p ? `판매가 ${won(m.price)} → <b>${won(p.price)}</b>으로 올리면 원가율 <b>${p.new_ratio_pct}%</b>, 한 그릇에 <b>${won(p.new_margin)}</b> 남아요${p.basis === "다음 주 예상 원가" ? ` <span class="cp-note">(다음 주 오를 값까지 반영)</span>` : ""}` : "계산할 수 없어요"}</li>
       <li><b>대체 재료</b><span class="cp-sep">|</span>${s ? `${esc(s.from)} ${s.share_pct}%를 <b>${esc(pp(s.to, "으로", "로"))}</b> 바꾸면 1인분 ${won(s.saving_per_serving)} 아껴 원가율 ${s.new_ratio_pct}%` : "지금은 바꿀 만한 재료가 없어요 (후보 재료도 다음 주에 오를 예정이거나 값을 몰라요)"}</li>
       <li><b>메뉴 제안</b><span class="cp-sep">|</span>${k ? `<b>${esc(pp(k.menu, "을", "를"))}</b> 밀어 보세요 · 한 그릇에 ${won(k.margin)} 남아요 (원가율 ${k.cost_ratio_pct}%)` : "원가율이 괜찮은 다른 메뉴가 없어요"}</li>
     </ol>

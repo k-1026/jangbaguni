@@ -1524,7 +1524,7 @@ function renderCosts(r, withChange) {
           <div><dt>남는 금액</dt><dd>${won(m.margin)}</dd></div>
         </dl>
         ${m.next_ratio_pct != null && Math.abs(m.next_ratio_pct - v) >= 0.5 ? `<p class="cost-next">다음 주 예상 원가율 <b>${m.next_ratio_pct}%</b> (야채 시세 예측 반영)</p>` : ""}
-        ${m.high ? costPlan(m, T) : ""}
+        ${m.high ? costPlan(m) : ""}
         ${m.swap && !m.high ? `<div class="cost-swap">
           <b class="swap-title">대체 재료 제안</b>
           <div class="swap-body">
@@ -1540,15 +1540,23 @@ function renderCosts(r, withChange) {
     <p class="muted small">레시피에 주재료만 들어 있어 실제보다 원가율이 조금 낮게 나와요.</p>`;
 }
 
-// 원가율 40% 이상(지금 또는 다음 주): 마진 지키는 방법 세 가지를 함께 보여 줌 — 고르는 건 사장님 (유저플로우 v2)
-function costPlan(m, T) {
+// 원가율 40% 이상(지금 또는 다음 주): 원가율 낮추는 방법(가격 · 재료 · 메뉴)을 함께 보여 줌 — 고르는 건 사장님 (유저플로우 v2)
+// 방법마다 핵심만, 표처럼 줄을 맞춤: 제목 · 바꾸는 것 · 원가율 · 남는 금액(또는 아끼는 돈) — 원가율끼리 위아래로 비교되게
+function costPlan(m) {
   const p = m.price_up, s = m.swap, k = m.push_menu;
+  const row = (title, what, ratio, money) => `<li><b class="cp-label">${title}</b>${ratio == null
+    ? `<span class="cp-what cp-none">${what}</span>`
+    : `<span class="cp-what">${what}</span><span class="cp-num">원가율 <b>${ratio}%</b></span><span class="cp-num">${money}</span>`}</li>`;
   return `<div class="cost-plan">
-    <b class="swap-title">마진 지키는 방법 3가지 <small>원가율 ${T}% 이상</small></b>
+    <b class="swap-title">원가율 낮추는 방법</b>
     <ol>
-      <li><b>가격 조정</b> ${p ? `판매가 ${won(m.price)} → <b>${won(p.price)}</b> (+${won(p.raise)}) · 원가율 ${p.new_ratio_pct}% · 남는 돈 ${won(p.new_margin)}${p.basis === "다음 주 예상 원가" ? " · 다음 주 오를 값까지 반영" : ""}` : "계산할 수 없어요"}</li>
-      <li><b>대체 재료</b> ${s ? `${esc(s.from)} ${s.share_pct}%를 <b>${esc(s.to)}</b>(으)로 바꾸면 1인분 ${won(s.saving_per_serving)} 아껴 원가율 ${s.new_ratio_pct}%` : "지금은 바꿀 만한 재료가 없어요 (후보 재료도 다음 주에 오를 예정이거나 값을 몰라요)"}</li>
-      <li><b>메뉴 제안</b> ${k ? `<b>${esc(k.menu)}</b>를 밀어 보세요 · 한 그릇에 ${won(k.margin)} 남아요 (원가율 ${k.cost_ratio_pct}%)` : "원가율이 괜찮은 다른 메뉴가 없어요"}</li>
+      ${p ? row("가격 조정", `${won(m.price)} → <b>${won(p.price)}</b>`, p.new_ratio_pct,
+        `남는 금액 <b>${won(p.new_margin)}</b>${p.basis === "다음 주 예상 원가" ? ` <span class="cp-note">(다음 주 값 반영)</span>` : ""}`)
+        : row("가격 조정", "계산할 수 없어요")}
+      ${s ? row("대체 재료", `${esc(s.from)} ${s.share_pct}% → <b>${esc(s.to)}</b>`, s.new_ratio_pct, `1인분 <b>${won(s.saving_per_serving)}</b> 절약`)
+        : row("대체 재료", "지금은 바꿀 만한 재료가 없어요")}
+      ${k ? row("메뉴 제안", `<b>${esc(k.menu)}</b> 밀기`, k.cost_ratio_pct, `남는 금액 <b>${won(k.margin)}</b>`)
+        : row("메뉴 제안", "원가율이 괜찮은 다른 메뉴가 없어요")}
     </ol>
   </div>`;
 }

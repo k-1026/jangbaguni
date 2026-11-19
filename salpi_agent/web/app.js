@@ -1811,6 +1811,7 @@ function setTrial(t) {
     : "영수증 5장으로 원가율을 살펴봤어요";
   const go = $(".receipt-link .receipt-go");
   if (go && t) go.textContent = t.paid ? "→" : locked ? "구독하기 →" : `무료 ${t.left}회 →`;
+  $(".receipt-link")?.classList.toggle("used-up", locked);   // 다 쓰면 카드는 회색, 구독하기 버튼만 노랑
 }
 if (SIGNED_IN) authCall("/api/receipt/trial", { method: "GET", token: readLogin()?.access_token }).then(setTrial).catch(() => {});
 // 카메라로 찍기: 처음 한 번 브라우저가 카메라 권한을 물어봄 → 찍은 사진을 그대로 영수증 읽기로

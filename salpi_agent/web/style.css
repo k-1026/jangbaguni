@@ -742,7 +742,7 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .cost-next { margin: 6px 0 0; font-size: 12px; color: var(--muted, #5f6b66); }
 /* 원가율 낮추는 방법: 회색 바탕 위 흰 카드 셋 — 칩 · 바꾸는 것 · (선) · 원가율 / 남는 금액 */
 .cost-plan { margin-top: 12px; padding: 12px; border-radius: 12px; background: var(--surface-variant); }
-.cp-title { display: block; font-size: 15px; color: var(--ink); }
+.cp-title { display: block; padding: 2px 15px 0; font-size: 17px; color: var(--ink); }   /* 아래 흰 카드 안 글자와 왼쪽 줄 맞춤 (카드 테두리 1px + 안 여백 14px) */
 .cost-plan ol { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; margin: 8px 0 0; padding: 0; list-style: none; }
 .cost-plan li { display: flex; flex-direction: column; padding: 12px 14px; border-radius: 10px; background: var(--surface); border: 1px solid var(--outline-variant); }
 /* 첫 줄: 칩 바로 옆에 바꾸는 것 (자리가 모자라면 아래로) — 칩도 내용 글씨 크기에 맞춤 */

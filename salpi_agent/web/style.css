@@ -493,8 +493,8 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 /* 두 카드 공통 머리: 제목 · 합계 · 근거 버튼 */
 .prep-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
 .prep-head h3 { margin: 0; font-size: 17px; font-weight: 700; }
-.prep-head h3 span { margin-left: 4px; font-weight: 500; } .prep-head h3 b { color: var(--accent); font-size: 20px; }
-#menuForecast .prep-head h3 b { font-size: 26px; }   /* 내일 모두 몇 그릇: 제목보다 크게 */
+.prep-head h3 span { margin-left: 4px; font-weight: 500; }
+.prep-head h3 b { color: var(--accent); font-size: 26px; }   /* 모두 몇 그릇 · 주문할 재료 몇 개: 제목보다 크게 */
 /* 내일 예상 판매: 메뉴별 숫자 카드를 한 줄에 (이름 · 큰 그릇 수 · 평소 대비), 누르면 카드 안에 근거가 펼쳐짐 */
 .dm-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; align-items: start; }
 #menuForecast .demand-item { border: 0; border-radius: 14px; background: var(--surface-variant); }

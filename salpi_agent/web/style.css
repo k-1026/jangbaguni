@@ -539,7 +539,16 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 /* 재고 관리: 묶음별 세로 칸 (넓으면 나란히, 좁으면 아래로) */
 .stock-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; align-items: start; }
 /* 재료 5개 높이까지만 보이고 칸 안에서 스크롤 (높이는 app.js fitStockLists가 실제로 재서 맞춤, 아래는 기본값) */
-.stock-list { position: relative; max-height: 312px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(0, 0, 0, .25) transparent; }
+/* 스크롤바는 칸 오른쪽 끝에 붙인 얇은 바만 (위아래 화살표 · 바탕 없음) */
+.stock-list { position: relative; max-height: 312px; overflow-y: auto; overscroll-behavior: contain; margin-right: -11px; padding-right: 7px; }
+.stock-list::-webkit-scrollbar { width: 4px; }
+.stock-list::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+.stock-list::-webkit-scrollbar-track { background: transparent; }
+.stock-list::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(0, 0, 0, .22); }
+.stock-list::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, .35); }
+@supports not selector(::-webkit-scrollbar) {   /* 파이어폭스: 표준 속성으로 얇게 */
+  .stock-list { scrollbar-width: thin; scrollbar-color: rgba(0, 0, 0, .22) transparent; }
+}
 /* 묶음마다 투명한 연한 바탕색 + 같은 색 계열의 진한 제목 (먼저 사기 주황 · 평소대로 초록 · 나눠 사기 노랑 · 안 사도 됨 민트) */
 .stock-col { --tone: #2F5A0C; --tint: rgba(150, 205, 60, .2); padding: 14px 14px 4px; border-radius: 14px; background: var(--tint); }
 .stock-col.first { --tone: #9A3412; --tint: rgba(255, 140, 70, .22); }

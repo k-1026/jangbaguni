@@ -672,6 +672,19 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .rc-edit-view > a img { max-height: calc(100vh - 140px); object-fit: contain; background: var(--surface-variant); }
 .no-photo small { color: var(--muted); }
 .receipt-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
+/* 영수증 자세히: 맨 오른쪽 칸에 판정 칩 + 맨 아래 합계 줄 */
+.rc-table .rc-why { margin-left: 6px; font-size: 12px; }
+.rc-table .rc-why .up { color: var(--up); } .rc-table .rc-why .down { color: var(--down); }
+.rc-table td.rc-judge-cell { padding-left: 4px; text-align: left; }
+.rc-table .rc-chip { display: inline-block; margin: 0; padding: 1px 7px; font-size: 11.5px; vertical-align: 1px; }
+.rc-table .rc-chip:empty { display: none; }
+.demand-chip.rise { background: #FFF6DC; color: #8A5A00; }
+.rc-table tfoot td { padding: 12px 8px 4px; border-bottom: 0; }
+.rc-total div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.rc-total b { font-size: 15px; }
+.rc-judge-sum { font-size: 13px; color: var(--muted); }
+.rc-judge-sum b { font-size: 13px; }
+.rc-judge-sum .up { color: var(--up); } .rc-judge-sum .down { color: var(--down); }
 .rc-judge { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: var(--surface-variant); font-size: 13px; }
 .rc-judge h4 { margin: 0 0 6px; font-size: 14px; }
 .rc-judge p { margin: 4px 0; }

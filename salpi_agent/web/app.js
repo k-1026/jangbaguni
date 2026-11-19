@@ -2447,15 +2447,17 @@ function showReceiptView(id, d) {
     <div class="receipt-view">
       ${receiptPhoto(d)}
       <div>
-        <table class="price-table">
-          <thead><tr><th>영수증 품목</th><th>재료</th><th>양</th><th>금액</th><th>kg·모당</th></tr></thead>
-          <tbody>${d.items.map((x) => `<tr><td>${esc(x.raw_name)}</td><td>${esc(x.item || "재료 아님")}</td><td>${qtyTxt(x)}</td>
-            <td class="price">${won(x.amount)}</td><td>${x.unit_price ? won(x.unit_price) : "-"}</td></tr>`).join("")}</tbody>
+        <table class="price-table rc-table">
+          <thead><tr><th>영수증 품목</th><th>재료</th><th>양</th><th>금액</th><th>kg·모당</th><th></th></tr></thead>
+          <tbody>${d.items.map((x) => `<tr data-jk="${esc(judgeKey(x))}"><td>${esc(x.raw_name)}</td>
+            <td>${esc(x.item || "재료 아님")}</td><td>${qtyTxt(x)}</td>
+            <td class="price">${won(x.amount)}</td><td>${x.unit_price ? won(x.unit_price) : "-"}</td><td class="rc-judge-cell"><span class="rc-chip"></span></td></tr>`).join("")}</tbody>
+          <!-- 맨 아래 한 줄: 합계 + 평소 가격과 비교한 결과 (구매가 점검을 표 안으로 합침) -->
+          <tfoot><tr class="rc-total"><td colspan="6"><div><b>합계 ${won(d.total_amount)}</b>
+            <span class="rc-judge-sum" id="rcJudgeSum">평소 가격과 비교하는 중이에요</span></div></td></tr></tfoot>
         </table>
       </div>
     </div>
-    <!-- 구매가 점검: 창 전체 폭 (한 품목 한 줄이 잘리지 않게) -->
-    <div class="rc-judge" id="rcJudge"><p class="muted small">구매가를 평소 단가 · 대구 시세와 비교하는 중이에요</p></div>
     <div class="receipt-actions rc-view-btns"><button class="rc-edit" id="rcViewEdit" type="button">수정하기</button>
       <button class="rc-remove" id="rcViewDel" type="button">지우기</button></div>`;
   $("#rcViewEdit").onclick = () => editReceiptView(id, d);
@@ -2472,25 +2474,35 @@ function afterReceiptDelete(r) {
   if ($("#mypage")?.classList.contains("open") && $("#mypageTitle").textContent === "나의 영수증") renderMypage("receipts");
 }
 
-// 싸게/비싸게 판정 (/api/price-judge): 비싸게 · 시세 오름 · 싸게 산 품목만 한 줄씩, 나머지는 "비슷해요 N개"
-const JUDGE_CHIP = { "비싸게 샀어요": "up", "싸게 샀어요": "down" };
+// 싸게/비싸게 판정 (/api/price-judge): 표 맨 오른쪽 칸에 칩 하나씩 + 맨 아래 합계 줄에 더 낸 돈 · 아낀 돈
+// 표 줄과 판정 줄은 '영수증 품목 · 재료 · 금액'으로 짝을 맞춤
+const judgeKey = (x) => `${x.raw_name}|${x.item || ""}|${x.amount}`;
+const JUDGE_CHIP = { "비싸게 샀어요": "up", "싸게 샀어요": "down", "시세가 올랐어요": "rise" };
+function judgeChipText(x) {   // 판정 글자 그대로 (비슷해요 · 비교할 값 없음은 칩 없음)
+  return JUDGE_CHIP[x.verdict] ? x.verdict : "";
+}
 async function loadJudge(id) {
-  const box = $("#rcJudge");
+  const sum = $("#rcJudgeSum");
   let j;
   try { j = await getJSON(`/api/price-judge?purchase_id=${id}`); }
-  catch (e) { box.innerHTML = `<p class="muted small">구매가 점검을 불러오지 못했어요</p>`; return; }
-  if (!box.isConnected) return;
-  const notable = j.lines.filter((x) => x.verdict !== "비슷해요" && x.verdict !== "비교할 값 없음");
-  // 한 품목 = 한 줄: 판정 | 재료 | 단가 | 이유(짧은 말로) | 더 낸 돈 · 아낀 돈 — 글자를 자르지 않고 줄마다 칸을 맞춤
-  const shortWhy = (w) => w.replace("우리 가게 평소보다", "평소보다").replace("우리 가게 평소와", "평소와").replace(/대구 소매 평균/g, "소매가");
-  const money = (x) => (x.extra_paid ? `<span class="jm up">${won(x.extra_paid)} 과지출</span>`
-    : x.saved ? `<span class="jm down">${won(x.saved)} 절약</span>` : `<span class="jm"></span>`);
-  box.innerHTML = `<h4>구매가 점검</h4>
-    ${notable.length ? `<div class="judge-rows">${notable.map((x) => `<div class="judge-row">
-      <span class="demand-chip ${JUDGE_CHIP[x.verdict] || ""}">${esc(x.verdict)}</span>
-      <b class="ji">${esc(x.item)}</b><span class="jp">${won(x.unit_price)}/${esc(x.unit)}</span>
-      <span class="jw">${esc(shortWhy(x.why))}</span>${money(x)}</div>`).join("")}</div>` : ""}
-    ${notable.length ? "" : `<p class="muted small">모두 평소 값에 샀어요</p>`}`;   // 눈에 띄는 품목이 없을 때만 한 줄 (칸이 비지 않게)
+  catch (e) { if (sum) sum.textContent = "평소 가격과 비교하지 못했어요"; return; }
+  if (!sum?.isConnected) return;
+  const rows = [...document.querySelectorAll(".rc-table tbody tr")];
+  for (const x of j.lines) {
+    const tr = rows.find((r) => r.dataset.jk === judgeKey(x) && !r.dataset.judged);
+    const text = judgeChipText(x);
+    if (!tr || !text) continue;
+    tr.dataset.judged = "1";
+    const why = x.why + (x.extra_paid ? ` · ${won(x.extra_paid)} 과지출` : x.saved ? ` · ${won(x.saved)} 절약` : "");
+    // 칩 바로 옆에 같은 줄로 금액만 (빨강 = 더 낸 돈, 초록 = 아낀 돈 · '과지출 · 절약' 글자는 합계 줄에만)
+    const money = x.extra_paid ? `<b class="up">${won(x.extra_paid)}</b>` : x.saved ? `<b class="down">${won(x.saved)}</b>` : "";
+    tr.querySelector(".rc-chip").outerHTML = `<span class="demand-chip rc-chip ${JUDGE_CHIP[x.verdict] || ""}" title="${esc(why)}">${esc(text)}</span>`
+      + (money ? `<span class="rc-why">${money}</span>` : "");
+  }
+  const extra = j.summary?.extra_paid || 0, saved = j.summary?.saved || 0;
+  sum.innerHTML = [extra ? `<b class="up">${won(extra)} 과지출</b>` : "",
+                   saved ? `<b class="down">${won(saved)} 절약</b>` : ""].filter(Boolean).join(" · ")
+    || "모두 평소 값에 샀어요";
   praiseFrom(j);   // 예전 영수증을 열 때도 이득이면 칭찬 팝업
 }
 

@@ -2521,7 +2521,7 @@ function closeMypage() {
 async function renderMypage(view) {
   const box = $("#mypageBody");
   $("#mypageBack").hidden = view === "home";
-  $("#mypageTitle").textContent = { home: "마이페이지", receipts: "나의 영수증", settings: "설정" }[view];
+  $("#mypageTitle").textContent = { home: "마이페이지", receipts: "나의 영수증", settings: "알림 설정" }[view];
   if (view === "receipts") {
     box.innerHTML = `<p class="muted">불러오는 중이에요</p>`;
     try {
@@ -2592,7 +2592,7 @@ function myHome(me, offline) {
     ${offline ? `<p class="muted small my-offline">서버에 연결하지 못해 기억해 둔 정보만 보여 드려요.</p>` : ""}
     <section class="my-card mc" id="myCost">${costCard()}</section>
     <section class="my-card">
-      <button class="my-link" type="button" data-view="settings"><span>설정 <small>알림 · 권한</small></span><i>›</i></button>
+      <button class="my-link" type="button" data-view="settings"><span>알림 설정 <small>· 권한</small></span><i>›</i></button>
     </section>
     <section class="my-card my-account">
       <button class="my-link" type="button" data-account="logout"><span>로그아웃</span><i>›</i></button>

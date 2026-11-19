@@ -1540,7 +1540,7 @@ function renderCosts(r, withChange) {
     <p class="muted small">레시피에 주재료만 들어 있어 실제보다 원가율이 조금 낮게 나와요.</p>`;
 }
 
-// 원가율 40% 이상(지금 또는 다음 주): 원가율 낮추는 방법 세 가지를 함께 보여 줌 — 고르는 건 사장님 (유저플로우 v2)
+// 원가율 40% 이상(지금 또는 다음 주): 원가율 낮추는 방법(가격 · 재료 · 메뉴)을 함께 보여 줌 — 고르는 건 사장님 (유저플로우 v2)
 // 받침에 맞는 조사: 받침 있으면 a, 없으면 b ('로'는 ㄹ 받침도 '로': 양파로 · 감자로 · 애호박으로 · 마늘로)
 function pp(w, a, b) {
   const c = String(w).charCodeAt(String(w).length - 1), jong = c >= 0xac00 && c <= 0xd7a3 ? (c - 0xac00) % 28 : 0;
@@ -1549,7 +1549,7 @@ function pp(w, a, b) {
 function costPlan(m) {
   const p = m.price_up, s = m.swap, k = m.push_menu;
   return `<div class="cost-plan">
-    <b class="swap-title">원가율 낮추는 방법 3가지</b>
+    <b class="swap-title">원가율 낮추는 방법</b>
     <ol>
       <li><b>가격 조정</b><span class="cp-sep">|</span>${p ? `판매가 ${won(m.price)} → <b>${won(p.price)}</b> · 원가율 ${p.new_ratio_pct}% · 남는 돈 ${won(p.new_margin)}${p.basis === "다음 주 예상 원가" ? " · 다음 주 오를 값까지 반영" : ""}` : "계산할 수 없어요"}</li>
       <li><b>대체 재료</b><span class="cp-sep">|</span>${s ? `${esc(s.from)} ${s.share_pct}%를 <b>${esc(pp(s.to, "으로", "로"))}</b> 바꾸면 1인분 ${won(s.saving_per_serving)} 아껴 원가율 ${s.new_ratio_pct}%` : "지금은 바꿀 만한 재료가 없어요 (후보 재료도 다음 주에 오를 예정이거나 값을 몰라요)"}</li>

@@ -863,6 +863,8 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .receipt-link b { font-size: 20px; color: #2E2300; }
 .receipt-link small { color: #5C4A00; font-size: 13px; font-weight: 500; line-height: 1.5; white-space: nowrap; }   /* 한 문장은 한 줄에 */
 .receipt-link i { color: #2E2300; background: #FFE38A; box-shadow: 3px 3px 6px #E6C766, -3px -3px 6px #FFFFE0; }   /* 노랑 바탕에 맞춘 볼록 그림자 */
+/* 화살표 동그라미 안에 '무료 5회 →' — 글자가 들어가도록 옆으로만 늘림 */
+.receipt-link i.receipt-go { width: auto; padding: 0 14px; border-radius: 22px; font-size: 15px; font-weight: 800; white-space: nowrap; }
 .receipt-link:active i { box-shadow: inset 3px 3px 6px #E6C766, inset -3px -3px 6px #FFFFE0; }
 .receipt-link:hover { background: #FFEBA6; }
 

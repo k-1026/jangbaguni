@@ -748,7 +748,7 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .cost-plan li { display: flex; flex-direction: column; padding: 12px 14px; border-radius: 10px; background: var(--surface); border: 1px solid var(--outline-variant); }
 .cp-chip { align-self: flex-start; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; }
 .cp-price .cp-chip { background: #FFF4DB; color: #8A5A00; }
-.cp-swap .cp-chip { background: #E2F4EE; color: #0C6E52; }
+.cp-swap .cp-chip { background: #E6EEFB; color: #1A4FB8; }
 .cp-menu .cp-chip { background: #DDF3E4; color: #1E7A3C; }
 .cp-what { margin: 8px 0 10px; font-size: 15px; color: var(--ink); }
 .cp-what b, .cp-what s { white-space: nowrap; }

@@ -525,7 +525,7 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
   color: #3F4742; font-size: 11px; font-style: normal; font-weight: 600; white-space: nowrap; }
 #menuForecast .demand-legend { display: flex; gap: 12px; margin-top: 8px; color: var(--muted); }
 /* 내일 필요한 재료: 선 아래에 재료 이름 · 양 (많이 드는 순) */
-.dm-ing { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--outline-variant); }
+.dm-ing { margin-top: 12px; padding-top: 10px; border-top: 1px solid #C9D1CC; }   /* 회녹색 카드 바탕에서도 보이게 진하게 */
 .dm-ing h4 { margin: 0 0 6px; font-size: 13px; font-weight: 700; color: var(--ink); }
 .dm-ing ul { display: grid; gap: 3px; margin: 0; padding: 0; list-style: none; }
 .dm-ing li { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--muted); }

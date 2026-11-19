@@ -1192,10 +1192,21 @@ async function loadDemand() {
     </div>
     <div class="stock-cols">${orderGroups(d.items).map((g) => `<section class="stock-col ${g.key}">
       <h4>${g.title}${g.note ? `<small>${g.note}</small>` : ""}</h4>
-      ${g.items.map((i) => orderItem(i, g.key)).join("")}
+      <div class="stock-list">${g.items.map((i) => orderItem(i, g.key)).join("")}</div>
     </section>`).join("")}</div>
     <p class="order-foot">주문량 = 입고까지 필요량 + 여유 10% − 재고</p>`;
+  requestAnimationFrame(fitStockLists);
 }
+
+// 재고 관리 칸마다 재료 5개 높이까지만 보이고 나머지는 칸 안에서 스크롤
+// (실제 줄 높이를 재서 맞춤 · 화면이 숨겨져 있어 못 재면 CSS 기본 높이를 씀)
+function fitStockLists() {
+  document.querySelectorAll(".stock-list").forEach((l) => {
+    const sixth = l.children[5];
+    l.style.maxHeight = sixth && sixth.offsetTop ? `${sixth.offsetTop}px` : "";
+  });
+}
+window.addEventListener("resize", () => requestAnimationFrame(fitStockLists));
 
 // 표의 판단을 사장님이 움직일 순서로 묶음 (빈 묶음은 숨김)
 function orderGroups(items) {

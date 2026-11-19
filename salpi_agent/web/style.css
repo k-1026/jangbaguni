@@ -673,6 +673,8 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .no-photo small { color: var(--muted); }
 .receipt-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
 /* 영수증 자세히: 맨 오른쪽 칸에 판정 칩 + 맨 아래 합계 줄 */
+.receipt-view > div:has(> .rc-table) { min-width: 0; overflow-x: auto; }   /* 창이 좁은 화면에서는 표만 옆으로 밀어서 봄 (잘리지 않게) */
+#receiptModal .modal-box { width: min(940px, 100%); }   /* 판정 칩 옆 금액까지 한 줄로 들어가게 */
 .rc-table .rc-why { margin-left: 6px; font-size: 12px; }
 .rc-table .rc-why .up { color: var(--up); } .rc-table .rc-why .down { color: var(--down); }
 .rc-table td.rc-judge-cell { padding-left: 4px; text-align: left; }

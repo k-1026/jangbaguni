@@ -1182,16 +1182,15 @@ async function loadDemand() {
         </div>
       </div>`;
     }).join("")}</div>`;
-  const until = d.next_delivery_date ? `${mmdd(d.next_delivery_date)} 입고까지` : "다음 입고까지";
   $("#orderCard").innerHTML = `
-    <div class="order-head">
-      <h3>오늘 주문 <b>${d.items.filter((i) => i.order_qty > 0).length}개</b></h3>
-      <button class="order-all" type="button">근거 모두 보기</button>
+    <div class="prep-head">
+      <h3>재고 관리 <span>주문할 재료 <b>${d.items.filter((i) => i.order_qty > 0).length}개</b></span></h3>
+      <button class="order-all stock-all" type="button">근거 모두 보기</button>
     </div>
-    ${orderGroups(d.items).map((g) => `<section class="order-group ${g.key}">
-      <h4><i></i>${g.title}${g.note ? `<small>${g.note}</small>` : ""}</h4>
-      <div class="order-grid">${g.items.map((i) => orderItem(i, g.key, until)).join("")}</div>
-    </section>`).join("")}
+    <div class="stock-cols">${orderGroups(d.items).map((g) => `<section class="stock-col ${g.key}">
+      <h4>${g.title}${g.note ? `<small>${g.note}</small>` : ""}</h4>
+      ${g.items.map((i) => orderItem(i, g.key)).join("")}
+    </section>`).join("")}</div>
     <p class="order-foot">주문량 = 입고까지 필요량 + 여유 10% − 재고</p>`;
 }
 
@@ -1206,20 +1205,21 @@ function orderGroups(items) {
   ].filter((g) => g.items.length);
 }
 
-function orderItem(i, key, until) {
+function orderItem(i, key) {
   const change = i.price_change_pct;
-  const note = key === "first" || key === "split"
-    ? `<small>다음 7일 ${change > 0 ? "+" : "−"}${Math.abs(Math.round(change))}%</small>` : "";
+  const chip = key === "first" || key === "split"
+    ? `<span class="demand-chip ${change > 0 ? "up" : "down"}">다음 7일 ${change > 0 ? "+" : "−"}${Math.abs(Math.round(change))}%</span>` : "<span></span>";
+  const buy = i.order_qty > 0;
   return `<div class="order-item">
-    <button class="order-row" type="button" aria-expanded="false" aria-controls="order-${i.item_id}">
-      <span class="order-name">${esc(i.item)}${note}</span>
-      <b>${i.order_qty > 0 ? qty(i.order_qty, i.unit) : "-"}</b>
+    <button class="order-row stock-row" type="button" aria-expanded="false" aria-controls="order-${i.item_id}">
+      <span class="order-name">${esc(i.item)}<small>재고 ${qty(i.on_hand, i.unit)}</small></span>
+      ${chip}
+      <b>${buy ? qty(i.order_qty, i.unit) : "충분"}</b>
       <i class="order-arrow" aria-hidden="true"></i>
     </button>
     <div class="order-detail" id="order-${i.item_id}" hidden>
       <dl>
         <div><dt>내일 필요</dt><dd>${qty(i.need_target, i.unit)}</dd></div>
-        <div><dt>${until}</dt><dd>${qty(i.need_until_delivery, i.unit)}</dd></div>
         <div><dt>재고</dt><dd>${qty(i.on_hand, i.unit)}</dd></div>
       </dl>
       <p>${esc(i.reason)}</p>
@@ -1247,11 +1247,11 @@ $("#orderCard").onclick = (e) => {
   const rows = [...$("#orderCard").querySelectorAll(".order-row")];
   const row = e.target.closest(".order-row");
   if (row) setOpen(row, row.getAttribute("aria-expanded") !== "true");
-  else if (e.target.closest(".order-all")) {
+  else if (e.target.closest(".stock-all")) {
     const open = rows.some((b) => b.getAttribute("aria-expanded") !== "true");
     rows.forEach((b) => setOpen(b, open));
   } else return;
-  $(".order-all").textContent = rows.every((b) => b.getAttribute("aria-expanded") === "true") ? "모두 접기" : "근거 모두 보기";
+  $(".stock-all").textContent = rows.every((b) => b.getAttribute("aria-expanded") === "true") ? "모두 접기" : "근거 모두 보기";
 };
 
 // ---------------------------------------------------------------

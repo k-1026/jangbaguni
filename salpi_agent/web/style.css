@@ -936,6 +936,12 @@ a.my-link { color: inherit; text-decoration: none; }
 .my-card .mc-info dt { color: var(--muted); white-space: nowrap; }
 .my-card .mc-info dd { margin: 0; color: var(--ink); word-break: keep-all; }
 .my-card .mc-info .none { color: #9AA19C; font-size: 15px; }
+/* 수정 화면: 가게 이름 · 구 */
+.my-card .mc-info .mc-store { max-width: 260px; }
+.mc-gu { display: inline-flex; align-items: center; gap: 8px; }
+.mc-gu > span { font-weight: 600; }
+.mc-gu select { width: auto; max-width: none; padding-right: 6px; cursor: pointer; }
+.my-card .mc-info .mc-err { grid-column: 1 / -1; color: var(--up); font-size: 14px; font-weight: 700; }
 
 /* 본전 한 줄 요약 */
 .mc-be { margin: 16px 0 4px; padding: 11px 16px; border-radius: 12px; background: #D8EECB; color: #2C6A07; }

@@ -2550,7 +2550,7 @@ async function renderMypage(view) {
   }
   const draw = (me, offline) => { if ($("#mypage").classList.contains("open") && $("#mypageTitle").textContent === "마이페이지") box.innerHTML = myHome(me, offline); };
   const cached = cachedProfile();
-  costEdit = false; costAdding = false; addSec = "fixed"; costFold = new Set(["fixed", "sale", "delivery"]);   // 처음 들어오면 비용 칸은 모두 접힌 채로
+  costEdit = false; costAdding = false; addSec = "fixed"; storeDraft = null; storeErr = ""; costFold = new Set(["fixed", "sale", "delivery"]);   // 처음 들어오면 비용 칸은 모두 접힌 채로
   draw(cached);
   freshProfile().then((me) => { if (JSON.stringify(me) !== JSON.stringify(cached)) draw(me); }).catch(() => draw(cached, true));
   loadReceiptMaterial();
@@ -2599,6 +2599,30 @@ const COST_DEFAULT = { seats: null, closed: ["일"], sales: null, fixed: {}, ext
 const PEN = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>`;
 let costEdit = false, costAdding = false, costMe = null, receiptMaterial = null;   // costEdit: '수정'을 눌러 모든 칸이 입력칸인지
 let costFold = new Set();
+// 가게 이름 · 구: 서버(계정)에 저장 → '수정' 동안 고친 값을 들고 있다가 '완료'에서 바뀐 것만 보냄
+const DAEGU_GU = ["중구", "동구", "서구", "남구", "북구", "수성구", "달서구", "달성군", "군위군"];
+let storeDraft = null, storeErr = "", storeSaving = false;
+const storeChanged = () => storeDraft && costMe && (storeDraft.store.trim() !== (costMe.store_name || "") || storeDraft.district !== (costMe.district || ""));
+async function saveStore() {
+  if (storeSaving) return;
+  if (!storeDraft.store.trim()) { storeErr = "가게 이름을 입력해 주세요."; return drawCost(".mc-store"); }
+  if (!storeDraft.district) { storeErr = "가게가 있는 구 · 군을 골라 주세요."; return drawCost('[data-sf="district"]'); }
+  storeSaving = true;
+  const btn = $("#myCost [data-cdone]");
+  if (btn) { btn.disabled = true; btn.textContent = "저장하는 중"; }
+  try {
+    const u = readLogin();
+    const me = await authCall("/api/auth/me", { method: "PATCH", token: u?.access_token, body: { store: storeDraft.store.trim(), district: storeDraft.district } });
+    costMe = me; storeErr = "";
+    try { saveLogin({ ...u, profile: me, name: me.name, store: me.store_name }, !!localStorage.getItem(LOGIN_KEY)); } catch (e) {}
+    if ($("#storeName")) $("#storeName").innerHTML = `<b>${esc(me.store_name)}</b> 사장님의 가게`;
+    storeSaving = false;
+    $("#myCost [data-cdone]")?.click();   // 저장됐으니 원래 '완료' 그대로 이어서
+  } catch (e) {
+    storeSaving = false; storeErr = e.message;
+    drawCost(".mc-store");
+  }
+}
 
 function costs() {
   const c = { ...COST_DEFAULT, ...load(COST_KEY(), {}) };
@@ -2689,8 +2713,15 @@ function costCard() {
   const none = (t) => `<span class="none">${t}</span>`;
 
   const info = `<dl class="mc-info">
-      <dt>가게 이름</dt><dd>${esc(me.store_name || "아직 없어요")}</dd>
-      <dt>지역</dt><dd>${esc(place)}</dd>
+      <dt>가게 이름</dt><dd>${ed && storeDraft
+        ? `<input class="mc-name mc-store" type="text" data-sf="store" maxlength="40" value="${esc(storeDraft.store)}" placeholder="예: 서문골 손칼국수" aria-label="가게 이름">`
+        : esc(me.store_name || "아직 없어요")}</dd>
+      <dt>지역</dt><dd>${ed && storeDraft
+        ? `<span class="mc-gu"><span>대구</span><select class="mc-name" data-sf="district" aria-label="구 · 군">
+            ${storeDraft.district ? "" : `<option value="">구 · 군 선택</option>`}
+            ${DAEGU_GU.map((g) => `<option${g === storeDraft.district ? " selected" : ""}>${g}</option>`).join("")}</select></span>`
+        : esc(place)}</dd>
+      ${ed && storeErr ? `<dd class="mc-err" role="alert">${esc(storeErr)}</dd>` : ""}
       <dt>업종</dt><dd>${ed
         ? `<div class="mc-pick">${BIZ.map((b) => `<button type="button" data-biz="${b}" aria-pressed="${b === biz}">${b}</button>`).join("")}</div>`
         : biz ? esc(biz) : none("수정에서 골라 주세요")}</dd>
@@ -2776,9 +2807,13 @@ function costClick(e) {
   if (!t || !t.closest("#myCost")) return false;
   const c = costs(), d = t.dataset;
   let focus;
-  if ("cedit" in d) { costEdit = true; costFold.clear(); focus = '[data-k="seats"]'; }
+  if ("cedit" in d) {
+    costEdit = true; costFold.clear(); focus = '[data-k="seats"]';
+    storeDraft = { store: costMe?.store_name || "", district: costMe?.district || "" }; storeErr = "";
+  }
   else if ("cdone" in d) {
-    costEdit = false;
+    if (storeChanged()) { saveStore(); return true; }   // 가게 이름 · 구가 바뀌었으면 서버에 먼저 저장
+    costEdit = false; storeDraft = null; storeErr = "";
     c.extra = c.extra.filter((x) => x.name || x.v);   // 이름 · 금액 둘 다 빈 줄은 정리
     for (const key of ["fixed", "sale", "delivery"]) costFilled(c, key) ? costFold.delete(key) : costFold.add(key);   // 넣은 게 없는 칸은 접어 둠
     focus = "[data-cedit]";
@@ -2971,6 +3006,8 @@ $("#mypageBody").onclick = (e) => {
 };
 // 비용 칸: 치는 대로 기억하고, 본전 요약 · 칸별 합계만 바로 고침 (입력칸은 다시 그리지 않아 커서가 그대로)
 $("#mypageBody").oninput = (e) => {
+  const sf = e.target.dataset.sf;
+  if (sf && storeDraft) { storeDraft[sf] = e.target.value; return; }   // 가게 이름 · 구는 '완료' 때 서버에 저장
   const p = e.target.dataset.k;
   if (!p) return;
   setCost(p, e.target.value);
@@ -2979,7 +3016,7 @@ $("#mypageBody").oninput = (e) => {
   for (const [key, v] of [["fixed", k.fixed], ["sale", k.sale], ["delivery", k.deliv]]) { const t = $(`#myCost [data-total="${key}"]`); if (t) t.textContent = man(v); }
 };
 $("#mypageBody").addEventListener("keydown", (e) => {   // 비용 칸에서 Enter = 다 했어요
-  if (e.key === "Enter" && e.target.dataset.k) { e.preventDefault(); $("#myCost [data-cdone]")?.click(); }
+  if (e.key === "Enter" && (e.target.dataset.k || e.target.dataset.sf === "store")) { e.preventDefault(); $("#myCost [data-cdone]")?.click(); }
 });
 $("#mypageBody").onchange = (e) => {
   const k = e.target.dataset.pref;

@@ -746,7 +746,6 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .cp-title::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--down); }
 .cost-plan ol { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; margin: 8px 0 0; padding: 0; list-style: none; }
 .cost-plan li { display: flex; flex-direction: column; padding: 12px 14px; border-radius: 10px; background: var(--surface); border: 1px solid var(--outline-variant); }
-.cost-plan li.best { border: 1.5px solid #7FCFAE; }
 .cp-chip { align-self: flex-start; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; }
 .cp-price .cp-chip { background: #FFF4DB; color: #8A5A00; }
 .cp-swap .cp-chip { background: #E2F4EE; color: #0C6E52; }
@@ -759,7 +758,7 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .cost-plan dl { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; margin: auto 0 0; padding-top: 10px; border-top: 1px solid var(--outline-variant); font-size: 13px; }
 .cost-plan dt { color: var(--muted); white-space: nowrap; }
 .cost-plan dd { margin: 0; white-space: nowrap; font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
-.cost-plan dd.cp-money, .cost-plan li.best dd.cp-ratio { color: var(--down); }
+.cost-plan dd.cp-money { color: var(--down); }
 .cp-none { margin: 8px 0 0; font-size: 14px; color: var(--muted); }
 .cost-swap { display: flex; align-items: stretch; gap: 16px; margin-top: 16px; padding: 14px 18px; border-radius: 12px; background: var(--primary-container); }
 .swap-title { align-self: stretch; display: flex; align-items: center; margin: -14px 0 -14px -18px; padding: 0 18px; border: 2.5px solid var(--primary); border-radius: 12px; font-size: 16px; color: var(--primary); white-space: nowrap; }   /* 띠 왼쪽 칸에 꽉 맞는 테두리 */

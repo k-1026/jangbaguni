@@ -1554,7 +1554,7 @@ function renderCosts(r, withChange) {
 }
 
 // 원가율 40% 이상(지금 또는 다음 주): 원가율 낮추는 방법(가격 · 재료 · 메뉴)을 함께 보여 줌 — 고르는 건 사장님 (유저플로우 v2)
-// 방법마다 카드 하나: 종류 칩 · 바꾸는 것 · 원가율 · 남는 금액(또는 아끼는 돈) — 원가율이 가장 낮아지는 카드에 초록 테두리
+// 방법마다 카드 하나: 종류 칩 · 바꾸는 것 · 원가율 · 남는 금액(또는 아끼는 돈) — 세 카드는 똑같이 (고르는 건 사장님)
 function costPlan(m) {
   const p = m.price_up, s = m.swap, k = m.push_menu;
   const opts = [
@@ -1567,11 +1567,9 @@ function costPlan(m) {
     { kind: "menu", label: "메뉴 제안", ratio: k?.cost_ratio_pct, none: "원가율이 괜찮은 다른 메뉴가 없어요",
       what: k && `<b>${esc(k.menu)} 밀기</b>`, key: "남는 금액", val: k && won(k.margin) },
   ];
-  const ratios = opts.filter((o) => o.ratio != null).map((o) => o.ratio);
-  const best = ratios.length ? Math.min(...ratios) : null;
   return `<div class="cost-plan">
     <b class="cp-title">원가율 낮추는 방법</b>
-    <ol>${opts.map((o) => `<li class="cp-${o.kind}${o.ratio != null && o.ratio === best ? " best" : ""}">
+    <ol>${opts.map((o) => `<li class="cp-${o.kind}">
       <span class="cp-chip">${o.label}</span>
       ${o.ratio == null ? `<p class="cp-none">${o.none}</p>` : `<p class="cp-what">${o.what}</p>
       <dl><dt>원가율</dt><dd class="cp-ratio">${o.ratio}%</dd><dt>${o.key}</dt><dd class="cp-money">${o.val}</dd></dl>`}

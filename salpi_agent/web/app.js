@@ -1120,6 +1120,14 @@ function demandReason(factors) {
   return `${name} 영향으로 평소보다 ${p}% ${v > 0 ? "많이" : "적게"} 팔릴 것 같아요`;   // 학습 모델 이유 (기온 · 삼성 홈경기 · 월급날 무렵 등)
 }
 
+// 카드 안에 들어갈 짧은 이유 (예: "금요일 +16%")
+function demandShort(factors) {
+  const [name, v] = Object.entries(factors).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))[0] || [];
+  if (name === "휴무일") return "가게 쉬는 날";
+  if (v == null || Math.abs(v) < 0.02) return "평소와 비슷";
+  return `${name} ${v > 0 ? "+" : "−"}${Math.round(Math.abs(v) * 100)}%`;
+}
+
 const weekday = (s) => "일월화수목금토"[new Date(`${s}T00:00:00`).getDay()];
 
 // 내일 예상이 평소(최근 14일 평균)와 얼마나 다른지 한눈에 (3% 안쪽은 비슷하다고 봄)
@@ -1144,15 +1152,17 @@ async function loadDemand() {
   const day = `${mmdd(d.target_date)}(${d.target_weekday})`;
   // 메뉴끼리 그릇 수를 막대 높이로 비교할 수 있게 같은 눈금을 씀 (위 여백은 숫자 자리)
   const max = Math.max(...d.menus.flatMap((m) => [m.predicted, ...m.recent.map((x) => x.qty)]), 1) * 1.2;
-  $("#storeBasis").textContent = `판매 기록 ${mmdd(d.last_sales_date)}까지${d.model ? " · 학습 모델 (가상 판매 기록)" : ""}`;
+  $("#storeBasis").textContent = `판매 기록 ${mmdd(d.last_sales_date)}까지`;
   $("#storeBasis").title = d.method;
+  // 메뉴별 숫자 카드: 많이 팔릴 순서로 한 줄에
+  const menus = [...d.menus].sort((a, b) => b.predicted - a.predicted);
   $("#menuForecast").innerHTML = `
-    <div class="demand-top">
-      <span class="badge">내일 ${day}${d.is_holiday ? " · 공휴일" : ""} 예상 판매</span>
-      <p class="demand-total">${d.is_open ? `모두 <b>${d.total_predicted}그릇</b> 팔릴 것 같아요` : "내일은 가게 쉬는 날이에요"}</p>
-      <button class="order-all demand-all" type="button">모두 보기</button>
+    <div class="prep-head">
+      <h3>내일 ${day}${d.is_holiday ? " · 공휴일" : ""} 예상 판매
+        <span>${d.is_open ? `모두 <b>${d.total_predicted}그릇</b>` : "가게 쉬는 날이에요"}</span></h3>
+      <button class="order-all demand-all" type="button">근거 모두 보기</button>
     </div>
-    <div class="demand-grid">${d.menus.map((m) => {
+    <div class="dm-cards">${menus.map((m) => {
       const pct = (v) => (v / max) * 100;
       const usual = Math.round(m.recent.reduce((s, x) => s + x.qty, 0) / (m.recent.length || 1));
       const bars = m.recent.map((x) => {
@@ -1160,69 +1170,72 @@ async function loadDemand() {
         return `<span title="${mmdd(x.date)}(${wd}) ${x.qty}그릇"><i class="${wd === d.target_weekday ? "same" : ""}" style="height:${pct(x.qty)}%"></i></span>`;
       }).join("");
       return `<div class="demand-item">
-        <button class="order-row" type="button" aria-expanded="false" aria-controls="demand-${m.menu_id}">
-          <span class="order-name">${esc(m.menu)}${d.is_open ? usualChip(m.predicted, usual) : ""}</span>
-          <b>${m.predicted}그릇</b>
-          <i class="order-arrow" aria-hidden="true"></i>
+        <button class="order-row dm-card" type="button" aria-expanded="false" aria-controls="demand-${m.menu_id}">
+          <span class="dm-name">${esc(m.menu)}<i class="order-arrow" aria-hidden="true"></i></span>
+          <b class="dm-num">${m.predicted}<small>그릇</small></b>
+          ${d.is_open ? usualChip(m.predicted, usual) : ""}
         </button>
         <div class="demand-detail" id="demand-${m.menu_id}" hidden>
-          <div class="demand-chart">
-            <p class="demand-legend">
-              <span><i></i>최근 판매</span>
-              <span><i class="same"></i>지난 ${d.target_weekday}요일</span>
-              <span><i class="next"></i>내일</span>
-              <span><i class="usual"></i>평소 ${usual}</span>
-            </p>
-            <div class="spark" role="img" aria-label="${esc(m.menu)} 평소 ${usual}그릇, 내일 예상 ${m.predicted}그릇">
-              ${bars}<span title="내일 예상 ${m.predicted}그릇 (${m.range[0]} ~ ${m.range[1]})"><i class="next" style="height:${pct(m.predicted)}%"></i></span>
-              <div class="spark-usual" style="bottom:${pct(usual)}%"></div>
-            </div>
+          <p class="dm-why" title="${esc(demandReason(m.factors))}"><b>${esc(demandShort(m.factors))}</b><small>예상 ${m.range[0]} ~ ${m.range[1]}그릇</small></p>
+          <div class="spark" role="img" aria-label="${esc(m.menu)} 평소 ${usual}그릇, 내일 예상 ${m.predicted}그릇">
+            ${bars}<span title="내일 예상 ${m.predicted}그릇 (${m.range[0]} ~ ${m.range[1]})"><i class="next" style="height:${pct(m.predicted)}%"></i></span>
+            <div class="spark-usual" style="bottom:${pct(usual)}%"><em>평소 ${usual}</em></div>
           </div>
-          <p>${esc(demandReason(m.factors))} · 예상 ${m.range[0]} ~ ${m.range[1]}그릇</p>
+          <p class="demand-legend"><span><i class="same"></i>지난 ${d.target_weekday}요일</span><span><i class="next"></i>내일</span></p>
         </div>
       </div>`;
     }).join("")}</div>`;
-  const until = d.next_delivery_date ? `${mmdd(d.next_delivery_date)} 입고까지` : "다음 입고까지";
   $("#orderCard").innerHTML = `
-    <div class="order-head">
-      <h3>오늘 주문 <b>${d.items.filter((i) => i.order_qty > 0).length}개</b></h3>
-      <button class="order-all" type="button">근거 모두 보기</button>
+    <div class="prep-head">
+      <h3>재고 관리 <span>주문할 재료 <b>${d.items.filter((i) => i.order_qty > 0).length}개</b></span></h3>
+      <button class="order-all stock-all" type="button">근거 모두 보기</button>
     </div>
-    ${orderGroups(d.items).map((g) => `<section class="order-group ${g.key}">
-      <h4><i></i>${g.title}${g.note ? `<small>${g.note}</small>` : ""}</h4>
-      <div class="order-grid">${g.items.map((i) => orderItem(i, g.key, until)).join("")}</div>
-    </section>`).join("")}
+    <div class="stock-cols">${orderGroups(d.items).map((g) => `<section class="stock-col ${g.key}">
+      <h4>${g.title}${g.note ? `<small>${g.note}</small>` : ""}</h4>
+      <div class="stock-list">${g.items.map((i) => orderItem(i, g.key)).join("")}</div>
+    </section>`).join("")}</div>
     <p class="order-foot">주문량 = 입고까지 필요량 + 여유 10% − 재고</p>`;
+  requestAnimationFrame(fitStockLists);
 }
+
+// 재고 관리 칸마다 재료 5개 높이까지만 보이고 나머지는 칸 안에서 스크롤
+// (실제 줄 높이를 재서 맞춤 · 화면이 숨겨져 있어 못 재면 CSS 기본 높이를 씀)
+function fitStockLists() {
+  document.querySelectorAll(".stock-list").forEach((l) => {
+    const sixth = l.children[5];
+    l.style.maxHeight = sixth && sixth.offsetTop ? `${sixth.offsetTop}px` : "";
+  });
+}
+window.addEventListener("resize", () => requestAnimationFrame(fitStockLists));
 
 // 표의 판단을 사장님이 움직일 순서로 묶음 (빈 묶음은 숨김)
 function orderGroups(items) {
   const rising = (i) => i.decision === "지금 사기" && i.price_change_pct >= 2;
   return [
     { key: "first", title: "먼저 사기", note: "시세가 오를 수 있어요", items: items.filter(rising) },
-    { key: "normal", title: "평소대로 주문", items: items.filter((i) => i.decision === "지금 사기" && !rising(i)) },
+    { key: "normal", title: "평소대로 주문", note: "다음 입고 전에 모자라요", items: items.filter((i) => i.decision === "지금 사기" && !rising(i)) },
     { key: "split", title: "나눠 사기", note: "시세가 내릴 수 있어요", items: items.filter((i) => i.decision === "나눠 사기") },
     { key: "wait", title: "이번엔 안 사도 돼요", note: "재고가 충분해요", items: items.filter((i) => i.decision === "기다리기") },
   ].filter((g) => g.items.length);
 }
 
-function orderItem(i, key, until) {
+function orderItem(i, key) {
   const change = i.price_change_pct;
-  const note = key === "first" || key === "split"
-    ? `<small>다음 7일 ${change > 0 ? "+" : "−"}${Math.abs(Math.round(change))}%</small>` : "";
+  const chip = key === "first" || key === "split"
+    ? `<span class="demand-chip ${change > 0 ? "up" : "down"}">다음 7일 ${change > 0 ? "+" : "−"}${Math.abs(Math.round(change))}%</span>` : "<span></span>";
+  const buy = i.order_qty > 0;
   return `<div class="order-item">
-    <button class="order-row" type="button" aria-expanded="false" aria-controls="order-${i.item_id}">
-      <span class="order-name">${esc(i.item)}${note}</span>
-      <b>${i.order_qty > 0 ? qty(i.order_qty, i.unit) : "-"}</b>
+    <button class="order-row stock-row" type="button" aria-expanded="false" aria-controls="order-${i.item_id}">
+      <span class="order-name">${esc(i.item)}<small>재고 ${qty(i.on_hand, i.unit)}</small></span>
+      ${chip}
+      <b>${buy ? qty(i.order_qty, i.unit) : "충분"}</b>
       <i class="order-arrow" aria-hidden="true"></i>
     </button>
     <div class="order-detail" id="order-${i.item_id}" hidden>
       <dl>
         <div><dt>내일 필요</dt><dd>${qty(i.need_target, i.unit)}</dd></div>
-        <div><dt>${until}</dt><dd>${qty(i.need_until_delivery, i.unit)}</dd></div>
         <div><dt>재고</dt><dd>${qty(i.on_hand, i.unit)}</dd></div>
       </dl>
-      <p>${esc(i.reason)}</p>
     </div>
   </div>`;
 }
@@ -1239,7 +1252,7 @@ $("#menuForecast").onclick = (e) => {
     const open = rows.some((b) => b.getAttribute("aria-expanded") !== "true");
     rows.forEach((b) => setOpen(b, open));
   } else return;
-  $(".demand-all").textContent = rows.every((b) => b.getAttribute("aria-expanded") === "true") ? "모두 접기" : "모두 보기";
+  $(".demand-all").textContent = rows.every((b) => b.getAttribute("aria-expanded") === "true") ? "모두 접기" : "근거 모두 보기";
 };
 
 // 재료를 누르면 계산 근거를 펼침 · 맨 위 버튼은 전체를 펴고 접음
@@ -1247,11 +1260,11 @@ $("#orderCard").onclick = (e) => {
   const rows = [...$("#orderCard").querySelectorAll(".order-row")];
   const row = e.target.closest(".order-row");
   if (row) setOpen(row, row.getAttribute("aria-expanded") !== "true");
-  else if (e.target.closest(".order-all")) {
+  else if (e.target.closest(".stock-all")) {
     const open = rows.some((b) => b.getAttribute("aria-expanded") !== "true");
     rows.forEach((b) => setOpen(b, open));
   } else return;
-  $(".order-all").textContent = rows.every((b) => b.getAttribute("aria-expanded") === "true") ? "모두 접기" : "근거 모두 보기";
+  $(".stock-all").textContent = rows.every((b) => b.getAttribute("aria-expanded") === "true") ? "모두 접기" : "근거 모두 보기";
 };
 
 // ---------------------------------------------------------------

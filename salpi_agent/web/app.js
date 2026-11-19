@@ -1152,7 +1152,7 @@ async function loadDemand() {
   const day = `${mmdd(d.target_date)}(${d.target_weekday})`;
   // 메뉴끼리 그릇 수를 막대 높이로 비교할 수 있게 같은 눈금을 씀 (위 여백은 숫자 자리)
   const max = Math.max(...d.menus.flatMap((m) => [m.predicted, ...m.recent.map((x) => x.qty)]), 1) * 1.2;
-  $("#storeBasis").textContent = `판매 기록 ${mmdd(d.last_sales_date)}까지${d.model ? " · 학습 모델 (가상 판매 기록)" : ""}`;
+  $("#storeBasis").textContent = `판매 기록 ${mmdd(d.last_sales_date)}까지`;
   $("#storeBasis").title = d.method;
   // 메뉴별 숫자 카드: 많이 팔릴 순서로 한 줄에
   const menus = [...d.menus].sort((a, b) => b.predicted - a.predicted);

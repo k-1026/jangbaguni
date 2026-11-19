@@ -1989,7 +1989,7 @@ async function loadContext() {
     </div>
     <div class="wx">${fc.map((d, i) => {
       const pop = Math.max(+d.rain_pct_am || 0, +d.rain_pct_pm || 0);
-      return `<div><span class="wx-day">${mmdd(d.date)}(${"일월화수목금토"[new Date(`${d.date}T00:00:00`).getDay()]})</span>${skyIcon(fcSky(d))}<b>${d.max ?? "-"}°</b><span class="wx-min">${d.min ?? "-"}°</span>${pop ? `<span class="wx-pop">비 ${pop}%</span>` : "-"}</div>`;
+      return `<div><span class="wx-day">${mmdd(d.date)}<small>${"일월화수목금토"[new Date(`${d.date}T00:00:00`).getDay()]}</small></span>${skyIcon(fcSky(d))}<b>${d.max ?? "-"}°</b><span class="wx-min">${d.min ?? "-"}°</span>${pop ? `<span class="wx-pop">비 ${pop}%</span>` : "-"}</div>`;
     }).join("")}</div>`;
   })() : `<h3>대구 날씨 (지난 7일)</h3>
     <p class="muted" style="margin-bottom:10px">비 ${w.rain_total_mm}mm (${w.rain_days}일) · 최저 ${w.min_temp}℃ · 최고 ${w.max_temp}℃</p>

@@ -420,8 +420,8 @@ body.store-view .store-btn { color: #fff; background: var(--primary); }
 .wx-sum .rain b { color: #3F8FD8; }
 .wx-sum .lo b { color: #2F6FB8; }
 .wx-sum .hi b { color: #D2462F; }
-.wx div:has(.wx-day) { padding-left: 0; padding-right: 0; }
-.wx .wx-day { display: block; white-space: nowrap; font-size: 10.5px; letter-spacing: -0.5px; }
+.wx .wx-day { display: block; white-space: nowrap; font-size: 12px; line-height: 1.35; }
+.wx .wx-day small { display: block; color: var(--muted); font-size: 11.5px; }
 .wx .wx-min { display: block; color: var(--muted); font-size: 11.5px; }
 .wx .wx-pop { color: #3F8FD8; font-weight: 600; }
 .wx-icon { display: block; width: 32px; height: 32px; margin: 4px auto 2px; max-width: 100%; }

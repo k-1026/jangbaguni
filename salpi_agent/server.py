@@ -751,6 +751,17 @@ def auth_me(authorization: str | None = Header(None)):
     return _auth(lambda: auth.me(_bearer(authorization)))
 
 
+class StoreEditIn(BaseModel):
+    store: str = ""
+    district: str = ""
+
+
+@app.patch("/api/auth/me")
+def auth_store_edit(body: StoreEditIn, authorization: str | None = Header(None)):
+    """마이페이지에서 가게 이름 · 구 바꾸기."""
+    return _auth(lambda: auth.update_store(_bearer(authorization), body.model_dump()))
+
+
 @app.post("/api/auth/logout")
 def auth_logout(authorization: str | None = Header(None)):
     _auth(lambda: auth.logout(_bearer(authorization)))

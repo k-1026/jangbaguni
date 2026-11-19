@@ -1108,6 +1108,12 @@ function monthRange(history, now) {
 // 우리 가게 내일 준비 (판매 기록 → 예상 그릇 수 → 재료 필요량 · 발주)
 // ---------------------------------------------------------------
 const qty = (v, unit) => (unit === "모" ? `${Math.round(v)}모` : `${(+v).toFixed(1)}${unit}`);
+// 메뉴별 재료 양: 1kg · 1L 아래는 g · ml로 (10 단위), 개 · 모는 모자라지 않게 올림
+function ingQty(v, unit) {
+  if (unit === "개" || unit === "모") return `${Math.ceil(v)}${unit}`;
+  if ((unit === "kg" || unit === "L") && v < 1) return `${Math.max(10, Math.round(v * 100) * 10)}${unit === "kg" ? "g" : "ml"}`;
+  return `${(+v).toFixed(1)}${unit}`;
+}
 
 // 가장 영향이 큰 이유 한 줄 (factors: 0.05 = 평소보다 +5%)
 function demandReason(factors) {
@@ -1182,6 +1188,8 @@ async function loadDemand() {
             <div class="spark-usual" style="bottom:${pct(usual)}%"><em>평소 ${usual}</em></div>
           </div>
           <p class="demand-legend"><span><i class="same"></i>지난 ${d.target_weekday}요일</span><span><i class="next"></i>내일</span></p>
+          ${m.ingredients?.length && m.predicted ? `<div class="dm-ing"><h4>내일 필요한 재료</h4>
+            <ul>${m.ingredients.map((g) => `<li><span>${esc(g.item)}</span><b>${ingQty(g.qty, g.unit)}</b></li>`).join("")}</ul></div>` : ""}
         </div>
       </div>`;
     }).join("")}</div>`;
@@ -1222,7 +1230,7 @@ function orderGroups(items) {
 function orderItem(i, key) {
   const change = i.price_change_pct;
   const chip = key === "first" || key === "split"
-    ? `<span class="demand-chip ${change > 0 ? "up" : "down"}">다음 7일 ${change > 0 ? "+" : "−"}${Math.abs(Math.round(change))}%</span>` : "<span></span>";
+    ? `<span class="demand-chip ${change > 0 ? "up" : "down"}">다음 주 ${change > 0 ? "+" : "−"}${Math.abs(Math.round(change))}%</span>` : "<span></span>";
   const buy = i.order_qty > 0;
   return `<div class="order-item">
     <button class="order-row stock-row" type="button" aria-expanded="false" aria-controls="order-${i.item_id}">
@@ -1535,7 +1543,7 @@ function renderCosts(r, withChange) {
       // 한 줄에 숫자 넷: 원가율(크게 · 색) | 판매가 | 1인분 재료비 | 남는 금액
       return `<article class="cost-card ${tone}">
         <div class="cost-menu-row"><h3 class="cost-menu">${esc(m.menu)}</h3>
-          <button class="btn cost-edit" type="button" data-mid="${m.menu_id}">✎ 수정</button></div>
+          <button class="btn cost-edit" type="button" data-mid="${m.menu_id}"><span class="pen-flip" aria-hidden="true">✎</span> 수정</button></div>
         <dl class="cost-stats">
           <div class="cost-main"><dt>원가율 <span class="cost-verdict">${esc(m.verdict)}</span></dt><dd>${v ?? "-"}<em>%</em>${ch}</dd></div>
           <div><dt>판매가</dt><dd>${won(m.price)}</dd></div>
@@ -1560,23 +1568,25 @@ function renderCosts(r, withChange) {
 }
 
 // 원가율 40% 이상(지금 또는 다음 주): 원가율 낮추는 방법(가격 · 재료 · 메뉴)을 함께 보여 줌 — 고르는 건 사장님 (유저플로우 v2)
-// 방법마다 핵심만, 표처럼 줄을 맞춤: 제목 · 바꾸는 것 · 원가율 · 남는 금액(또는 아끼는 돈) — 원가율끼리 위아래로 비교되게
+// 방법마다 카드 하나: 종류 칩 · 바꾸는 것 · 원가율 · 남는 금액(또는 아끼는 돈) — 세 카드는 똑같이 (고르는 건 사장님)
 function costPlan(m) {
   const p = m.price_up, s = m.swap, k = m.push_menu;
-  const row = (title, what, ratio, money) => `<li><b class="cp-label">${title}</b>${ratio == null
-    ? `<span class="cp-what cp-none">${what}</span>`
-    : `<span class="cp-what">${what}</span><span class="cp-num">원가율 <b>${ratio}%</b></span><span class="cp-num">${money}</span>`}</li>`;
+  const opts = [
+    { kind: "price", label: "가격 조정", ratio: p?.new_ratio_pct, none: "계산할 수 없어요",
+      what: p && `<s>${won(m.price)}</s><i aria-label="에서">→</i><b>${won(p.price)}</b>`,
+      key: p?.basis === "다음 주 예상 원가" ? "남는 금액(다음 주)" : "남는 금액", val: p && won(p.new_margin) },
+    { kind: "swap", label: "대체 재료", ratio: s?.new_ratio_pct, none: "바꿀 만한 재료가 없어요",
+      what: s && `${esc(s.from)} ${s.share_pct}%<i aria-label="대신">→</i><b>${esc(s.to)}</b>`,
+      key: "1인분", val: s && `${won(s.saving_per_serving)} 절약` },
+    { kind: "menu", label: "메뉴 제안", ratio: k?.cost_ratio_pct, none: "원가율이 괜찮은 다른 메뉴가 없어요",
+      what: k && `<b>${esc(k.menu)} 밀기</b>`, key: "남는 금액", val: k && won(k.margin) },
+  ];
   return `<div class="cost-plan">
-    <b class="swap-title">원가율 낮추는 방법</b>
-    <ol>
-      ${p ? row("가격 조정", `${won(m.price)} → <b>${won(p.price)}</b>`, p.new_ratio_pct,
-        `남는 금액 <b>${won(p.new_margin)}</b>${p.basis === "다음 주 예상 원가" ? ` <span class="cp-note">(다음 주 값 반영)</span>` : ""}`)
-        : row("가격 조정", "계산할 수 없어요")}
-      ${s ? row("대체 재료", `${esc(s.from)} ${s.share_pct}% → <b>${esc(s.to)}</b>`, s.new_ratio_pct, `1인분 <b>${won(s.saving_per_serving)}</b> 절약`)
-        : row("대체 재료", "지금은 바꿀 만한 재료가 없어요")}
-      ${k ? row("메뉴 제안", `<b>${esc(k.menu)}</b> 밀기`, k.cost_ratio_pct, `남는 금액 <b>${won(k.margin)}</b>`)
-        : row("메뉴 제안", "원가율이 괜찮은 다른 메뉴가 없어요")}
-    </ol>
+    <b class="cp-title">원가율 낮추는 방법</b>
+    <ol>${opts.map((o) => `<li class="cp-${o.kind}">
+      <div class="cp-head"><span class="cp-chip">${o.label}</span>${o.ratio == null ? "" : `<p class="cp-what">${o.what}</p>`}</div>
+      ${o.ratio == null ? `<p class="cp-none">${o.none}</p>` : `<dl><dt>원가율</dt><dd class="cp-ratio">${o.ratio}%</dd><dt>${o.key}</dt><dd class="cp-money">${o.val}</dd></dl>`}
+    </li>`).join("")}</ol>
   </div>`;
 }
 
@@ -1924,8 +1934,17 @@ function sky(d) {
   return d.cloud == null ? "" : "맑음";
 }
 
-function wxIcon(d) {
-  const s = sky(d);
+function wxIcon(d) { return skyIcon(sky(d)); }
+// 예보 하늘 말(맑음 · 구름많음 · 흐림 · 흐리고 비 · 소나기 · 비/눈 …) → 아이콘 다섯 가지 중 하나
+function fcSky(d) {
+  const s = d.sky || "";
+  if (/눈/.test(s)) return "눈";
+  if (/비|소나기/.test(s)) return "비";
+  if (/구름/.test(s)) return "구름 많음";
+  if (/흐/.test(s)) return "흐림";
+  return s ? "맑음" : "";
+}
+function skyIcon(s) {
   return `<svg class="wx-icon" viewBox="0 0 32 32" role="img" aria-label="${s}"><title>${s}</title>${WX_ICONS[s] || ""}</svg>`;
 }
 
@@ -1983,7 +2002,19 @@ function renderMart() {
   btn.hidden = pages <= 1;
   btn.innerHTML = martPage < pages ? `더보기 <b>${martPage}</b> | ${pages}` : "처음으로 접기";
   btn.setAttribute("aria-label", martPage < pages ? `12개 더 보기 (${pages}번 중 ${martPage}번째, ${list.length}개 중 ${martPage * MART_FIRST}개 보는 중)` : "처음 12개만 보기");
+  fitMartNames();
 }
+
+// 이름이 한 줄에 안 들어가는 칸만 '긴 이름' 모양: 둘째 줄에 이름 나머지 + 바로 옆에 규격 (칸 높이는 그대로)
+function fitMartNames() {
+  $("#martGrid").querySelectorAll(".mart-item h3").forEach((h) => {
+    h.classList.remove("long");
+    const n = h.querySelector(".mart-name");
+    if (n && n.scrollWidth > n.clientWidth + 1) h.classList.add("long");
+  });
+}
+new ResizeObserver(() => fitMartNames()).observe($("#martGrid"));   // 화면 폭이 바뀌어 한 줄 칸 수가 달라질 때
+document.fonts?.ready.then(fitMartNames);                            // 글꼴을 다 받은 뒤 다시 재기
 
 async function loadMart() {
   try { mart = await getJSON("/api/mart"); }
@@ -2011,8 +2042,22 @@ $("#martAll").onclick = () => {
 async function loadContext() {
   let c;
   try { c = await getJSON("/api/context"); } catch (e) { return; }
-  const w = c.weather;
-  $("#weatherCard").innerHTML = `<h3>대구 날씨 (지난 7일)</h3>
+  const fc = c.weather_forecast || [], w = c.weather;
+  // 앞으로 7일 예보 (기상청 단기 · 중기). 예보를 못 받으면 지난 7일 관측으로 대신 보여 줌
+  $("#weatherCard").innerHTML = fc.length ? (() => {
+    const nums = (k) => fc.map((d) => d[k]).filter((v) => v != null);
+    const rainy = fc.filter((d) => fcSky(d) === "비" || fcSky(d) === "눈").length;
+    return `<h3>이번 주 대구 날씨</h3>
+    <div class="wx-sum">
+      <span class="${rainy ? "rain" : ""}">${rainy ? `비 · 눈 <b>${rainy}일</b>` : "비 예보 <b>없음</b>"}</span>
+      <span class="lo">최저 <b>${Math.min(...nums("min"))}℃</b></span>
+      <span class="hi">최고 <b>${Math.max(...nums("max"))}℃</b></span>
+    </div>
+    <div class="wx">${fc.map((d, i) => {
+      const pop = Math.max(+d.rain_pct_am || 0, +d.rain_pct_pm || 0);
+      return `<div><span class="wx-day">${mmdd(d.date)}<small>${"일월화수목금토"[new Date(`${d.date}T00:00:00`).getDay()]}</small></span>${skyIcon(fcSky(d))}<b>${d.max ?? "-"}°</b><span class="wx-min">${d.min ?? "-"}°</span>${pop ? `<span class="wx-pop">비 ${pop}%</span>` : "-"}</div>`;
+    }).join("")}</div>`;
+  })() : `<h3>대구 날씨 (지난 7일)</h3>
     <p class="muted" style="margin-bottom:10px">비 ${w.rain_total_mm}mm (${w.rain_days}일) · 최저 ${w.min_temp}℃ · 최고 ${w.max_temp}℃</p>
     <div class="wx">${(w.daily || []).map((d) => `<div>${mmdd(d.date)}${wxIcon(d)}<b>${Math.round(d.max_temp)}°</b>${d.rain_mm ? `비 ${d.rain_mm}` : "-"}</div>`).join("")}</div>`;
   const fmt = (s) => `${s.slice(4, 6)}.${s.slice(6, 8)}`;
@@ -2435,15 +2480,17 @@ function showReceiptView(id, d) {
     <div class="receipt-view">
       ${receiptPhoto(d)}
       <div>
-        <table class="price-table">
-          <thead><tr><th>영수증 품목</th><th>재료</th><th>양</th><th>금액</th><th>kg·모당</th></tr></thead>
-          <tbody>${d.items.map((x) => `<tr><td>${esc(x.raw_name)}</td><td>${esc(x.item || "재료 아님")}</td><td>${qtyTxt(x)}</td>
-            <td class="price">${won(x.amount)}</td><td>${x.unit_price ? won(x.unit_price) : "-"}</td></tr>`).join("")}</tbody>
+        <table class="price-table rc-table">
+          <thead><tr><th>영수증 품목</th><th>재료</th><th>양</th><th>금액</th><th>kg·모당</th><th></th></tr></thead>
+          <tbody>${d.items.map((x) => `<tr data-jk="${esc(judgeKey(x))}"><td>${esc(x.raw_name)}</td>
+            <td>${esc(x.item || "재료 아님")}</td><td>${qtyTxt(x)}</td>
+            <td class="price">${won(x.amount)}</td><td>${x.unit_price ? won(x.unit_price) : "-"}</td><td class="rc-judge-cell"><span class="rc-chip"></span></td></tr>`).join("")}</tbody>
+          <!-- 맨 아래 한 줄: 합계 + 평소 가격과 비교한 결과 (구매가 점검을 표 안으로 합침) -->
+          <tfoot><tr class="rc-total"><td colspan="6"><div><b>합계 ${won(d.total_amount)}</b>
+            <span class="rc-judge-sum" id="rcJudgeSum">평소 가격과 비교하는 중이에요</span></div></td></tr></tfoot>
         </table>
       </div>
     </div>
-    <!-- 구매가 점검: 창 전체 폭 (한 품목 한 줄이 잘리지 않게) -->
-    <div class="rc-judge" id="rcJudge"><p class="muted small">구매가를 평소 단가 · 대구 시세와 비교하는 중이에요</p></div>
     <div class="receipt-actions rc-view-btns"><button class="rc-edit" id="rcViewEdit" type="button">수정하기</button>
       <button class="rc-remove" id="rcViewDel" type="button">지우기</button></div>`;
   $("#rcViewEdit").onclick = () => editReceiptView(id, d);
@@ -2460,25 +2507,35 @@ function afterReceiptDelete(r) {
   if ($("#mypage")?.classList.contains("open") && $("#mypageTitle").textContent === "나의 영수증") renderMypage("receipts");
 }
 
-// 싸게/비싸게 판정 (/api/price-judge): 비싸게 · 시세 오름 · 싸게 산 품목만 한 줄씩, 나머지는 "비슷해요 N개"
-const JUDGE_CHIP = { "비싸게 샀어요": "up", "싸게 샀어요": "down" };
+// 싸게/비싸게 판정 (/api/price-judge): 표 맨 오른쪽 칸에 칩 하나씩 + 맨 아래 합계 줄에 더 낸 돈 · 아낀 돈
+// 표 줄과 판정 줄은 '영수증 품목 · 재료 · 금액'으로 짝을 맞춤
+const judgeKey = (x) => `${x.raw_name}|${x.item || ""}|${x.amount}`;
+const JUDGE_CHIP = { "비싸게 샀어요": "up", "싸게 샀어요": "down", "시세가 올랐어요": "rise" };
+function judgeChipText(x) {   // 판정 글자 그대로 (비슷해요 · 비교할 값 없음은 칩 없음)
+  return JUDGE_CHIP[x.verdict] ? x.verdict : "";
+}
 async function loadJudge(id) {
-  const box = $("#rcJudge");
+  const sum = $("#rcJudgeSum");
   let j;
   try { j = await getJSON(`/api/price-judge?purchase_id=${id}`); }
-  catch (e) { box.innerHTML = `<p class="muted small">구매가 점검을 불러오지 못했어요</p>`; return; }
-  if (!box.isConnected) return;
-  const notable = j.lines.filter((x) => x.verdict !== "비슷해요" && x.verdict !== "비교할 값 없음");
-  // 한 품목 = 한 줄: 판정 | 재료 | 단가 | 이유(짧은 말로) | 더 낸 돈 · 아낀 돈 — 글자를 자르지 않고 줄마다 칸을 맞춤
-  const shortWhy = (w) => w.replace("우리 가게 평소보다", "평소보다").replace("우리 가게 평소와", "평소와").replace(/대구 소매 평균/g, "소매가");
-  const money = (x) => (x.extra_paid ? `<span class="jm up">${won(x.extra_paid)} 과지출</span>`
-    : x.saved ? `<span class="jm down">${won(x.saved)} 절약</span>` : `<span class="jm"></span>`);
-  box.innerHTML = `<h4>구매가 점검</h4>
-    ${notable.length ? `<div class="judge-rows">${notable.map((x) => `<div class="judge-row">
-      <span class="demand-chip ${JUDGE_CHIP[x.verdict] || ""}">${esc(x.verdict)}</span>
-      <b class="ji">${esc(x.item)}</b><span class="jp">${won(x.unit_price)}/${esc(x.unit)}</span>
-      <span class="jw">${esc(shortWhy(x.why))}</span>${money(x)}</div>`).join("")}</div>` : ""}
-    ${notable.length ? "" : `<p class="muted small">모두 평소 값에 샀어요</p>`}`;   // 눈에 띄는 품목이 없을 때만 한 줄 (칸이 비지 않게)
+  catch (e) { if (sum) sum.textContent = "평소 가격과 비교하지 못했어요"; return; }
+  if (!sum?.isConnected) return;
+  const rows = [...document.querySelectorAll(".rc-table tbody tr")];
+  for (const x of j.lines) {
+    const tr = rows.find((r) => r.dataset.jk === judgeKey(x) && !r.dataset.judged);
+    const text = judgeChipText(x);
+    if (!tr || !text) continue;
+    tr.dataset.judged = "1";
+    const why = x.why + (x.extra_paid ? ` · ${won(x.extra_paid)} 과지출` : x.saved ? ` · ${won(x.saved)} 절약` : "");
+    // 칩 바로 옆에 같은 줄로 금액만 (빨강 = 더 낸 돈, 초록 = 아낀 돈 · '과지출 · 절약' 글자는 합계 줄에만)
+    const money = x.extra_paid ? `<b class="up">${won(x.extra_paid)}</b>` : x.saved ? `<b class="down">${won(x.saved)}</b>` : "";
+    tr.querySelector(".rc-chip").outerHTML = `<span class="demand-chip rc-chip ${JUDGE_CHIP[x.verdict] || ""}" title="${esc(why)}">${esc(text)}</span>`
+      + (money ? `<span class="rc-why">${money}</span>` : "");
+  }
+  const extra = j.summary?.extra_paid || 0, saved = j.summary?.saved || 0;
+  sum.innerHTML = [extra ? `<b class="up">${won(extra)} 과지출</b>` : "",
+                   saved ? `<b class="down">${won(saved)} 절약</b>` : ""].filter(Boolean).join(" · ")
+    || "모두 평소 값에 샀어요";
   praiseFrom(j);   // 예전 영수증을 열 때도 이득이면 칭찬 팝업
 }
 
@@ -2542,7 +2599,7 @@ function closeMypage() {
 async function renderMypage(view) {
   const box = $("#mypageBody");
   $("#mypageBack").hidden = view === "home";
-  $("#mypageTitle").textContent = { home: "마이페이지", receipts: "나의 영수증", settings: "설정" }[view];
+  $("#mypageTitle").textContent = { home: "마이페이지", receipts: "나의 영수증", settings: "알림 설정" }[view];
   if (view === "receipts") {
     box.innerHTML = `<p class="muted">불러오는 중이에요</p>`;
     try {
@@ -2594,7 +2651,7 @@ async function renderMypage(view) {
   }
   const draw = (me, offline) => { if ($("#mypage").classList.contains("open") && $("#mypageTitle").textContent === "마이페이지") box.innerHTML = myHome(me, offline); };
   const cached = cachedProfile();
-  costEdit = false; costAdding = false; addSec = "fixed"; costFold = new Set(["fixed", "sale", "delivery"]);   // 처음 들어오면 비용 칸은 모두 접힌 채로
+  costEdit = false; costAdding = false; addSec = "fixed"; storeDraft = null; storeErr = ""; costFold = new Set(["fixed", "sale", "delivery"]);   // 처음 들어오면 비용 칸은 모두 접힌 채로
   draw(cached);
   freshProfile().then((me) => { if (JSON.stringify(me) !== JSON.stringify(cached)) draw(me); }).catch(() => draw(cached, true));
   loadReceiptMaterial();
@@ -2613,7 +2670,7 @@ function myHome(me, offline) {
     ${offline ? `<p class="muted small my-offline">서버에 연결하지 못해 기억해 둔 정보만 보여 드려요.</p>` : ""}
     <section class="my-card mc" id="myCost">${costCard()}</section>
     <section class="my-card">
-      <button class="my-link" type="button" data-view="settings"><span>설정 <small>알림 · 권한</small></span><i>›</i></button>
+      <button class="my-link" type="button" data-view="settings"><span>알림 설정 <small>· 권한</small></span><i>›</i></button>
     </section>
     <section class="my-card my-account">
       <button class="my-link" type="button" data-account="logout"><span>로그아웃</span><i>›</i></button>
@@ -2643,6 +2700,30 @@ const COST_DEFAULT = { seats: null, closed: ["일"], sales: null, fixed: {}, ext
 const PEN = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>`;
 let costEdit = false, costAdding = false, costMe = null, receiptMaterial = null;   // costEdit: '수정'을 눌러 모든 칸이 입력칸인지
 let costFold = new Set();
+// 가게 이름 · 구: 서버(계정)에 저장 → '수정' 동안 고친 값을 들고 있다가 '완료'에서 바뀐 것만 보냄
+const DAEGU_GU = ["중구", "동구", "서구", "남구", "북구", "수성구", "달서구", "달성군", "군위군"];
+let storeDraft = null, storeErr = "", storeSaving = false;
+const storeChanged = () => storeDraft && costMe && (storeDraft.store.trim() !== (costMe.store_name || "") || storeDraft.district !== (costMe.district || ""));
+async function saveStore() {
+  if (storeSaving) return;
+  if (!storeDraft.store.trim()) { storeErr = "가게 이름을 입력해 주세요."; return drawCost(".mc-store"); }
+  if (!storeDraft.district) { storeErr = "가게가 있는 구 · 군을 골라 주세요."; return drawCost('[data-sf="district"]'); }
+  storeSaving = true;
+  const btn = $("#myCost [data-cdone]");
+  if (btn) { btn.disabled = true; btn.textContent = "저장하는 중"; }
+  try {
+    const u = readLogin();
+    const me = await authCall("/api/auth/me", { method: "PATCH", token: u?.access_token, body: { store: storeDraft.store.trim(), district: storeDraft.district } });
+    costMe = me; storeErr = "";
+    try { saveLogin({ ...u, profile: me, name: me.name, store: me.store_name }, !!localStorage.getItem(LOGIN_KEY)); } catch (e) {}
+    if ($("#storeName")) $("#storeName").innerHTML = `<b>${esc(me.store_name)}</b> 사장님의 가게`;
+    storeSaving = false;
+    $("#myCost [data-cdone]")?.click();   // 저장됐으니 원래 '완료' 그대로 이어서
+  } catch (e) {
+    storeSaving = false; storeErr = e.message;
+    drawCost(".mc-store");
+  }
+}
 
 function costs() {
   const c = { ...COST_DEFAULT, ...load(COST_KEY(), {}) };
@@ -2733,8 +2814,15 @@ function costCard() {
   const none = (t) => `<span class="none">${t}</span>`;
 
   const info = `<dl class="mc-info">
-      <dt>가게 이름</dt><dd>${esc(me.store_name || "아직 없어요")}</dd>
-      <dt>지역</dt><dd>${esc(place)}</dd>
+      <dt>가게 이름</dt><dd>${ed && storeDraft
+        ? `<input class="mc-name mc-store" type="text" data-sf="store" maxlength="40" value="${esc(storeDraft.store)}" placeholder="예: 서문골 손칼국수" aria-label="가게 이름">`
+        : esc(me.store_name || "아직 없어요")}</dd>
+      <dt>지역</dt><dd>${ed && storeDraft
+        ? `<span class="mc-gu"><span>대구</span><select class="mc-name" data-sf="district" aria-label="구 · 군">
+            ${storeDraft.district ? "" : `<option value="">구 · 군 선택</option>`}
+            ${DAEGU_GU.map((g) => `<option${g === storeDraft.district ? " selected" : ""}>${g}</option>`).join("")}</select></span>`
+        : esc(place)}</dd>
+      ${ed && storeErr ? `<dd class="mc-err" role="alert">${esc(storeErr)}</dd>` : ""}
       <dt>업종</dt><dd>${ed
         ? `<div class="mc-pick">${BIZ.map((b) => `<button type="button" data-biz="${b}" aria-pressed="${b === biz}">${b}</button>`).join("")}</div>`
         : biz ? esc(biz) : none("수정에서 골라 주세요")}</dd>
@@ -2820,9 +2908,13 @@ function costClick(e) {
   if (!t || !t.closest("#myCost")) return false;
   const c = costs(), d = t.dataset;
   let focus;
-  if ("cedit" in d) { costEdit = true; costFold.clear(); focus = '[data-k="seats"]'; }
+  if ("cedit" in d) {
+    costEdit = true; costFold.clear(); focus = '[data-k="seats"]';
+    storeDraft = { store: costMe?.store_name || "", district: costMe?.district || "" }; storeErr = "";
+  }
   else if ("cdone" in d) {
-    costEdit = false;
+    if (storeChanged()) { saveStore(); return true; }   // 가게 이름 · 구가 바뀌었으면 서버에 먼저 저장
+    costEdit = false; storeDraft = null; storeErr = "";
     c.extra = c.extra.filter((x) => x.name || x.v);   // 이름 · 금액 둘 다 빈 줄은 정리
     for (const key of ["fixed", "sale", "delivery"]) costFilled(c, key) ? costFold.delete(key) : costFold.add(key);   // 넣은 게 없는 칸은 접어 둠
     focus = "[data-cedit]";
@@ -2898,8 +2990,7 @@ async function showAppPush() {
     : Notification.permission === "denied"
       ? `<p class="rc-warn">알림이 막혀 있어요. 휴대폰 설정 → 앱(또는 크롬) → 살피 → 알림을 허용해 주세요.</p>`
       : `<div class="toggle-row"><span><b>앱 알림</b><small>매일 아침 시세 알림을 휴대폰 알림으로 받아요.</small></span>
-          <button class="btn primary" id="pushOn" type="button" ${st.ready ? "" : "disabled"}>알림 켜기</button></div>
-        ${st.ready ? "" : `<p class="muted small">서버에 앱 알림 열쇠가 아직 없어요</p>`}`);
+          <button class="btn primary" id="pushOn" type="button" ${st.ready ? "" : "disabled"}>알림 켜기</button></div>`);
   if ($("#appInstall")) $("#appInstall").onclick = async () => { installPrompt.prompt(); await installPrompt.userChoice; installPrompt = null; showAppPush(); };
   if ($("#pushOn")) $("#pushOn").onclick = async () => {
     try {
@@ -2938,7 +3029,6 @@ async function showKakao() {
     // 아이디로 가입한 사장님도 됨: 살피 로그인은 그대로, 카카오톡 권한만 붙임
     box.innerHTML = `<div class="toggle-row"><span><b>아직 연결 전</b><small>카카오톡 연결 후 동의하면 받아요.</small></span>
       <button class="btn primary" id="kakaoLink" type="button" ${st.ready ? "" : "disabled"}>카카오톡 연결</button></div>
-      ${st.ready ? "" : `<p class="muted small">서버에 카카오 키가 아직 없어요</p>`}
       ${err ? `<p class="rc-warn">연결하지 못했어요: ${esc(err)}</p>` : ""}`;
     $("#kakaoLink").onclick = async () => {
       try { location.assign((await authCall("/api/kakao/link", { token })).url); }
@@ -2949,7 +3039,7 @@ async function showKakao() {
   box.innerHTML = `${done ? `<p class="ok">카카오톡과 연결했어요. '지금 보내 보기'로 확인해 보세요</p>` : ""}
     <label class="toggle-row"><span><b>매일 아침 받기</b><small>${st.last_sent ? `마지막으로 보낸 때 ${esc(st.last_sent.replace("T", " "))}` : "아직 보낸 적 없어요"}${st.last_error ? ` · 지난번 실패: ${esc(st.last_error)}` : ""}</small></span>
       <input type="checkbox" class="switch" id="kakaoOn" ${st.on ? "checked" : ""}></label>
-    <div class="toggle-row"><span><b>지금 보내 보기</b><small id="kakaoTestMsg">${st.ready ? "내 카톡으로 지금 시세 알림을 보내요" : "서버에 카카오 키가 아직 없어요"}</small></span>
+    <div class="toggle-row"><span><b>지금 보내 보기</b><small id="kakaoTestMsg">내 카톡으로 지금 시세 알림을 보내요</small></span>
       <button class="btn" id="kakaoTest" type="button" ${st.ready ? "" : "disabled"}>보내기</button></div>
     <div class="toggle-row"><span><b>연결 끊기</b><small>카카오톡 알림을 그만 받고 저장한 카카오 권한을 지워요</small></span>
       <button class="btn" id="kakaoUnlink" type="button">끊기</button></div>`;
@@ -3015,6 +3105,8 @@ $("#mypageBody").onclick = (e) => {
 };
 // 비용 칸: 치는 대로 기억하고, 본전 요약 · 칸별 합계만 바로 고침 (입력칸은 다시 그리지 않아 커서가 그대로)
 $("#mypageBody").oninput = (e) => {
+  const sf = e.target.dataset.sf;
+  if (sf && storeDraft) { storeDraft[sf] = e.target.value; return; }   // 가게 이름 · 구는 '완료' 때 서버에 저장
   const p = e.target.dataset.k;
   if (!p) return;
   setCost(p, e.target.value);
@@ -3023,7 +3115,7 @@ $("#mypageBody").oninput = (e) => {
   for (const [key, v] of [["fixed", k.fixed], ["sale", k.sale], ["delivery", k.deliv]]) { const t = $(`#myCost [data-total="${key}"]`); if (t) t.textContent = man(v); }
 };
 $("#mypageBody").addEventListener("keydown", (e) => {   // 비용 칸에서 Enter = 다 했어요
-  if (e.key === "Enter" && e.target.dataset.k) { e.preventDefault(); $("#myCost [data-cdone]")?.click(); }
+  if (e.key === "Enter" && (e.target.dataset.k || e.target.dataset.sf === "store")) { e.preventDefault(); $("#myCost [data-cdone]")?.click(); }
 });
 $("#mypageBody").onchange = (e) => {
   const k = e.target.dataset.pref;

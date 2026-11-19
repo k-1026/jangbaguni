@@ -248,6 +248,28 @@ def setup_store(token, d):
     return _profile(user)
 
 
+def update_store(token, d):
+    """마이페이지 '수정': 가게 이름 · 구를 바꿈. 가게 표와 계정 정보 안 복사본을 같이 고침."""
+    user = user_of(token)
+    store = (d.get("store") or "").strip()
+    gu = (d.get("district") or "").strip()
+    if not store:
+        raise AuthError("가게 이름을 입력해 주세요.")
+    if len(store) > 40:
+        raise AuthError("가게 이름은 40자까지 쓸 수 있어요.")
+    if gu not in DAEGU_GU:
+        raise AuthError("가게가 있는 구 · 군을 골라 주세요.")
+    row = _store_of(user["id"])
+    if not row:
+        raise AuthError("가게 정보가 아직 없어요. 가게 정보를 먼저 넣어 주세요.", 404)
+    db.update("stores", {"name": store, "district": gu}, id=f"eq.{row['id']}")
+    meta = {**(user.get("user_metadata") or {}), **_store_meta(row["id"], store, gu)}
+    r = _call("PUT", f"admin/users/{user['id']}", admin=True, json={"user_metadata": meta})
+    if not r.ok:
+        raise ApiError(f"가게 정보를 저장하지 못했어요 ({r.status_code})")
+    return _profile(r.json())
+
+
 def logout(token):
     if token:
         _call("POST", "logout", token=token)   # 이 계정의 로그인 유지 표를 모두 무효로

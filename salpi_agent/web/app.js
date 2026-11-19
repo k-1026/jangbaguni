@@ -41,7 +41,7 @@ async function authCall(url, { method = "POST", body, token } = {}) {
   const r = await fetch(url, { method, headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: body ? JSON.stringify(body) : undefined });
   const data = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(data.detail || "잠시 뒤 다시 해 주세요.");
+  if (!r.ok) throw Object.assign(new Error(data.detail || "잠시 뒤 다시 해 주세요."), { status: r.status });
   return data;
 }
 // 로그아웃: 서버에서 로그인 표를 무효로 하고 · 이 브라우저 기억을 지우고 첫 화면으로 (나의 가게처럼 로그인이 필요한 페이지에 남지 않게)
@@ -1389,7 +1389,10 @@ async function readReceipt(blob) {
     if (isPdf(blob)) ({ image, skipped } = await pdfToImage(blob));
     else image = await shrink(blob);
     receipt = { image, mime: "image/jpeg" };
-    receipt.data = await sendJSON("/api/receipt/read", "POST", { image, mime: "image/jpeg" });
+    // 로그인 표를 같이 보내면 서버가 무료 횟수를 셈 (다 썼으면 402 → 영수증 분석 칸을 가림)
+    try { receipt.data = await authCall("/api/receipt/read", { token: readLogin()?.access_token, body: { image, mime: "image/jpeg" } }); }
+    catch (e) { if (e.status === 402) { setTrial({ locked: true, left: 0 }); resetReceipt(); return; } throw e; }
+    if (receipt.data.trial) setTrial(receipt.data.trial);
     receipt.data.skipped_pages = skipped;
     renderReceiptEdit();
   } catch (e) {
@@ -1475,6 +1478,9 @@ function renderReceiptEdit() {
       renderCosts(r, true);
       loadCosts(false);
       praiseIfSaved(r.purchase_id);
+      // 이 영수증에서 찾은 '아낄 곳'(더 낸 돈)을 계정에 모아 둠 → 잠금 화면 '5장으로 n원 아낄 곳을 찾았어요'
+      const token = readLogin()?.access_token;
+      if (token && r.purchase_id) authCall("/api/receipt/trial/found", { token, body: { purchase_id: r.purchase_id } }).then(setTrial).catch(() => {});
     },
   });
 }
@@ -1791,6 +1797,22 @@ $("#demoReceipts").onclick = async (e) => {
 };
 $("#receiptFile").onchange = (e) => { if (e.target.files[0]) readReceipt(e.target.files[0]); };
 
+// 영수증 분석 무료 5회 (로그인한 사장님마다, 서버 account/trial.py 가 셈)
+// - 첫 화면 체험 버튼: 무료 5회 → … 무료 1회 → → 다 쓰면 구독하기 →
+// - 다 쓰면 나의 가게 영수증 분석 칸 전체를 흐리게 하고 안내 글을 띄움 (안의 버튼은 눌리지 않게)
+function setTrial(t) {
+  const locked = !!t?.locked;
+  $("#receipt").classList.toggle("locked", locked);
+  $("#receiptLock").hidden = !locked;
+  ["#receiptStart", "#receiptResult", "#receiptList"].forEach((s) => { $(s).inert = locked; });
+  // 잠금 화면 제목 밑 한 줄: 찾은 금액이 있으면 금액, 없으면 '원가율을 살펴봤어요'
+  if (t) $("#receiptFound").innerHTML = t.found > 0
+    ? `5장으로 <b>${won(t.found)}</b> 아낄 곳을 찾았어요`
+    : "영수증 5장으로 원가율을 살펴봤어요";
+  const go = $(".receipt-link .receipt-go");
+  if (go && t) go.textContent = t.paid ? "→" : locked ? "구독하기 →" : `무료 ${t.left}회 →`;
+}
+if (SIGNED_IN) authCall("/api/receipt/trial", { method: "GET", token: readLogin()?.access_token }).then(setTrial).catch(() => {});
 // 카메라로 찍기: 처음 한 번 브라우저가 카메라 권한을 물어봄 → 찍은 사진을 그대로 영수증 읽기로
 // (폰은 뒤 카메라, 노트북은 앞 카메라. https 또는 내 컴퓨터 주소에서만 열림)
 let camStream = null;

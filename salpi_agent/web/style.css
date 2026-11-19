@@ -244,6 +244,26 @@ button.chip:hover { background: #F7FAF3; }
 /* 섹션 */
 .section { padding-top: 44px; }
 #receipt { scroll-margin-top: 40px; }
+/* 무료 5회를 다 쓴 사장님: 영수증 분석 칸 전체를 흐리게 + 가운데 안내 글 */
+#receiptCard { position: relative; }
+#receipt.locked #receiptCard { min-height: 260px; }
+#receipt.locked #receiptCard > :not(.receipt-lock) { filter: blur(6px); pointer-events: none; user-select: none; }
+/* 잠금 안내: 연한 초록 막 위 흰 칸에 큰 제목 · 찾은 아낄 곳 · 한 줄 설명('무제한'만 초록 밑줄) · 넓은 초록 버튼 */
+.receipt-lock { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 20px;
+  text-align: center; background: rgba(238, 245, 230, .72); }
+.receipt-lock[hidden] { display: none; }
+.receipt-lock .lock-panel { display: flex; flex-direction: column; align-items: center; gap: 6px; width: min(100%, 440px); padding: 24px 24px 22px;
+  background: #fff; border-radius: var(--radius); box-shadow: 0 4px 16px rgba(30, 50, 20, .10); }   /* 글씨 뒤 흰 칸 (둥근 모서리) */
+.receipt-lock p { margin: 0; }
+.receipt-lock .lock-title { font-size: 24px; font-weight: 800; color: var(--ink); }
+.receipt-lock .lock-sub { font-size: 14px; color: var(--muted); }
+.receipt-lock .lock-sub b { color: var(--primary); font-weight: 800; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.receipt-lock .lock-btn { width: min(100%, 360px); margin-top: 14px; font: inherit; font-size: 15px; font-weight: 800; color: #fff; background: var(--primary);
+  border: 0; border-radius: 8px; padding: 13px 22px; cursor: pointer; box-shadow: 0 4px 10px rgba(59, 122, 10, .25); }
+.receipt-lock .lock-found { margin: 4px 0 2px; font-size: 16px; font-weight: 700; color: var(--ink); }   /* 제목 밑: 찾은 아낄 곳 */
+.receipt-lock .lock-found b { color: #B33A00; font-weight: 800; }
+.receipt-lock .lock-btn:hover { background: var(--primary-hover); }
+.receipt-lock .lock-btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .section-head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
 .section-head h2 { margin: 0; font-size: 22px; font-weight: 700; }
 

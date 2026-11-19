@@ -412,6 +412,11 @@ body.store-view .store-btn { color: #fff; background: var(--primary); }
 .wx { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 12px; }
 .wx div { background: var(--surface-variant); border-radius: 10px; padding: 6px 2px; }
 .wx b { display: block; font-size: 13px; }
+.wx { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.wx div:has(.wx-day) { padding-left: 0; padding-right: 0; }
+.wx .wx-day { display: block; white-space: nowrap; font-size: 10.5px; letter-spacing: -0.5px; }
+.wx .wx-min { display: block; color: var(--muted); font-size: 11.5px; }
+.wx .wx-pop { color: #3F8FD8; font-weight: 600; }
 .wx-icon { display: block; width: 32px; height: 32px; margin: 4px auto 2px; max-width: 100%; }
 
 .footer { color: var(--muted); font-size: 12px; padding: 40px 20px 150px; }

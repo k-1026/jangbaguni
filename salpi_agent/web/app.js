@@ -1880,8 +1880,17 @@ function sky(d) {
   return d.cloud == null ? "" : "맑음";
 }
 
-function wxIcon(d) {
-  const s = sky(d);
+function wxIcon(d) { return skyIcon(sky(d)); }
+// 예보 하늘 말(맑음 · 구름많음 · 흐림 · 흐리고 비 · 소나기 · 비/눈 …) → 아이콘 다섯 가지 중 하나
+function fcSky(d) {
+  const s = d.sky || "";
+  if (/눈/.test(s)) return "눈";
+  if (/비|소나기/.test(s)) return "비";
+  if (/구름/.test(s)) return "구름 많음";
+  if (/흐/.test(s)) return "흐림";
+  return s ? "맑음" : "";
+}
+function skyIcon(s) {
   return `<svg class="wx-icon" viewBox="0 0 32 32" role="img" aria-label="${s}"><title>${s}</title>${WX_ICONS[s] || ""}</svg>`;
 }
 
@@ -1967,8 +1976,18 @@ $("#martAll").onclick = () => {
 async function loadContext() {
   let c;
   try { c = await getJSON("/api/context"); } catch (e) { return; }
-  const w = c.weather;
-  $("#weatherCard").innerHTML = `<h3>대구 날씨 (지난 7일)</h3>
+  const fc = c.weather_forecast || [], w = c.weather;
+  // 앞으로 7일 예보 (기상청 단기 · 중기). 예보를 못 받으면 지난 7일 관측으로 대신 보여 줌
+  $("#weatherCard").innerHTML = fc.length ? (() => {
+    const nums = (k) => fc.map((d) => d[k]).filter((v) => v != null);
+    const rainy = fc.filter((d) => fcSky(d) === "비" || fcSky(d) === "눈").length;
+    return `<h3>이번 주 대구 날씨</h3>
+    <p class="muted" style="margin-bottom:10px">${rainy ? `비 · 눈 예보 ${rainy}일` : "비 예보 없음"} · 최저 ${Math.min(...nums("min"))}℃ · 최고 ${Math.max(...nums("max"))}℃</p>
+    <div class="wx">${fc.map((d, i) => {
+      const pop = Math.max(+d.rain_pct_am || 0, +d.rain_pct_pm || 0);
+      return `<div><span class="wx-day">${mmdd(d.date)}(${"일월화수목금토"[new Date(`${d.date}T00:00:00`).getDay()]})</span>${skyIcon(fcSky(d))}<b>${d.max ?? "-"}°</b><span class="wx-min">${d.min ?? "-"}°</span>${pop ? `<span class="wx-pop">비 ${pop}%</span>` : "-"}</div>`;
+    }).join("")}</div>`;
+  })() : `<h3>대구 날씨 (지난 7일)</h3>
     <p class="muted" style="margin-bottom:10px">비 ${w.rain_total_mm}mm (${w.rain_days}일) · 최저 ${w.min_temp}℃ · 최고 ${w.max_temp}℃</p>
     <div class="wx">${(w.daily || []).map((d) => `<div>${mmdd(d.date)}${wxIcon(d)}<b>${Math.round(d.max_temp)}°</b>${d.rain_mm ? `비 ${d.rain_mm}` : "-"}</div>`).join("")}</div>`;
   const fmt = (s) => `${s.slice(4, 6)}.${s.slice(6, 8)}`;

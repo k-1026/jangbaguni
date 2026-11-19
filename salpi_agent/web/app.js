@@ -1982,7 +1982,11 @@ async function loadContext() {
     const nums = (k) => fc.map((d) => d[k]).filter((v) => v != null);
     const rainy = fc.filter((d) => fcSky(d) === "비" || fcSky(d) === "눈").length;
     return `<h3>이번 주 대구 날씨</h3>
-    <p class="muted" style="margin-bottom:10px">${rainy ? `비 · 눈 예보 ${rainy}일` : "비 예보 없음"} · 최저 ${Math.min(...nums("min"))}℃ · 최고 ${Math.max(...nums("max"))}℃</p>
+    <div class="wx-sum">
+      <span class="${rainy ? "rain" : ""}">${rainy ? `비 · 눈 <b>${rainy}일</b>` : "비 예보 <b>없음</b>"}</span>
+      <span class="lo">최저 <b>${Math.min(...nums("min"))}℃</b></span>
+      <span class="hi">최고 <b>${Math.max(...nums("max"))}℃</b></span>
+    </div>
     <div class="wx">${fc.map((d, i) => {
       const pop = Math.max(+d.rain_pct_am || 0, +d.rain_pct_pm || 0);
       return `<div><span class="wx-day">${mmdd(d.date)}(${"일월화수목금토"[new Date(`${d.date}T00:00:00`).getDay()]})</span>${skyIcon(fcSky(d))}<b>${d.max ?? "-"}°</b><span class="wx-min">${d.min ?? "-"}°</span>${pop ? `<span class="wx-pop">비 ${pop}%</span>` : "-"}</div>`;

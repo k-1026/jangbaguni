@@ -719,6 +719,7 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 /* 메뉴 이름 줄: 이름 왼쪽 · [수정] 오른쪽 */
 .cost-menu-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 .cost-edit { padding: 4px 12px; font-size: 13px; color: #4A4F4C; border-color: transparent; }   /* 테두리 없이 · 작게 */
+.pen-flip { display: inline-block; transform: scaleX(-1); }   /* 연필 그림 좌우 반전 */
 .cost-edit:hover { color: var(--primary); background: var(--primary-container); }
 .menu-add-btn { margin-left: auto; padding: 9px 18px; font-size: 15px; white-space: nowrap; }
 #costCard > .ok { margin: 0 0 14px; }

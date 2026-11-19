@@ -1120,6 +1120,14 @@ function demandReason(factors) {
   return `${name} 영향으로 평소보다 ${p}% ${v > 0 ? "많이" : "적게"} 팔릴 것 같아요`;   // 학습 모델 이유 (기온 · 삼성 홈경기 · 월급날 무렵 등)
 }
 
+// 카드 안에 들어갈 짧은 이유 (예: "금요일 +16%")
+function demandShort(factors) {
+  const [name, v] = Object.entries(factors).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))[0] || [];
+  if (name === "휴무일") return "가게 쉬는 날";
+  if (v == null || Math.abs(v) < 0.02) return "평소와 비슷";
+  return `${name} ${v > 0 ? "+" : "−"}${Math.round(Math.abs(v) * 100)}%`;
+}
+
 const weekday = (s) => "일월화수목금토"[new Date(`${s}T00:00:00`).getDay()];
 
 // 내일 예상이 평소(최근 14일 평균)와 얼마나 다른지 한눈에 (3% 안쪽은 비슷하다고 봄)
@@ -1168,19 +1176,12 @@ async function loadDemand() {
           ${d.is_open ? usualChip(m.predicted, usual) : ""}
         </button>
         <div class="demand-detail" id="demand-${m.menu_id}" hidden>
-          <div class="demand-chart">
-            <p class="demand-legend">
-              <span><i></i>최근 판매</span>
-              <span><i class="same"></i>지난 ${d.target_weekday}요일</span>
-              <span><i class="next"></i>내일</span>
-              <span><i class="usual"></i>평소 ${usual}</span>
-            </p>
-            <div class="spark" role="img" aria-label="${esc(m.menu)} 평소 ${usual}그릇, 내일 예상 ${m.predicted}그릇">
-              ${bars}<span title="내일 예상 ${m.predicted}그릇 (${m.range[0]} ~ ${m.range[1]})"><i class="next" style="height:${pct(m.predicted)}%"></i></span>
-              <div class="spark-usual" style="bottom:${pct(usual)}%"></div>
-            </div>
+          <p class="dm-why" title="${esc(demandReason(m.factors))}"><b>${esc(demandShort(m.factors))}</b><small>예상 ${m.range[0]} ~ ${m.range[1]}그릇</small></p>
+          <div class="spark" role="img" aria-label="${esc(m.menu)} 평소 ${usual}그릇, 내일 예상 ${m.predicted}그릇">
+            ${bars}<span title="내일 예상 ${m.predicted}그릇 (${m.range[0]} ~ ${m.range[1]})"><i class="next" style="height:${pct(m.predicted)}%"></i></span>
+            <div class="spark-usual" style="bottom:${pct(usual)}%"><em>평소 ${usual}</em></div>
           </div>
-          <p>${esc(demandReason(m.factors))} · 예상 ${m.range[0]} ~ ${m.range[1]}그릇</p>
+          <p class="demand-legend"><span><i class="same"></i>지난 ${d.target_weekday}요일</span><span><i class="next"></i>내일</span></p>
         </div>
       </div>`;
     }).join("")}</div>`;

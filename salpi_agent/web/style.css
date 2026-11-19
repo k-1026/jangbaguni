@@ -503,11 +503,18 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .dm-card .dm-num { font-size: 30px; font-weight: 800; line-height: 1.15; }
 .dm-num small { margin-left: 2px; font-size: 14px; font-weight: 600; color: var(--muted); }
 .dm-card .demand-chip { margin: 2px 0 0; }
+/* 펼친 근거: 짧은 이유 → 그래프(점선 위에 평소 그릇 수) → 범례 한 줄 */
+#menuForecast .demand-detail { padding: 2px 16px 14px; }
+.dm-why { display: grid; gap: 1px; margin: 0 0 10px; }
+.dm-why b { color: var(--ink); font-size: 15px; }
+.dm-why small { color: var(--muted); font-size: 12.5px; }
+#menuForecast .spark { height: 64px; }
+.spark-usual em { position: absolute; left: 0; bottom: 2px; padding: 0 4px; border-radius: 4px; background: rgba(255, 255, 255, .85);
+  color: #3F4742; font-size: 11px; font-style: normal; font-weight: 600; white-space: nowrap; }
+#menuForecast .demand-legend { display: flex; gap: 12px; margin-top: 8px; color: var(--muted); }
 .store-grid > * { min-width: 0; }
-.demand-detail { padding: 12px 12px 2px; font-size: 12.5px; }
+.demand-detail { padding: 4px 6px 12px; font-size: 12.5px; }
 .demand-detail p { color: var(--muted); }
-.demand-detail > p { margin: 8px 0 0; }
-.demand-chart { display: flex; justify-content: space-between; align-items: center; gap: 14px; }
 .demand-chip { display: table; margin-top: 3px; padding: 1px 8px; border-radius: 6px; background: var(--surface-variant); font-size: 12px; font-weight: 600; color: var(--ink); white-space: nowrap; }
 .demand-chip.up { background: #FFF0EE; color: #B33A1A; }
 .demand-chip.down { background: #E6F5EF; color: #0C6E52; }
@@ -524,7 +531,6 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .demand-legend i { width: 10px; height: 10px; border-radius: 2px; background: #DCE3DF; }
 .demand-legend i.same { background: var(--down); }
 .demand-legend i.next { background: var(--accent); }
-.demand-legend i.usual { width: 14px; height: 0; border-radius: 0; background: none; border-top: 1.5px dashed #5F6B65; }
 /* 작은 진한 초록 버튼 (근거 모두 보기 등) */
 .order-all { border: 0; background: var(--primary); color: #fff; border-radius: 999px; padding: 7px 16px; font-size: 13px; font-weight: 700; white-space: nowrap;
   transition: background .15s, box-shadow .15s; }

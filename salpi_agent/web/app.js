@@ -1108,6 +1108,12 @@ function monthRange(history, now) {
 // 우리 가게 내일 준비 (판매 기록 → 예상 그릇 수 → 재료 필요량 · 발주)
 // ---------------------------------------------------------------
 const qty = (v, unit) => (unit === "모" ? `${Math.round(v)}모` : `${(+v).toFixed(1)}${unit}`);
+// 메뉴별 재료 양: 1kg · 1L 아래는 g · ml로 (10 단위), 개 · 모는 모자라지 않게 올림
+function ingQty(v, unit) {
+  if (unit === "개" || unit === "모") return `${Math.ceil(v)}${unit}`;
+  if ((unit === "kg" || unit === "L") && v < 1) return `${Math.max(10, Math.round(v * 100) * 10)}${unit === "kg" ? "g" : "ml"}`;
+  return `${(+v).toFixed(1)}${unit}`;
+}
 
 // 가장 영향이 큰 이유 한 줄 (factors: 0.05 = 평소보다 +5%)
 function demandReason(factors) {
@@ -1182,6 +1188,8 @@ async function loadDemand() {
             <div class="spark-usual" style="bottom:${pct(usual)}%"><em>평소 ${usual}</em></div>
           </div>
           <p class="demand-legend"><span><i class="same"></i>지난 ${d.target_weekday}요일</span><span><i class="next"></i>내일</span></p>
+          ${m.ingredients?.length && m.predicted ? `<div class="dm-ing"><h4>내일 필요한 재료</h4>
+            <ul>${m.ingredients.map((g) => `<li><span>${esc(g.item)}</span><b>${ingQty(g.qty, g.unit)}</b></li>`).join("")}</ul></div>` : ""}
         </div>
       </div>`;
     }).join("")}</div>`;

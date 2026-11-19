@@ -745,11 +745,13 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .cp-title { display: block; font-size: 15px; color: var(--ink); }
 .cost-plan ol { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; margin: 8px 0 0; padding: 0; list-style: none; }
 .cost-plan li { display: flex; flex-direction: column; padding: 12px 14px; border-radius: 10px; background: var(--surface); border: 1px solid var(--outline-variant); }
-.cp-chip { align-self: flex-start; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; }
+/* 첫 줄: 칩 바로 옆에 바꾸는 것 (자리가 모자라면 아래로) — 칩도 내용 글씨 크기에 맞춤 */
+.cp-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin-bottom: 10px; }
+.cp-chip { flex: none; padding: 3px 10px; border-radius: 6px; font-size: 15px; font-weight: 700; line-height: 1.4; }
 .cp-price .cp-chip { background: #FFF4DB; color: #8A5A00; }
 .cp-swap .cp-chip { background: #E6EEFB; color: #1A4FB8; }
 .cp-menu .cp-chip { background: #DDF3E4; color: #1E7A3C; }
-.cp-what { margin: 8px 0 10px; font-size: 15px; color: var(--ink); }
+.cp-what { margin: 0; font-size: 15px; color: var(--ink); }
 .cp-what b, .cp-what s { white-space: nowrap; }
 .cp-what s { color: var(--muted); }
 .cp-what i { margin: 0 6px; font-style: normal; color: var(--muted); }
@@ -758,7 +760,7 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .cost-plan dt { color: var(--muted); white-space: nowrap; }
 .cost-plan dd { margin: 0; white-space: nowrap; font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
 .cost-plan dd.cp-money { color: var(--down); }
-.cp-none { margin: 8px 0 0; font-size: 14px; color: var(--muted); }
+.cp-none { margin: 0; font-size: 14px; color: var(--muted); }
 .cost-swap { display: flex; align-items: stretch; gap: 16px; margin-top: 16px; padding: 14px 18px; border-radius: 12px; background: var(--primary-container); }
 .swap-title { align-self: stretch; display: flex; align-items: center; margin: -14px 0 -14px -18px; padding: 0 18px; border: 2.5px solid var(--primary); border-radius: 12px; font-size: 16px; color: var(--primary); white-space: nowrap; }   /* 띠 왼쪽 칸에 꽉 맞는 테두리 */
 /* 띠 오른쪽: 첫 줄(재료 → 재료 | 💡 이유) + 아끼는 금액 · 계산 기준 줄 (제목 칸은 띠 높이 전체에 꽉 맞게) */

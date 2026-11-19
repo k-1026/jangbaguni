@@ -1570,9 +1570,8 @@ function costPlan(m) {
   return `<div class="cost-plan">
     <b class="cp-title">원가율 낮추는 방법</b>
     <ol>${opts.map((o) => `<li class="cp-${o.kind}">
-      <span class="cp-chip">${o.label}</span>
-      ${o.ratio == null ? `<p class="cp-none">${o.none}</p>` : `<p class="cp-what">${o.what}</p>
-      <dl><dt>원가율</dt><dd class="cp-ratio">${o.ratio}%</dd><dt>${o.key}</dt><dd class="cp-money">${o.val}</dd></dl>`}
+      <div class="cp-head"><span class="cp-chip">${o.label}</span>${o.ratio == null ? "" : `<p class="cp-what">${o.what}</p>`}</div>
+      ${o.ratio == null ? `<p class="cp-none">${o.none}</p>` : `<dl><dt>원가율</dt><dd class="cp-ratio">${o.ratio}%</dd><dt>${o.key}</dt><dd class="cp-money">${o.val}</dd></dl>`}
     </li>`).join("")}</ol>
   </div>`;
 }

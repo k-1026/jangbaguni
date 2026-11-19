@@ -1213,7 +1213,7 @@ function orderGroups(items) {
   const rising = (i) => i.decision === "지금 사기" && i.price_change_pct >= 2;
   return [
     { key: "first", title: "먼저 사기", note: "시세가 오를 수 있어요", items: items.filter(rising) },
-    { key: "normal", title: "평소대로 주문", items: items.filter((i) => i.decision === "지금 사기" && !rising(i)) },
+    { key: "normal", title: "평소대로 주문", note: "다음 입고 전에 모자라요", items: items.filter((i) => i.decision === "지금 사기" && !rising(i)) },
     { key: "split", title: "나눠 사기", note: "시세가 내릴 수 있어요", items: items.filter((i) => i.decision === "나눠 사기") },
     { key: "wait", title: "이번엔 안 사도 돼요", note: "재고가 충분해요", items: items.filter((i) => i.decision === "기다리기") },
   ].filter((g) => g.items.length);
@@ -1236,7 +1236,6 @@ function orderItem(i, key) {
         <div><dt>내일 필요</dt><dd>${qty(i.need_target, i.unit)}</dd></div>
         <div><dt>재고</dt><dd>${qty(i.on_hand, i.unit)}</dd></div>
       </dl>
-      <p>${esc(i.reason)}</p>
     </div>
   </div>`;
 }

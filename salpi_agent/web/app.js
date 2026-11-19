@@ -2957,8 +2957,7 @@ async function showAppPush() {
     : Notification.permission === "denied"
       ? `<p class="rc-warn">알림이 막혀 있어요. 휴대폰 설정 → 앱(또는 크롬) → 살피 → 알림을 허용해 주세요.</p>`
       : `<div class="toggle-row"><span><b>앱 알림</b><small>매일 아침 시세 알림을 휴대폰 알림으로 받아요.</small></span>
-          <button class="btn primary" id="pushOn" type="button" ${st.ready ? "" : "disabled"}>알림 켜기</button></div>
-        ${st.ready ? "" : `<p class="muted small">서버에 앱 알림 열쇠가 아직 없어요</p>`}`);
+          <button class="btn primary" id="pushOn" type="button" ${st.ready ? "" : "disabled"}>알림 켜기</button></div>`);
   if ($("#appInstall")) $("#appInstall").onclick = async () => { installPrompt.prompt(); await installPrompt.userChoice; installPrompt = null; showAppPush(); };
   if ($("#pushOn")) $("#pushOn").onclick = async () => {
     try {
@@ -2997,7 +2996,6 @@ async function showKakao() {
     // 아이디로 가입한 사장님도 됨: 살피 로그인은 그대로, 카카오톡 권한만 붙임
     box.innerHTML = `<div class="toggle-row"><span><b>아직 연결 전</b><small>카카오톡 연결 후 동의하면 받아요.</small></span>
       <button class="btn primary" id="kakaoLink" type="button" ${st.ready ? "" : "disabled"}>카카오톡 연결</button></div>
-      ${st.ready ? "" : `<p class="muted small">서버에 카카오 키가 아직 없어요</p>`}
       ${err ? `<p class="rc-warn">연결하지 못했어요: ${esc(err)}</p>` : ""}`;
     $("#kakaoLink").onclick = async () => {
       try { location.assign((await authCall("/api/kakao/link", { token })).url); }
@@ -3008,7 +3006,7 @@ async function showKakao() {
   box.innerHTML = `${done ? `<p class="ok">카카오톡과 연결했어요. '지금 보내 보기'로 확인해 보세요</p>` : ""}
     <label class="toggle-row"><span><b>매일 아침 받기</b><small>${st.last_sent ? `마지막으로 보낸 때 ${esc(st.last_sent.replace("T", " "))}` : "아직 보낸 적 없어요"}${st.last_error ? ` · 지난번 실패: ${esc(st.last_error)}` : ""}</small></span>
       <input type="checkbox" class="switch" id="kakaoOn" ${st.on ? "checked" : ""}></label>
-    <div class="toggle-row"><span><b>지금 보내 보기</b><small id="kakaoTestMsg">${st.ready ? "내 카톡으로 지금 시세 알림을 보내요" : "서버에 카카오 키가 아직 없어요"}</small></span>
+    <div class="toggle-row"><span><b>지금 보내 보기</b><small id="kakaoTestMsg">내 카톡으로 지금 시세 알림을 보내요</small></span>
       <button class="btn" id="kakaoTest" type="button" ${st.ready ? "" : "disabled"}>보내기</button></div>
     <div class="toggle-row"><span><b>연결 끊기</b><small>카카오톡 알림을 그만 받고 저장한 카카오 권한을 지워요</small></span>
       <button class="btn" id="kakaoUnlink" type="button">끊기</button></div>`;

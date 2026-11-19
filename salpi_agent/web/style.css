@@ -883,6 +883,7 @@ body.chat-open .fab-count { display: none; }
 .drawer-body { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 .my-card { background: var(--surface); border: 0; border-radius: 16px; padding: 16px; box-shadow: var(--e1); }
 .my-card h4 { margin: 0 0 10px; font-size: 16px; }
+.my-card h4 + .muted { margin: -4px 0 12px; }   /* 제목 바로 밑 설명: 제목에 붙이고 아래 구분선과는 띄움 */
 .my-card.profile { display: flex; align-items: center; gap: 12px; }
 .my-card.profile img { width: 56px; height: 56px; border-radius: 50%; background: var(--surface-variant); object-fit: cover; }
 .my-card.profile b { display: block; font-size: 17px; } .my-card.profile small { color: var(--muted); }
@@ -891,6 +892,7 @@ body.chat-open .fab-count { display: none; }
 .my-link { width: 100%; display: flex; justify-content: space-between; align-items: center; border: 0; border-top: 1px solid var(--outline-variant); background: none;
   padding: 12px 2px 2px; font-size: 15px; font-weight: 700; color: var(--ink); }
 a.my-link { color: inherit; text-decoration: none; }
+.my-link small { font-size: 14px; }   /* '설정 알림 · 권한' 처럼 옆에 붙는 작은 글자: 제목과 같은 검은색 */
 .my-link:hover { color: var(--primary); }
 .my-card > .my-link:first-child { border-top: 0; padding-top: 0; }   /* 카드 맨 위 줄은 구분선 없이 (설정 · 계정) */
 .my-link.danger { color: var(--up); }
@@ -898,6 +900,10 @@ a.my-link { color: inherit; text-decoration: none; }
 .my-link i, .my-receipts i { font-style: normal; color: var(--muted); font-size: 20px; }
 .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--outline-variant); cursor: pointer; }
 .my-card .toggle-row:last-child { padding-bottom: 0; }   /* 카드 아래 여백이 두 번 겹치지 않게 */
+#appBody > .toggle-row:first-child { border-top: 0; padding-top: 0; }   /* '살피 앱' 카드: 제목 바로 밑 줄은 구분선 없이 */
+.toggle-row .btn { flex: none; min-width: 84px; padding: 6px 12px; font-size: 13px; white-space: nowrap; }   /* 설정 줄 오른쪽 버튼: 작게 · 같은 크기 · 한 줄 (옆 설명이 한 줄로 들어가게) */
+.my-bullets { margin: -6px 0 12px; padding-left: 18px; color: var(--muted); font-size: 12px; line-height: 1.7; }   /* 카드 설명 밑 항목 목록 */
+.toggle-row .btn.primary:disabled { opacity: 1; cursor: not-allowed; }   /* 아직 못 쓰는 버튼도 같은 초록색 (이유는 아래 회색 글로 안내) */
 .toggle-row b { display: block; font-size: 14px; } .toggle-row small { color: var(--muted); font-size: 12px; }
 /* 켜고 끄기 스위치 (머티리얼 스위치) */
 .switch { appearance: none; -webkit-appearance: none; flex: none; width: 48px; height: 28px; border-radius: 999px; background: var(--surface-variant); border: 2px solid #7A847D;
@@ -912,6 +918,110 @@ a.my-link { color: inherit; text-decoration: none; }
 .my-receipts button:hover { background: var(--surface-variant); }
 .my-receipts b { font-size: 14px; } .my-receipts span { grid-column: 1; font-size: 12px; color: var(--muted); }
 .my-receipts i { grid-column: 2; grid-row: 1 / 3; align-self: center; }
+
+/* 마이페이지 내 정보 · 가게 비용 (mc = my cost)
+   - 왼쪽 이름은 회색 · 한 줄, 오른쪽 값은 진한 글자 (굵게 하지 않아 깔끔하게)
+   - 칸마다 꺾쇠로 접고 펼치기, 오른쪽 위 '수정'을 누르면 모든 금액이 입력칸으로 */
+.my-card.mc { padding: 22px 20px; }
+.mc-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.mc-head h4 { margin: 0; font-size: 19px; font-weight: 700; }
+.mc-edit, .mc-done { display: inline-flex; align-items: center; gap: 5px; height: 34px; padding: 0 10px; border: 0; border-radius: 8px; background: none;
+  color: var(--muted); font-size: 15px; transition: background .15s, color .15s; }
+.mc-edit:hover { background: var(--surface-variant); color: var(--ink); }
+.mc-edit svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.mc-done { background: var(--primary); color: #fff; padding: 0 16px; font-weight: 700; }
+.mc-done:hover { background: var(--primary-hover); }
+.mc-done.wide { width: 100%; height: 46px; justify-content: center; margin-top: 16px; border-radius: 12px; font-size: 16px; }
+
+.my-card .mc-info { display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: center; gap: 7px 32px; margin: 0; font-size: 16px; line-height: 1.5; }
+.my-card .mc-info dt { color: var(--muted); white-space: nowrap; }
+.my-card .mc-info dd { margin: 0; color: var(--ink); word-break: keep-all; }
+.my-card .mc-info .none { color: #9AA19C; font-size: 15px; }
+
+/* 본전 한 줄 요약 */
+.mc-be { margin: 16px 0 4px; padding: 11px 16px; border-radius: 12px; background: #D8EECB; color: #2C6A07; }
+.mc-be > b { display: block; font-size: 16px; font-weight: 600; line-height: 1.4; word-break: keep-all; }
+.mc-be > b em { font-style: normal; font-weight: 800; }
+.mc-be small { display: block; margin-top: 2px; font-size: 13px; line-height: 1.4; }
+.mc-be.short { background: #FFF1DC; color: #8A4B00; }
+.mc-be.loss { background: #FFECE9; color: var(--up); }
+.mc-be.empty { background: var(--surface-variant); color: var(--muted); }
+.mc-be.empty > b { color: var(--ink); }
+
+/* 비용 칸: 제목 줄 (누르면 접고 펼침) + 연한 회색 상자 */
+.mc-sec { margin-top: 22px; }
+.mc-sec-head { display: flex; align-items: center; gap: 10px; min-height: 40px; cursor: pointer; user-select: none; }
+.mc-sec-head h5 { margin: 0 auto 0 0; font-size: 17px; font-weight: 600; white-space: nowrap; }
+.mc-total { font-size: 17px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mc-chev { flex: none; width: 30px; height: 30px; display: grid; place-items: center; margin-right: -6px; border: 0; border-radius: 50%; background: none; color: var(--muted); }
+.mc-chev:hover { background: var(--surface-variant); color: var(--ink); }
+.mc-chev svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .2s; }
+.mc-sec.folded .mc-chev svg { transform: rotate(180deg); }
+/* 넣은 금액이 없는 칸: 제목 · 합계를 흐리게 */
+.mc-sec.empty h5, .mc-sec.empty .mc-total { color: #A5ABA7; }
+.mc-box { margin-top: 8px; padding: 8px 18px; border-radius: 12px; background: #F8F9F6; }
+.mc-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 40px; font-size: 16px; }
+.mc-row:has(input) { padding: 3px 0; }   /* 수정 화면: 입력칸끼리 붙지 않게 */
+.mc-label { display: flex; align-items: center; gap: 8px; min-width: 0; color: #4A524D; white-space: nowrap; }
+.mc-label small { color: var(--muted); font-size: 13px; }
+.mc-row .v { color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+.mc-row .v.none { color: #9AA19C; }
+/* 금액을 안 넣은 줄은 흐리게 → 넣은 줄만 눈에 들어오게 */
+.mc-row.off .mc-label, .mc-row.off .v { color: #B9BEBA; }
+.mc-row-end { display: flex; align-items: center; gap: 4px; }
+.mc-tag { padding: 2px 9px; border-radius: 999px; background: var(--surface); color: var(--muted); font-size: 12.5px; font-style: normal; white-space: nowrap; }
+.mc-tag.auto { background: var(--primary-container); color: var(--on-primary-container); }
+
+/* 입력칸 ('수정'을 눌렀을 때) */
+.mc-in { display: inline-flex; align-items: center; gap: 6px; }
+.mc-in input, .mc-name { height: 38px; padding: 0 10px; border: 1px solid var(--outline); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; font-size: 16px; }
+.mc-in input { width: 100px; text-align: right; font-variant-numeric: tabular-nums; -moz-appearance: textfield; appearance: textfield; }
+.mc-in input::-webkit-outer-spin-button, .mc-in input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.mc-name { width: 100%; max-width: 140px; }
+.mc-in input:focus, .mc-name:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-container); }
+.mc-in input::placeholder, .mc-name::placeholder { color: #A5ABA7; }
+/* 입력칸도 비어 있으면 흐리게, 숫자를 넣으면 진하게 */
+.mc-in input:placeholder-shown { border-color: var(--outline-variant); background: #FBFCFA; }
+.mc-in input:not(:placeholder-shown) { border-color: #9DA59F; font-weight: 600; }.mc-in i { font-style: normal; color: var(--muted); font-size: 14px; white-space: nowrap; }
+.mc-del { width: 30px; height: 30px; border: 0; border-radius: 50%; background: none; color: var(--muted); font-size: 20px; line-height: 1; }
+.mc-del:hover { background: #FFF0EE; color: var(--up); }
+
+/* 쉬는 요일 · 과세 유형 · 배달 여부 */
+/* 업종 고르기: 작은 알약 버튼, 고른 것만 초록 */
+.mc-pick { display: flex; flex-wrap: wrap; gap: 5px; }
+.mc-pick button { height: 30px; padding: 0 11px; border: 1px solid var(--outline); border-radius: 999px; background: var(--surface); color: var(--ink); font-size: 14px; }
+.mc-pick button[aria-pressed="true"] { border-color: var(--primary); background: var(--primary); color: #fff; font-weight: 700; }
+.mc-days { display: flex; flex-wrap: wrap; gap: 3px; }
+.mc-days button { width: 30px; height: 30px; padding: 0; border: 1px solid var(--outline); border-radius: 50%; background: var(--surface); color: var(--ink); font-size: 14px; }
+.mc-days button[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: #fff; font-weight: 700; }
+/* 일반 · 간이: 부가세 줄 안의 작은 전환 버튼 */
+.mc-seg { display: inline-flex; padding: 2px; border-radius: 8px; background: #ECEFEA; }
+.mc-seg button { height: 26px; padding: 0 10px; border: 0; border-radius: 6px; background: none; color: var(--muted); font-size: 13px; transition: background .15s, color .15s; }
+.mc-seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); font-weight: 700; box-shadow: 0 1px 2px rgba(20, 30, 22, .15); }
+/* 배달 안 해요 · 해요: 흰 손잡이가 좌우로 미끄러지는 알약 스위치 */
+.mc-switch { position: relative; display: inline-grid; grid-template-columns: 1fr 1fr; flex: none; padding: 3px; border-radius: 999px; background: #E6EAE4; cursor: default; }
+.mc-switch::before { content: ""; position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 3px); border-radius: 999px; background: var(--surface);
+  box-shadow: 0 1px 3px rgba(20, 30, 22, .18); transition: transform .25s cubic-bezier(.3, .7, .3, 1), background .25s; }
+.mc-switch.on { background: var(--primary-container); }
+.mc-switch.on::before { transform: translateX(100%); }
+.mc-switch button { position: relative; z-index: 1; min-width: 58px; height: 30px; padding: 0 12px; border: 0; background: none; color: var(--muted); font-size: 14px; transition: color .2s; }
+.mc-switch button[aria-pressed="true"] { color: var(--ink); font-weight: 700; }
+.mc-switch.on button[aria-pressed="true"] { color: var(--primary); }
+
+/* 비용 추가 */
+.mc-add { width: 100%; height: 42px; margin-top: 18px; display: flex; align-items: center; justify-content: center; gap: 4px;
+  border: 1.5px dashed var(--outline); border-radius: 10px; background: none; color: var(--primary); font-size: 15px; transition: background .15s, border-color .15s; }
+.mc-add svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.mc-add:hover, .mc-add[aria-expanded="true"] { border-color: var(--primary); background: var(--primary-container); }
+.mc-addbox { margin-top: 10px; padding: 14px; border-radius: 12px; background: #F8F9F6; }
+.mc-addto { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; font-size: 15px; color: #4A524D; }
+.mc-addto .mc-seg button { height: 30px; padding: 0 12px; font-size: 14px; }
+/* 추천 항목: 어느 칸이든 두 줄 안에 들어가게 작게 */
+.mc-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.mc-chips button { padding: 6px 11px; border: 1px solid var(--outline); border-radius: 999px; background: var(--surface); color: var(--ink); font-size: 14px; white-space: nowrap; transition: border-color .15s, color .15s; }
+.mc-chips button:hover { border-color: var(--primary); color: var(--primary); }
+.my-offline { margin: -4px 4px 0; }
+.mc :is(button, input):focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
 /* 팝업 창 (영수증 자세히 · 행사 · 카메라) */
 .modal { position: fixed; inset: 0; z-index: 70; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; padding: 16px; }

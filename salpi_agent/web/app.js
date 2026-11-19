@@ -1969,7 +1969,19 @@ function renderMart() {
   btn.hidden = pages <= 1;
   btn.innerHTML = martPage < pages ? `더보기 <b>${martPage}</b> | ${pages}` : "처음으로 접기";
   btn.setAttribute("aria-label", martPage < pages ? `12개 더 보기 (${pages}번 중 ${martPage}번째, ${list.length}개 중 ${martPage * MART_FIRST}개 보는 중)` : "처음 12개만 보기");
+  fitMartNames();
 }
+
+// 이름이 한 줄에 안 들어가는 칸만 '긴 이름' 모양: 둘째 줄에 이름 나머지 + 바로 옆에 규격 (칸 높이는 그대로)
+function fitMartNames() {
+  $("#martGrid").querySelectorAll(".mart-item h3").forEach((h) => {
+    h.classList.remove("long");
+    const n = h.querySelector(".mart-name");
+    if (n && n.scrollWidth > n.clientWidth + 1) h.classList.add("long");
+  });
+}
+new ResizeObserver(() => fitMartNames()).observe($("#martGrid"));   // 화면 폭이 바뀌어 한 줄 칸 수가 달라질 때
+document.fonts?.ready.then(fitMartNames);                            // 글꼴을 다 받은 뒤 다시 재기
 
 async function loadMart() {
   try { mart = await getJSON("/api/mart"); }

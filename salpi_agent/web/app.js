@@ -1146,13 +1146,15 @@ async function loadDemand() {
   const max = Math.max(...d.menus.flatMap((m) => [m.predicted, ...m.recent.map((x) => x.qty)]), 1) * 1.2;
   $("#storeBasis").textContent = `판매 기록 ${mmdd(d.last_sales_date)}까지${d.model ? " · 학습 모델 (가상 판매 기록)" : ""}`;
   $("#storeBasis").title = d.method;
+  // 메뉴별 숫자 카드: 많이 팔릴 순서로 한 줄에
+  const menus = [...d.menus].sort((a, b) => b.predicted - a.predicted);
   $("#menuForecast").innerHTML = `
-    <div class="demand-top">
-      <span class="badge">내일 ${day}${d.is_holiday ? " · 공휴일" : ""} 예상 판매</span>
-      <p class="demand-total">${d.is_open ? `모두 <b>${d.total_predicted}그릇</b> 팔릴 것 같아요` : "내일은 가게 쉬는 날이에요"}</p>
-      <button class="order-all demand-all" type="button">모두 보기</button>
+    <div class="prep-head">
+      <h3>내일 ${day}${d.is_holiday ? " · 공휴일" : ""} 예상 판매
+        <span>${d.is_open ? `모두 <b>${d.total_predicted}그릇</b>` : "가게 쉬는 날이에요"}</span></h3>
+      <button class="order-all demand-all" type="button">근거 모두 보기</button>
     </div>
-    <div class="demand-grid">${d.menus.map((m) => {
+    <div class="dm-cards">${menus.map((m) => {
       const pct = (v) => (v / max) * 100;
       const usual = Math.round(m.recent.reduce((s, x) => s + x.qty, 0) / (m.recent.length || 1));
       const bars = m.recent.map((x) => {
@@ -1160,10 +1162,10 @@ async function loadDemand() {
         return `<span title="${mmdd(x.date)}(${wd}) ${x.qty}그릇"><i class="${wd === d.target_weekday ? "same" : ""}" style="height:${pct(x.qty)}%"></i></span>`;
       }).join("");
       return `<div class="demand-item">
-        <button class="order-row" type="button" aria-expanded="false" aria-controls="demand-${m.menu_id}">
-          <span class="order-name">${esc(m.menu)}${d.is_open ? usualChip(m.predicted, usual) : ""}</span>
-          <b>${m.predicted}그릇</b>
-          <i class="order-arrow" aria-hidden="true"></i>
+        <button class="order-row dm-card" type="button" aria-expanded="false" aria-controls="demand-${m.menu_id}">
+          <span class="dm-name">${esc(m.menu)}<i class="order-arrow" aria-hidden="true"></i></span>
+          <b class="dm-num">${m.predicted}<small>그릇</small></b>
+          ${d.is_open ? usualChip(m.predicted, usual) : ""}
         </button>
         <div class="demand-detail" id="demand-${m.menu_id}" hidden>
           <div class="demand-chart">
@@ -1239,7 +1241,7 @@ $("#menuForecast").onclick = (e) => {
     const open = rows.some((b) => b.getAttribute("aria-expanded") !== "true");
     rows.forEach((b) => setOpen(b, open));
   } else return;
-  $(".demand-all").textContent = rows.every((b) => b.getAttribute("aria-expanded") === "true") ? "모두 접기" : "모두 보기";
+  $(".demand-all").textContent = rows.every((b) => b.getAttribute("aria-expanded") === "true") ? "모두 접기" : "근거 모두 보기";
 };
 
 // 재료를 누르면 계산 근거를 펼침 · 맨 위 버튼은 전체를 펴고 접음

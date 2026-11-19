@@ -490,19 +490,20 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .store-grid { display: grid; grid-template-columns: 1fr 1.25fr; gap: 16px; }
 #store .store-grid { grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
 #store .store-grid .card { padding: 22px; }
-.demand-top { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 14px; }
-.demand-top .demand-total { margin: 0; }
-#store .demand-top .badge { padding: 6px 14px; background: var(--surface-variant); color: var(--ink); font-size: 13px; font-weight: 700; }
-.demand-all { margin-left: auto; align-self: center; }
-.demand-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 14px; align-items: start; }
-.demand-grid .demand-item + .demand-item { margin-top: 0; }
 /* 두 카드 공통 머리: 제목 · 합계 · 근거 버튼 */
 .prep-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
 .prep-head h3 { margin: 0; font-size: 17px; font-weight: 700; }
 .prep-head h3 span { margin-left: 4px; font-weight: 500; } .prep-head h3 b { color: var(--accent); font-size: 20px; }
+#menuForecast .prep-head h3 b { font-size: 26px; }   /* 내일 모두 몇 그릇: 제목보다 크게 */
+/* 내일 예상 판매: 메뉴별 숫자 카드를 한 줄에 (이름 · 큰 그릇 수 · 평소 대비), 누르면 카드 안에 근거가 펼쳐짐 */
+.dm-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; align-items: start; }
+#menuForecast .demand-item { border: 0; border-radius: 14px; background: var(--surface-variant); }
+.order-row.dm-card { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 14px 16px; border-radius: 14px; }
+.dm-name { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; }
+.dm-card .dm-num { font-size: 30px; font-weight: 800; line-height: 1.15; }
+.dm-num small { margin-left: 2px; font-size: 14px; font-weight: 600; color: var(--muted); }
+.dm-card .demand-chip { margin: 2px 0 0; }
 .store-grid > * { min-width: 0; }
-.demand-total { font-size: 18px; margin: 6px 0 10px; } .demand-total b { color: var(--accent); font-size: 24px; }
-.demand-item + .demand-item { margin-top: 12px; }
 .demand-detail { padding: 12px 12px 2px; font-size: 12.5px; }
 .demand-detail p { color: var(--muted); }
 .demand-detail > p { margin: 8px 0 0; }
@@ -1132,6 +1133,7 @@ a.my-link { color: inherit; text-decoration: none; }
   .wrap { padding: 0 16px; }
   .nav { display: none; }
   .reason-grid { grid-template-columns: minmax(0, 1fr); }
+  .dm-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }   /* 좁은 화면: 카드 두 개씩 */
   .prep-head { align-items: flex-start; }
   .item-head { flex-direction: column; align-items: stretch; text-align: center; padding: 20px; }
   .item-shop { text-align: center; }

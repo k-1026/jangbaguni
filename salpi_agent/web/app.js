@@ -1541,7 +1541,7 @@ function renderCosts(r, withChange) {
 }
 
 // 원가율 40% 이상(지금 또는 다음 주): 원가율 낮추는 방법(가격 · 재료 · 메뉴)을 함께 보여 줌 — 고르는 건 사장님 (유저플로우 v2)
-// 방법마다 핵심만, 표처럼 줄을 맞춤: 제목 · 바꾸는 것 · 원가율 · 남는 돈(또는 아끼는 돈) — 원가율끼리 위아래로 비교되게
+// 방법마다 핵심만, 표처럼 줄을 맞춤: 제목 · 바꾸는 것 · 원가율 · 남는 금액(또는 아끼는 돈) — 원가율끼리 위아래로 비교되게
 function costPlan(m) {
   const p = m.price_up, s = m.swap, k = m.push_menu;
   const row = (title, what, ratio, money) => `<li><b class="cp-label">${title}</b>${ratio == null
@@ -1551,11 +1551,11 @@ function costPlan(m) {
     <b class="swap-title">원가율 낮추는 방법</b>
     <ol>
       ${p ? row("가격 조정", `${won(m.price)} → <b>${won(p.price)}</b>`, p.new_ratio_pct,
-        `남는 돈 <b>${won(p.new_margin)}</b>${p.basis === "다음 주 예상 원가" ? ` <span class="cp-note">(다음 주 값 반영)</span>` : ""}`)
+        `남는 금액 <b>${won(p.new_margin)}</b>${p.basis === "다음 주 예상 원가" ? ` <span class="cp-note">(다음 주 값 반영)</span>` : ""}`)
         : row("가격 조정", "계산할 수 없어요")}
       ${s ? row("대체 재료", `${esc(s.from)} ${s.share_pct}% → <b>${esc(s.to)}</b>`, s.new_ratio_pct, `1인분 <b>${won(s.saving_per_serving)}</b> 절약`)
         : row("대체 재료", "지금은 바꿀 만한 재료가 없어요")}
-      ${k ? row("메뉴 제안", `<b>${esc(k.menu)}</b> 밀기`, k.cost_ratio_pct, `남는 돈 <b>${won(k.margin)}</b>`)
+      ${k ? row("메뉴 제안", `<b>${esc(k.menu)}</b> 밀기`, k.cost_ratio_pct, `남는 금액 <b>${won(k.margin)}</b>`)
         : row("메뉴 제안", "원가율이 괜찮은 다른 메뉴가 없어요")}
     </ol>
   </div>`;

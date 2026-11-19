@@ -326,28 +326,28 @@ body.store-view .store-btn { color: #fff; background: var(--primary); }
 .price-table td.price { font-weight: 700; }
 .price-table .tag { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 6px; margin-left: 4px; background: #FFF3CC; color: #7A5C00; }
 .price-table .tag.hol { background: #FFE3E0; color: var(--up); }
-/* 재료 페이지 다음 7일 예측: 왼쪽 판단 · 오른쪽 이유 카드 */
+/* 재료 페이지 다음 7일 예측: 왼쪽 판단 · 오른쪽 이유 카드
+   왼쪽 칸은 오른쪽 높이만큼 늘어나는데, 남는 높이는 그래프가 채움 (가운데가 비지 않게) */
 .forecast-card { display: grid; grid-template-columns: minmax(280px, .8fr) minmax(0, 1.6fr); gap: 22px; align-items: stretch; }
-.fc-summary { display: flex; flex-direction: column; border-radius: 12px; padding: 22px; background: var(--surface-variant); }
-.fc-summary .fc-range { margin-top: auto; }
-.fc-spark { margin: 0 0 16px; }
-.fc-spark-title { margin: 0 0 8px; font-size: 12px; font-weight: 700; color: var(--muted); }
-.fc-spark svg { display: block; width: 100%; height: 96px; overflow: visible; }
+.fc-summary { display: flex; flex-direction: column; border-radius: 12px; padding: 20px; background: var(--surface-variant); }
+.fc-label { font-size: 13px; font-weight: 700; color: var(--muted); }
+.forecast-card .dir { font-size: 22px; font-weight: 800; line-height: 1.35; margin: 4px 0 2px; }
+.forecast-card.fc-up .dir { color: var(--up); } .forecast-card.fc-down .dir { color: var(--down); } .forecast-card.fc-flat .dir { color: var(--muted); }
+.forecast-card .tip { margin: 0 0 18px; font-size: 15px; font-weight: 500; color: var(--ink); }
+.fc-spark { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; margin: 0 0 14px; }
+.fc-spark-title { margin: 0 0 10px; font-size: 13px; font-weight: 700; color: var(--muted); }
+.fc-spark svg { display: block; flex: 1 1 auto; width: 100%; height: auto; min-height: 110px; max-height: 280px; overflow: visible; }
 .fc-spark .past { fill: none; stroke: var(--line); stroke-width: 2.5; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .fc-spark .next { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; }
 .fc-spark .band { fill: rgba(232,98,42,.16); }
 .fc-spark .today { stroke: rgba(31,36,33,.25); stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
-.fc-spark-axis { position: relative; display: flex; justify-content: space-between; margin: 4px 0 0; font-size: 11.5px; color: var(--muted); }
+.fc-spark-axis { position: relative; display: flex; justify-content: space-between; margin: 6px 0 0; font-size: 12.5px; color: var(--muted); }
 .fc-spark-axis .t { position: absolute; left: 66.7%; transform: translateX(-50%); }
-.forecast-card .fc-summary::before { content: ""; display: block; width: 40px; height: 4px; margin-bottom: 14px; border-radius: 999px; background: #9AA19C; }
-.forecast-card.fc-up .fc-summary::before { background: var(--up); } .forecast-card.fc-down .fc-summary::before { background: var(--down); }
-.fc-label { font-size: 12px; font-weight: 700; color: var(--muted); }
-.forecast-card .dir { font-size: 22px; font-weight: 700; margin: 6px 0 4px; }
-.forecast-card.fc-up .dir { color: var(--up); } .forecast-card.fc-down .dir { color: var(--down); } .forecast-card.fc-flat .dir { color: var(--muted); }
-.forecast-card .tip { margin: 0 0 16px; font-weight: 500; }
-.fc-range { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 12px; background: var(--surface); }
-.fc-range small { display: block; font-size: 12px; color: var(--muted); }
-.fc-range b { font-size: 17px; white-space: nowrap; }
+/* 지금 → 7일 뒤 예상: 7일 뒤 값은 판정 색으로 */
+.fc-range { margin-top: auto; display: flex; align-items: center; gap: 16px; padding: 14px 18px; border-radius: 12px; background: var(--surface); }
+.fc-range small { display: block; margin-bottom: 2px; font-size: 13px; color: var(--muted); }
+.fc-range b { font-size: 19px; font-weight: 800; white-space: nowrap; }
+.forecast-card.fc-up .fc-range div:last-child b { color: var(--up); } .forecast-card.fc-down .fc-range div:last-child b { color: var(--down); }
 .fc-range i { font-style: normal; font-size: 18px; color: var(--muted); }
 .fc-reasons h4 { margin: 4px 0 12px; font-size: 15px; color: var(--ink); }
 .reason-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }

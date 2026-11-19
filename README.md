@@ -1,6 +1,6 @@
-**PPT 캔바 링크**:https://canva.link/zxl9end3uctibh6
-**배포 화면**:https://jangbaguni-ten.vercel.app/
-**관제 화면**: https://jangbaguni-ten.vercel.app/static/control.html (단계별 진행 · 사람별 할 일 · 체크는 Issue #86)
+- **PPT 캔바 링크**:https://canva.link/zxl9end3uctibh6
+- **배포 화면**:https://jangbaguni-ten.vercel.app/
+- **관제 화면**: https://jangbaguni-ten.vercel.app/static/control.html (단계별 진행 · 사람별 할 일 · 체크는 Issue #86)
 
 # 🗓️ 살피 최종 일정
 

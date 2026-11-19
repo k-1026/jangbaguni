@@ -1230,7 +1230,7 @@ function orderGroups(items) {
 function orderItem(i, key) {
   const change = i.price_change_pct;
   const chip = key === "first" || key === "split"
-    ? `<span class="demand-chip ${change > 0 ? "up" : "down"}">다음 7일 ${change > 0 ? "+" : "−"}${Math.abs(Math.round(change))}%</span>` : "<span></span>";
+    ? `<span class="demand-chip ${change > 0 ? "up" : "down"}">다음 주 ${change > 0 ? "+" : "−"}${Math.abs(Math.round(change))}%</span>` : "<span></span>";
   const buy = i.order_qty > 0;
   return `<div class="order-item">
     <button class="order-row stock-row" type="button" aria-expanded="false" aria-controls="order-${i.item_id}">

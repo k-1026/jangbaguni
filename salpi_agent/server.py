@@ -27,6 +27,7 @@ from price import forecast_log
 from price import forecast_model
 from sources import foodspring
 from account import app_push
+from account import trial
 from account import kakao_alert
 from sources import mart_price
 from store import menus
@@ -419,11 +420,38 @@ def _receipt_guard(fn):
 
 
 @app.post("/api/receipt/read")
-def receipt_read(body: ReceiptIn):
+def receipt_read(body: ReceiptIn, authorization: str | None = Header(None)):
     data, mime = _image(body.image, body.mime)
     if not data:
         raise HTTPException(400, "영수증 사진을 골라 주세요")
-    return _receipt_guard(lambda: receipts.read(data, mime))
+    token = _bearer(authorization)
+    if not token:   # 로그인 표 없이 부르는 곳(모바일 시연 화면)은 지금처럼 횟수 없이
+        return _receipt_guard(lambda: receipts.read(data, mime))
+    # 로그인한 사장님: 무료 5회를 다 썼으면 402, 읽기에 성공했을 때만 1회 셈
+    user = _auth(lambda: trial.check(token))
+    result = _receipt_guard(lambda: receipts.read(data, mime))
+    return {**result, "trial": _auth(lambda: trial.count(user))}
+
+
+@app.get("/api/receipt/trial")
+def receipt_trial(authorization: str | None = Header(None)):
+    return _auth(lambda: trial.status(_bearer(authorization)))
+
+
+class FoundIn(BaseModel):
+    purchase_id: int
+
+
+@app.post("/api/receipt/trial/found")
+def receipt_trial_found(body: FoundIn, authorization: str | None = Header(None)):
+    """영수증을 저장한 뒤: 그 영수증의 '더 낸 돈'(구매가 점검)을 사장님 계정에 모아 둠."""
+    if not _bearer(authorization):
+        raise HTTPException(401, "로그인이 필요해요.")
+    try:
+        extra = (_guard(lambda: price_judge.judge(supabase_db.DEMO_STORE, body.purchase_id)).get("summary") or {}).get("extra_paid", 0)
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+    return _auth(lambda: trial.add_found(_bearer(authorization), body.purchase_id, extra))
 
 
 @app.post("/api/receipt/save")

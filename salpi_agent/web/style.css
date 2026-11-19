@@ -1126,10 +1126,11 @@ a.my-link { color: inherit; text-decoration: none; }
 .rc-open:hover { color: var(--accent); }
 
 /* 대형마트 판매가: 흰 판 안에 테두리 카드 */
-/* 대형마트 판매가: 흰 판 없이 구역 전체(화면 끝에서 끝까지)에 과일 · 야채 연한 선 그림 배경 — 흰 상품 칸이 떠 보이게 */
+/* 대형마트 판매가 ~ 시세 영향 정보: 흰 판 없이 구역 전체(화면 끝에서 끝까지)에 과일 · 야채 연한 선 그림 배경 — 흰 칸이 떠 보이게
+   두 구역을 감싼 틀 하나에 깔아서 경계에서 무늬가 끊기지 않음 */
 main { overflow-x: clip; }   /* 화면 폭 배경이 가로 스크롤을 만들지 않게 */
-#mart { position: relative; isolation: isolate; padding-bottom: 40px; }
-#mart::before { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 100vw; margin-left: -50vw; z-index: -1;
+.pattern-zone { position: relative; isolation: isolate; padding-bottom: 40px; }
+.pattern-zone::before { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 100vw; margin-left: -50vw; z-index: -1;
   background: var(--bg) url("/static/img/mart_pattern.svg?v=3") 0 0 / 240px; }   /* 페이지 바탕색 그대로 + 무늬만 은은하게 */
 .mart-card { background: none; box-shadow: none; padding: 0; border-radius: 0; }
 .mart-item { box-shadow: 0 1px 4px rgba(31, 74, 0, .06), 0 1px 2px rgba(31, 74, 0, .04); }

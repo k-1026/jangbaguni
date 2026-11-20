@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>살피 AI 파이프라인 v4</title>
+<!-- 11/20: v3 모양 그대로, 지금 된 내용 반영 (판매량 예측 모델 완성 · 아침 알림 · 고정 공식 안전장치)
+     PNG 다시 뽑기: chrome --headless --screenshot=살피_AI파이프라인_v4.png --window-size=2000,1555 --force-device-scale-factor=1.76 이 파일 -->
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=block" rel="stylesheet">
+<style>
+  :root { --bg:#F3F1EC; --band:#EBE7E0; --dk:#17372C; --or:#C4522A; --orl:#FBE3D9; --in:#DDE8E4; --card:#FFFDF9; --mut:#3C4A45; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { width:2000px; height:1555px; background:var(--bg); font-family:"Noto Sans KR", sans-serif; color:var(--dk); overflow:hidden; }
+  .abs { position:absolute; }
+  h1 { position:absolute; left:46px; top:14px; font-size:38px; font-weight:900; letter-spacing:-0.5px; }
+  .sub { position:absolute; left:48px; top:66px; font-size:19px; color:#5E6A66; }
+  .band { position:absolute; left:35px; top:112px; width:1930px; height:450px; background:var(--band); border-radius:26px; }
+  .bandlbl { position:absolute; font-size:17px; font-weight:700; color:#5E6A66; }
+  .box { position:absolute; background:var(--card); border:3px solid var(--dk); border-radius:12px; }
+  .ai { border-color:var(--or); }
+  .round { border-radius:18px; }
+  .dark { background:var(--dk); color:#fff; border:0; border-radius:40px; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:25px; }
+  .model { position:absolute; background:var(--dk); color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:900; font-size:25px;
+           background-image:linear-gradient(90deg, transparent 18px, #fff 18px, #fff 21px, transparent 21px, transparent calc(100% - 21px), #fff calc(100% - 21px), #fff calc(100% - 18px), transparent calc(100% - 18px)); }
+  .model small { font-size:15px; font-weight:500; opacity:.85; margin-top:2px; }
+  .in { position:absolute; z-index:0; display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:700; }
+  .in::before { content:""; position:absolute; inset:0; background:var(--in); border:3px solid var(--dk); transform:skewX(-17deg); z-index:-1; }
+  .human { position:absolute; z-index:0; display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:700; }
+  .human::before { content:""; position:absolute; inset:0; background:var(--dk); clip-path:polygon(0 0,100% 0,88% 100%,12% 100%); z-index:-1; }
+  .human::after { content:""; position:absolute; inset:3px 3px 3px 3px; background:var(--card); clip-path:polygon(0 0,100% 0,88.3% 100%,11.7% 100%); z-index:-1; }
+  .center { display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; }
+  .t { font-size:26px; font-weight:900; }
+  .d { font-size:18px; color:var(--mut); line-height:1.45; }
+  .step { position:absolute; top:62px; width:147px; height:84px; border:2.5px solid var(--dk); border-radius:10px; background:var(--card);
+          display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; }
+  .step b { font-size:17px; font-weight:900; }
+  .step span { font-size:14.5px; color:var(--mut); margin-top:3px; }
+  .step.hot { background:var(--orl); border-color:var(--or); }
+  .step.hot b, .step.hot span { color:var(--or); }
+  .agent { position:absolute; left:818px; width:522px; background:var(--card); border:3px solid var(--or); border-radius:14px; padding:14px 22px; }
+  .agent .t { font-size:28px; }
+  .agent .q { font-size:20px; font-weight:900; color:var(--or); margin-top:6px; }
+  .agent .d { margin-top:8px; font-size:17.5px; }
+  .chips { position:absolute; right:16px; top:16px; display:flex; flex-direction:column; gap:6px; align-items:flex-end; }
+  .chip { background:var(--dk); color:#fff; font-size:14.5px; font-weight:700; padding:4px 16px; border-radius:20px; }
+  .new { position:absolute; background:var(--or); color:#fff; font-size:13px; font-weight:900; padding:3px 10px; border-radius:12px; letter-spacing:.5px; }
+  .note { position:absolute; font-size:15px; color:var(--or); font-weight:700; }
+  .lbl { position:absolute; font-size:18px; font-weight:900; color:var(--or); }
+  .rule { position:absolute; left:46px; top:1262px; width:1908px; height:66px; background:var(--dk); border-radius:14px; color:#fff; font-size:20px; display:flex; align-items:center; padding:0 34px; gap:30px; }
+  .rule b { color:#F08A5D; font-size:22px; }
+  .legend { position:absolute; left:46px; top:1368px; display:flex; gap:34px; align-items:center; font-size:17px; color:var(--mut); }
+  .legend i { display:inline-block; width:78px; height:34px; margin-right:12px; vertical-align:middle; }
+  svg { position:absolute; left:0; top:0; }
+</style>
+</head>
+<body>
+<h1>살피 AI 파이프라인</h1>
+<div class="sub">질문 · 영수증 → 담당 에이전트 3개 → 살피 말투 · 매일 새벽 학습 에이전트가 예측 모델 자체를 만들고, 아침 알림까지 보냄</div>
+
+<div class="band"></div>
+<div class="bandlbl" style="left:64px;top:128px">학습 · 챗봇과 따로 돎</div>
+<div class="bandlbl" style="left:72px;top:428px">한 번 학습</div>
+
+<!-- 새벽 줄 -->
+<div class="abs dark" style="left:68px;top:208px;width:272px;height:72px">매일 새벽 06:00</div>
+<div class="box ai round" style="left:408px;top:158px;width:853px;height:172px">
+  <div class="abs" style="left:30px;top:14px;font-size:27px;font-weight:900">🔬 시세 학습 에이전트</div>
+  <div class="abs" style="left:318px;top:22px;font-size:16px;color:var(--mut)">정반대 0.3%p↓ · 평균 오차 같거나↓ 일 때만 교체 · 월요일 13개 기법 재시합</div>
+  <div class="step" style="left:28px"><b>1 다시 학습</b><span>부스팅 학습</span></div>
+  <div class="step hot" style="left:188px"><b>2 실험 고르기</b><span>제미나이</span></div>
+  <div class="step" style="left:348px"><b>3 채점</b><span>계산</span></div>
+  <div class="step" style="left:508px"><b>4 나을 때만 교체</b><span>미리 정한 기준</span></div>
+  <div class="step" style="left:668px"><b>5 기록 · 실전 채점</b><span>식봄 비교 포함</span></div>
+</div>
+<div class="model" style="left:1300px;top:182px;width:280px;height:80px">시세 예측 모델<small>야채 · 과일</small></div>
+<div class="note" style="left:1300px;top:270px">못 넘으면 · 고기 · 수산물은 고정 공식</div>
+<div class="new" style="left:1532px;top:168px">NEW</div>
+
+<div class="box ai round center" style="left:1660px;top:182px;width:270px;height:296px">
+  <div class="t">📣 아침 알림</div>
+  <div class="d" style="margin-top:8px">새벽 학습 뒤 · 하루 한 번<br><b style="color:var(--dk)">앱 알림 · 카카오톡</b><br>알림을 켠 사장님만</div>
+</div>
+<div class="new" style="left:1880px;top:168px">NEW</div>
+
+<!-- 판매량 줄 -->
+<div class="box round" style="left:408px;top:352px;width:853px;height:172px">
+  <div class="abs" style="left:30px;top:14px;font-size:27px;font-weight:900">📊 판매량 학습</div>
+  <div class="abs" style="left:228px;top:22px;font-size:16px;color:var(--mut)">가상 판매 기록 1년으로 한 번 · AI 판단 없이 계산만 · 규칙보다 나을 때만 씀</div>
+  <div class="step" style="left:28px"><b>1 자료 모으기</b><span>판매 1년 · 날씨 · 행사</span></div>
+  <div class="step" style="left:188px"><b>2 요인 계산</b><span>화면과 같은 계산</span></div>
+  <div class="step" style="left:348px"><b>3 굴려 시험</b><span>최근 6달 · 28일씩</span></div>
+  <div class="step" style="left:508px"><b>4 규칙과 비교</b><span>5.85 → 5.68그릇</span></div>
+  <div class="step" style="left:668px"><b>5 다시 학습 · 저장</b><span>전체 기록으로</span></div>
+</div>
+<div class="model" style="left:1300px;top:398px;width:280px;height:80px">판매량 예측 모델<small>11/18 완성 · 시연 가게</small></div>
+<div class="note" style="left:1300px;top:486px">실패하면 요일 · 공휴일 규칙</div>
+<div class="new" style="left:1532px;top:384px">NEW</div>
+
+<div class="lbl" style="left:1105px;top:605px">학습된 모델 2개 → 세 에이전트가 같이 씀</div>
+
+<svg width="2000" height="1000" viewBox="0 0 2000 1000" style="z-index:1">
+  <defs>
+    <marker id="ud" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#17372C"/></marker>
+    <marker id="uo" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#C4522A"/></marker>
+  </defs>
+  <g fill="none" stroke-width="3.5" stroke-linejoin="round">
+    <path d="M340,244 H404" stroke="#17372C" marker-end="url(#ud)"/>
+    <path d="M1261,222 H1296" stroke="#17372C" marker-end="url(#ud)"/>
+    <path d="M1261,438 H1296" stroke="#17372C" marker-end="url(#ud)"/>
+    <path d="M1580,222 H1656" stroke="#C4522A" marker-end="url(#uo)"/>
+    <path d="M1610,222 V595 H1080 V652" stroke="#C4522A" marker-end="url(#uo)"/>
+    <path d="M1560,478 V595" stroke="#C4522A"/>
+    <path d="M1795,478 V868" stroke="#C4522A" marker-end="url(#uo)"/>
+  </g>
+</svg>
+<div class="abs" style="left:0;top:100px;width:2000px;height:1455px">
+<!-- 질문 -->
+<div class="in" style="left:90px;top:768px;width:235px;height:80px">사장님 질문</div>
+<div class="box ai center" style="left:386px;top:754px;width:296px;height:110px">
+  <div class="t">🧭 안내 에이전트</div>
+  <div class="d" style="font-size:17px">버튼 질문은 규칙으로 바로<br>자유 질문만 가벼운 모델</div>
+</div>
+
+<!-- 담당 에이전트 3개 -->
+<div class="agent" style="top:558px;height:137px">
+  <div class="t">📈 시세 에이전트</div>
+  <div class="q">“언제 살까”</div>
+  <div class="d">시세 흐름 · 7일 예측 · 지금 사기 / 기다리기</div>
+  <div class="chips"><div class="chip">시세 예측 모델</div></div>
+</div>
+<div class="agent" style="top:725px;height:175px">
+  <div class="t">💰 원가 · 마진 에이전트</div>
+  <div class="q">“이 메뉴로 얼마 남나, 어떻게 줄일까”</div>
+  <div class="d">메뉴 원가율 · 싸게/비싸게 판정 · 더 싼 판매처<br>40% 넘으면 가격 · 재료 · 메뉴 3가지 제안</div>
+  <div class="chips"><div class="chip">시세 예측 모델</div></div>
+</div>
+<div class="agent" style="top:930px;height:152px">
+  <div class="t">📦 내일 준비 에이전트</div>
+  <div class="q">“내일 무엇을 얼마나 준비할까”</div>
+  <div class="d">판매량 예측 → 재료 필요량 → 재고 뺀 발주량<br>다음 주 오를 재료는 넉넉히</div>
+  <div class="chips"><div class="chip">시세 예측 모델</div><div class="chip">판매량 예측 모델</div></div>
+</div>
+
+<!-- 말투 · 출력 -->
+<div class="box ai center" style="left:1420px;top:767px;width:240px;height:90px">
+  <div class="t">🗣️ 살피 말투</div>
+  <div class="d" style="font-size:17px">숫자는 그대로</div>
+</div>
+<div class="abs dark" style="left:1700px;top:772px;width:250px;height:80px;font-size:24px">화면 · 대화 · 알림</div>
+
+<!-- 영수증 -->
+<div class="in" style="left:90px;top:1137px;width:235px;height:80px">영수증 사진</div>
+<div class="box ai center" style="left:375px;top:1140px;width:262px;height:74px">
+  <div style="font-size:23px;font-weight:900">🧾 영수증 읽기</div>
+  <div class="d" style="font-size:16px">품목 · 수량 · 단가</div>
+</div>
+<div class="human" style="left:862px;top:1137px;width:274px;height:78px">사장님 확인</div>
+
+<svg width="2000" height="1455" viewBox="0 0 2000 1455">
+  <defs>
+    <marker id="ad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#17372C"/></marker>
+    <marker id="ao" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#C4522A"/></marker>
+  </defs>
+  <g fill="none" stroke-width="3.5" stroke-linejoin="round">
+    <!-- 질문 → 안내 → 담당 -->
+    <path d="M330,808 H382" stroke="#17372C" marker-end="url(#ad)"/>
+    <path d="M682,808 H750" stroke="#17372C"/>
+    <path d="M750,627 V1000" stroke="#17372C"/>
+    <path d="M750,627 H814" stroke="#17372C" marker-end="url(#ad)"/>
+    <path d="M750,812 H814" stroke="#17372C" marker-end="url(#ad)"/>
+    <path d="M750,1000 H814" stroke="#17372C" marker-end="url(#ad)"/>
+    <!-- 담당 → 말투 → 출력 -->
+    <path d="M1340,627 H1380 V998" stroke="#17372C"/>
+    <path d="M1340,998 H1380" stroke="#17372C"/>
+    <path d="M1340,812 H1416" stroke="#17372C" marker-end="url(#ad)"/>
+    <path d="M1660,812 H1696" stroke="#17372C" marker-end="url(#ad)"/>
+    <!-- 영수증 -->
+    <path d="M330,1177 H371" stroke="#17372C" marker-end="url(#ad)"/>
+    <path d="M637,1177 H858" stroke="#17372C" marker-end="url(#ad)"/>
+    <path d="M930,1137 V1110 H785 V1012 A12,12 0 0 0 785,988 V875 H814" stroke="#17372C" marker-end="url(#ad)"/>
+    <path d="M1068,1137 V1088" stroke="#17372C" marker-end="url(#ad)"/>
+  </g>
+</svg>
+<div class="lbl" style="left:680px;top:1043px;font-size:17px">원가 · 마진</div>
+<div class="lbl" style="left:1082px;top:1095px;font-size:17px">내일 준비 (재고 +)</div>
+
+<div class="rule"><b>원칙</b><span>숫자는 계산과 학습 모델이 만들고, AI는 무엇을 할지 판단하고 말로 풀어 줍니다 · 도구 13개를 담당마다 나눠 잘못 고르는 실수를 줄입니다 · 버튼 질문은 AI 호출 없이 규칙으로</span></div>
+
+<div class="legend">
+  <span><i style="background:#17372C;border-radius:20px"></i>시작 · 끝</span>
+  <span><i style="background:#DDE8E4;border:3px solid #17372C;transform:skewX(-17deg)"></i>입력</span>
+  <span><i style="background:#FFFDF9;border:3px solid #C4522A"></i>AI가 판단 · 설명</span>
+  <span><i style="background:#FFFDF9;border:3px solid #17372C"></i>계산</span>
+  <span><i style="background:#17372C;clip-path:polygon(0 0,100% 0,88% 100%,12% 100%)"></i>사람 확인</span>
+  <span><i style="background:linear-gradient(90deg,#17372C 10px,#fff 10px,#fff 13px,#17372C 13px,#17372C 65px,#fff 65px,#fff 68px,#17372C 68px)"></i>학습된 모델</span>
+  <span><i style="height:4px;background:#C4522A"></i>모델 · 알림 전달</span>
+  <span><b style="background:#C4522A;color:#fff;font-size:13px;padding:3px 10px;border-radius:12px;margin-right:10px">NEW</b>v3(11/18) 이후 바뀐 곳</span>
+</div>
+</div>
+</body>
+</html>

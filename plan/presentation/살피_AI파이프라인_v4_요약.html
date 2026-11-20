@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>살피 AI 파이프라인 요약</title>
+<!-- 11/20: 슬라이드용 단순판 (한 장 = 메시지 하나: "AI는 4군데, 숫자는 계산과 학습 모델")
+     PNG 다시 뽑기: chrome --headless --screenshot=살피_AI파이프라인_v4_요약.png --window-size=2000,1125 --force-device-scale-factor=1.76 이 파일 -->
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=block" rel="stylesheet">
+<style>
+  :root { --bg:#F3F1EC; --band:#EBE7E0; --dk:#17372C; --or:#C4522A; --orl:#FBE3D9; --in:#DDE8E4; --card:#FFFDF9; --mut:#3C4A45; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { width:2000px; height:1125px; background:var(--bg); font-family:"Noto Sans KR", sans-serif; color:var(--dk); overflow:hidden; }
+  .abs { position:absolute; }
+  h1 { position:absolute; left:60px; top:34px; font-size:44px; font-weight:900; letter-spacing:-0.5px; }
+  .sub { position:absolute; left:62px; top:96px; font-size:24px; color:#5E6A66; }
+  .sub b { color:var(--or); }
+  .head { position:absolute; top:168px; font-size:19px; font-weight:900; color:#5E6A66; letter-spacing:.5px; }
+  .card { position:absolute; background:var(--card); border:3.5px solid var(--dk); border-radius:18px; }
+  .ai { border-color:var(--or); }
+  .tag { position:absolute; left:-3px; top:-20px; background:var(--or); color:#fff; font-size:16px; font-weight:900; padding:4px 14px; border-radius:14px; }
+  .tag.dk { background:var(--dk); }
+  .in { position:absolute; z-index:0; display:flex; align-items:center; justify-content:center; font-size:27px; font-weight:900; }
+  .in::before { content:""; position:absolute; inset:0; background:var(--in); border:3.5px solid var(--dk); transform:skewX(-15deg); z-index:-1; }
+  .t { font-size:30px; font-weight:900; }
+  .d { font-size:20px; color:var(--mut); line-height:1.45; margin-top:6px; }
+  .pad { padding:26px 28px; }
+  .agent { position:absolute; left:28px; right:28px; height:118px; border:2.5px solid var(--dk); border-radius:12px; padding:14px 20px; background:#fff; }
+  .agent .n { font-size:25px; font-weight:900; }
+  .agent .q { font-size:19px; font-weight:700; color:var(--or); margin-top:4px; }
+  .agent .m { position:absolute; right:14px; top:14px; display:flex; flex-direction:column; gap:5px; align-items:flex-end; }
+  .chip { background:var(--dk); color:#fff; font-size:14px; font-weight:700; padding:3px 12px; border-radius:16px; }
+  .out { position:absolute; background:var(--dk); color:#fff; border-radius:60px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; font-weight:900; font-size:28px; line-height:1.35; }
+  .night { position:absolute; left:60px; top:842px; width:1880px; height:150px; background:var(--band); border-radius:22px; }
+  .step { position:absolute; top:880px; height:76px; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; border:3px solid var(--dk); border-radius:12px; background:var(--card); }
+  .step b { font-size:22px; font-weight:900; }
+  .step span { font-size:16px; color:var(--mut); }
+  .step.ai { border-color:var(--or); background:var(--orl); }
+  .step.ai b, .step.ai span { color:var(--or); }
+  .model { position:absolute; top:880px; height:76px; background:var(--dk); color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:900; font-size:22px;
+           background-image:linear-gradient(90deg, transparent 14px, #fff 14px, #fff 17px, transparent 17px, transparent calc(100% - 17px), #fff calc(100% - 17px), #fff calc(100% - 14px), transparent calc(100% - 14px)); }
+  .model span { font-size:15px; font-weight:500; opacity:.85; }
+  .foot { position:absolute; left:60px; top:1030px; font-size:19px; color:var(--mut); display:flex; gap:40px; }
+  .foot b { color:var(--dk); }
+  svg { position:absolute; left:0; top:0; }
+</style>
+</head>
+<body>
+<h1>살피 AI 파이프라인</h1>
+<div class="sub"><b>AI는 4군데</b>(나누기 · 읽기 · 실험 고르기 · 말하기)에만 쓰고, <b>숫자는 계산과 학습 모델</b>이 만든다</div>
+
+<div class="head" style="left:62px">들어오는 것</div>
+<div class="head" style="left:400px">AI가 나누고 · 읽고</div>
+<div class="head" style="left:860px">숫자: 담당 에이전트 3개 (계산 · 학습 모델)</div>
+<div class="head" style="left:1478px">AI가 말하기</div>
+
+<!-- 들어오는 것 -->
+<div class="in" style="left:78px;top:258px;width:250px;height:96px">💬 사장님 질문</div>
+<div class="in" style="left:78px;top:582px;width:250px;height:96px">🧾 영수증 사진</div>
+
+<!-- AI ① ② -->
+<div class="card ai pad" style="left:400px;top:236px;width:380px;height:140px">
+  <div class="tag">AI ① 나누기</div>
+  <div class="t">🧭 안내</div>
+  <div class="d">질문을 맡을 담당에게<br>버튼 질문은 AI 없이 규칙으로</div>
+</div>
+<div class="card ai pad" style="left:400px;top:560px;width:380px;height:140px">
+  <div class="tag">AI ② 읽기</div>
+  <div class="t">🧾 영수증 읽기</div>
+  <div class="d">품목 · 수량 · 단가 → 사장님 확인</div>
+</div>
+
+<!-- 담당 3개 -->
+<div class="card" style="left:860px;top:210px;width:540px;height:510px">
+  <div class="agent" style="top:30px"><div class="n">📈 시세</div><div class="q">“언제 살까”</div><div class="d" style="font-size:17px;margin-top:2px">7일 예측 · 지금 사기 / 기다리기</div>
+    <div class="m"><div class="chip">시세 예측 모델</div></div></div>
+  <div class="agent" style="top:192px"><div class="n">💰 원가 · 마진</div><div class="q">“얼마 남나, 어떻게 줄일까”</div><div class="d" style="font-size:17px;margin-top:2px">40% 넘으면 가격 · 재료 · 메뉴 제안</div>
+    <div class="m"><div class="chip">시세 예측 모델</div></div></div>
+  <div class="agent" style="top:354px"><div class="n">📦 내일 준비</div><div class="q">“내일 얼마나 준비할까”</div><div class="d" style="font-size:17px;margin-top:2px">판매량 → 재료 → 발주량</div>
+    <div class="m"><div class="chip">시세 예측 모델</div><div class="chip">판매량 예측 모델</div></div></div>
+</div>
+
+<!-- AI ④ -->
+<div class="card ai pad" style="left:1478px;top:395px;width:236px;height:150px">
+  <div class="tag">AI ④ 말하기</div>
+  <div class="t">🗣️ 살피 말투</div>
+  <div class="d">숫자는 그대로</div>
+</div>
+<div class="out" style="left:1760px;top:385px;width:190px;height:170px">화면<br>대화<br>알림</div>
+
+<!-- 매일 새벽 -->
+<div class="night"></div>
+<div class="abs" style="left:84px;top:854px;font-size:17px;font-weight:900;color:#5E6A66">매일 새벽 · 사장님 질문과 따로 돎</div>
+<div class="abs" style="left:84px;top:892px;width:200px;height:56px;background:var(--dk);color:#fff;border-radius:30px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900">⏰ 06:00</div>
+<div class="step" style="left:330px;width:190px"><b>다시 학습</b><span>부스팅</span></div>
+<div class="step ai" style="left:560px;width:230px"><b>AI ③ 실험 고르기</b><span>제미나이</span></div>
+<div class="step" style="left:830px;width:230px"><b>나을 때만 교체</b><span>미리 정한 기준 · 아니면 공식</span></div>
+<div class="model" style="left:1100px;width:300px">학습된 모델 2개<span>시세 예측(매일) · 판매량 예측(1회)</span></div>
+<div class="step" style="left:1478px;width:236px"><b>📣 아침 알림</b><span>앱 알림 · 카카오톡</span></div>
+
+<svg width="2000" height="1125" viewBox="0 0 2000 1125">
+  <defs>
+    <marker id="ad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4.5" markerHeight="4.5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#17372C"/></marker>
+    <marker id="ao" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4.5" markerHeight="4.5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#C4522A"/></marker>
+  </defs>
+  <g fill="none" stroke-width="4" stroke-linejoin="round">
+    <path d="M326,306 H394" stroke="#17372C" marker-end="url(#ad)"/>
+    <path d="M326,630 H394" stroke="#17372C" marker-end="url(#ad)"/>
+    <path d="M780,306 H854" stroke="#17372C" marker-end="url(#ad)"/>
+    <path d="M780,630 H854" stroke="#17372C" marker-end="url(#ad)"/>
+    <path d="M1400,470 H1472" stroke="#17372C" marker-end="url(#ad)"/>
+    <path d="M1714,470 H1754" stroke="#17372C" marker-end="url(#ad)"/>
+    <!-- 새벽 줄 -->
+    <path d="M284,918 H324" stroke="#17372C" marker-end="url(#ad)"/>
+    <path d="M520,918 H554" stroke="#17372C" marker-end="url(#ad)"/>
+    <path d="M790,918 H824" stroke="#17372C" marker-end="url(#ad)"/>
+    <path d="M1060,918 H1094" stroke="#17372C" marker-end="url(#ad)"/>
+    <path d="M1400,918 H1472" stroke="#C4522A" marker-end="url(#ao)"/>
+    <path d="M1250,880 V726" stroke="#C4522A" marker-end="url(#ao)"/>
+    <path d="M1714,918 H1855 V561" stroke="#C4522A" marker-end="url(#ao)"/>
+  </g>
+</svg>
+<div class="abs" style="left:1262px;top:772px;font-size:17px;font-weight:900;color:var(--or)">세 에이전트가 같이 씀</div>
+
+<div class="foot">
+  <span>✅ <b>지금 실제 사이트에서 동작</b> — 위 그림 전부</span>
+  <span>⏳ <b>남은 것</b> — 시세가 바뀌면 원가율 다시 계산해 알림 · 고기 · 수산물 학습 모델</span>
+</div>
+</body>
+</html>

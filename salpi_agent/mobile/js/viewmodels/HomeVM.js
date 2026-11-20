@@ -16,7 +16,8 @@ function fromProduce(r) {
   return { name: r.item, kind: r.kind || "야채", price: r.wholesale_kg, unit: "kg", week: r.wholesale_change_pct, basis: "대구 북부도매 kg당",
     points: (r.history || []).filter((h) => h.kg_price).map((h) => [mmdd(h.date), h.kg_price]),
     exp: f.expected_change_pct, range: f.expected_kg_price_range, direction: f.direction, tip: f.suggestion,
-    reason: (f.factors || []).filter((x) => Math.abs(x.effect_pct) >= 1).slice(0, 2).map((x) => x.factor),
+    // '품목 특성'은 AI 계산의 기본값이라 이유로 보여 주지 않음 (웹 app.js isReason 과 같음)
+    reason: (f.factors || []).filter((x) => !x.factor.startsWith("품목 특성") && Math.abs(x.effect_pct) >= 1).slice(0, 2).map((x) => x.factor),
     shop: r.foodspring_url || SHOP };
 }
 function fromExtra(r) {

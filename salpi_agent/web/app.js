@@ -312,13 +312,19 @@ async function getJSON(url) {
 }
 const byItem = (name) => overview.find((r) => r.item === name);
 const expOf = (r) => r.forecast?.expected_change_pct ?? 0;
-const factorName = (name) => name.replace(/\s*\(.*\)/, "");   // 화면에는 괄호 설명 없이 표시
+// '이렇게 본 이유' 카드 이름: 괄호 설명은 빼고, 어려운 이름은 쉬운 말로 (서버 이름은 그대로 — plainReason · 챗봇이 씀)
+const FACTOR_EASY = { "4주 평균과의 차이": "지금 값 수준", "한 달 평균과의 차이": "지금 값 수준" };
+const factorName = (name) => { const n = name.replace(/\s*\(.*\)/, ""); return FACTOR_EASY[n] || n; };
+// '품목 특성'은 AI 계산의 기본값(품목마다 거의 같은 값)이라 이유로는 보여 주지 않음 — 예상 변화율 계산에는 그대로 들어감
+const isReason = (x) => !x.factor.startsWith("품목 특성");
+// 7일 뒤 가운데 예상값 (10원 단위). 예상 범위(±20%대)는 넓어서 숫자로는 보여 주지 않고 그래프 부채꼴로만
+const midPrice = (base, exp) => (base ? Math.round((base * (1 + (exp || 0) / 100)) / 10) * 10 : null);
 // 예측 한마디: 오를 / 떨어질 / 유지될
 function verdict(f) {
   const e = f?.expected_change_pct ?? 0;
   if (e >= 2) return { kind: "up", text: "다음 주 오를 가능성이 있어요" };
   if (e <= -2) return { kind: "down", text: "다음 주 떨어질 가능성이 있어요" };
-  return { kind: "flat", text: "다음 주 지금 가격이 유지될 가능성이 커요" };
+  return { kind: "flat", text: "다음 주 유지될 가능성이 커요" };
 }
 
 // ---------------------------------------------------------------
@@ -408,7 +414,7 @@ function showItem(name) {
 function plainReason(factors, kind) {
   const sign = { up: 1, down: -1 }[kind];
   if (!sign) return "";
-  const top = (factors || []).filter((x) => x.effect_pct * sign > 0).sort((a, b) => Math.abs(b.effect_pct) - Math.abs(a.effect_pct))[0];
+  const top = (factors || []).filter((x) => isReason(x) && x.effect_pct * sign > 0).sort((a, b) => Math.abs(b.effect_pct) - Math.abs(a.effect_pct))[0];
   if (!top) return "";
   if (top.factor.startsWith("도매시장")) return `시장에 들어오는 양이 ${sign > 0 ? "줄었어요" : "늘었어요"}`;
   if (top.factor.startsWith("날씨")) return "최근 날씨 영향이 있어요";
@@ -418,7 +424,6 @@ function plainReason(factors, kind) {
   if (top.factor.startsWith("계절")) return `해마다 이맘때 ${sign > 0 ? "오르는" : "내리는"} 때예요`;
   if (top.factor.includes("명절")) return "설 · 추석을 앞두고 있어요";
   if (top.factor.startsWith("최근 값 흐름")) return `최근 값 흐름을 보면 ${sign > 0 ? "오를" : "내릴"} 수 있어요`;
-  if (top.factor.startsWith("품목 특성")) return `이 품목은 요즘 ${sign > 0 ? "오르는" : "내리는"} 편이에요`;
   return "대구 행사가 많아요";
 }
 
@@ -521,7 +526,7 @@ function itemSlide(r, idx) {
   <div class="fc-strip ${v.kind}">
     <div class="fc-text">
       <span class="verdict">${v.text}</span>
-      <span class="range">예상 ${won(f.expected_kg_price_range?.[0])} ~ ${won(f.expected_kg_price_range?.[1])}/kg (가운데 ${pct(f.expected_change_pct)})${why ? ` · ${why}` : ""}</span>
+      <span class="range">7일 뒤 ${won(midPrice(f.base_kg_price, f.expected_change_pct))}/kg 안팎 (${pct(f.expected_change_pct)})${why ? ` · ${why}` : ""}</span>
     </div>
     <div class="advice" style="${poseVars(pose)}"><span class="say">${say}</span><img class="pose" src="/static/img/${pose}.png" alt=""></div>
   </div>
@@ -653,7 +658,7 @@ function extraSlide(r, idx) {
   const v = salpiSays((r.history || []).map((h) => h.price), f, idx);
   const why = plainReason(f.factors, v.kind);
   const { pose, say } = v;
-  const range = f.expected_price_range ? `예상 ${won(f.expected_price_range[0])} ~ ${won(f.expected_price_range[1])}/${esc(r.unit || "")} (가운데 ${pct(f.expected_change_pct)})` : "예측할 자료가 부족해요";
+  const range = f.expected_price_range ? `7일 뒤 ${won(midPrice(f.base_price, f.expected_change_pct))}/${esc(r.unit || "")} 안팎 (${pct(f.expected_change_pct)})` : "예측할 자료가 부족해요";
   return `
 <article class="slide card" data-item="${esc(r.item)}">
   <div class="chart-head">
@@ -822,7 +827,7 @@ function drawItemChart(canvas, d, label = "도매 kg당") {
             label: (c) => c.dataset.label === "강수량(mm)" ? ` 비 ${c.raw}mm` : ` ${c.dataset.label} ${won(c.raw)}`,
             afterBody: (items) => {
               const r = h[items[0].dataIndex];
-              if (!r) return f && !f.error ? [`예상 범위 ${won(f.expected_kg_price_range[0])} ~ ${won(f.expected_kg_price_range[1])}`] : [];
+              if (!r) return f && !f.error ? [`7일 뒤 ${won(midPrice(f.base_kg_price, f.expected_change_pct))} 안팎`] : [];
               const out = [];
               if (r.max_temp != null) out.push(`기온 ${r.min_temp}~${r.max_temp}℃`);
               if (r.holiday) out.push(`공휴일: ${r.holiday}`);
@@ -882,46 +887,63 @@ function renderExtraItemPage(r) {
   drawExtraItemChart($("#itemDash canvas"), r);
   boardItem = { item: r.item, history: d.history, label: `${basisName(r)} ${r.unit}당` };
   renderBoard();
-  renderForecast(d.forecast, d.history, r.unit);
-  $("#forecastCard .fc-reasons h4")?.insertAdjacentHTML("afterend",
-    `<p class="muted fc-extra-note">경매 자료(반입량)가 없어 농산물보다 이유가 적은 추정이에요 · 출처 ${esc(r.source)}</p>`);
+  renderForecast(d.forecast, d.history, r.unit);   // 출처는 화면 맨 아래 안내 문구에 있어 따로 적지 않음
   renderGradeTable(r.grade_table);
 }
 
 // 등급별 도매 경락가 표 (한우 · 돼지만, 재료 페이지에만 — 대시보드에는 넣지 않음)
-// 등급마다 가격 막대 · 물량 막대로 한눈에, 아래에는 "지금 소매가 vs 같은 등급 경락가" 막대 두 줄
+// 그래프 없이 표 한 장 + 한 문장 ("사장님이 사는 값은 경락가의 ○배") — 출처는 화면 맨 아래 안내 문구에
 function renderGradeTable(t) {
   $("#gradeTable")?.remove();
   if (!t || !t.rows?.length) return;
   const pig = t.rows.some((x) => x.all_price != null);
-  const maxP = Math.max(...t.rows.map((x) => Math.max(x.price || 0, x.all_price || 0)));
-  const maxC = Math.max(1, ...t.rows.map((x) => x.count || 0));
-  const bar = (v, max, cls) => (v ? `<span class="g-bar ${cls}"><i style="width:${Math.max(3, (v / max) * 100).toFixed(1)}%"></i></span>` : "");
   const unitCnt = pig ? "마리" : "상자";
   const r = t.retail;
   const times = r && t.compare_price ? r.price / t.compare_price : null;
-  const cmpMax = r ? Math.max(r.price, t.compare_price || 0) : 0;
+  const cmpName = t.compare_grade ? `${t.compare_grade}등급 도매 경락가` : "통째(도체) 도매 경락가";
+  const serving = r ? Math.round((r.price * SERVING_G) / 1000 / 10) * 10 : null;
   $("#priceBoard").insertAdjacentHTML("beforebegin", `
     <section class="card grade-table" id="gradeTable">
       <div class="grade-head"><h3>등급별 도매 경락가</h3>
-        <p class="muted">${esc(t.market)} · ${mmdd(t.date)} 경매 · kg당 · ${esc(t.note)}${pig ? " · 회색 막대는 전국 평균" : ""}</p></div>
+        <p class="muted">${esc(t.market)} · ${mmdd(t.date)} 경매 · kg당${pig ? " · 돼지 통째(도체)" : ""}</p></div>
+      <div class="g-body"><div>
       <table class="g-table">
-        <thead><tr><th>등급</th><th>경락가 (kg당)</th><th>물량</th></tr></thead>
+        <thead><tr><th>등급</th><th class="r">경락가</th>${pig ? `<th class="r">전국 평균</th>` : ""}<th class="r">나온 양</th></tr></thead>
         <tbody>${t.rows.map((x) => `<tr class="${x.grade === t.compare_grade ? "on" : ""}">
           <th scope="row">${esc(x.grade)}${x.grade === t.compare_grade ? "<small>소매와 같은 등급</small>" : ""}</th>
-          <td><div class="g-cell">${bar(x.price, maxP, "price")}<b>${x.price ? won(x.price) : "-"}</b></div>
-            ${pig && x.all_price ? `<div class="g-cell all">${bar(x.all_price, maxP, "all")}<span>전국 ${won(x.all_price)}</span></div>` : ""}</td>
-          <td><div class="g-cell">${bar(x.count, maxC, "count")}<span>${x.count ? `${Math.round(x.count).toLocaleString("ko-KR")}${unitCnt}` : "-"}</span></div></td>
+          <td class="r">${x.price ? won(x.price) : "-"}</td>
+          ${pig ? `<td class="r muted">${x.all_price ? won(x.all_price) : "-"}</td>` : ""}
+          <td class="r">${x.count ? `${Math.round(x.count).toLocaleString("ko-KR")}${unitCnt}` : "-"}</td>
         </tr>`).join("")}</tbody>
       </table>
-      ${r && t.compare_price ? `<div class="g-compare">
-        <p><b>사장님이 사는 값(소매)은 도매 경락가의 ${times.toFixed(1)}배</b>예요</p>
-        <div class="g-cell">${bar(r.price, cmpMax, "retail")}<span>대구 소매 평균 · ${esc(r.name)} <b>${won(r.price)}/kg</b></span></div>
-        <div class="g-cell">${bar(t.compare_price, cmpMax, "price")}<span>${esc(t.market)} 경락가 · ${esc(t.compare_name)} <b>${won(t.compare_price)}/kg</b></span></div>
-        ${pig ? `<p class="muted small">돼지는 부위 경매가 없어 통째(도체) 값과 견줬어요. 부위값과 직접 같지는 않아요.</p>` : ""}
-      </div>` : ""}
-      <p class="muted small">출처 ${esc(t.source)}</p>
+      ${pig ? `<p class="muted small g-pig">돼지는 부위 경매가 없어 통째 값과 견줬어요</p>` : ""}
+      </div>
+      ${times ? `<aside class="g-side">
+        <p class="g-times"><small>사장님이 사는 값 ${won(r.price)}은</small>${esc(cmpName)}의<b>${times.toFixed(1)}배</b></p>
+        <p class="g-serving">1인분(${SERVING_G}g)이면 재료비 약 <b>${won(serving)}</b></p>
+        <div class="g-menus" id="gMenus"></div>
+      </aside>` : ""}
+      </div>
     </section>`);
+  fillGradeMenus(ITEM);
+}
+
+const SERVING_G = 150;   // 고기 1인분 기준 무게 (식당 1인분 보통 150g · 화면에 '약'으로 표시)
+
+// 오른쪽 맨 아래: 이 재료가 들어가는 내 메뉴 · 원가율 (로그인 · 내 메뉴에 있을 때만)
+async function fillGradeMenus(item) {
+  if (!SIGNED_IN || !item) return;
+  try {
+    const [mine, costs] = await Promise.all([getJSON("/api/my-items"), getJSON("/api/costs")]);
+    const names = (mine.items || {})[item] || [];
+    const el = $("#gMenus");
+    if (!names.length || !el) return;
+    const rate = Object.fromEntries((costs.menus || []).map((m) => [m.menu, m]));
+    el.innerHTML = `<p class="g-menus-h">이 재료가 들어가는 내 메뉴</p>
+      <ul>${names.slice(0, 4).map((n) => `<li><span>${esc(n)}</span>${rate[n]
+        ? `<b class="${rate[n].high ? "up" : ""}">원가율 ${rate[n].cost_ratio_pct}%</b>` : ""}</li>`).join("")}</ul>
+      <a href="/?page=store#costs">메뉴별 원가율 보기 ›</a>`;
+  } catch (e) { /* 못 불러오면 이 줄만 안 보여 줌 */ }
 }
 
 function renderItemGoods() {
@@ -1030,20 +1052,24 @@ function renderForecast(f, history = [], unit = "kg") {
   if (!f || f.error) { $("#forecastCard").innerHTML = ""; return; }
   const v = verdict(f);
   const big = (x) => Math.abs(x.effect_pct) >= 0.1;
-  const moved = f.factors.filter(big).sort((a, b) => Math.abs(b.effect_pct) - Math.abs(a.effect_pct));
-  const still = f.factors.filter((x) => !big(x));
+  const reasons = f.factors.filter(isReason);
+  // 결론과 같은 쪽 이유를 먼저 (오를 → ▲ 먼저, 떨어질 → ▼ 먼저, 유지 → 합이 큰 쪽 먼저), 같은 쪽 안에서는 큰 것부터
+  const lead = { up: 1, down: -1 }[v.kind] ?? (reasons.reduce((s, x) => s + x.effect_pct, 0) >= 0 ? 1 : -1);
+  const first = (x) => (x.effect_pct * lead > 0 ? 0 : 1);
+  const moved = reasons.filter(big).sort((a, b) => first(a) - first(b) || Math.abs(b.effect_pct) - Math.abs(a.effect_pct));
+  const still = reasons.filter((x) => !big(x));
   const [lo, hi] = f.expected_kg_price_range || [];
+  const mid = midPrice(f.base_kg_price, f.expected_change_pct);
   $("#forecastCard").className = `card forecast-card fc-${v.kind}`;   // up · down 이름은 전체 글자색 규칙과 겹쳐서 fc- 를 붙임
   $("#forecastCard").innerHTML = `
     <div class="fc-summary">
-      <span class="fc-label">다음 7일 예측</span>
       <p class="dir">${esc(v.text)}</p>
       <p class="tip">${esc(f.suggestion)}</p>
       ${fcSpark(history, lo, hi)}
       <div class="fc-range">
         <div><small>지금 (${esc(unit)}당)</small><b>${won(f.base_kg_price)}</b></div>
         <i aria-hidden="true">→</i>
-        <div><small>7일 뒤 예상</small><b>${won(lo)} ~ ${won(hi)}</b></div>
+        <div><small>7일 뒤 예상</small><b>${won(mid)} 안팎</b></div>
       </div>
     </div>
     <div class="fc-reasons">
@@ -1070,8 +1096,7 @@ function fcSpark(history, lo, hi) {
   const line = rows.map((r, i) => `${x(i)},${y(r.kg_price)}`).join(" ");
   const last = rows.at(-1).kg_price, mid = (lo + hi) / 2;
   return `<div class="fc-spark">
-      <p class="fc-spark-title">최근 2주 흐름과 7일 뒤 예상</p>
-      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="최근 2주 ${won(rows[0].kg_price)}에서 오늘 ${won(last)}, 7일 뒤 ${won(lo)} ~ ${won(hi)} 예상">
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="최근 2주 ${won(rows[0].kg_price)}에서 오늘 ${won(last)}, 7일 뒤 ${won(Math.round((lo + hi) / 20) * 10)} 안팎 예상">
         <polygon class="band" points="${PAST},${y(last)} ${W},${y(hi)} ${W},${y(lo)}"/>
         <line class="today" x1="${PAST}" x2="${PAST}" y1="0" y2="${H}"/>
         <polyline class="past" points="${line}"/>
@@ -1091,7 +1116,7 @@ function monthRange(history, now) {
   const vsAvg = ((now - avg) / avg) * 100;
   const avgAt = hi === lo ? 50 : Math.max(28, Math.min(72, ((avg - lo) / (hi - lo)) * 100));   // 양끝 글자와 겹치지 않게
   return `<div class="month-range">
-      <h4>최근 한 달 시세 위치 <small>최근 ${prices.length}거래일</small></h4>
+      <h4>최근 한 달 시세 위치</h4>
       <p class="month-say">지금 가격은 한 달 중 <b class="m-${at >= 70 ? "high" : at <= 30 ? "low" : "mid"}">${where}</b>이에요 · 평균보다 ${pct(vsAvg)}</p>
       <div class="month-bar" role="img" aria-label="한 달 최저 ${won(lo)}, 최고 ${won(hi)} 사이에서 지금 ${won(now)}">
         <b class="avg-tick" style="left:${avgAt}%"></b>
@@ -2621,7 +2646,7 @@ async function renderMypage(view) {
       <p class="muted small">켜 둔 알림은 살피가 챗봇 창으로 보내 드려요.</p>
       <label class="toggle-row">
         <span><b>내 메뉴 재료만</b><small>${myItems
-          ? `내 메뉴에 들어가는 ${esc(overview.filter((r) => myItems.has(r.item)).map((r) => r.item).join(" · ") || "재료")}만 알려 드려요`
+          ? `내 메뉴에 들어가는 재료${(n => n ? ` ${n}가지` : "")(overview.filter((r) => myItems.has(r.item)).length)}만 알려 드려요`
           : "메뉴를 불러오지 못해 모든 농산물을 알려 드려요"}</small></span>
         <input type="checkbox" class="switch" data-pref="mine" ${prefs.mine ? "checked" : ""}></label>
       ${ALERT_TYPES.map(([k, title, desc]) => `<label class="toggle-row">
@@ -2719,6 +2744,7 @@ async function saveStore() {
     try { saveLogin({ ...u, profile: me, name: me.name, store: me.store_name }, !!localStorage.getItem(LOGIN_KEY)); } catch (e) {}
     if ($("#storeName")) $("#storeName").innerHTML = `<b>${esc(me.store_name)}</b> 사장님의 가게`;
     storeSaving = false;
+    if (btn) btn.disabled = false;   // 꺼진 버튼은 click()이 무시되므로 다시 켠 뒤 누름
     $("#myCost [data-cdone]")?.click();   // 저장됐으니 원래 '완료' 그대로 이어서
   } catch (e) {
     storeSaving = false; storeErr = e.message;

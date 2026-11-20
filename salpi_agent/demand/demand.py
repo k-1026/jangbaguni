@@ -189,6 +189,11 @@ def forecast(store_id=db.DEMO_STORE, target=None, price_outlook=None, save=True)
     rec_by_menu = defaultdict(list)
     for r in recipes:
         rec_by_menu[r["menu_id"]].append(r)
+    # 메뉴별 내일 필요한 재료 (예상 그릇 수 × 1인분 양 ÷ (1 − 손질 손실)) — 많이 드는 순
+    for m in result_menus:
+        m["ingredients"] = sorted(({"item": r["items"]["name"], "unit": r["items"]["base_unit"],
+                                    "qty": round(m["predicted"] * float(r["qty_per_serving"]) / (1 - float(r["loss_rate"])), 3)}
+                                   for r in rec_by_menu[m["menu_id"]]), key=lambda x: -x["qty"])
     d = today
     while d <= horizon_end:
         if is_open(d):

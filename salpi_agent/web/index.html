@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="ko">
 <head>
   <meta charset="utf-8">
@@ -13,7 +13,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=222">
+  <link rel="stylesheet" href="/static/style.css?v=256">
 </head>
 <body>
 
@@ -72,7 +72,7 @@
         <a class="buy-link receipt-link" href="/?page=store#receipt">
           <img class="receipt-emoji" src="/static/img/receipt_scan.png" alt="" aria-hidden="true">
           <span class="receipt-text"><b>영수증 분석 체험해보기</b><small>메뉴 한 그릇, 얼마 남는지 아세요?<br>영수증 한 장 찍으면 메뉴 원가율이 바로 나와요</small></span>
-          <i aria-hidden="true">→</i>
+          <i class="receipt-go">무료 5회 →</i>
         </a>
       </div>
 
@@ -258,6 +258,15 @@
       </div>
       <div id="receiptResult"></div>
       <div id="receiptList"></div>
+      <!-- 무료 5회를 다 쓰면: 위 내용을 흐리게 가리고 이 글만 보임 -->
+      <div class="receipt-lock" id="receiptLock" hidden>
+        <div class="lock-panel">
+          <p class="lock-title">무료 체험이 끝났어요</p>
+          <p class="lock-found" id="receiptFound"></p>
+          <p class="lock-sub">살피 플러스로 영수증 분석을 <b>무제한</b> 써 보세요</p>
+          <button class="lock-btn" type="button" id="receiptSubBtn">구독하러 가기</button>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -283,6 +292,9 @@
     <div class="card" id="costCard"><p class="muted">원가율을 불러오는 중이에요</p></div>
   </section>
 
+  <!-- 대형마트 판매가 ~ 시세 영향 정보: 과일 · 야채 무늬 바탕을 끊김 없이 한 장으로 -->
+  <div class="pattern-zone home-only">
+
   <!-- 대형마트 판매가: 한국소비자원 참가격 중 음식 재료만 (회사별 가격 · 2주 전 대비) -->
   <section class="wrap section home-only" id="mart">
     <div class="section-head">
@@ -300,11 +312,13 @@
   <section class="wrap section home-only" id="context">
     <div class="section-head"><h2>시세 영향 정보</h2><p class="muted">행사를 누르면 자세한 정보를 볼 수 있어요</p></div>
     <div class="ctx-grid">
-      <div class="card" id="weatherCard"><h3>대구 날씨 (지난 7일)</h3><p class="muted">불러오는 중</p></div>
+      <div class="card" id="weatherCard"><h3>이번 주 대구 날씨</h3><p class="muted">불러오는 중</p></div>
       <div class="card" id="holidayCard"><h3>다가오는 공휴일 (30일)</h3><p class="muted">불러오는 중</p></div>
       <div class="card" id="eventCard"><h3>이달의 대구 행사</h3><p class="muted">불러오는 중</p></div>
     </div>
   </section>
+
+  </div>
 
   <footer class="wrap footer">
     출처: aT 전국 공영도매시장 정산정보 · aT 일별 도·소매 가격정보(KAMIS, 수산물 · 육류 포함) · 기상청 ASOS(대구 143) · 한국천문연구원 특일정보 · 한국관광공사 국문관광정보(대구) · 한국소비자원 생필품 가격 정보(참가격) · 식봄 검색 결과<br>
@@ -418,6 +432,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="/static/app.js?v=165"></script>
+<script src="/static/app.js?v=182"></script>
 </body>
 </html>

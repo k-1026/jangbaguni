@@ -312,6 +312,8 @@ async function getJSON(url) {
 const byItem = (name) => overview.find((r) => r.item === name);
 const expOf = (r) => r.forecast?.expected_change_pct ?? 0;
 const factorName = (name) => name.replace(/\s*\(.*\)/, "");   // 화면에는 괄호 설명 없이 표시
+// '품목 특성'은 AI 계산의 기본값(품목마다 거의 같은 값)이라 이유로는 보여 주지 않음 — 예상 변화율 계산에는 그대로 들어감
+const isReason = (x) => !x.factor.startsWith("품목 특성");
 // 예측 한마디: 오를 / 떨어질 / 유지될
 function verdict(f) {
   const e = f?.expected_change_pct ?? 0;
@@ -407,7 +409,7 @@ function showItem(name) {
 function plainReason(factors, kind) {
   const sign = { up: 1, down: -1 }[kind];
   if (!sign) return "";
-  const top = (factors || []).filter((x) => x.effect_pct * sign > 0).sort((a, b) => Math.abs(b.effect_pct) - Math.abs(a.effect_pct))[0];
+  const top = (factors || []).filter((x) => isReason(x) && x.effect_pct * sign > 0).sort((a, b) => Math.abs(b.effect_pct) - Math.abs(a.effect_pct))[0];
   if (!top) return "";
   if (top.factor.startsWith("도매시장")) return `시장에 들어오는 양이 ${sign > 0 ? "줄었어요" : "늘었어요"}`;
   if (top.factor.startsWith("날씨")) return "최근 날씨 영향이 있어요";
@@ -417,7 +419,6 @@ function plainReason(factors, kind) {
   if (top.factor.startsWith("계절")) return `해마다 이맘때 ${sign > 0 ? "오르는" : "내리는"} 때예요`;
   if (top.factor.includes("명절")) return "설 · 추석을 앞두고 있어요";
   if (top.factor.startsWith("최근 값 흐름")) return `최근 값 흐름을 보면 ${sign > 0 ? "오를" : "내릴"} 수 있어요`;
-  if (top.factor.startsWith("품목 특성")) return `이 품목은 요즘 ${sign > 0 ? "오르는" : "내리는"} 편이에요`;
   return "대구 행사가 많아요";
 }
 
@@ -1029,8 +1030,9 @@ function renderForecast(f, history = [], unit = "kg") {
   if (!f || f.error) { $("#forecastCard").innerHTML = ""; return; }
   const v = verdict(f);
   const big = (x) => Math.abs(x.effect_pct) >= 0.1;
-  const moved = f.factors.filter(big).sort((a, b) => Math.abs(b.effect_pct) - Math.abs(a.effect_pct));
-  const still = f.factors.filter((x) => !big(x));
+  const reasons = f.factors.filter(isReason);
+  const moved = reasons.filter(big).sort((a, b) => Math.abs(b.effect_pct) - Math.abs(a.effect_pct));
+  const still = reasons.filter((x) => !big(x));
   const [lo, hi] = f.expected_kg_price_range || [];
   $("#forecastCard").className = `card forecast-card fc-${v.kind}`;   // up · down 이름은 전체 글자색 규칙과 겹쳐서 fc- 를 붙임
   $("#forecastCard").innerHTML = `

@@ -1033,7 +1033,10 @@ function renderForecast(f, history = [], unit = "kg") {
   const v = verdict(f);
   const big = (x) => Math.abs(x.effect_pct) >= 0.1;
   const reasons = f.factors.filter(isReason);
-  const moved = reasons.filter(big).sort((a, b) => Math.abs(b.effect_pct) - Math.abs(a.effect_pct));
+  // 결론과 같은 쪽 이유를 먼저 (오를 → ▲ 먼저, 떨어질 → ▼ 먼저, 유지 → 합이 큰 쪽 먼저), 같은 쪽 안에서는 큰 것부터
+  const lead = { up: 1, down: -1 }[v.kind] ?? (reasons.reduce((s, x) => s + x.effect_pct, 0) >= 0 ? 1 : -1);
+  const first = (x) => (x.effect_pct * lead > 0 ? 0 : 1);
+  const moved = reasons.filter(big).sort((a, b) => first(a) - first(b) || Math.abs(b.effect_pct) - Math.abs(a.effect_pct));
   const still = reasons.filter((x) => !big(x));
   const [lo, hi] = f.expected_kg_price_range || [];
   const mid = midPrice(f.base_kg_price, f.expected_change_pct);

@@ -11,7 +11,7 @@ export const itemBody = (r, { shop = true } = {}) => `
   ${r.exp == null ? `<p class="m-note">예측 자료가 없어요</p>` : `
   <div class="m-fc ${tone(r.exp, 1.9)}">
     <b>${esc(r.direction || "")}</b>
-    <span>다음 7일 ${pct(r.exp)}${r.range ? ` · ${won(r.range[0])} ~ ${won(r.range[1])}` : ""}</span>
+    <span>다음 7일 ${pct(r.exp)}${r.price ? ` · ${won(Math.round((r.price * (1 + r.exp / 100)) / 10) * 10)} 안팎` : ""}</span>
     <small>${esc(r.tip || "")}${r.reason?.length ? ` · ${esc(r.reason.join(", "))} 영향` : ""}</small>
   </div>`}
   ${shop && r.shop ? `<a class="m-buy" href="${esc(r.shop)}" target="_blank" rel="noopener">식봄에서 ${esc(r.name)} 사기 <i aria-hidden="true">›</i></a>` : ""}`;

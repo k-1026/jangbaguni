@@ -201,23 +201,31 @@ button.chip:hover { background: #F7FAF3; }
 /* 재료 페이지 · 등급별 도매 경락가 표 (한우 · 돼지) */
 .grade-table { padding: 20px 22px; margin-bottom: 18px; }
 .grade-head h3 { margin: 0; font-size: 18px; } .grade-head p { margin: 4px 0 12px; font-size: 13px; }
-.g-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-.g-table thead th { text-align: left; font-size: 12px; font-weight: 500; color: var(--muted); padding: 0 8px 8px; }
-.g-table tbody th { text-align: left; padding: 10px 8px; width: 88px; font-size: 16px; white-space: nowrap; }
-.g-table tbody th small { display: block; font-size: 11px; font-weight: 500; color: var(--accent); }
-.g-table td { padding: 10px 8px; border-top: 1px solid var(--outline-variant); vertical-align: middle; }
-.g-table td:last-child { width: 30%; }
-.g-table tr.on { background: var(--accent-container); }
-.g-cell { display: flex; align-items: center; gap: 10px; }
-.g-cell b, .g-cell span { white-space: nowrap; font-size: 14px; }
-.g-cell.all { margin-top: 4px; } .g-cell.all span { font-size: 12px; color: var(--muted); }
-.g-bar { flex: 1; height: 12px; border-radius: 6px; background: var(--surface-variant); overflow: hidden; min-width: 40px; }
-.g-bar i { display: block; height: 100%; border-radius: 6px; }
-.g-bar.price i { background: var(--accent); } .g-bar.all i { background: #C7CCC8; }
-.g-bar.count i { background: #8FBF9F; } .g-bar.retail i { background: var(--up); }
-.g-compare { margin-top: 16px; padding: 14px 16px; border-radius: 12px; background: var(--surface-variant); display: grid; gap: 8px; }
-.g-compare p { margin: 0; font-size: 14px; } .g-compare .g-cell span { font-size: 13px; color: var(--muted); }
-@media (max-width: 700px) { .g-table td:last-child { width: auto; } .g-bar { min-width: 24px; } }
+/* 등급별 경락가: 그래프 없이 표 + 한 문장 */
+.g-table { width: 100%; max-width: 600px; border-collapse: collapse; font-size: 15px; }   /* 넓으면 숫자 사이가 멀어 읽기 어려움 */
+.g-table thead th { text-align: left; font-size: 12px; font-weight: 500; color: var(--muted); padding: 0 10px 8px; }
+.g-table tbody th { text-align: left; padding: 12px 10px; font-size: 16px; white-space: nowrap; }
+.g-table tbody th small { margin-left: 8px; font-size: 11px; font-weight: 700; color: var(--accent); }
+.g-table td { padding: 12px 10px; border-top: 1px solid var(--outline-variant); white-space: nowrap; }
+.g-table tbody th { border-top: 1px solid var(--outline-variant); }
+.g-table .r { text-align: right; }
+.g-table tr.on th, .g-table tr.on td { background: var(--accent-container); font-weight: 700; }
+.g-body { display: grid; grid-template-columns: minmax(0, 600px) minmax(240px, 1fr); gap: 28px; align-items: start; }
+.g-pig { margin: 8px 0 0; }
+.g-side { padding: 20px 22px; border-radius: 14px; background: var(--surface-variant); display: grid; gap: 14px; }
+.g-times { margin: 0; font-size: 15px; font-weight: 700; }
+.g-times small { display: block; margin-bottom: 4px; font-size: 13px; font-weight: 500; color: var(--muted); }
+.g-times b { display: block; margin-top: 2px; font-size: 34px; font-weight: 800; color: var(--up); line-height: 1.2; }
+.g-serving { margin: 0; padding-top: 12px; border-top: 1px solid var(--outline-variant); font-size: 14px; }
+.g-serving b { font-size: 16px; }
+.g-menus:empty { display: none; }
+.g-menus { padding-top: 12px; border-top: 1px solid var(--outline-variant); font-size: 14px; }
+.g-menus-h { margin: 0 0 6px; font-size: 13px; color: var(--muted); }
+.g-menus ul { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 4px; }
+.g-menus li { display: flex; justify-content: space-between; gap: 8px; }
+.g-menus li b { font-weight: 700; } .g-menus li b.up { color: var(--up); }
+.g-menus a { font-size: 13px; font-weight: 700; color: var(--primary, #2e7d5b); text-decoration: none; }
+@media (max-width: 860px) { .g-body { grid-template-columns: 1fr; } }
 .chart-box { position: relative; flex: 1; min-height: 0; }
 
 /* 대시보드 아래 예측 문구 · 근거 */

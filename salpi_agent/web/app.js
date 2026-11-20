@@ -2718,6 +2718,7 @@ async function saveStore() {
     try { saveLogin({ ...u, profile: me, name: me.name, store: me.store_name }, !!localStorage.getItem(LOGIN_KEY)); } catch (e) {}
     if ($("#storeName")) $("#storeName").innerHTML = `<b>${esc(me.store_name)}</b> 사장님의 가게`;
     storeSaving = false;
+    if (btn) btn.disabled = false;   // 꺼진 버튼은 click()이 무시되므로 다시 켠 뒤 누름
     $("#myCost [data-cdone]")?.click();   // 저장됐으니 원래 '완료' 그대로 이어서
   } catch (e) {
     storeSaving = false; storeErr = e.message;

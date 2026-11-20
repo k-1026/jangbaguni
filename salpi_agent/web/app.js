@@ -314,6 +314,8 @@ const expOf = (r) => r.forecast?.expected_change_pct ?? 0;
 const factorName = (name) => name.replace(/\s*\(.*\)/, "");   // 화면에는 괄호 설명 없이 표시
 // '품목 특성'은 AI 계산의 기본값(품목마다 거의 같은 값)이라 이유로는 보여 주지 않음 — 예상 변화율 계산에는 그대로 들어감
 const isReason = (x) => !x.factor.startsWith("품목 특성");
+// 7일 뒤 가운데 예상값 (10원 단위). 예상 범위(±20%대)는 넓어서 숫자로는 보여 주지 않고 그래프 부채꼴로만
+const midPrice = (base, exp) => (base ? Math.round((base * (1 + (exp || 0) / 100)) / 10) * 10 : null);
 // 예측 한마디: 오를 / 떨어질 / 유지될
 function verdict(f) {
   const e = f?.expected_change_pct ?? 0;
@@ -521,7 +523,7 @@ function itemSlide(r, idx) {
   <div class="fc-strip ${v.kind}">
     <div class="fc-text">
       <span class="verdict">${v.text}</span>
-      <span class="range">예상 ${won(f.expected_kg_price_range?.[0])} ~ ${won(f.expected_kg_price_range?.[1])}/kg (가운데 ${pct(f.expected_change_pct)})${why ? ` · ${why}` : ""}</span>
+      <span class="range">7일 뒤 ${won(midPrice(f.base_kg_price, f.expected_change_pct))}/kg 안팎 (${pct(f.expected_change_pct)})${why ? ` · ${why}` : ""}</span>
     </div>
     <div class="advice" style="${poseVars(pose)}"><span class="say">${say}</span><img class="pose" src="/static/img/${pose}.png" alt=""></div>
   </div>
@@ -653,7 +655,7 @@ function extraSlide(r, idx) {
   const v = salpiSays((r.history || []).map((h) => h.price), f, idx);
   const why = plainReason(f.factors, v.kind);
   const { pose, say } = v;
-  const range = f.expected_price_range ? `예상 ${won(f.expected_price_range[0])} ~ ${won(f.expected_price_range[1])}/${esc(r.unit || "")} (가운데 ${pct(f.expected_change_pct)})` : "예측할 자료가 부족해요";
+  const range = f.expected_price_range ? `7일 뒤 ${won(midPrice(f.base_price, f.expected_change_pct))}/${esc(r.unit || "")} 안팎 (${pct(f.expected_change_pct)})` : "예측할 자료가 부족해요";
   return `
 <article class="slide card" data-item="${esc(r.item)}">
   <div class="chart-head">
@@ -822,7 +824,7 @@ function drawItemChart(canvas, d, label = "도매 kg당") {
             label: (c) => c.dataset.label === "강수량(mm)" ? ` 비 ${c.raw}mm` : ` ${c.dataset.label} ${won(c.raw)}`,
             afterBody: (items) => {
               const r = h[items[0].dataIndex];
-              if (!r) return f && !f.error ? [`예상 범위 ${won(f.expected_kg_price_range[0])} ~ ${won(f.expected_kg_price_range[1])}`] : [];
+              if (!r) return f && !f.error ? [`7일 뒤 ${won(midPrice(f.base_kg_price, f.expected_change_pct))} 안팎`] : [];
               const out = [];
               if (r.max_temp != null) out.push(`기온 ${r.min_temp}~${r.max_temp}℃`);
               if (r.holiday) out.push(`공휴일: ${r.holiday}`);
@@ -1034,6 +1036,7 @@ function renderForecast(f, history = [], unit = "kg") {
   const moved = reasons.filter(big).sort((a, b) => Math.abs(b.effect_pct) - Math.abs(a.effect_pct));
   const still = reasons.filter((x) => !big(x));
   const [lo, hi] = f.expected_kg_price_range || [];
+  const mid = midPrice(f.base_kg_price, f.expected_change_pct);
   $("#forecastCard").className = `card forecast-card fc-${v.kind}`;   // up · down 이름은 전체 글자색 규칙과 겹쳐서 fc- 를 붙임
   $("#forecastCard").innerHTML = `
     <div class="fc-summary">
@@ -1043,7 +1046,7 @@ function renderForecast(f, history = [], unit = "kg") {
       <div class="fc-range">
         <div><small>지금 (${esc(unit)}당)</small><b>${won(f.base_kg_price)}</b></div>
         <i aria-hidden="true">→</i>
-        <div><small>7일 뒤 예상</small><b>${won(lo)} ~ ${won(hi)}</b></div>
+        <div><small>7일 뒤 예상</small><b>${won(mid)} 안팎</b></div>
       </div>
     </div>
     <div class="fc-reasons">
@@ -1070,7 +1073,7 @@ function fcSpark(history, lo, hi) {
   const line = rows.map((r, i) => `${x(i)},${y(r.kg_price)}`).join(" ");
   const last = rows.at(-1).kg_price, mid = (lo + hi) / 2;
   return `<div class="fc-spark">
-      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="최근 2주 ${won(rows[0].kg_price)}에서 오늘 ${won(last)}, 7일 뒤 ${won(lo)} ~ ${won(hi)} 예상">
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="최근 2주 ${won(rows[0].kg_price)}에서 오늘 ${won(last)}, 7일 뒤 ${won(Math.round((lo + hi) / 20) * 10)} 안팎 예상">
         <polygon class="band" points="${PAST},${y(last)} ${W},${y(hi)} ${W},${y(lo)}"/>
         <line class="today" x1="${PAST}" x2="${PAST}" y1="0" y2="${H}"/>
         <polyline class="past" points="${line}"/>

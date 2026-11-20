@@ -1028,6 +1028,15 @@ $("#priceBoard").addEventListener("click", (e) => {
   renderBoard();
 });
 
+// '이렇게 본 이유' 카드 설명을 읽기 쉽게 두 줄로 (이 보드에서만)
+// 예: "최근 1주 24% 내렸어요 / 조금 되돌아올 수 있어요", "지난 해들 이맘때 7일 동안 / 평균 +6.5% 움직였어요",
+//     "지금 값이 / 최근 4주 평균보다 비싼 편이에요" — 짧은 설명(비 17mm 등)은 한 줄 그대로
+function twoLines(d = "") {
+  const m = d.length < 15 ? null
+    : d.match(/^(?!설 · 추석)(.{4,}?) · (.+)$/) || d.match(/^(.*?7일 동안) (.+)$/) || d.match(/^(.+?[이가]) (.+)$/);
+  return m ? `${esc(m[1])}<br>${esc(m[2])}` : esc(d);
+}
+
 function renderForecast(f, history = [], unit = "kg") {
   if (!f || f.error) { $("#forecastCard").innerHTML = ""; return; }
   const v = verdict(f);
@@ -1056,7 +1065,7 @@ function renderForecast(f, history = [], unit = "kg") {
       <h4>이렇게 본 이유</h4>
       <div class="reason-grid">${moved.map((x) => `<div class="reason ${x.effect_pct > 0 ? "r-up" : "r-down"}">
         <span class="reason-icon" aria-hidden="true">${x.effect_pct > 0 ? "▲" : "▼"}</span>
-        <div><b>${esc(factorName(x.factor))}</b><small>${esc(x.detail)}</small></div>
+        <div><b>${esc(factorName(x.factor))}</b><small>${twoLines(x.detail)}</small></div>
         <strong>${pct(x.effect_pct)}</strong>
       </div>`).join("") || `<p class="muted">뚜렷하게 오르거나 내릴 이유가 없어요</p>`}</div>
       ${still.length ? `<p class="reason-still"><span>영향 없음</span>${still.map((x) => `<em title="${esc(x.detail)}">${esc(factorName(x.factor))}</em>`).join("")}</p>` : ""}

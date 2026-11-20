@@ -886,9 +886,7 @@ function renderExtraItemPage(r) {
   drawExtraItemChart($("#itemDash canvas"), r);
   boardItem = { item: r.item, history: d.history, label: `${basisName(r)} ${r.unit}당` };
   renderBoard();
-  renderForecast(d.forecast, d.history, r.unit);
-  $("#forecastCard .fc-reasons h4")?.insertAdjacentHTML("afterend",
-    `<p class="muted fc-extra-note">경매 자료(반입량)가 없어 농산물보다 이유가 적은 추정이에요 · 출처 ${esc(r.source)}</p>`);
+  renderForecast(d.forecast, d.history, r.unit);   // 출처는 화면 맨 아래 안내 문구에 있어 따로 적지 않음
   renderGradeTable(r.grade_table);
 }
 

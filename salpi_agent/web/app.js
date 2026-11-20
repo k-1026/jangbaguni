@@ -2620,7 +2620,7 @@ async function renderMypage(view) {
       <p class="muted small">켜 둔 알림은 살피가 챗봇 창으로 보내 드려요.</p>
       <label class="toggle-row">
         <span><b>내 메뉴 재료만</b><small>${myItems
-          ? `내 메뉴에 들어가는 ${esc(overview.filter((r) => myItems.has(r.item)).map((r) => r.item).join(" · ") || "재료")}만 알려 드려요`
+          ? `내 메뉴에 들어가는 재료${(n => n ? ` ${n}가지` : "")(overview.filter((r) => myItems.has(r.item)).length)}만 알려 드려요`
           : "메뉴를 불러오지 못해 모든 농산물을 알려 드려요"}</small></span>
         <input type="checkbox" class="switch" data-pref="mine" ${prefs.mine ? "checked" : ""}></label>
       ${ALERT_TYPES.map(([k, title, desc]) => `<label class="toggle-row">

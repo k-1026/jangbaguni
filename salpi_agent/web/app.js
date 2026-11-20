@@ -891,39 +891,58 @@ function renderExtraItemPage(r) {
 }
 
 // 등급별 도매 경락가 표 (한우 · 돼지만, 재료 페이지에만 — 대시보드에는 넣지 않음)
-// 등급마다 가격 막대 · 물량 막대로 한눈에, 아래에는 "지금 소매가 vs 같은 등급 경락가" 막대 두 줄
+// 그래프 없이 표 한 장 + 한 문장 ("사장님이 사는 값은 경락가의 ○배") — 출처는 화면 맨 아래 안내 문구에
 function renderGradeTable(t) {
   $("#gradeTable")?.remove();
   if (!t || !t.rows?.length) return;
   const pig = t.rows.some((x) => x.all_price != null);
-  const maxP = Math.max(...t.rows.map((x) => Math.max(x.price || 0, x.all_price || 0)));
-  const maxC = Math.max(1, ...t.rows.map((x) => x.count || 0));
-  const bar = (v, max, cls) => (v ? `<span class="g-bar ${cls}"><i style="width:${Math.max(3, (v / max) * 100).toFixed(1)}%"></i></span>` : "");
   const unitCnt = pig ? "마리" : "상자";
   const r = t.retail;
   const times = r && t.compare_price ? r.price / t.compare_price : null;
-  const cmpMax = r ? Math.max(r.price, t.compare_price || 0) : 0;
+  const cmpName = t.compare_grade ? `${t.compare_grade}등급 도매 경락가` : "통째(도체) 도매 경락가";
+  const serving = r ? Math.round((r.price * SERVING_G) / 1000 / 10) * 10 : null;
   $("#priceBoard").insertAdjacentHTML("beforebegin", `
     <section class="card grade-table" id="gradeTable">
       <div class="grade-head"><h3>등급별 도매 경락가</h3>
-        <p class="muted">${esc(t.market)} · ${mmdd(t.date)} 경매 · kg당 · ${esc(t.note)}${pig ? " · 회색 막대는 전국 평균" : ""}</p></div>
+        <p class="muted">${esc(t.market)} · ${mmdd(t.date)} 경매 · kg당${pig ? " · 돼지 통째(도체)" : ""}</p></div>
+      <div class="g-body"><div>
       <table class="g-table">
-        <thead><tr><th>등급</th><th>경락가 (kg당)</th><th>물량</th></tr></thead>
+        <thead><tr><th>등급</th><th class="r">경락가</th>${pig ? `<th class="r">전국 평균</th>` : ""}<th class="r">나온 양</th></tr></thead>
         <tbody>${t.rows.map((x) => `<tr class="${x.grade === t.compare_grade ? "on" : ""}">
           <th scope="row">${esc(x.grade)}${x.grade === t.compare_grade ? "<small>소매와 같은 등급</small>" : ""}</th>
-          <td><div class="g-cell">${bar(x.price, maxP, "price")}<b>${x.price ? won(x.price) : "-"}</b></div>
-            ${pig && x.all_price ? `<div class="g-cell all">${bar(x.all_price, maxP, "all")}<span>전국 ${won(x.all_price)}</span></div>` : ""}</td>
-          <td><div class="g-cell">${bar(x.count, maxC, "count")}<span>${x.count ? `${Math.round(x.count).toLocaleString("ko-KR")}${unitCnt}` : "-"}</span></div></td>
+          <td class="r">${x.price ? won(x.price) : "-"}</td>
+          ${pig ? `<td class="r muted">${x.all_price ? won(x.all_price) : "-"}</td>` : ""}
+          <td class="r">${x.count ? `${Math.round(x.count).toLocaleString("ko-KR")}${unitCnt}` : "-"}</td>
         </tr>`).join("")}</tbody>
       </table>
-      ${r && t.compare_price ? `<div class="g-compare">
-        <p><b>사장님이 사는 값(소매)은 도매 경락가의 ${times.toFixed(1)}배</b>예요</p>
-        <div class="g-cell">${bar(r.price, cmpMax, "retail")}<span>대구 소매 평균 · ${esc(r.name)} <b>${won(r.price)}/kg</b></span></div>
-        <div class="g-cell">${bar(t.compare_price, cmpMax, "price")}<span>${esc(t.market)} 경락가 · ${esc(t.compare_name)} <b>${won(t.compare_price)}/kg</b></span></div>
-        ${pig ? `<p class="muted small">돼지는 부위 경매가 없어 통째(도체) 값과 견줬어요. 부위값과 직접 같지는 않아요.</p>` : ""}
-      </div>` : ""}
-      <p class="muted small">출처 ${esc(t.source)}</p>
+      ${pig ? `<p class="muted small g-pig">돼지는 부위 경매가 없어 통째 값과 견줬어요</p>` : ""}
+      </div>
+      ${times ? `<aside class="g-side">
+        <p class="g-times"><small>사장님이 사는 값 ${won(r.price)}은</small>${esc(cmpName)}의<b>${times.toFixed(1)}배</b></p>
+        <p class="g-serving">1인분(${SERVING_G}g)이면 재료비 약 <b>${won(serving)}</b></p>
+        <div class="g-menus" id="gMenus"></div>
+      </aside>` : ""}
+      </div>
     </section>`);
+  fillGradeMenus(ITEM);
+}
+
+const SERVING_G = 150;   // 고기 1인분 기준 무게 (식당 1인분 보통 150g · 화면에 '약'으로 표시)
+
+// 오른쪽 맨 아래: 이 재료가 들어가는 내 메뉴 · 원가율 (로그인 · 내 메뉴에 있을 때만)
+async function fillGradeMenus(item) {
+  if (!SIGNED_IN || !item) return;
+  try {
+    const [mine, costs] = await Promise.all([getJSON("/api/my-items"), getJSON("/api/costs")]);
+    const names = (mine.items || {})[item] || [];
+    const el = $("#gMenus");
+    if (!names.length || !el) return;
+    const rate = Object.fromEntries((costs.menus || []).map((m) => [m.menu, m]));
+    el.innerHTML = `<p class="g-menus-h">이 재료가 들어가는 내 메뉴</p>
+      <ul>${names.slice(0, 4).map((n) => `<li><span>${esc(n)}</span>${rate[n]
+        ? `<b class="${rate[n].high ? "up" : ""}">원가율 ${rate[n].cost_ratio_pct}%</b>` : ""}</li>`).join("")}</ul>
+      <a href="/?page=store#costs">메뉴별 원가율 보기 ›</a>`;
+  } catch (e) { /* 못 불러오면 이 줄만 안 보여 줌 */ }
 }
 
 function renderItemGoods() {

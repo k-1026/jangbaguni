@@ -1037,7 +1037,6 @@ function renderForecast(f, history = [], unit = "kg") {
   $("#forecastCard").className = `card forecast-card fc-${v.kind}`;   // up · down 이름은 전체 글자색 규칙과 겹쳐서 fc- 를 붙임
   $("#forecastCard").innerHTML = `
     <div class="fc-summary">
-      <span class="fc-label">다음 7일 예측</span>
       <p class="dir">${esc(v.text)}</p>
       <p class="tip">${esc(f.suggestion)}</p>
       ${fcSpark(history, lo, hi)}
@@ -1071,7 +1070,6 @@ function fcSpark(history, lo, hi) {
   const line = rows.map((r, i) => `${x(i)},${y(r.kg_price)}`).join(" ");
   const last = rows.at(-1).kg_price, mid = (lo + hi) / 2;
   return `<div class="fc-spark">
-      <p class="fc-spark-title">최근 2주 흐름과 7일 뒤 예상</p>
       <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="최근 2주 ${won(rows[0].kg_price)}에서 오늘 ${won(last)}, 7일 뒤 ${won(lo)} ~ ${won(hi)} 예상">
         <polygon class="band" points="${PAST},${y(last)} ${W},${y(hi)} ${W},${y(lo)}"/>
         <line class="today" x1="${PAST}" x2="${PAST}" y1="0" y2="${H}"/>
@@ -1092,7 +1090,7 @@ function monthRange(history, now) {
   const vsAvg = ((now - avg) / avg) * 100;
   const avgAt = hi === lo ? 50 : Math.max(28, Math.min(72, ((avg - lo) / (hi - lo)) * 100));   // 양끝 글자와 겹치지 않게
   return `<div class="month-range">
-      <h4>최근 한 달 시세 위치 <small>최근 ${prices.length}거래일</small></h4>
+      <h4>최근 한 달 시세 위치</h4>
       <p class="month-say">지금 가격은 한 달 중 <b class="m-${at >= 70 ? "high" : at <= 30 ? "low" : "mid"}">${where}</b>이에요 · 평균보다 ${pct(vsAvg)}</p>
       <div class="month-bar" role="img" aria-label="한 달 최저 ${won(lo)}, 최고 ${won(hi)} 사이에서 지금 ${won(now)}">
         <b class="avg-tick" style="left:${avgAt}%"></b>

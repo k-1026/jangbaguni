@@ -21,6 +21,7 @@ MISSING = 63                                        # gbdt._Binner 의 빈 값 �
 MAJOR_HOLIDAYS = [date(2021, 2, 12), date(2021, 9, 21), date(2022, 2, 1), date(2022, 9, 10), date(2023, 1, 22), date(2023, 9, 29),
                   date(2024, 2, 10), date(2024, 9, 17), date(2025, 1, 29), date(2025, 10, 6), date(2026, 2, 17), date(2026, 9, 25),
                   date(2027, 2, 7), date(2027, 9, 15)]
+MAJOR_NEAR = 30   # 명절까지 이 날 수 안쪽일 때만 '다가오는 명절'로 따로 보여 줌
 
 # 모델이 쓸 수 있는 요인 전부. 실제로 쓰는 요인은 모델마다 다름 (학습 담당이 넣고 빼며 시험)
 ALL_FEATURES = ["item", "dev", "trend", "vchg", "vlevel", "wx", "rain", "cold", "hot", "volat", "chg3", "chg7",
@@ -202,25 +203,34 @@ def history():
 def _detail(group, f, contrib_pct):
     s = f["_show"]
     if group == "4주 평균과의 차이":
-        return f"지금 값이 최근 4주 평균({round(s['avg']):,}원/kg)보다 {f['dev']:+.1f}%"
+        from price.analysis import avg_gap_text   # 숫자는 화면 '최근 한 달 시세 위치'에 있어 말로만
+        return avg_gap_text("4주", f["dev"])
     if group == "도매시장 반입량":
         return (f"최근 3거래일 반입량이 그 전 평균보다 {f['vchg']:+.0f}%" if math.isfinite(f["vchg"])
                 else "반입량 기록이 짧아요")
     if group.startswith("날씨"):
-        return (f"비 {f['rain']:.0f}mm · 영하 3도 이하 {f['cold']:.0f}일 · 33도 이상 {f['hot']:.0f}일"
-                if math.isfinite(f["rain"]) else "날씨 기록 없음")
+        if not math.isfinite(f["rain"]):
+            return "날씨 기록 없음"
+        # 0인 항목(영하 0일 등)은 빼고 있었던 것만
+        parts = [p for p, on in ((f"비 {f['rain']:.0f}mm", f["rain"] >= 1), (f"영하 3도 이하 {f['cold']:.0f}일", f["cold"] > 0),
+                                 (f"33도 이상 {f['hot']:.0f}일", f["hot"] > 0)) if on]
+        return " · ".join(parts) or "비 · 추위 · 더위 없이 무난했어요"
     if group.startswith("계절"):
         return (f"지난 해들 이맘때 7일 동안 평균 {f['season']:+.1f}% 움직였어요" if math.isfinite(f["season"])
                 else f"{int(f['month'])}월의 평소 움직임")
     if group.startswith("다가오는 명절"):
-        return f"다음 설 · 추석까지 {int(f['to_major'])}일"
+        return f"설 · 추석까지 {int(f['to_major'])}일 남았어요"
     if group == "최근 값 흐름":
-        parts = []
-        if math.isfinite(f["chg3"]):
-            parts.append(f"최근 3거래일 {f['chg3']:+.1f}%")
-        if math.isfinite(f["chg7"]):
-            parts.append(f"1주 전보다 {f['chg7']:+.1f}%")
-        return " · ".join(parts) or "최근 거래가 적어요"
+        # 예: 1주 새 −24% 내렸는데 이유는 '오를 쪽' → 많이 내린 뒤 되돌아오는 움직임이라고 말로 풀어 줌
+        move = f["chg7"] if math.isfinite(f["chg7"]) else f["chg3"]
+        if not math.isfinite(move):
+            return "최근 거래가 적어요"
+        if abs(move) < 3:
+            return "최근 1주 값이 거의 그대로예요"
+        went = "내렸" if move < 0 else "올랐"
+        if move * contrib_pct < 0:
+            return f"최근 1주 {abs(move):.0f}% {went}어요 · 조금 되돌아올 수 있어요"
+        return f"최근 1주 {abs(move):.0f}% {went}어요 · 그 흐름이 이어질 수 있어요"
     return "이 품목이 평소에 움직이는 정도"
 
 
@@ -233,8 +243,10 @@ def forecast(name, kind, points, weather, asof):
     f = make_features(name, m.items.index(name), points, weather, asof, season)
     total, contrib, base = m.predict(f)
     groups = {}
+    far = f["to_major"] > MAJOR_NEAR   # 명절이 멀면 '날짜에 따른 움직임'이라 계절에 합침 (80일 뒤 명절이 7일 예측 이유로 보이지 않게)
     for k, v in contrib.items():
-        groups[GROUPS.get(k, "품목 특성")] = groups.get(GROUPS.get(k, "품목 특성"), 0.0) + v
+        g = GROUPS["season"] if k == "to_major" and far else GROUPS.get(k, "품목 특성")
+        groups[g] = groups.get(g, 0.0) + v
     groups["품목 특성"] = groups.get("품목 특성", 0.0) + base   # 모든 품목 공통 기본값도 품목 특성에 합침
     factors = [{"factor": g, "effect_pct": round(v, 1), "detail": _detail(g, f, v)} for g, v in groups.items()]
     factors.sort(key=lambda x: -abs(x["effect_pct"]))

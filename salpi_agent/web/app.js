@@ -69,13 +69,14 @@ const SIGNED_IN = !!readLogin();
 (() => {
   const q = new URLSearchParams(location.search);
   if (!q.has("kakao") && !q.has("kakao_err")) return;
+  if (q.get("page") === "signup") return;   // 카카오 첫 가입 화면(?page=signup&kakao=1)의 kakao=1 은 지우지 않음
   try {
     if (q.get("kakao") === "ok") sessionStorage.setItem("salpi_kakao_ok", "1");
     if (q.get("kakao_err")) sessionStorage.setItem("salpi_kakao_err", q.get("kakao_err"));
     sessionStorage.setItem("salpi_kakao_show", "1");
   } catch (e) {}
   q.delete("kakao"); q.delete("kakao_err");
-  history.replaceState(null, "", `${location.pathname}${q.toString() ? `?${q}` : ""}${location.hash}`);
+  window.history.replaceState(null, "",`${location.pathname}${q.toString() ? `?${q}` : ""}${location.hash}`);
 })();
 const PAGE = new URLSearchParams(location.search).get("page");
 // 로그인 뒤 돌아갈 곳: 우리 사이트 안 주소(/ 로 시작)만 받음

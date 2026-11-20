@@ -321,7 +321,7 @@ function verdict(f) {
   const e = f?.expected_change_pct ?? 0;
   if (e >= 2) return { kind: "up", text: "다음 주 오를 가능성이 있어요" };
   if (e <= -2) return { kind: "down", text: "다음 주 떨어질 가능성이 있어요" };
-  return { kind: "flat", text: "다음 주 지금 가격이 유지될 가능성이 커요" };
+  return { kind: "flat", text: "다음 주 유지될 가능성이 커요" };
 }
 
 // ---------------------------------------------------------------

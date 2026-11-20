@@ -311,7 +311,9 @@ async function getJSON(url) {
 }
 const byItem = (name) => overview.find((r) => r.item === name);
 const expOf = (r) => r.forecast?.expected_change_pct ?? 0;
-const factorName = (name) => name.replace(/\s*\(.*\)/, "");   // 화면에는 괄호 설명 없이 표시
+// '이렇게 본 이유' 카드 이름: 괄호 설명은 빼고, 어려운 이름은 쉬운 말로 (서버 이름은 그대로 — plainReason · 챗봇이 씀)
+const FACTOR_EASY = { "4주 평균과의 차이": "지금 값 수준", "한 달 평균과의 차이": "지금 값 수준" };
+const factorName = (name) => { const n = name.replace(/\s*\(.*\)/, ""); return FACTOR_EASY[n] || n; };
 // '품목 특성'은 AI 계산의 기본값(품목마다 거의 같은 값)이라 이유로는 보여 주지 않음 — 예상 변화율 계산에는 그대로 들어감
 const isReason = (x) => !x.factor.startsWith("품목 특성");
 // 7일 뒤 가운데 예상값 (10원 단위). 예상 범위(±20%대)는 넓어서 숫자로는 보여 주지 않고 그래프 부채꼴로만
@@ -1028,15 +1030,6 @@ $("#priceBoard").addEventListener("click", (e) => {
   renderBoard();
 });
 
-// '이렇게 본 이유' 카드 설명을 읽기 쉽게 두 줄로 (이 보드에서만)
-// 예: "최근 1주 24% 내렸어요 / 조금 되돌아올 수 있어요", "지난 해들 이맘때 7일 동안 / 평균 +6.5% 움직였어요",
-//     "지금 값이 / 최근 4주 평균보다 비싼 편이에요" — 짧은 설명(비 17mm 등)은 한 줄 그대로
-function twoLines(d = "") {
-  const m = d.length < 15 ? null
-    : d.match(/^(?!설 · 추석)(.{4,}?) · (.+)$/) || d.match(/^(.*?7일 동안) (.+)$/) || d.match(/^(.+?[이가]) (.+)$/);
-  return m ? `${esc(m[1])}<br>${esc(m[2])}` : esc(d);
-}
-
 function renderForecast(f, history = [], unit = "kg") {
   if (!f || f.error) { $("#forecastCard").innerHTML = ""; return; }
   const v = verdict(f);
@@ -1065,7 +1058,7 @@ function renderForecast(f, history = [], unit = "kg") {
       <h4>이렇게 본 이유</h4>
       <div class="reason-grid">${moved.map((x) => `<div class="reason ${x.effect_pct > 0 ? "r-up" : "r-down"}">
         <span class="reason-icon" aria-hidden="true">${x.effect_pct > 0 ? "▲" : "▼"}</span>
-        <div><b>${esc(factorName(x.factor))}</b><small>${twoLines(x.detail)}</small></div>
+        <div><b>${esc(factorName(x.factor))}</b><small>${esc(x.detail)}</small></div>
         <strong>${pct(x.effect_pct)}</strong>
       </div>`).join("") || `<p class="muted">뚜렷하게 오르거나 내릴 이유가 없어요</p>`}</div>
       ${still.length ? `<p class="reason-still"><span>영향 없음</span>${still.map((x) => `<em title="${esc(x.detail)}">${esc(factorName(x.factor))}</em>`).join("")}</p>` : ""}

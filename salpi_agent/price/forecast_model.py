@@ -206,31 +206,33 @@ def _detail(group, f, contrib_pct):
         from price.analysis import avg_gap_text   # 숫자는 화면 '최근 한 달 시세 위치'에 있어 말로만
         return avg_gap_text("4주", f["dev"])
     if group == "도매시장 반입량":
-        return (f"최근 3거래일 반입량이 그 전 평균보다 {f['vchg']:+.0f}%" if math.isfinite(f["vchg"])
-                else "반입량 기록이 짧아요")
+        from price.analysis import volume_text
+        return volume_text(f["vchg"]) if math.isfinite(f["vchg"]) else "물량 기록이 짧아요"
     if group.startswith("날씨"):
         if not math.isfinite(f["rain"]):
             return "날씨 기록 없음"
         # 0인 항목(영하 0일 등)은 빼고 있었던 것만
         parts = [p for p, on in ((f"비 {f['rain']:.0f}mm", f["rain"] >= 1), (f"영하 3도 이하 {f['cold']:.0f}일", f["cold"] > 0),
                                  (f"33도 이상 {f['hot']:.0f}일", f["hot"] > 0)) if on]
-        return " · ".join(parts) or "비 · 추위 · 더위 없이 무난했어요"
+        return " · ".join(parts) or "비 · 추위 · 더위 없었어요"
     if group.startswith("계절"):
-        return (f"지난 해들 이맘때 7일 동안 평균 {f['season']:+.1f}% 움직였어요" if math.isfinite(f["season"])
-                else f"{int(f['month'])}월의 평소 움직임")
+        if not math.isfinite(f["season"]):
+            return f"{int(f['month'])}월의 평소 움직임"
+        if abs(f["season"]) < 1:
+            return "예년 이맘때 거의 그대로였어요"
+        return f"예년 이맘때 {abs(f['season']):.1f}% {'올랐' if f['season'] > 0 else '내렸'}어요"
     if group.startswith("다가오는 명절"):
-        return f"설 · 추석까지 {int(f['to_major'])}일 남았어요"
+        return f"명절까지 {int(f['to_major'])}일 남았어요"
     if group == "최근 값 흐름":
         # 예: 1주 새 −24% 내렸는데 이유는 '오를 쪽' → 많이 내린 뒤 되돌아오는 움직임이라고 말로 풀어 줌
         move = f["chg7"] if math.isfinite(f["chg7"]) else f["chg3"]
         if not math.isfinite(move):
             return "최근 거래가 적어요"
         if abs(move) < 3:
-            return "최근 1주 값이 거의 그대로예요"
-        went = "내렸" if move < 0 else "올랐"
-        if move * contrib_pct < 0:
-            return f"최근 1주 {abs(move):.0f}% {went}어요 · 조금 되돌아올 수 있어요"
-        return f"최근 1주 {abs(move):.0f}% {went}어요 · 그 흐름이 이어질 수 있어요"
+            return "1주 새 거의 그대로예요"
+        if move * contrib_pct < 0:   # 많이 내렸는데 ▲ (또는 반대) → 되돌아오는 움직임
+            return f"{abs(move):.0f}% {'내려서 반등할' if move < 0 else '올라서 내려올'} 수 있어요"
+        return f"1주 새 {abs(move):.0f}% {'내렸' if move < 0 else '올랐'}어요"
     return "이 품목이 평소에 움직이는 정도"
 
 

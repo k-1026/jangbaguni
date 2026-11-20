@@ -348,10 +348,10 @@ def reversion_factor(prices, k, cap, unit="kg", period="4주"):
 
 
 def avg_gap_text(period, gap):
-    """평균과의 차이를 숫자 없이 말로 (평균 · % 숫자는 화면 '최근 한 달 시세 위치'에 따로 있음)."""
+    """평균과의 차이를 숫자 없이 짧게 한 줄로 (평균 · % 숫자는 화면 '최근 한 달 시세 위치'에 따로 있음)."""
     if abs(gap) < 3:
-        return f"지금 값이 최근 {period} 평균과 비슷해요"
-    return f"지금 값이 최근 {period} 평균보다 {'비싼' if gap > 0 else '싼'} 편이에요"
+        return f"{period} 평균과 비슷해요"
+    return f"{period} 평균보다 {'비싸요' if gap > 0 else '싸요'}"
 
 
 def volume_factor(vols, k=VEG_VOLUME[0], cap=VEG_VOLUME[1]):
@@ -362,7 +362,14 @@ def volume_factor(vols, k=VEG_VOLUME[0], cap=VEG_VOLUME[1]):
     if v_pct is None:
         return None
     return {"factor": "도매시장 반입량", "effect_pct": round(_clip(k * v_pct, -cap, cap), 1),
-            "detail": f"최근 3거래일 반입량이 그 전 평균보다 {v_pct:+.0f}%"}
+            "detail": volume_text(v_pct)}
+
+
+def volume_text(v_pct):
+    """반입량 변화를 짧게 한 줄로 (최근 3거래일 평균 vs 그 전 10거래일 평균 → '평소')."""
+    if abs(v_pct) < 3:
+        return "물량이 평소와 비슷해요"
+    return f"물량이 평소보다 {abs(v_pct):.0f}% {'많아요' if v_pct > 0 else '적어요'}"
 
 
 def weather_effect(item_name, rain_total_mm, freezing_days, hot_days):

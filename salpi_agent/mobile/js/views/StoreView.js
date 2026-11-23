@@ -30,7 +30,9 @@ function receiptBody(r) {
 function costCard(m, T) {
   const plan = m.high ? `<div class="m-plan"><b>마진 지키는 방법 3가지</b><ol>
       <li><b>가격 조정</b> ${m.price_up ? `${won(m.price)} → <b>${won(m.price_up.price)}</b> · 원가율 ${m.price_up.new_ratio_pct}%` : "계산할 수 없어요"}</li>
-      <li><b>대체 재료</b> ${m.swap ? `${esc(m.swap.from)} 절반을 ${esc(m.swap.to)}(으)로 · 1인분 ${won(m.swap.saving_per_serving)} 아낌` : "지금은 바꿀 만한 재료가 없어요"}</li>
+      <li><b>대체 재료</b> ${m.swap ? `${esc(m.swap.from)} 절반을 ${esc(m.swap.to)}(으)로 · 1인분 ${won(m.swap.saving_per_serving)} 아낌` : "지금은 바꿀 만한 재료가 없어요"}
+        ${m.swap?.origin_notice ? `<small class="m-origin">⚠ ${esc(m.swap.origin_notice)}</small>` : ""}
+        ${m.swap?.others?.length ? `<small class="m-origin">다른 후보: ${m.swap.others.map((o) => `${esc(o.to)} (1인분 ${won(o.saving_per_serving)} 절약)`).join(" · ")}</small>` : ""}</li>
       <li><b>메뉴 제안</b> ${m.push_menu ? `${esc(m.push_menu.menu)} 밀기 · 한 그릇 ${won(m.push_menu.margin)} 남음` : "원가율이 괜찮은 다른 메뉴가 없어요"}</li></ol></div>` : "";
   return `<li class="m-cost ${m.high ? "high" : "ok"}">
     <div class="m-cost-top"><b>${esc(m.menu)}</b><span class="m-ratio">${m.cost_ratio_pct ?? "-"}<small>%</small></span></div>

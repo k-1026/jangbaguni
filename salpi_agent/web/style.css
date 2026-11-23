@@ -920,6 +920,18 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .buy-link small { display: block; margin-top: 4px; color: #5C4A00; font-size: 14px; }
 .buy-link i { font-style: normal; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex: none;
   font-size: 22px; font-weight: 700; color: var(--primary); background: var(--hero-card, var(--surface)); box-shadow: var(--neu-out, none); transition: box-shadow .15s, transform .15s; }
+button.buy-link { width: 100%; font: inherit; text-align: left; cursor: pointer; }
+button.item-shop { border: 0; font: inherit; font-weight: 700; cursor: pointer; }
+/* 사러 가기: 판매처 고르기 창 */
+.buy-pick { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: rgba(0,0,0,.4); }
+.buy-pick-card { width: min(360px, 100%); padding: 22px; border-radius: var(--radius); background: var(--surface); box-shadow: var(--e1); }
+.buy-pick-card h3 { margin: 0 0 4px; font-size: 20px; }
+.buy-pick-card .muted { margin: 0 0 14px; font-size: 14px; }
+.buy-pick-list { display: grid; gap: 8px; }
+.buy-pick-list a { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-radius: 12px; background: var(--primary-container);
+  color: var(--on-primary-container); font-weight: 700; text-decoration: none; }
+.buy-pick-list a:hover { filter: brightness(.97); }
+.buy-pick-close { width: 100%; margin-top: 12px; padding: 12px; border: 0; border-radius: 12px; background: transparent; color: var(--muted, #666); font: inherit; cursor: pointer; }
 .buy-link:hover { background: #F7FAF3; }
 .buy-link:hover i { transform: translateX(2px); }
 .buy-link:active i { box-shadow: var(--neu-in, none); }
@@ -1500,3 +1512,9 @@ body.login-view .login-only, body.signup-view .signup-only { display: flex; }
   .prep-head:has(.prep-btns) h3 { flex: 1 1 100%; }
   .prep-btns { justify-content: flex-start; }
 }
+
+/* 대체 재료: 원산지 표시 변경 안내 · 다른 후보 */
+.swap-origin, .swap-others { flex-basis: 100%; margin: 8px 0 0; font-size: 13.5px; }
+.swap-origin { color: #8A4B00; font-weight: 700; }
+.swap-others { color: var(--muted); }
+.cp-swap .swap-origin, .cp-swap .swap-others { margin-top: 6px; font-size: 12.5px; }

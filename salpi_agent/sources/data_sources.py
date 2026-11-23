@@ -260,6 +260,58 @@ def weather_days(days=21):
 
 
 # ---------------------------------------------------------------
+# 주산지 날씨 (기상청 ASOS, 대구 대신 그 품목이 나는 곳의 관측소) — '주산지 날씨' 예측 실험 요인(M5 · R5)용
+# 관측소 번호는 2026-11-23 ASOS 일자료 응답으로 확인. ASOS 관측소가 없는 시 · 군(무안 · 창녕 · 청양 · 평창 · 구좌 등)은 가까운 관측소로 대신함
+# 같은 키(KMA_ASOS_API_KEY) · 같은 주소를 씀. 값은 weather_days 와 같은 모양
+# ---------------------------------------------------------------
+
+PRODUCTION_STATIONS = {
+    "배추":     [("강원 고랭지(대관령)", "100"), ("강원 고랭지(태백)", "216")],
+    "무":       [("강원 고랭지(대관령)", "100"), ("강원 고랭지(태백)", "216")],
+    "양배추":   [("강원 고랭지(대관령)", "100"), ("전남 해남", "261")],           # 여름 고랭지 · 겨울 해남
+    "감자":     [("강원 고랭지(대관령, 평창 인접)", "100"), ("강원 정선", "217")],
+    "양파":     [("전남 무안(목포 관측소)", "165"), ("경남 창녕(합천 관측소)", "285"), ("경남 창녕(의령 관측소)", "263")],
+    "대파":     [("전남 진도", "268"), ("전남 해남", "261")],
+    "당근":     [("제주(제주시, 구좌 인접)", "184"), ("제주 성산", "188")],
+    "청양고추": [("충남 청양(홍성 관측소)", "177"), ("경북 영양(안동 관측소)", "136")],
+    "시금치":   [("경남 남해", "295"), ("경북 포항", "138")],
+}
+
+
+def production_weather_days(item_name, days=21, start=None, end=None):
+    """품목의 주산지 날씨. {지역 이름: [날짜별 값]} — 값은 weather_days 와 같은 모양 (날짜 · 기온 · 강수 · 습도 · 적설).
+    start · end(날짜)를 주면 그 기간, 아니면 어제까지 days일. 주산지를 모르는 품목이면 빈 값."""
+    spots = PRODUCTION_STATIONS.get(item_name) or []
+    end = end or kst_today() - timedelta(1)
+    start = start or end - timedelta(days - 1)
+    url = os.getenv("KMA_ASOS_ENDPOINT", "https://apis.data.go.kr/1360000/AsosDalyInfoService") + "/getWthrDataList"
+
+    def num(v):
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+
+    def fetch(stn):
+        rows, page = [], 1
+        while True:
+            body = _get_json(url, {
+                "dataType": "JSON", "dataCd": "ASOS", "dateCd": "DAY", "pageNo": page, "numOfRows": 999,
+                "startDt": start.strftime("%Y%m%d"), "endDt": end.strftime("%Y%m%d"), "stnIds": stn,
+            }, "KMA_ASOS_API_KEY")["response"]["body"]
+            rows += _items(body)
+            if page * 999 >= int(body.get("totalCount") or 0):
+                break
+            page += 1
+        return [{"date": r["tm"], "avg_temp": num(r.get("avgTa")), "min_temp": num(r.get("minTa")), "max_temp": num(r.get("maxTa")),
+                 "rain_mm": num(r.get("sumRn")) or 0.0, "humidity": num(r.get("avgRhm")), "snow_cm": num(r.get("ddMefs")) or 0.0} for r in rows]
+
+    # 같은 관측소가 두 번 나와도(예: 해남) 한 번만 받음. 지난 기간은 영구 보관, 어제까지가 끝인 최근 기간은 6시간
+    return {name: _cached(f"prodweather_{stn}_{start.isoformat()}_{end.isoformat()}", 6 if end >= kst_today() - timedelta(1) else None, lambda s=stn: fetch(s))
+            for name, stn in spots}
+
+
+# ---------------------------------------------------------------
 # 기상청 예보 (대구, 오늘부터 7일): 앞쪽은 단기예보, 단기예보에 없는 날은 중기예보
 # ---------------------------------------------------------------
 

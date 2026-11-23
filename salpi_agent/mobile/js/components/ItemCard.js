@@ -1,5 +1,6 @@
 // 품목 하나의 시세 카드 (홈 대시보드의 슬라이드 · 검색 상세 화면이 같이 씀)
 import { esc, won, pct, tone, arrow } from "../core/dom.js";
+import { buyButton } from "./BuyPicker.js";
 
 export const itemBody = (r, { shop = true } = {}) => `
   <div class="m-dash-head">
@@ -14,4 +15,4 @@ export const itemBody = (r, { shop = true } = {}) => `
     <span>다음 7일 ${pct(r.exp)}${r.price ? ` · ${won(Math.round((r.price * (1 + r.exp / 100)) / 10) * 10)} 안팎` : ""}</span>
     <small>${esc(r.tip || "")}${r.reason?.length ? ` · ${esc(r.reason.join(", "))} 영향` : ""}</small>
   </div>`}
-  ${shop && r.shop ? `<a class="m-buy" href="${esc(r.shop)}" target="_blank" rel="noopener">식봄에서 ${esc(r.name)} 사기 <i aria-hidden="true">›</i></a>` : ""}`;
+  ${shop && r.shop ? buyButton(r.name, r.shop, `${esc(r.name)} 사러 가기 <i aria-hidden="true">›</i>`) : ""}`;

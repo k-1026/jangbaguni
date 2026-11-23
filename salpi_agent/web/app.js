@@ -2640,14 +2640,55 @@ async function loadJudge(id) {
     const why = x.why + (x.extra_paid ? ` · ${won(x.extra_paid)} 과지출` : x.saved ? ` · ${won(x.saved)} 절약` : "");
     // 칩 바로 옆에 같은 줄로 금액만 (빨강 = 더 낸 돈, 초록 = 아낀 돈 · '과지출 · 절약' 글자는 합계 줄에만)
     const money = x.extra_paid ? `<b class="up">${won(x.extra_paid)}</b>` : x.saved ? `<b class="down">${won(x.saved)}</b>` : "";
+    // 비싸게 산 재료는 '더 싼 곳' 버튼 → 누르면 그 줄 아래에 판매처 목록 (/api/cheaper)
+    const more = x.verdict === "비싸게 샀어요" && x.item
+      ? `<button class="rc-cheaper-btn" type="button" data-item="${esc(x.item)}" data-paid="${x.unit_price || ""}" aria-expanded="false">더 싼 곳</button>` : "";
     tr.querySelector(".rc-chip").outerHTML = `<span class="demand-chip rc-chip ${JUDGE_CHIP[x.verdict] || ""}" title="${esc(why)}">${esc(text)}</span>`
-      + (money ? `<span class="rc-why">${money}</span>` : "");
+      + (money ? `<span class="rc-why">${money}</span>` : "") + more;
   }
+  document.querySelectorAll(".rc-cheaper-btn").forEach((b) => { b.onclick = () => toggleCheaper(b); });
   const extra = j.summary?.extra_paid || 0, saved = j.summary?.saved || 0;
   sum.innerHTML = [extra ? `<b class="up">${won(extra)} 과지출</b>` : "",
                    saved ? `<b class="down">${won(saved)} 절약</b>` : ""].filter(Boolean).join(" · ")
     || "모두 평소 값에 샀어요";
   praiseFrom(j);   // 예전 영수증을 열 때도 이득이면 칭찬 팝업
+}
+
+// 더 싼 판매처 (/api/cheaper): 산 값(kg·모당)보다 싼 곳만 싼 순서로. 제휴 · 소매가는 칩으로 표시
+const sellerTags = (s) => [s.affiliate ? `<span class="cs-tag aff">제휴</span>` : "",
+  s.retail ? `<span class="cs-tag retail">소매가</span>` : "",
+  s.free_delivery ? `<span class="cs-tag">무료배송</span>` : ""].join("");
+function cheaperHTML(c) {
+  const u = c.unit || "kg";
+  if (!c.sellers?.length) {
+    const msg = c.message?.includes("지원하지") ? `${c.item}은(는) 아직 판매처 가격 비교를 못 해요 (야채 · 과일만 돼요)`
+      : c.message || `지금은 ${u}당 ${won(c.paid_per_unit)}보다 싼 곳을 못 찾았어요`;
+    return `<p class="cs-empty">${esc(msg)}</p>`;
+  }
+  return `<p class="cs-head">산 값 <b>${u}당 ${won(c.paid_per_unit)}</b>보다 싼 곳 ${c.sellers.length}곳
+      ${c.data_date ? `<small>${mmdd(c.data_date)} 가격</small>` : ""}</p>
+    <ul class="cs-list">${c.sellers.map((s) => `<li>
+      <a href="${esc(s.url)}" target="_blank" rel="noopener sponsored">
+        <span class="cs-name">${esc(s.name)}${sellerTags(s)}</span>
+        <span class="cs-pack">${esc(s.pack)} ${won(s.pack_price)}</span>
+        <span class="cs-price">${u}당 ${s.approx ? "약 " : ""}<b>${won(s.price_per_unit)}</b>
+          <em>${s.saving_pct != null ? `−${Math.round(s.saving_pct)}%` : ""}</em></span>
+      </a></li>`).join("")}</ul>`;
+}
+async function toggleCheaper(btn) {
+  const tr = btn.closest("tr"), open = btn.getAttribute("aria-expanded") === "true";
+  tr.nextElementSibling?.classList.contains("rc-cheaper") && tr.nextElementSibling.remove();
+  btn.setAttribute("aria-expanded", String(!open));
+  if (open) return;
+  const row = document.createElement("tr");
+  row.className = "rc-cheaper";
+  row.innerHTML = `<td colspan="6"><div class="cs-box"><p class="cs-empty">판매처 가격을 찾는 중이에요</p></div></td>`;
+  tr.after(row);
+  const box = row.querySelector(".cs-box");
+  try {
+    const paid = btn.dataset.paid ? `&paid=${btn.dataset.paid}` : "";
+    box.innerHTML = cheaperHTML(await getJSON(`/api/cheaper?item=${encodeURIComponent(btn.dataset.item)}${paid}`));
+  } catch (e) { box.innerHTML = `<p class="cs-empty">판매처 가격을 불러오지 못했어요</p>`; }
 }
 
 // 저장한 영수증 고치기: 왼쪽에 사진(있으면)을 띄워 두고 오른쪽 표에서 바로 고침

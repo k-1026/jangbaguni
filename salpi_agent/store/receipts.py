@@ -27,7 +27,14 @@ TARGET_RATIO = 40   # 원가율 기준(%): 자영업자 카페 답(30 · 35 · 4
 # 대체 재료 후보 (값이 오르면 검토해 볼 만한 것만, 판단은 사장님이)
 # 바꿨을 때 원가 · 마진을 계산할 수 있는 것만 둠: ① 같은 무게로 바꿔 넣을 수 있고 (생채소 ↔ 생채소) ② 가격을 알 수 있음 (도매 시세 or 우리 가게 영수증)
 #   뺀 것 (11/16): 쪽파 · 돼지고기 뒷다리 = 가격 자료 없음 / 청양고추 → 건고추 · 고춧가루 = 생것과 마른 것이라 같은 무게로 못 바꿈
-SUBSTITUTES = {"양파": ["양배추"], "대파": ["양파"], "애호박": ["감자", "무"], "감자": ["무"]}
+#   추가 (11/23): 고기는 같은 종류 안에서 다른 부위로만 바꿈 (돼지 → 다른 돼지고기 부위, 닭 → 닭 다른 부위). KAMIS 대구 소매가가 있는 부위만 (kg 단위 같음)
+#     닭고기는 육계 통닭 가격 하나뿐이라 부위 대체 자료가 없어 후보 없음. 돼지 → 닭 같은 종류 바꿈은 맛 · 메뉴가 달라져 넣지 않음
+SUBSTITUTES = {"양파": ["양배추"], "대파": ["양파"], "애호박": ["감자", "무"], "감자": ["무"],
+               "돼지고기 앞다리": ["돼지고기 목심", "수입 돼지고기 삼겹살"], "돼지고기 삼겹살": ["돼지고기 앞다리", "돼지고기 목심", "수입 돼지고기 삼겹살"],
+               "돼지고기 목심": ["돼지고기 앞다리", "수입 돼지고기 삼겹살"]}
+# 국내산 → 수입산으로 바꾸면 메뉴판 · 원산지 게시판 표시도 바꿔야 함 (음식점 원산지 표시 의무) → 추천 문구에 같이 보여 줌
+# 국내산 안에서 부위만 바꾸는 건 표시가 그대로라 안내하지 않음
+IMPORTED_ORIGIN_NOTICE = "원산지 표시 변경 필요: 수입산은 메뉴판 · 원산지 게시판에 나라 이름까지 적어야 해요"
 SWAP_SHARE = 0.5   # 오른 재료의 절반을 바꿨을 때로 계산 (전부 바꾸면 맛이 달라짐)
 
 
@@ -221,6 +228,12 @@ def _wholesale(name, cache):
                 f = analysis.forecast_item(name)
                 if f.get("base_kg_price"):
                     cache[name] = f
+            elif name in analysis.EXTRA_ITEMS and analysis.EXTRA_ITEMS[name]["group"] == "육류":   # 고기: 대구 소매가(kg) + 7일 예측
+                t = analysis.extra_trend(name)
+                f = t.get("forecast") or {}
+                if t.get("price") and t.get("unit") == "kg" and f.get("expected_change_pct") is not None:
+                    cache[name] = {"base_kg_price": t["price"], "expected_change_pct": f["expected_change_pct"],
+                                   "direction": f.get("direction")}
         except Exception as e:   # 시세 API 문제 → 그 후보만 건너뜀
             print(f"[대체 재료] {name} 시세 실패: {e}", flush=True)
     return cache[name]
@@ -229,7 +242,7 @@ def _wholesale(name, cache):
 def _swap(riser, per, cost, price, store_price, cache):
     """오른 재료의 절반을 후보로 바꿨을 때 가장 많이 아끼는 것 (다음 주 예상 가격 기준).
     후보 가격을 모르거나 · 안 아껴지거나 · 후보가 오른 재료보다 더 오를 예정이면 뺌."""
-    best = None
+    cands = []
     fr = _wholesale(riser["item"], cache)
     from_next = riser["latest_price"] * (1 + (fr["expected_change_pct"] if fr else 0) / 100)
     for to in SUBSTITUTES.get(riser["item"], []):
@@ -246,14 +259,21 @@ def _swap(riser, per, cost, price, store_price, cache):
             continue
         to_next = to_price * (1 + fc["expected_change_pct"] / 100)
         saving = per * SWAP_SHARE * (from_next - to_next)
-        if saving < 10 or (best and saving <= best["saving_per_serving"]):
+        if saving < 10:
             continue
         new_cost = cost - saving
-        best = {"from": riser["item"], "to": to, "share_pct": round(SWAP_SHARE * 100), "price_basis": basis,
+        cands.append({"from": riser["item"], "to": to, "share_pct": round(SWAP_SHARE * 100), "price_basis": basis,
                 "from_price": riser["latest_price"], "to_price": round(to_price), "saving_per_serving": round(saving),
                 "new_cost": round(new_cost), "new_ratio_pct": round(new_cost / price * 100, 1) if price else None,
                 "new_margin": round(price - new_cost), "to_outlook": fc["direction"], "to_change_pct": fc["expected_change_pct"],
-                "from_change_pct": fr["expected_change_pct"] if fr else None, "basis_note": "다음 주 예상 가격으로 계산"}
+                "from_change_pct": fr["expected_change_pct"] if fr else None, "basis_note": "다음 주 예상 가격으로 계산",
+                "origin_notice": IMPORTED_ORIGIN_NOTICE if to.startswith("수입") and not riser["item"].startswith("수입") else None})
+    if not cands:
+        return None
+    cands.sort(key=lambda c: -c["saving_per_serving"])
+    best = cands[0]
+    # 가장 많이 아끼는 것 말고 다른 후보도 보여 줌 (예: 닭고기가 1순위여도 수입 돼지고기는 같은 돼지고기라 메뉴 맛이 덜 바뀜)
+    best["others"] = [{k: c[k] for k in ("to", "saving_per_serving", "new_ratio_pct", "origin_notice")} for c in cands[1:]]
     return best
 
 
@@ -319,6 +339,8 @@ def cost_report(store_id=db.DEMO_STORE):
             if swap:
                 tips.append(f"{swap['from']} 절반을 {_josa(swap['to'], '으로', '로')} 바꾸면 1인분 {swap['saving_per_serving']:,}원 아껴 "
                             f"원가율 {ratio}% → {swap['new_ratio_pct']}%예요")
+        if swap and swap.get("origin_notice"):
+            tips.append(swap["origin_notice"])
         if riser:
             tips.append(why(riser))
         if high:

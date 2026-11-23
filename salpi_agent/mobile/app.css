@@ -192,3 +192,4 @@ button.m-buy { margin-top: 12px; }
 .m-switch:checked::after { transform: translateX(18px); }
 
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+.m-origin { display: block; margin-top: 2px; color: var(--muted); font-size: 12.5px; }

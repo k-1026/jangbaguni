@@ -1,0 +1,221 @@
+{
+ "kind": "야채",
+ "garak_source": "kamis",
+ "period": [
+  "2025-11-01",
+  "2026-10-31"
+ ],
+ "n_test": 4496,
+ "seeds": [
+  7,
+  11,
+  23
+ ],
+ "coverage_pct": {
+  "g_chg3": 93.3,
+  "g_chg7": 93.3,
+  "g_gap": 93.3,
+  "p_rain7": 0.0,
+  "p_rain28": 0.0,
+  "p_cold7": 0.0,
+  "p_hot7": 0.0,
+  "pf_rain7": 0.0,
+  "pf_cold7": 0.0,
+  "pf_hot7": 0.0
+ },
+ "no_garak": [
+  "가지"
+ ],
+ "no_station": [
+  "가지",
+  "감자",
+  "깻잎",
+  "당근",
+  "대파",
+  "무",
+  "배추",
+  "상추",
+  "시금치",
+  "애호박",
+  "양배추",
+  "양파",
+  "오이",
+  "청양고추",
+  "토마토"
+ ],
+ "formula": {
+  "n": 4496,
+  "opposite_pct": 27.47,
+  "mae_pp": 19.146,
+  "range_hit_pct": 70.9,
+  "direction_hit_pct": 45.0
+ },
+ "results": {
+  "지금 요인": {
+   "features": [
+    "item",
+    "dev",
+    "trend",
+    "vchg",
+    "wx",
+    "rain",
+    "cold",
+    "hot",
+    "volat",
+    "chg3",
+    "season",
+    "to_major",
+    "month"
+   ],
+   "metrics": {
+    "opposite_pct": 22.76,
+    "mae_pp": 17.67,
+    "range_hit_pct": 72.87,
+    "direction_hit_pct": 54.13,
+    "n": 4496
+   },
+   "by_seed": [
+    {
+     "n": 4496,
+     "opposite_pct": 23.06,
+     "mae_pp": 17.677,
+     "range_hit_pct": 72.8,
+     "direction_hit_pct": 54.1
+    },
+    {
+     "n": 4496,
+     "opposite_pct": 22.38,
+     "mae_pp": 17.676,
+     "range_hit_pct": 73.0,
+     "direction_hit_pct": 54.1
+    },
+    {
+     "n": 4496,
+     "opposite_pct": 22.84,
+     "mae_pp": 17.658,
+     "range_hit_pct": 72.8,
+     "direction_hit_pct": 54.2
+    }
+   ],
+   "importance": {
+    "item": 22,
+    "to_major": 13,
+    "volat": 9,
+    "month": 9,
+    "rain": 8,
+    "dev": 8,
+    "season": 7,
+    "vchg": 6,
+    "chg3": 6,
+    "trend": 6,
+    "hot": 3,
+    "wx": 2,
+    "cold": 2
+   },
+   "items_opposite": {
+    "가지": 23.0,
+    "감자": 16.9,
+    "깻잎": 26.5,
+    "당근": 24.9,
+    "대파": 21.6,
+    "무": 22.9,
+    "배추": 25.4,
+    "상추": 29.2,
+    "시금치": 24.4,
+    "애호박": 20.2,
+    "양배추": 29.9,
+    "양파": 16.6,
+    "오이": 21.7,
+    "청양고추": 19.3,
+    "토마토": 19.1
+   },
+   "better_than_base": false
+  },
+  "+ 가락 선행": {
+   "features": [
+    "item",
+    "dev",
+    "trend",
+    "vchg",
+    "wx",
+    "rain",
+    "cold",
+    "hot",
+    "volat",
+    "chg3",
+    "season",
+    "to_major",
+    "month",
+    "g_chg3",
+    "g_chg7",
+    "g_gap"
+   ],
+   "metrics": {
+    "opposite_pct": 22.77,
+    "mae_pp": 17.68,
+    "range_hit_pct": 72.47,
+    "direction_hit_pct": 54.03,
+    "n": 4496
+   },
+   "by_seed": [
+    {
+     "n": 4496,
+     "opposite_pct": 22.71,
+     "mae_pp": 17.662,
+     "range_hit_pct": 72.5,
+     "direction_hit_pct": 54.3
+    },
+    {
+     "n": 4496,
+     "opposite_pct": 22.82,
+     "mae_pp": 17.669,
+     "range_hit_pct": 72.5,
+     "direction_hit_pct": 54.1
+    },
+    {
+     "n": 4496,
+     "opposite_pct": 22.78,
+     "mae_pp": 17.715,
+     "range_hit_pct": 72.4,
+     "direction_hit_pct": 53.7
+    }
+   ],
+   "importance": {
+    "item": 20,
+    "to_major": 11,
+    "dev": 8,
+    "month": 8,
+    "rain": 7,
+    "volat": 7,
+    "g_gap": 5,
+    "chg3": 5,
+    "g_chg7": 5,
+    "season": 5,
+    "vchg": 4,
+    "trend": 4,
+    "g_chg3": 4,
+    "hot": 2,
+    "wx": 2,
+    "cold": 1
+   },
+   "items_opposite": {
+    "가지": 23.4,
+    "감자": 18.5,
+    "깻잎": 26.9,
+    "당근": 19.3,
+    "대파": 18.6,
+    "무": 23.8,
+    "배추": 27.8,
+    "상추": 27.9,
+    "시금치": 24.3,
+    "애호박": 19.0,
+    "양배추": 28.0,
+    "양파": 20.2,
+    "오이": 21.2,
+    "청양고추": 21.8,
+    "토마토": 21.0
+   },
+   "better_than_base": false
+  }
+ }
+}

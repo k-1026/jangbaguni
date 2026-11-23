@@ -152,6 +152,15 @@ img { display: block; }
 .m-buy { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding: 12px 14px; border-radius: 12px;
   background: var(--primary); color: #fff; text-decoration: none; font-weight: 700; }
 .m-buy i { font-style: normal; font-size: 20px; }
+button.m-buy, button.m-shortcut { width: 100%; border: 0; font: inherit; text-align: left; cursor: pointer; }
+button.m-buy { margin-top: 12px; }
+/* 사러 가기: 판매처 고르기 시트 */
+.m-pick { position: fixed; inset: 0; z-index: 60; display: flex; align-items: flex-end; background: rgba(0,0,0,.4); }
+.m-pick-sheet { width: 100%; display: grid; gap: 8px; padding: 20px 16px calc(16px + var(--safe-b, 0px)); border-radius: 18px 18px 0 0; background: var(--surface, #fff); }
+.m-pick-sheet h3 { margin: 0; font-size: 18px; } .m-pick-sheet .m-note { margin: 0 0 4px; }
+.m-pick-sheet a { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-radius: 12px; background: var(--primary-weak);
+  color: var(--ink); font-weight: 700; text-decoration: none; }
+.m-pick-close { border: 0; background: none; padding: 12px; font: inherit; color: var(--muted); cursor: pointer; }
 .m-shortcut.buy { background: var(--primary-weak); } .m-shortcut.buy i { color: var(--primary); }
 .m-sum-btn { border: 0; background: none; padding: 6px 0; border-radius: 12px; cursor: pointer; }
 .m-sum-btn.on { background: var(--primary-weak); outline: 2px solid var(--primary); }
@@ -183,3 +192,4 @@ img { display: block; }
 .m-switch:checked::after { transform: translateX(18px); }
 
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+.m-origin { display: block; margin-top: 2px; color: var(--muted); font-size: 12.5px; }

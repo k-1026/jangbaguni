@@ -720,7 +720,7 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .rc-cheaper-btn { margin-left: 6px; padding: 1px 8px; border: 1px solid var(--primary); border-radius: 6px; background: var(--surface); color: var(--primary); font-size: 11.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 .rc-cheaper-btn[aria-expanded="true"] { background: var(--primary); color: #fff; }
 .rc-table tr.rc-cheaper td { padding: 0 8px 10px; }
-.cs-box { padding: 10px 12px; border-radius: 10px; background: var(--surface-variant); font-size: 13px; }
+.cs-box { padding: 10px 12px; border-radius: 10px; background: var(--surface-variant); font-size: 13px; white-space: normal; }
 /* 휴대폰: 표는 옆으로 밀어서 보지만 판매처 목록은 화면 폭에 맞춰 왼쪽에 고정 */
 @media (max-width: 700px) { .cs-box { position: sticky; left: 0; box-sizing: border-box; width: calc(100vw - 90px); } }
 .cs-head { margin: 0 0 8px; } .cs-head small { margin-left: 6px; color: var(--muted); }

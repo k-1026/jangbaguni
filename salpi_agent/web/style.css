@@ -927,9 +927,7 @@ button.item-shop { border: 0; font: inherit; font-weight: 700; cursor: pointer; 
   backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); animation: buy-fade .18s ease-out; }
 .buy-pick-card { width: min(440px, 100%); padding: 28px 24px 18px; border-radius: 24px; background: var(--surface);
   box-shadow: 0 24px 60px rgba(16, 22, 18, .22), 0 2px 6px rgba(16, 22, 18, .08); animation: buy-rise .22s cubic-bezier(.2, .8, .2, 1); }
-.buy-pick-eyebrow { margin: 0 0 6px; font-size: 12px; font-weight: 700; letter-spacing: .08em; color: var(--primary); }
-.buy-pick-card h3 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -.02em; color: var(--ink); }
-.buy-pick-sub { margin: 6px 0 20px; font-size: 14px; color: var(--muted); }
+.buy-pick-card h3 { margin: 0 0 20px; font-size: 22px; font-weight: 800; letter-spacing: -.02em; color: var(--ink); }
 .buy-pick-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .buy-pick-list a { position: relative; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 18px 6px 14px; border-radius: 18px;
   border: 1px solid rgba(20, 30, 22, .08); background: var(--surface); color: var(--ink); text-decoration: none;

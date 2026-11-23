@@ -1262,7 +1262,8 @@ async function loadDemand() {
   $("#orderCard").innerHTML = `
     <div class="prep-head">
       <h3>재고 관리 <span>주문할 재료 <b>${d.items.filter((i) => i.order_qty > 0).length}개</b></span></h3>
-      <button class="order-all stock-all" type="button">근거 모두 보기</button>
+      <span class="prep-btns"><button class="order-all stock-edit" type="button">재고 입력</button>
+        <button class="order-all stock-all" type="button">근거 모두 보기</button></span>
     </div>
     <div class="stock-cols">${orderGroups(d.items).map((g) => `<section class="stock-col ${g.key}">
       <h4>${g.title}${g.note ? `<small>${g.note}</small>` : ""}</h4>
@@ -1331,6 +1332,7 @@ $("#menuForecast").onclick = (e) => {
 
 // 재료를 누르면 계산 근거를 펼침 · 맨 위 버튼은 전체를 펴고 접음
 $("#orderCard").onclick = (e) => {
+  if (e.target.closest(".stock-edit")) { openStock(); return; }
   const rows = [...$("#orderCard").querySelectorAll(".order-row")];
   const row = e.target.closest(".order-row");
   if (row) setOpen(row, row.getAttribute("aria-expanded") !== "true");
@@ -1340,6 +1342,52 @@ $("#orderCard").onclick = (e) => {
   } else return;
   $(".stock-all").textContent = rows.every((b) => b.getAttribute("aria-expanded") === "true") ? "모두 접기" : "근거 모두 보기";
 };
+
+// 재고 입력 (/api/inventory): 재료마다 남은 양을 고쳐 저장 → 주문량 다시 계산
+// kg · L · 모는 소수 한 자리 · 개는 정수. 영수증을 저장하면 산 만큼 자동으로 늘어남
+const stockStep = (u) => (u === "개" ? "1" : "0.1");
+async function openStock() {
+  const modal = $("#stockModal"), box = $("#stockModalBody");
+  box.innerHTML = `<div class="reading"><div class="spinner"></div><b>재고를 불러오는 중이에요</b></div>`;
+  modal.hidden = false;
+  let d;
+  try { d = await getJSON("/api/inventory"); }
+  catch (e) { box.innerHTML = `<p class="rc-warn">${esc(e.message)}</p>`; return; }
+  const when = (s) => (s ? `${mmdd(s.slice(0, 10))} 고침` : "입력 전");
+  box.innerHTML = `<h3>재고 입력</h3>
+    <p class="muted small">지금 가게에 남은 양을 적어 주세요. 영수증을 저장하면 산 만큼 자동으로 늘어나요.</p>
+    <form id="stockForm" novalidate>
+      <ul class="sk-rows">${d.items.map((i) => `<li class="sk-row${i.in_menu ? "" : " off"}">
+        <span class="sk-name">${esc(i.item)}<small>${when(i.updated_at)}${i.in_menu ? "" : " · 메뉴에 안 씀"}</small></span>
+        <span class="mf-amount"><input type="number" inputmode="decimal" min="0" step="${stockStep(i.unit)}" data-id="${i.item_id}"
+          data-was="${i.on_hand}" value="${+(+i.on_hand).toFixed(i.unit === "개" ? 0 : 1)}" aria-label="${esc(i.item)} 남은 양"><span class="mf-unit">${esc(i.unit)}</span></span>
+      </li>`).join("")}</ul>
+      <p class="rc-warn" id="skMsg" hidden></p>
+      <div class="mf-actions"><button type="button" class="btn" id="skCancel">취소</button>
+        <button type="submit" class="btn primary" id="skSave">저장</button></div>
+    </form>`;
+  $("#skCancel").onclick = closeStock;
+  $("#stockForm").oninput = (e) => e.target.closest(".sk-row")?.classList.toggle("changed", +e.target.value !== +(+e.target.dataset.was).toFixed(3));
+  $("#stockForm").onsubmit = async (e) => {
+    e.preventDefault();
+    const inputs = [...box.querySelectorAll("input[data-id]")];
+    const bad = inputs.find((x) => x.value === "" || !(+x.value >= 0));
+    const msg = $("#skMsg"), btn = $("#skSave");
+    if (bad) { msg.textContent = "남은 양은 0 이상 숫자로 넣어 주세요"; msg.hidden = false; bad.focus(); return; }
+    const items = inputs.filter((x) => x.closest(".sk-row").classList.contains("changed"))
+      .map((x) => ({ item_id: +x.dataset.id, on_hand: +x.value }));
+    if (!items.length) { closeStock(); return; }
+    btn.disabled = true; btn.textContent = "저장하는 중"; msg.hidden = true;
+    try {
+      await sendJSON("/api/inventory", "PUT", { items });
+      closeStock();
+      loadDemand();   // 주문량 다시 계산
+    } catch (err) { msg.textContent = err.message; msg.hidden = false; btn.disabled = false; btn.textContent = "저장"; }
+  };
+}
+const closeStock = () => { $("#stockModal").hidden = true; };
+$("#stockModalClose").onclick = closeStock;
+$("#stockModal").onclick = (e) => { if (e.target.id === "stockModal") closeStock(); };
 
 // ---------------------------------------------------------------
 // 영수증으로 원가율 (사진 → 읽기 → 확인 · 수정 → 저장 → 원가율)
@@ -2601,14 +2649,55 @@ async function loadJudge(id) {
     const why = x.why + (x.extra_paid ? ` · ${won(x.extra_paid)} 과지출` : x.saved ? ` · ${won(x.saved)} 절약` : "");
     // 칩 바로 옆에 같은 줄로 금액만 (빨강 = 더 낸 돈, 초록 = 아낀 돈 · '과지출 · 절약' 글자는 합계 줄에만)
     const money = x.extra_paid ? `<b class="up">${won(x.extra_paid)}</b>` : x.saved ? `<b class="down">${won(x.saved)}</b>` : "";
+    // 비싸게 산 재료는 '더 싼 곳' 버튼 → 누르면 그 줄 아래에 판매처 목록 (/api/cheaper)
+    const more = x.verdict === "비싸게 샀어요" && x.item
+      ? `<button class="rc-cheaper-btn" type="button" data-item="${esc(x.item)}" data-paid="${x.unit_price || ""}" aria-expanded="false">더 싼 곳</button>` : "";
     tr.querySelector(".rc-chip").outerHTML = `<span class="demand-chip rc-chip ${JUDGE_CHIP[x.verdict] || ""}" title="${esc(why)}">${esc(text)}</span>`
-      + (money ? `<span class="rc-why">${money}</span>` : "");
+      + (money ? `<span class="rc-why">${money}</span>` : "") + more;
   }
+  document.querySelectorAll(".rc-cheaper-btn").forEach((b) => { b.onclick = () => toggleCheaper(b); });
   const extra = j.summary?.extra_paid || 0, saved = j.summary?.saved || 0;
   sum.innerHTML = [extra ? `<b class="up">${won(extra)} 과지출</b>` : "",
                    saved ? `<b class="down">${won(saved)} 절약</b>` : ""].filter(Boolean).join(" · ")
     || "모두 평소 값에 샀어요";
   praiseFrom(j);   // 예전 영수증을 열 때도 이득이면 칭찬 팝업
+}
+
+// 더 싼 판매처 (/api/cheaper): 산 값(kg·모당)보다 싼 곳만 싼 순서로. 제휴 · 소매가는 칩으로 표시
+const sellerTags = (s) => [s.affiliate ? `<span class="cs-tag aff">제휴</span>` : "",
+  s.retail ? `<span class="cs-tag retail">소매가</span>` : "",
+  s.free_delivery ? `<span class="cs-tag">무료배송</span>` : ""].join("");
+function cheaperHTML(c) {
+  const u = c.unit || "kg";
+  if (!c.sellers?.length) {
+    const msg = c.message?.includes("지원하지") ? `${c.item}은(는) 아직 판매처 가격 비교를 못 해요 (야채 · 과일만 돼요)`
+      : c.message || `지금은 ${u}당 ${won(c.paid_per_unit)}보다 싼 곳을 못 찾았어요`;
+    return `<p class="cs-empty">${esc(msg)}</p>`;
+  }
+  return `<p class="cs-head">산 값 <b>${u}당 ${won(c.paid_per_unit)}</b>보다 싼 곳 ${c.sellers.length}곳
+      ${c.data_date ? `<small>${mmdd(c.data_date)} 가격</small>` : ""}</p>
+    <ul class="cs-list">${c.sellers.map((s) => `<li>
+      <a href="${esc(s.url)}" target="_blank" rel="noopener sponsored">
+        <span class="cs-name">${esc(s.name)}${sellerTags(s)}</span>
+        <span class="cs-pack">${esc(s.pack)} ${won(s.pack_price)}</span>
+        <span class="cs-price">${u}당 ${s.approx ? "약 " : ""}<b>${won(s.price_per_unit)}</b>
+          <em>${s.saving_pct != null ? `−${Math.round(s.saving_pct)}%` : ""}</em></span>
+      </a></li>`).join("")}</ul>`;
+}
+async function toggleCheaper(btn) {
+  const tr = btn.closest("tr"), open = btn.getAttribute("aria-expanded") === "true";
+  tr.nextElementSibling?.classList.contains("rc-cheaper") && tr.nextElementSibling.remove();
+  btn.setAttribute("aria-expanded", String(!open));
+  if (open) return;
+  const row = document.createElement("tr");
+  row.className = "rc-cheaper";
+  row.innerHTML = `<td colspan="6"><div class="cs-box"><p class="cs-empty">판매처 가격을 찾는 중이에요</p></div></td>`;
+  tr.after(row);
+  const box = row.querySelector(".cs-box");
+  try {
+    const paid = btn.dataset.paid ? `&paid=${btn.dataset.paid}` : "";
+    box.innerHTML = cheaperHTML(await getJSON(`/api/cheaper?item=${encodeURIComponent(btn.dataset.item)}${paid}`));
+  } catch (e) { box.innerHTML = `<p class="cs-empty">판매처 가격을 불러오지 못했어요</p>`; }
 }
 
 // 저장한 영수증 고치기: 왼쪽에 사진(있으면)을 띄워 두고 오른쪽 표에서 바로 고침
@@ -3201,7 +3290,7 @@ $("#mypageBody").onchange = (e) => {
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
   if (!$("#leaveModal").hidden) return closeLeave();   // 탈퇴 팝업만 닫고 마이페이지는 그대로
-  closeReceipt(); closeMypage(); closeEvent(); closeCamera();
+  closeReceipt(); closeMypage(); closeEvent(); closeCamera(); closeStock();
 });
 
 // 회원탈퇴: 한 번 더 묻는 팝업 → '안내를 확인했어요'에 체크해야 [탈퇴하기]가 눌림

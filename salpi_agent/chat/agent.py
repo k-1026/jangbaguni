@@ -19,6 +19,7 @@ from google import genai
 from google.genai import errors, types
 
 import re
+import time
 
 import requests
 
@@ -28,6 +29,7 @@ from store import menu_cost
 from price import price_judge
 from store import receipts
 from sources import supabase_db
+from chat import number_check
 from sources.data_sources import EXTRA_ITEMS, ITEMS, ApiKeyMissing, daegu_events, holidays
 
 ROOT = Path(__file__).resolve().parents[1]   # salpi_agent 폴더
@@ -424,8 +426,8 @@ class SalpiAgent:
         self.last_tools, self.last_route = [], []
 
     def _ask_one(self, kind, message):
-        """담당 하나에게 묻기 → (답, 부른 도구, 모델). 무료 API가 바쁘면(503 · 504 · 429) 다음 모델로 갈아탐."""
-        last_error = None
+        """담당 하나에게 묻기 → (답, 부른 도구, 모델, 도구 결과, 걸린 ms). 무료 API가 바쁘면(503 · 504 · 429) 다음 모델로 갈아탐."""
+        last_error, started = None, time.time()
         for model in self.models:
             chat = self.client.chats.create(
                 model=model, history=list(self.history) or None,
@@ -433,9 +435,11 @@ class SalpiAgent:
                                                    temperature=0.3))
             try:
                 text = chat.send_message(message).text or "답을 만들지 못했어요. 다시 물어봐 주세요."
-                tools = [p.function_call.name for c in chat.get_history(curated=False)
-                         for p in (c.parts or []) if getattr(p, "function_call", None)]
-                return text, tools, model
+                hist = chat.get_history(curated=False)
+                tools = [p.function_call.name for c in hist for p in (c.parts or []) if getattr(p, "function_call", None)]
+                outputs = [p.function_response.response for c in hist for p in (c.parts or [])
+                           if getattr(p, "function_response", None)]   # 숫자 검사용 (도구가 돌려준 값)
+                return text, tools, model, outputs, round((time.time() - started) * 1000)
             except errors.APIError as e:
                 if 400 <= e.code < 500 and e.code not in (404, 429):
                     raise      # 요청 자체가 잘못된 경우는 갈아타도 같음
@@ -445,7 +449,9 @@ class SalpiAgent:
         raise last_error
 
     def ask(self, message: str) -> str:
+        t0 = time.time()
         kinds, how = route(message, self.client)
+        route_ms = round((time.time() - t0) * 1000)
         self.last_route = kinds
         if len(kinds) == 1:
             jobs = [(kinds[0], message)]
@@ -455,14 +461,21 @@ class SalpiAgent:
         with ThreadPoolExecutor(len(jobs)) as pool:
             results = list(pool.map(lambda j: self._ask_one(*j), jobs))
         self.model = results[0][2]
-        self.last_tools = [f"안내:{how}"] + [f"담당:{k}" for k in kinds] + [t for r in results for t in r[1]]   # chat_logs.tools 에 길 · 도구
         if len(results) == 1:
-            return results[0][0]
-        return "\n\n".join(f"**{AGENT_NAMES[k]}**\n{r[0]}" for k, r in zip(kinds, results))
+            reply = results[0][0]
+        else:
+            reply = "\n\n".join(f"**{AGENT_NAMES[k]}**\n{r[0]}" for k, r in zip(kinds, results))
+        # chat_logs.tools 에 길 · 도구 · 단계별 시간 · 숫자 검사
+        # 예: 안내:모델 · 담당:원가 · (도구들) · 시간:안내 420ms · 시간:원가 9800ms · 숫자:8개 모두 도구값
+        self.last_tools = ([f"안내:{how}"] + [f"담당:{k}" for k in kinds] + [t for r in results for t in r[1]]
+                           + [f"시간:안내 {route_ms}ms"] + [f"시간:{k} {r[4]}ms" for k, r in zip(kinds, results)]
+                           + [number_check.label(reply, [o for r in results for o in r[3]], message)])
+        return reply
 
     def morning_briefing(self) -> str:
-        text, tools, self.model = self._ask_one("시세", BRIEFING_PROMPT)
-        self.last_route, self.last_tools = ["시세"], ["안내:브리핑", "담당:시세"] + tools
+        text, tools, self.model, outputs, ms = self._ask_one("시세", BRIEFING_PROMPT)
+        self.last_route = ["시세"]
+        self.last_tools = ["안내:브리핑", "담당:시세"] + tools + [f"시간:시세 {ms}ms", number_check.label(text, outputs)]
         return text
 
 

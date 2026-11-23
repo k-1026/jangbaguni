@@ -8,7 +8,7 @@
 
 - **배포 화면**: https://jangbaguni-ten.vercel.app/
 - **관제 화면**: https://jangbaguni-ten.vercel.app/static/control.html
-- **PPT (캔바)**: https://canva.link/zxl9end3uctibh6
+- **PPT (캔바)**: -
 
 ---
 
@@ -63,6 +63,6 @@ aT 대구 북부도매시장 경락가 · 반입량, 가락시장, KAMIS 도 · 
 | [research/](research/) | 업종 · 기업 · 장소 리서치 |
 | [brand/](brand/) | 로고 · 캐릭터 · 살피 말투 |
 
-## 작업 규칙은 [git-convention.md](git-convention.md)
+## 작업 규칙: [git-convention.md](git-convention.md)
 
-## 일정 · 할 일은 Issue에서 관리
+## 일정 · 할 일: Issue에서 관리

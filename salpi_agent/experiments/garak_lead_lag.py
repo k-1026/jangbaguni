@@ -1,10 +1,14 @@
 """가락시장이 대구보다 먼저 움직이나 — 품목별 시차 · 선행 적중률 표 (야채).
 
-실행 (저장소 루트에서): python salpi_agent/experiments/garak_lead_lag.py   (numpy 없이 돌아감)
+실행 (저장소 루트에서): python salpi_agent/experiments/garak_lead_lag.py            (대구 = 모델이 맞히는 정산 경락가, 기본)
+                        python salpi_agent/experiments/garak_lead_lag.py perday      (대구 = perDay 중도매 상품가, 11/23 첫 버전)
+numpy 없이 돌아감
 
-자료 (둘 다 aT perDay = KAMIS 조사 중도매 "상품" 값, 같은 출처)
-  - 대구 북부도매: data/raw/1109_5y/1109_price_daily_*.csv
-  - 가락도매:      data/raw/1112_2020-2025_농수축산물_일자별_도소매가격.csv.xz (~2025-08-29)
+자료
+  - 대구 북부도매 (기본): 정산정보 경락가 kg당 = 금액 ÷ 반입량 — 학습 모델이 맞히는 값과 같음 (data/raw/1109_5y/1109_wholesale_qty_daily.csv, price.backtest.load_veg 와 같은 품목 고르기)
+    (perday 선택 시: data/raw/1109_5y/1109_price_daily_*.csv, KAMIS 조사 중도매 "상품" 값)
+  - 가락도매: aT perDay = KAMIS 조사 중도매 "상품" 값 (경락가 자료는 저장소에 없음)
+  가락 자료 파일:  data/raw/1112_2020-2025_농수축산물_일자별_도소매가격.csv.xz (~2025-08-29)
                    + data/raw/1124_garak_veg_recent/garak_perday_20250830_recent.csv (2025-08-30 ~)
 
 방법
@@ -25,7 +29,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 RAW = ROOT / "data" / "raw"
-OUT = Path(__file__).resolve().parent / "results" / "garak_lead_lag.json"
+import sys
+MODE = "perday" if "perday" in sys.argv[1:] else "auction"
+OUT = Path(__file__).resolve().parent / "results" / ("garak_lead_lag_perday.json" if MODE == "perday" else "garak_lead_lag.json")
 SEOUL_XZ = RAW / "1112_2020-2025_농수축산물_일자별_도소매가격.csv.xz"
 SEOUL_RECENT = RAW / "1124_garak_veg_recent" / "garak_perday_20250830_recent.csv"
 
@@ -34,6 +40,11 @@ ITEMS = {"onion": ("양파", "양파"), "green_onion": ("대파", "파"), "napa_
          "cabbage": ("양배추", "양배추"), "potato": ("감자", "감자"), "carrot": ("당근", "당근"), "zucchini": ("애호박", "호박"),
          "cucumber": ("오이", "오이"), "perilla_leaf": ("깻잎", "깻잎"), "lettuce": ("상추", "상추"), "spinach": ("시금치", "시금치"),
          "tomato": ("토마토", "토마토"), "cheongyang_pepper": ("청양고추(참고)", "풋고추")}
+# 대구 정산정보 품목 고르기 (sources/data_sources.py ITEMS 의 sale_name · sale_sub 와 같음)
+SALE = {"onion": ("양파", None), "green_onion": ("대파", None), "napa_cabbage": ("배추", None), "radish": ("무", None),
+        "cabbage": ("양배추", None), "potato": ("감자", None), "carrot": ("당근", "당근(일반)"), "zucchini": ("호박", "애호박"),
+        "cucumber": ("오이", None), "perilla_leaf": ("깻잎", "깻잎(일반)"), "lettuce": ("상추", None), "spinach": ("시금치", None),
+        "tomato": ("토마토", None), "cheongyang_pepper": ("풋고추", "청양")}
 SIGNAL = 0.03      # 가락 3거래일 변화 ±3%
 MOVE = 0.02        # 대구가 이 이상 움직여야 "움직였다" (±2%, 화면 정반대 기준과 같음)
 LAGS = range(1, 8)
@@ -48,6 +59,19 @@ def load_daegu(fname):
             if r["se_nm"] == "중도매" and r["mrkt_nm"] == "북부도매" and r["grd_nm"] == "상품":
                 ser[(r["vrty_nm"], r["unit"], r["unit_sz"])][r["exmn_ymd"]] = float(r["exmn_dd_prc"])
     return ser
+
+
+def load_daegu_auction(fname):
+    """정산 경락가: 날짜별 kg당 가중평균 (금액 ÷ 반입량). 학습 모델의 대구 값과 같음."""
+    mclsf, sub = SALE[fname]
+    agg = defaultdict(lambda: [0.0, 0.0])
+    with open(RAW / "1109_5y" / "1109_wholesale_qty_daily.csv", encoding="utf-8-sig") as f:
+        for r in csv.DictReader(f):
+            if r["mclsf"] == mclsf and (not sub or sub in r["sclsf"]):
+                a = agg[r["date"].replace("-", "")]
+                a[0] += float(r["qty_kg"] or 0)
+                a[1] += float(r["totprc"] or 0)
+    return {"경락가": {d: v[1] / v[0] for d, v in agg.items() if v[0] > 0 and v[1] > 0}}
 
 
 def load_garak(names):
@@ -140,7 +164,7 @@ def main():
     garak = load_garak({v[1] for v in ITEMS.values()})
     result = {}
     for fname, (name, gname) in ITEMS.items():
-        d_ser = load_daegu(fname)
+        d_ser = load_daegu(fname) if MODE == "perday" else load_daegu_auction(fname)
         g_ser = garak.get(gname, {})
         d_days = set().union(*[set(s) for s in d_ser.values()]) if d_ser else set()
         g_days = set().union(*[set(s) for s in g_ser.values()]) if g_ser else set()

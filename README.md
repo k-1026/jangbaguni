@@ -7,15 +7,8 @@
 <sub>11/23 배포 사이트 화면 · 시연용 가상 가게 자료 · 영수증 읽기와 챗봇 답은 실제 AI 결과</sub>
 
 - **배포 화면**: https://jangbaguni-ten.vercel.app/
-- **관제 화면**: https://jangbaguni-ten.vercel.app/static/control.html (단계별 진행 · 사람별 할 일, Issue를 읽어 그림)
+- **관제 화면**: https://jangbaguni-ten.vercel.app/static/control.html
 - **PPT (캔바)**: https://canva.link/zxl9end3uctibh6
-
-## 🗓️ 일정 · 할 일은 Issue에서만
-
-- [📅 살피 일정 체크 (#86)](https://github.com/k-1026/jangbaguni/issues/86) — 날짜별 할 일 · 완료한 일
-- [📋 피치 근거 보충 체크 (#136)](https://github.com/k-1026/jangbaguni/issues/136) — 발표 근거 채우기
-
-Issue에서 체크하면 관제 화면에 바로 반영돼요. README에는 일정을 적지 않아요.
 
 ---
 
@@ -70,4 +63,6 @@ aT 대구 북부도매시장 경락가 · 반입량, 가락시장, KAMIS 도 · 
 | [research/](research/) | 업종 · 기업 · 장소 리서치 |
 | [brand/](brand/) | 로고 · 캐릭터 · 살피 말투 |
 
-작업 규칙은 [git-convention.md](git-convention.md)를 봐 주세요.
+## 작업 규칙은 [git-convention.md](git-convention.md)
+
+## 일정 · 할 일은 Issue에서 관리

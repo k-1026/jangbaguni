@@ -6,6 +6,37 @@ const cls = (v, band = 0) => (v == null ? "" : v > band ? "up" : v < -band ? "do
 const mmdd = (d) => `${d.slice(5, 7)}.${d.slice(8, 10)}`;
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
+// 사러 가기: 판매처 고르기 창. 살피는 팔지 않고 연결만 함 (재료가 있으면 그 재료 검색 결과로, 없으면 판매처 첫 화면으로)
+// 나중에 쿠팡 파트너스를 가입하면 아래 coupang 주소만 제휴 주소로 바꾸면 됨
+const BUY_SHOPS = [
+  { name: "식봄",     home: "https://www.foodspring.co.kr", search: null },   // 식봄은 서버가 준 주소(foodspring_url)를 씀
+  { name: "쿠팡",     home: "https://www.coupang.com",     search: (q) => `https://www.coupang.com/np/search?q=${q}` },
+  { name: "마켓컬리", home: "https://www.kurly.com",       search: (q) => `https://www.kurly.com/search?sword=${q}` },
+  { name: "이마트몰", home: "https://emart.ssg.com",       search: (q) => `https://emart.ssg.com/search.ssg?query=${q}` },
+];
+function openBuyPicker(item, foodspringUrl) {
+  const q = item ? encodeURIComponent(item) : "";
+  const links = BUY_SHOPS.map((s) => ({ name: s.name, url: item ? (s.search ? s.search(q) : foodspringUrl || s.home) : s.home }));
+  document.querySelector(".buy-pick")?.remove();
+  const box = document.createElement("div");
+  box.className = "buy-pick";
+  box.innerHTML = `<div class="buy-pick-card" role="dialog" aria-modal="true" aria-label="구매할 곳 고르기">
+    <h3>${item ? `${esc(item)} 사러 가기` : "식자재 사러 가기"}</h3>
+    <p class="muted">${item ? "고른 곳의 검색 결과로 이동해요" : "고른 곳으로 이동해요"}</p>
+    <div class="buy-pick-list">${links.map((l) => `<a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.name)}<i aria-hidden="true">↗</i></a>`).join("")}</div>
+    <button type="button" class="buy-pick-close">닫기</button></div>`;
+  const close = () => { box.remove(); document.removeEventListener("keydown", onKey); };
+  const onKey = (e) => { if (e.key === "Escape") close(); };
+  box.addEventListener("click", (e) => { if (e.target === box || e.target.closest(".buy-pick-close") || e.target.closest("a")) close(); });
+  document.addEventListener("keydown", onKey);
+  document.body.appendChild(box);
+  box.querySelector("a").focus();
+}
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-buy]");
+  if (b) openBuyPicker(b.dataset.buy, b.dataset.fs);
+});
+
 let overview = [];          // 재료별 시세 · 날짜별 기록 · 예측 (/api/overview 한 번으로 받음)
 let boardTab = "야채";      // 시세 대시보드 탭: 농산물 야채 · 농산물 과일(북부도매시장 경락가) · 수산물 · 육류
 // 야채 · 과일은 /api/overview 한 번으로 받고 kind 로 나눔. 제철이 아니라 4주 동안 거래가 8일 안 되는 과일은 숨김
@@ -866,7 +897,7 @@ function renderItemPage() {
   const v = salpiSays((r.history || []).map((h) => h.kg_price), r.forecast);
   $("#itemHead").innerHTML = `
     <div><h1>${esc(r.item)}</h1><p class="${v.kind === "flat" ? "" : v.kind}">${esc(v.text)}</p></div>
-    <a class="item-shop" href="${esc(r.foodspring_url || "https://www.foodspring.co.kr")}" target="_blank" rel="noopener" title="식봄에서 ${esc(r.item)} 사기">식자재 바로가기 →</a>`;
+    <button type="button" class="item-shop" data-buy="${esc(r.item)}" data-fs="${esc(r.foodspring_url || "")}">사러 가기 →</button>`;
   $("#itemBody").hidden = false;
   $("#itemDash").innerHTML = itemSlide(r, 0);
   drawItemChart($("#itemDash canvas"), r);
@@ -881,7 +912,7 @@ function renderExtraItemPage(r) {
   const v = salpiSays(d.history.map((h) => h.kg_price), d.forecast);
   $("#itemHead").innerHTML = `
     <div><h1>${esc(r.item)}</h1><p class="${v.kind === "flat" ? "" : v.kind}">${esc(v.text)} · ${esc(r.group)}</p></div>
-    <a class="item-shop" href="${esc(r.foodspring_url || "https://www.foodspring.co.kr")}" target="_blank" rel="noopener" title="식봄에서 ${esc(r.item)} 사기">식자재 바로가기 →</a>`;
+    <button type="button" class="item-shop" data-buy="${esc(r.item)}" data-fs="${esc(r.foodspring_url || "")}">사러 가기 →</button>`;
   $("#itemBody").hidden = false;
   $("#itemDash").innerHTML = extraSlide(r, 0);
   drawExtraItemChart($("#itemDash canvas"), r);

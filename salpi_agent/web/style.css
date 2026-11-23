@@ -716,6 +716,25 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .rc-table td.rc-judge-cell { padding-left: 4px; text-align: left; }
 .rc-table .rc-chip { display: inline-block; margin: 0; padding: 1px 7px; font-size: 11.5px; vertical-align: 1px; }
 .rc-table .rc-chip:empty { display: none; }
+/* 더 싼 판매처 (비싸게 산 줄 아래로 펼침) */
+.rc-cheaper-btn { margin-left: 6px; padding: 1px 8px; border: 1px solid var(--primary); border-radius: 6px; background: var(--surface); color: var(--primary); font-size: 11.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.rc-cheaper-btn[aria-expanded="true"] { background: var(--primary); color: #fff; }
+.rc-table tr.rc-cheaper td { padding: 0 8px 10px; }
+.cs-box { padding: 10px 12px; border-radius: 10px; background: var(--surface-variant); font-size: 13px; }
+/* 휴대폰: 표는 옆으로 밀어서 보지만 판매처 목록은 화면 폭에 맞춰 왼쪽에 고정 */
+@media (max-width: 700px) { .cs-box { position: sticky; left: 0; box-sizing: border-box; width: calc(100vw - 90px); } }
+.cs-head { margin: 0 0 8px; } .cs-head small { margin-left: 6px; color: var(--muted); }
+.cs-empty { margin: 0; color: var(--muted); }
+.cs-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.cs-list a { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 8px 10px; border-radius: 8px; background: var(--surface); color: var(--ink); text-decoration: none; }
+.cs-list a:hover { outline: 1px solid var(--primary); }
+.cs-name { grid-column: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.cs-pack { grid-column: 1; color: var(--muted); font-size: 12px; }
+.cs-price { grid-column: 2; grid-row: 1 / 3; align-self: center; text-align: right; white-space: nowrap; }
+.cs-price em { display: block; font-style: normal; color: var(--down); font-size: 12px; font-weight: 700; }
+.cs-tag { margin-left: 6px; padding: 0 6px; border-radius: 5px; background: var(--surface-variant); color: var(--muted); font-size: 11px; font-weight: 600; vertical-align: 1px; }
+.cs-tag.aff { background: var(--accent-container); color: var(--accent-hover); }
+.cs-tag.retail { background: #FFF6DC; color: #8A5A00; }
 .demand-chip.rise { background: #FFF6DC; color: #8A5A00; }
 .rc-table tfoot td { padding: 12px 8px 4px; border-bottom: 0; }
 .rc-total div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }

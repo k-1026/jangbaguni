@@ -6,6 +6,46 @@ const cls = (v, band = 0) => (v == null ? "" : v > band ? "up" : v < -band ? "do
 const mmdd = (d) => `${d.slice(5, 7)}.${d.slice(8, 10)}`;
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
+// 사러 가기: 판매처 고르기 창. 살피는 팔지 않고 연결만 함 (재료 페이지에서 열면 그 재료 검색 결과로, 첫 화면에서 열면 각 사이트 첫 화면으로)
+// 나중에 쿠팡 파트너스를 가입하면 아래 coupang 주소만 제휴 주소로 바꾸면 됨
+// 로고는 각 사이트가 공개한 사이트 아이콘(img/shops/)을 그대로 씀 (모양 · 색 바꾸지 않음)
+const BUY_SHOPS = [
+  { name: "식봄",          logo: "foodspring", home: "https://www.foodspring.co.kr", search: (q) => `https://www.foodspring.co.kr/search/all?key=${q}` },
+  { name: "쿠팡",          logo: "coupang",    home: "https://www.coupang.com",      search: (q) => `https://www.coupang.com/np/search?q=${q}` },
+  { name: "농협몰",        logo: "nonghyup",   home: "https://www.nonghyupmall.com", search: (q) => `https://www.nonghyupmall.com/BC1F010M/srchTotalList.nh?searchTerm_main=${q}&CHAN_C=1101&chanC=1101` },
+  { name: "이마트몰",      logo: "emart",      home: "https://emart.ssg.com",        search: (q) => `https://emart.ssg.com/search.ssg?query=${q}` },
+  { name: "롯데마트 제타", logo: "zetta",      home: "https://lottemartzetta.com",   search: (q) => `https://lottemartzetta.com/products/search?q=${q}` },
+  { name: "배민상회",      logo: "baemin",     home: "https://mart.baemin.com",      search: (q) => `https://mart.baemin.com/search/result?w=${q}` },
+];
+// 식봄은 서버가 준 검색 주소(foodspring_url)가 있으면 그것을 씀
+const buyUrl = (s, item, foodspringUrl) => {
+  if (!item) return s.home;
+  if (s.logo === "foodspring" && foodspringUrl) return foodspringUrl;
+  return s.search(encodeURIComponent(item));
+};
+function openBuyPicker(item, foodspringUrl) {
+  document.querySelector(".buy-pick")?.remove();
+  const box = document.createElement("div");
+  box.className = "buy-pick";
+  box.innerHTML = `<div class="buy-pick-card" role="dialog" aria-modal="true" aria-label="구매할 곳 고르기">
+    <h3>${item ? `${esc(item)}, 어디서 살까요?` : "어디서 살까요?"}</h3>
+    <div class="buy-pick-list">${BUY_SHOPS.map((s) => `<a href="${esc(buyUrl(s, item, foodspringUrl))}" target="_blank" rel="noopener noreferrer">
+      <span class="buy-pick-logo"><img src="/static/img/shops/${s.logo}.png" alt="" width="44" height="44" loading="lazy"></span>
+      <b>${esc(s.name)}</b></a>`).join("")}</div>
+    <p class="buy-pick-note buy-pick-ad">쿠팡 링크는 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</p>
+    <button type="button" class="buy-pick-close">닫기</button></div>`;
+  const close = () => { box.remove(); document.removeEventListener("keydown", onKey); };
+  const onKey = (e) => { if (e.key === "Escape") close(); };
+  box.addEventListener("click", (e) => { if (e.target === box || e.target.closest(".buy-pick-close") || e.target.closest("a")) close(); });
+  document.addEventListener("keydown", onKey);
+  document.body.appendChild(box);
+  box.querySelector("a").focus();
+}
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-buy]");
+  if (b) openBuyPicker(b.dataset.buy, b.dataset.fs);
+});
+
 let overview = [];          // 재료별 시세 · 날짜별 기록 · 예측 (/api/overview 한 번으로 받음)
 let boardTab = "야채";      // 시세 대시보드 탭: 농산물 야채 · 농산물 과일(북부도매시장 경락가) · 수산물 · 육류
 // 야채 · 과일은 /api/overview 한 번으로 받고 kind 로 나눔. 제철이 아니라 4주 동안 거래가 8일 안 되는 과일은 숨김
@@ -866,7 +906,7 @@ function renderItemPage() {
   const v = salpiSays((r.history || []).map((h) => h.kg_price), r.forecast);
   $("#itemHead").innerHTML = `
     <div><h1>${esc(r.item)}</h1><p class="${v.kind === "flat" ? "" : v.kind}">${esc(v.text)}</p></div>
-    <a class="item-shop" href="${esc(r.foodspring_url || "https://www.foodspring.co.kr")}" target="_blank" rel="noopener" title="식봄에서 ${esc(r.item)} 사기">식자재 바로가기 →</a>`;
+    <button type="button" class="item-shop" data-buy="${esc(r.item)}" data-fs="${esc(r.foodspring_url || "")}">사러 가기 →</button>`;
   $("#itemBody").hidden = false;
   $("#itemDash").innerHTML = itemSlide(r, 0);
   drawItemChart($("#itemDash canvas"), r);
@@ -881,7 +921,7 @@ function renderExtraItemPage(r) {
   const v = salpiSays(d.history.map((h) => h.kg_price), d.forecast);
   $("#itemHead").innerHTML = `
     <div><h1>${esc(r.item)}</h1><p class="${v.kind === "flat" ? "" : v.kind}">${esc(v.text)} · ${esc(r.group)}</p></div>
-    <a class="item-shop" href="${esc(r.foodspring_url || "https://www.foodspring.co.kr")}" target="_blank" rel="noopener" title="식봄에서 ${esc(r.item)} 사기">식자재 바로가기 →</a>`;
+    <button type="button" class="item-shop" data-buy="${esc(r.item)}" data-fs="${esc(r.foodspring_url || "")}">사러 가기 →</button>`;
   $("#itemBody").hidden = false;
   $("#itemDash").innerHTML = extraSlide(r, 0);
   drawExtraItemChart($("#itemDash canvas"), r);
@@ -1222,7 +1262,8 @@ async function loadDemand() {
   $("#orderCard").innerHTML = `
     <div class="prep-head">
       <h3>재고 관리 <span>주문할 재료 <b>${d.items.filter((i) => i.order_qty > 0).length}개</b></span></h3>
-      <button class="order-all stock-all" type="button">근거 모두 보기</button>
+      <span class="prep-btns"><button class="order-all stock-edit" type="button">재고 입력</button>
+        <button class="order-all stock-all" type="button">근거 모두 보기</button></span>
     </div>
     <div class="stock-cols">${orderGroups(d.items).map((g) => `<section class="stock-col ${g.key}">
       <h4>${g.title}${g.note ? `<small>${g.note}</small>` : ""}</h4>
@@ -1291,6 +1332,7 @@ $("#menuForecast").onclick = (e) => {
 
 // 재료를 누르면 계산 근거를 펼침 · 맨 위 버튼은 전체를 펴고 접음
 $("#orderCard").onclick = (e) => {
+  if (e.target.closest(".stock-edit")) { openStock(); return; }
   const rows = [...$("#orderCard").querySelectorAll(".order-row")];
   const row = e.target.closest(".order-row");
   if (row) setOpen(row, row.getAttribute("aria-expanded") !== "true");
@@ -1300,6 +1342,52 @@ $("#orderCard").onclick = (e) => {
   } else return;
   $(".stock-all").textContent = rows.every((b) => b.getAttribute("aria-expanded") === "true") ? "모두 접기" : "근거 모두 보기";
 };
+
+// 재고 입력 (/api/inventory): 재료마다 남은 양을 고쳐 저장 → 주문량 다시 계산
+// kg · L · 모는 소수 한 자리 · 개는 정수. 영수증을 저장하면 산 만큼 자동으로 늘어남
+const stockStep = (u) => (u === "개" ? "1" : "0.1");
+async function openStock() {
+  const modal = $("#stockModal"), box = $("#stockModalBody");
+  box.innerHTML = `<div class="reading"><div class="spinner"></div><b>재고를 불러오는 중이에요</b></div>`;
+  modal.hidden = false;
+  let d;
+  try { d = await getJSON("/api/inventory"); }
+  catch (e) { box.innerHTML = `<p class="rc-warn">${esc(e.message)}</p>`; return; }
+  const when = (s) => (s ? `${mmdd(s.slice(0, 10))} 고침` : "입력 전");
+  box.innerHTML = `<h3>재고 입력</h3>
+    <p class="muted small">지금 가게에 남은 양을 적어 주세요. 영수증을 저장하면 산 만큼 자동으로 늘어나요.</p>
+    <form id="stockForm" novalidate>
+      <ul class="sk-rows">${d.items.map((i) => `<li class="sk-row${i.in_menu ? "" : " off"}">
+        <span class="sk-name">${esc(i.item)}<small>${when(i.updated_at)}${i.in_menu ? "" : " · 메뉴에 안 씀"}</small></span>
+        <span class="mf-amount"><input type="number" inputmode="decimal" min="0" step="${stockStep(i.unit)}" data-id="${i.item_id}"
+          data-was="${i.on_hand}" value="${+(+i.on_hand).toFixed(i.unit === "개" ? 0 : 1)}" aria-label="${esc(i.item)} 남은 양"><span class="mf-unit">${esc(i.unit)}</span></span>
+      </li>`).join("")}</ul>
+      <p class="rc-warn" id="skMsg" hidden></p>
+      <div class="mf-actions"><button type="button" class="btn" id="skCancel">취소</button>
+        <button type="submit" class="btn primary" id="skSave">저장</button></div>
+    </form>`;
+  $("#skCancel").onclick = closeStock;
+  $("#stockForm").oninput = (e) => e.target.closest(".sk-row")?.classList.toggle("changed", +e.target.value !== +(+e.target.dataset.was).toFixed(3));
+  $("#stockForm").onsubmit = async (e) => {
+    e.preventDefault();
+    const inputs = [...box.querySelectorAll("input[data-id]")];
+    const bad = inputs.find((x) => x.value === "" || !(+x.value >= 0));
+    const msg = $("#skMsg"), btn = $("#skSave");
+    if (bad) { msg.textContent = "남은 양은 0 이상 숫자로 넣어 주세요"; msg.hidden = false; bad.focus(); return; }
+    const items = inputs.filter((x) => x.closest(".sk-row").classList.contains("changed"))
+      .map((x) => ({ item_id: +x.dataset.id, on_hand: +x.value }));
+    if (!items.length) { closeStock(); return; }
+    btn.disabled = true; btn.textContent = "저장하는 중"; msg.hidden = true;
+    try {
+      await sendJSON("/api/inventory", "PUT", { items });
+      closeStock();
+      loadDemand();   // 주문량 다시 계산
+    } catch (err) { msg.textContent = err.message; msg.hidden = false; btn.disabled = false; btn.textContent = "저장"; }
+  };
+}
+const closeStock = () => { $("#stockModal").hidden = true; };
+$("#stockModalClose").onclick = closeStock;
+$("#stockModal").onclick = (e) => { if (e.target.id === "stockModal") closeStock(); };
 
 // ---------------------------------------------------------------
 // 영수증으로 원가율 (사진 → 읽기 → 확인 · 수정 → 저장 → 원가율)
@@ -1586,12 +1674,17 @@ function renderCosts(r, withChange) {
               <p class="swap-reason">💡 ${esc(m.swap.reason)}</p>
             </div>
             <p class="swap-calc">${esc(m.swap.from)} ${m.swap.share_pct}%를 바꾸면 1인분 <b>${won(m.swap.saving_per_serving)}</b> 아껴요 · 원가율 ${m.cost_ratio_pct}% → <b>${m.swap.new_ratio_pct}%</b> · 남는 돈 ${won(m.margin)} → <b>${won(m.swap.new_margin)}</b></p>
+            ${swapExtra(m.swap)}
           </div>
         </div>` : ""}
       </article>`;
     }).join("")}</div>
     <p class="muted small">레시피에 주재료만 들어 있어 실제보다 원가율이 조금 낮게 나와요.</p>`;
 }
+
+// 대체 재료 아래 덧붙임: 원산지 표시 변경 안내(고기) · 다른 후보(예: 수입 돼지고기)
+const swapExtra = (s) => !s ? "" : `${s.origin_notice ? `<p class="swap-origin">⚠ ${esc(s.origin_notice)}</p>` : ""}${(s.others || []).length
+  ? `<p class="swap-others">다른 후보: ${s.others.map((o) => `${esc(o.to)} (1인분 ${won(o.saving_per_serving)} 절약 · 원가율 ${o.new_ratio_pct}%)`).join(" · ")}</p>` : ""}`;
 
 // 원가율 40% 이상(지금 또는 다음 주): 원가율 낮추는 방법(가격 · 재료 · 메뉴)을 함께 보여 줌 — 고르는 건 사장님 (유저플로우 v2)
 // 방법마다 카드 하나: 종류 칩 · 바꾸는 것 · 원가율 · 남는 금액(또는 아끼는 돈) — 세 카드는 똑같이 (고르는 건 사장님)
@@ -1612,6 +1705,7 @@ function costPlan(m) {
     <ol>${opts.map((o) => `<li class="cp-${o.kind}">
       <div class="cp-head"><span class="cp-chip">${o.label}</span>${o.ratio == null ? "" : `<p class="cp-what">${o.what}</p>`}</div>
       ${o.ratio == null ? `<p class="cp-none">${o.none}</p>` : `<dl><dt>원가율</dt><dd class="cp-ratio">${o.ratio}%</dd><dt>${o.key}</dt><dd class="cp-money">${o.val}</dd></dl>`}
+      ${o.kind === "swap" ? swapExtra(s) : ""}
     </li>`).join("")}</ol>
   </div>`;
 }
@@ -2555,14 +2649,55 @@ async function loadJudge(id) {
     const why = x.why + (x.extra_paid ? ` · ${won(x.extra_paid)} 과지출` : x.saved ? ` · ${won(x.saved)} 절약` : "");
     // 칩 바로 옆에 같은 줄로 금액만 (빨강 = 더 낸 돈, 초록 = 아낀 돈 · '과지출 · 절약' 글자는 합계 줄에만)
     const money = x.extra_paid ? `<b class="up">${won(x.extra_paid)}</b>` : x.saved ? `<b class="down">${won(x.saved)}</b>` : "";
+    // 비싸게 산 재료는 '더 싼 곳' 버튼 → 누르면 그 줄 아래에 판매처 목록 (/api/cheaper)
+    const more = x.verdict === "비싸게 샀어요" && x.item
+      ? `<button class="rc-cheaper-btn" type="button" data-item="${esc(x.item)}" data-paid="${x.unit_price || ""}" aria-expanded="false">더 싼 곳</button>` : "";
     tr.querySelector(".rc-chip").outerHTML = `<span class="demand-chip rc-chip ${JUDGE_CHIP[x.verdict] || ""}" title="${esc(why)}">${esc(text)}</span>`
-      + (money ? `<span class="rc-why">${money}</span>` : "");
+      + (money ? `<span class="rc-why">${money}</span>` : "") + more;
   }
+  document.querySelectorAll(".rc-cheaper-btn").forEach((b) => { b.onclick = () => toggleCheaper(b); });
   const extra = j.summary?.extra_paid || 0, saved = j.summary?.saved || 0;
   sum.innerHTML = [extra ? `<b class="up">${won(extra)} 과지출</b>` : "",
                    saved ? `<b class="down">${won(saved)} 절약</b>` : ""].filter(Boolean).join(" · ")
     || "모두 평소 값에 샀어요";
   praiseFrom(j);   // 예전 영수증을 열 때도 이득이면 칭찬 팝업
+}
+
+// 더 싼 판매처 (/api/cheaper): 산 값(kg·모당)보다 싼 곳만 싼 순서로. 제휴 · 소매가는 칩으로 표시
+const sellerTags = (s) => [s.affiliate ? `<span class="cs-tag aff">제휴</span>` : "",
+  s.retail ? `<span class="cs-tag retail">소매가</span>` : "",
+  s.free_delivery ? `<span class="cs-tag">무료배송</span>` : ""].join("");
+function cheaperHTML(c) {
+  const u = c.unit || "kg";
+  if (!c.sellers?.length) {
+    const msg = c.message?.includes("지원하지") ? `${c.item}은(는) 아직 판매처 가격 비교를 못 해요 (야채 · 과일만 돼요)`
+      : c.message || `지금은 ${u}당 ${won(c.paid_per_unit)}보다 싼 곳을 못 찾았어요`;
+    return `<p class="cs-empty">${esc(msg)}</p>`;
+  }
+  return `<p class="cs-head">산 값 <b>${u}당 ${won(c.paid_per_unit)}</b>보다 싼 곳 ${c.sellers.length}곳
+      ${c.data_date ? `<small>${mmdd(c.data_date)} 가격</small>` : ""}</p>
+    <ul class="cs-list">${c.sellers.map((s) => `<li>
+      <a href="${esc(s.url)}" target="_blank" rel="noopener sponsored">
+        <span class="cs-name">${esc(s.name)}${sellerTags(s)}</span>
+        <span class="cs-pack">${esc(s.pack)} ${won(s.pack_price)}</span>
+        <span class="cs-price">${u}당 ${s.approx ? "약 " : ""}<b>${won(s.price_per_unit)}</b>
+          <em>${s.saving_pct != null ? `−${Math.round(s.saving_pct)}%` : ""}</em></span>
+      </a></li>`).join("")}</ul>`;
+}
+async function toggleCheaper(btn) {
+  const tr = btn.closest("tr"), open = btn.getAttribute("aria-expanded") === "true";
+  tr.nextElementSibling?.classList.contains("rc-cheaper") && tr.nextElementSibling.remove();
+  btn.setAttribute("aria-expanded", String(!open));
+  if (open) return;
+  const row = document.createElement("tr");
+  row.className = "rc-cheaper";
+  row.innerHTML = `<td colspan="6"><div class="cs-box"><p class="cs-empty">판매처 가격을 찾는 중이에요</p></div></td>`;
+  tr.after(row);
+  const box = row.querySelector(".cs-box");
+  try {
+    const paid = btn.dataset.paid ? `&paid=${btn.dataset.paid}` : "";
+    box.innerHTML = cheaperHTML(await getJSON(`/api/cheaper?item=${encodeURIComponent(btn.dataset.item)}${paid}`));
+  } catch (e) { box.innerHTML = `<p class="cs-empty">판매처 가격을 불러오지 못했어요</p>`; }
 }
 
 // 저장한 영수증 고치기: 왼쪽에 사진(있으면)을 띄워 두고 오른쪽 표에서 바로 고침
@@ -3155,7 +3290,7 @@ $("#mypageBody").onchange = (e) => {
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
   if (!$("#leaveModal").hidden) return closeLeave();   // 탈퇴 팝업만 닫고 마이페이지는 그대로
-  closeReceipt(); closeMypage(); closeEvent(); closeCamera();
+  closeReceipt(); closeMypage(); closeEvent(); closeCamera(); closeStock();
 });
 
 // 회원탈퇴: 한 번 더 묻는 팝업 → '안내를 확인했어요'에 체크해야 [탈퇴하기]가 눌림

@@ -63,11 +63,11 @@
         <div class="summary" id="summary">
           <div class="chip skeleton"></div><div class="chip skeleton"></div>
         </div>
-        <!-- 식자재 구매는 식봄으로 연결만 (살피는 팔지 않음) -->
-        <a class="buy-link" href="https://www.foodspring.co.kr" target="_blank" rel="noopener">
-          <span><b>식자재 구매 바로가기</b><small>식봄에서 오늘 필요한 식자재를 사요</small></span>
+        <!-- 식자재 구매는 식봄 · 쿠팡 · 농협몰 · 이마트몰 · 롯데마트 제타 · 배민상회 중 골라서 연결만 (살피는 팔지 않음) -->
+        <button type="button" class="buy-link" data-buy="">
+          <span><b>식자재 구매 바로가기</b></span>
           <i aria-hidden="true">→</i>
-        </a>
+        </button>
         <!-- 영수증 분석 체험: 나의 가게 페이지의 영수증 분석 칸으로 이동 -->
         <a class="buy-link receipt-link" href="/?page=store#receipt">
           <img class="receipt-emoji" src="/static/img/receipt_scan.png" alt="" aria-hidden="true">
@@ -393,6 +393,14 @@
   <div class="modal-box menu-box" role="dialog" aria-label="메뉴 고치기 · 추가">
     <button class="modal-close" id="menuModalClose" aria-label="닫기">×</button>
     <div id="menuModalBody"></div>
+  </div>
+</div>
+
+<!-- 재고 입력 (나의 가게 · 재고 관리 [재고 입력]) -->
+<div class="modal" id="stockModal" hidden>
+  <div class="modal-box stock-box" role="dialog" aria-label="재고 입력">
+    <button class="modal-close" id="stockModalClose" aria-label="닫기">×</button>
+    <div id="stockModalBody"></div>
   </div>
 </div>
 

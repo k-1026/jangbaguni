@@ -1,0 +1,479 @@
+{
+ "kind": "야채",
+ "period": [
+  "2025-11-01",
+  "2026-10-31"
+ ],
+ "n_test": 4496,
+ "seeds": [
+  7,
+  11,
+  23
+ ],
+ "coverage_pct": {
+  "g_chg3": 93.3,
+  "g_chg7": 93.3,
+  "g_gap": 93.3,
+  "p_rain7": 59.8,
+  "p_rain28": 59.8,
+  "p_cold7": 59.8,
+  "p_hot7": 59.8,
+  "pf_rain7": 59.8,
+  "pf_cold7": 59.8,
+  "pf_hot7": 59.8
+ },
+ "no_garak": [
+  "토마토"
+ ],
+ "no_station": [
+  "가지",
+  "깻잎",
+  "상추",
+  "애호박",
+  "오이",
+  "토마토"
+ ],
+ "formula": {
+  "n": 4496,
+  "opposite_pct": 27.47,
+  "mae_pp": 19.146,
+  "range_hit_pct": 70.9,
+  "direction_hit_pct": 45.0
+ },
+ "results": {
+  "지금 요인": {
+   "features": [
+    "item",
+    "dev",
+    "trend",
+    "vchg",
+    "wx",
+    "rain",
+    "cold",
+    "hot",
+    "volat",
+    "chg3",
+    "season",
+    "to_major",
+    "month"
+   ],
+   "metrics": {
+    "opposite_pct": 22.76,
+    "mae_pp": 17.67,
+    "range_hit_pct": 72.87,
+    "direction_hit_pct": 54.13,
+    "n": 4496
+   },
+   "by_seed": [
+    {
+     "n": 4496,
+     "opposite_pct": 23.06,
+     "mae_pp": 17.677,
+     "range_hit_pct": 72.8,
+     "direction_hit_pct": 54.1
+    },
+    {
+     "n": 4496,
+     "opposite_pct": 22.38,
+     "mae_pp": 17.676,
+     "range_hit_pct": 73.0,
+     "direction_hit_pct": 54.1
+    },
+    {
+     "n": 4496,
+     "opposite_pct": 22.84,
+     "mae_pp": 17.658,
+     "range_hit_pct": 72.8,
+     "direction_hit_pct": 54.2
+    }
+   ],
+   "importance": {
+    "item": 22,
+    "to_major": 13,
+    "volat": 9,
+    "month": 9,
+    "rain": 8,
+    "dev": 8,
+    "season": 7,
+    "vchg": 6,
+    "chg3": 6,
+    "trend": 6,
+    "hot": 3,
+    "wx": 2,
+    "cold": 2
+   },
+   "items_opposite": {
+    "가지": 23.0,
+    "감자": 16.9,
+    "깻잎": 26.5,
+    "당근": 24.9,
+    "대파": 21.6,
+    "무": 22.9,
+    "배추": 25.4,
+    "상추": 29.2,
+    "시금치": 24.4,
+    "애호박": 20.2,
+    "양배추": 29.9,
+    "양파": 16.6,
+    "오이": 21.7,
+    "청양고추": 19.3,
+    "토마토": 19.1
+   },
+   "better_than_base": false
+  },
+  "+ 가락 선행": {
+   "features": [
+    "item",
+    "dev",
+    "trend",
+    "vchg",
+    "wx",
+    "rain",
+    "cold",
+    "hot",
+    "volat",
+    "chg3",
+    "season",
+    "to_major",
+    "month",
+    "g_chg3",
+    "g_chg7",
+    "g_gap"
+   ],
+   "metrics": {
+    "opposite_pct": 22.45,
+    "mae_pp": 17.61,
+    "range_hit_pct": 72.73,
+    "direction_hit_pct": 55.1,
+    "n": 4496
+   },
+   "by_seed": [
+    {
+     "n": 4496,
+     "opposite_pct": 22.4,
+     "mae_pp": 17.579,
+     "range_hit_pct": 72.5,
+     "direction_hit_pct": 55.4
+    },
+    {
+     "n": 4496,
+     "opposite_pct": 22.73,
+     "mae_pp": 17.601,
+     "range_hit_pct": 73.0,
+     "direction_hit_pct": 55.2
+    },
+    {
+     "n": 4496,
+     "opposite_pct": 22.22,
+     "mae_pp": 17.645,
+     "range_hit_pct": 72.7,
+     "direction_hit_pct": 54.7
+    }
+   ],
+   "importance": {
+    "item": 20,
+    "to_major": 11,
+    "dev": 8,
+    "month": 8,
+    "rain": 7,
+    "volat": 7,
+    "chg3": 5,
+    "vchg": 5,
+    "season": 5,
+    "g_gap": 5,
+    "trend": 5,
+    "g_chg7": 4,
+    "g_chg3": 4,
+    "hot": 3,
+    "wx": 2,
+    "cold": 1
+   },
+   "items_opposite": {
+    "가지": 24.1,
+    "감자": 19.8,
+    "깻잎": 23.7,
+    "당근": 22.6,
+    "대파": 21.7,
+    "무": 22.3,
+    "배추": 27.5,
+    "상추": 26.8,
+    "시금치": 23.7,
+    "애호박": 16.9,
+    "양배추": 26.9,
+    "양파": 17.8,
+    "오이": 22.9,
+    "청양고추": 20.0,
+    "토마토": 20.0
+   },
+   "better_than_base": true
+  },
+  "+ 주산지 날씨 (지난 7 · 28일)": {
+   "features": [
+    "item",
+    "dev",
+    "trend",
+    "vchg",
+    "wx",
+    "rain",
+    "cold",
+    "hot",
+    "volat",
+    "chg3",
+    "season",
+    "to_major",
+    "month",
+    "p_rain7",
+    "p_rain28",
+    "p_cold7",
+    "p_hot7"
+   ],
+   "metrics": {
+    "opposite_pct": 22.8,
+    "mae_pp": 17.71,
+    "range_hit_pct": 72.37,
+    "direction_hit_pct": 53.83,
+    "n": 4496
+   },
+   "by_seed": [
+    {
+     "n": 4496,
+     "opposite_pct": 22.69,
+     "mae_pp": 17.726,
+     "range_hit_pct": 72.3,
+     "direction_hit_pct": 53.6
+    },
+    {
+     "n": 4496,
+     "opposite_pct": 22.98,
+     "mae_pp": 17.757,
+     "range_hit_pct": 72.2,
+     "direction_hit_pct": 53.6
+    },
+    {
+     "n": 4496,
+     "opposite_pct": 22.73,
+     "mae_pp": 17.633,
+     "range_hit_pct": 72.6,
+     "direction_hit_pct": 54.3
+    }
+   ],
+   "importance": {
+    "item": 20,
+    "to_major": 11,
+    "month": 8,
+    "dev": 8,
+    "volat": 7,
+    "rain": 7,
+    "season": 5,
+    "chg3": 5,
+    "vchg": 5,
+    "trend": 5,
+    "p_rain28": 5,
+    "p_rain7": 4,
+    "p_cold7": 3,
+    "hot": 2,
+    "wx": 2,
+    "cold": 1,
+    "p_hot7": 1
+   },
+   "items_opposite": {
+    "가지": 23.4,
+    "감자": 15.5,
+    "깻잎": 26.0,
+    "당근": 24.1,
+    "대파": 23.3,
+    "무": 23.4,
+    "배추": 25.7,
+    "상추": 28.9,
+    "시금치": 23.6,
+    "애호박": 20.2,
+    "양배추": 31.1,
+    "양파": 17.7,
+    "오이": 20.9,
+    "청양고추": 18.3,
+    "토마토": 20.0
+   },
+   "better_than_base": false
+  },
+  "+ 앞으로 7일 산지 날씨 (완벽한 예보)": {
+   "features": [
+    "item",
+    "dev",
+    "trend",
+    "vchg",
+    "wx",
+    "rain",
+    "cold",
+    "hot",
+    "volat",
+    "chg3",
+    "season",
+    "to_major",
+    "month",
+    "pf_rain7",
+    "pf_cold7",
+    "pf_hot7"
+   ],
+   "metrics": {
+    "opposite_pct": 22.75,
+    "mae_pp": 17.71,
+    "range_hit_pct": 72.77,
+    "direction_hit_pct": 53.43,
+    "n": 4496
+   },
+   "by_seed": [
+    {
+     "n": 4496,
+     "opposite_pct": 23.35,
+     "mae_pp": 17.733,
+     "range_hit_pct": 72.5,
+     "direction_hit_pct": 53.3
+    },
+    {
+     "n": 4496,
+     "opposite_pct": 23.29,
+     "mae_pp": 17.658,
+     "range_hit_pct": 73.2,
+     "direction_hit_pct": 54.6
+    },
+    {
+     "n": 4496,
+     "opposite_pct": 21.62,
+     "mae_pp": 17.752,
+     "range_hit_pct": 72.6,
+     "direction_hit_pct": 52.4
+    }
+   ],
+   "importance": {
+    "item": 20,
+    "to_major": 11,
+    "month": 8,
+    "rain": 8,
+    "dev": 8,
+    "volat": 8,
+    "chg3": 6,
+    "trend": 5,
+    "vchg": 5,
+    "season": 5,
+    "pf_rain7": 4,
+    "pf_cold7": 3,
+    "hot": 2,
+    "wx": 2,
+    "cold": 1,
+    "pf_hot7": 1
+   },
+   "items_opposite": {
+    "가지": 22.4,
+    "감자": 16.5,
+    "깻잎": 26.4,
+    "당근": 22.0,
+    "대파": 21.2,
+    "무": 25.4,
+    "배추": 26.5,
+    "상추": 27.9,
+    "시금치": 23.4,
+    "애호박": 20.5,
+    "양배추": 30.8,
+    "양파": 16.3,
+    "오이": 20.8,
+    "청양고추": 21.5,
+    "토마토": 20.0
+   },
+   "better_than_base": false
+  },
+  "+ 가락 + 주산지 날씨": {
+   "features": [
+    "item",
+    "dev",
+    "trend",
+    "vchg",
+    "wx",
+    "rain",
+    "cold",
+    "hot",
+    "volat",
+    "chg3",
+    "season",
+    "to_major",
+    "month",
+    "g_chg3",
+    "g_chg7",
+    "g_gap",
+    "p_rain7",
+    "p_rain28",
+    "p_cold7",
+    "p_hot7"
+   ],
+   "metrics": {
+    "opposite_pct": 22.68,
+    "mae_pp": 17.56,
+    "range_hit_pct": 72.5,
+    "direction_hit_pct": 55.3,
+    "n": 4496
+   },
+   "by_seed": [
+    {
+     "n": 4496,
+     "opposite_pct": 22.49,
+     "mae_pp": 17.526,
+     "range_hit_pct": 72.6,
+     "direction_hit_pct": 55.8
+    },
+    {
+     "n": 4496,
+     "opposite_pct": 22.93,
+     "mae_pp": 17.522,
+     "range_hit_pct": 72.7,
+     "direction_hit_pct": 55.3
+    },
+    {
+     "n": 4496,
+     "opposite_pct": 22.62,
+     "mae_pp": 17.646,
+     "range_hit_pct": 72.2,
+     "direction_hit_pct": 54.8
+    }
+   ],
+   "importance": {
+    "item": 19,
+    "to_major": 10,
+    "month": 8,
+    "dev": 7,
+    "rain": 6,
+    "volat": 6,
+    "season": 5,
+    "chg3": 5,
+    "g_chg3": 4,
+    "vchg": 4,
+    "trend": 4,
+    "g_chg7": 4,
+    "p_rain28": 4,
+    "p_rain7": 3,
+    "g_gap": 3,
+    "hot": 2,
+    "p_cold7": 2,
+    "wx": 2,
+    "cold": 1,
+    "p_hot7": 1
+   },
+   "items_opposite": {
+    "가지": 23.0,
+    "감자": 19.0,
+    "깻잎": 24.5,
+    "당근": 22.9,
+    "대파": 23.3,
+    "무": 22.2,
+    "배추": 26.7,
+    "상추": 28.7,
+    "시금치": 24.8,
+    "애호박": 16.9,
+    "양배추": 28.5,
+    "양파": 17.5,
+    "오이": 22.9,
+    "청양고추": 20.0,
+    "토마토": 19.5
+   },
+   "better_than_base": false
+  }
+ }
+}

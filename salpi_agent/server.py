@@ -32,6 +32,7 @@ from account import kakao_alert
 from sources import mart_price
 from store import menus
 from price import price_judge
+from store import inventory
 from store import receipts
 from sources import supabase_db
 from chat.agent import SalpiAgent
@@ -530,6 +531,22 @@ def menu_edit(menu_id: int, body: MenuIn):
 def menu_stop(menu_id: int):
     """판매 중지 (메뉴를 지우면 판매 기록까지 지워져서 지우지 않음)."""
     return _receipt_guard(lambda: _menu_changed(menus.stop(supabase_db.DEMO_STORE, menu_id)))
+
+
+class StockIn(BaseModel):
+    items: list[dict] = []   # [{"item_id": 3, "on_hand": 4.5}] — 기준 단위(kg · 모 · 개 · L)
+
+
+@app.get("/api/inventory")
+def inventory_list():
+    """재고 입력 창용: 메뉴 재료 + 재고 있는 재료의 남은 양 (영수증 저장 · 고치기 · 지우기 때 자동으로 바뀜)."""
+    return _receipt_guard(lambda: inventory.listing(supabase_db.DEMO_STORE))
+
+
+@app.put("/api/inventory")
+def inventory_set(body: StockIn):
+    """사장님이 고친 남은 양 저장 → 내일 준비(주문량) 다시 계산."""
+    return _receipt_guard(lambda: _store_changed(inventory.set_qty(supabase_db.DEMO_STORE, body.items)))
 
 
 @app.get("/api/receipts")

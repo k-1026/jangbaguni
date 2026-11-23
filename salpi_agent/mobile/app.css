@@ -175,7 +175,7 @@ button.m-buy { margin-top: 12px; }
 @keyframes m-pick-fade { from { opacity: 0; } }
 @keyframes m-pick-up { from { transform: translateY(100%); } }
 @media (prefers-reduced-motion: reduce) { .m-pick, .m-pick-sheet { animation: none; } }
-.m-shortcut.buy { background: var(--primary-weak); } .m-shortcut.buy i { color: var(--primary); }
+.m-shortcut.buy { min-height: 70px; background: var(--primary-weak); }   /* 설명 문구를 뺐어도 칸 높이는 그대로 */ .m-shortcut.buy i { color: var(--primary); }
 .m-sum-btn { border: 0; background: none; padding: 6px 0; border-radius: 12px; cursor: pointer; }
 .m-sum-btn.on { background: var(--primary-weak); outline: 2px solid var(--primary); }
 

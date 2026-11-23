@@ -1494,3 +1494,9 @@ body.login-view .login-only, body.signup-view .signup-only { display: flex; }
 @keyframes praise-bounce { 0% { transform: translateY(0) rotate(0); } 25% { transform: translateY(-26px) rotate(-8deg); } 45% { transform: translateY(0) rotate(0); } 60% { transform: translateY(-12px) rotate(6deg); } 75% { transform: translateY(0) rotate(0); } 88% { transform: translateY(-4px); } 100% { transform: none; } }
 @keyframes praise-title { 0% { opacity: 0; transform: scale(.4); } 60% { opacity: 1; transform: scale(1.18); } 100% { transform: none; } }
 @keyframes praise-time { to { transform: scaleX(0); } }
+
+/* 대체 재료: 원산지 표시 변경 안내 · 다른 후보 */
+.swap-origin, .swap-others { flex-basis: 100%; margin: 8px 0 0; font-size: 13.5px; }
+.swap-origin { color: #8A4B00; font-weight: 700; }
+.swap-others { color: var(--muted); }
+.cp-swap .swap-origin, .cp-swap .swap-others { margin-top: 6px; font-size: 12.5px; }

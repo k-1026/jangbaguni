@@ -1617,12 +1617,17 @@ function renderCosts(r, withChange) {
               <p class="swap-reason">💡 ${esc(m.swap.reason)}</p>
             </div>
             <p class="swap-calc">${esc(m.swap.from)} ${m.swap.share_pct}%를 바꾸면 1인분 <b>${won(m.swap.saving_per_serving)}</b> 아껴요 · 원가율 ${m.cost_ratio_pct}% → <b>${m.swap.new_ratio_pct}%</b> · 남는 돈 ${won(m.margin)} → <b>${won(m.swap.new_margin)}</b></p>
+            ${swapExtra(m.swap)}
           </div>
         </div>` : ""}
       </article>`;
     }).join("")}</div>
     <p class="muted small">레시피에 주재료만 들어 있어 실제보다 원가율이 조금 낮게 나와요.</p>`;
 }
+
+// 대체 재료 아래 덧붙임: 원산지 표시 변경 안내(고기) · 다른 후보(예: 수입 돼지고기)
+const swapExtra = (s) => !s ? "" : `${s.origin_notice ? `<p class="swap-origin">⚠ ${esc(s.origin_notice)}</p>` : ""}${(s.others || []).length
+  ? `<p class="swap-others">다른 후보: ${s.others.map((o) => `${esc(o.to)} (1인분 ${won(o.saving_per_serving)} 절약 · 원가율 ${o.new_ratio_pct}%)`).join(" · ")}</p>` : ""}`;
 
 // 원가율 40% 이상(지금 또는 다음 주): 원가율 낮추는 방법(가격 · 재료 · 메뉴)을 함께 보여 줌 — 고르는 건 사장님 (유저플로우 v2)
 // 방법마다 카드 하나: 종류 칩 · 바꾸는 것 · 원가율 · 남는 금액(또는 아끼는 돈) — 세 카드는 똑같이 (고르는 건 사장님)
@@ -1643,6 +1648,7 @@ function costPlan(m) {
     <ol>${opts.map((o) => `<li class="cp-${o.kind}">
       <div class="cp-head"><span class="cp-chip">${o.label}</span>${o.ratio == null ? "" : `<p class="cp-what">${o.what}</p>`}</div>
       ${o.ratio == null ? `<p class="cp-none">${o.none}</p>` : `<dl><dt>원가율</dt><dd class="cp-ratio">${o.ratio}%</dd><dt>${o.key}</dt><dd class="cp-money">${o.val}</dd></dl>`}
+      ${o.kind === "swap" ? swapExtra(s) : ""}
     </li>`).join("")}</ol>
   </div>`;
 }

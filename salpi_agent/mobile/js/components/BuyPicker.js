@@ -33,7 +33,7 @@ function open(item, fs) {
     <div class="m-pick-grid">${SHOPS.map((s) => `<a href="${esc(urlOf(s, item, fs))}" target="_blank" rel="noopener noreferrer">
       <span class="m-pick-logo"><img src="/static/img/shops/${s.logo}.png" alt="" width="48" height="48" loading="lazy"></span>
       <b>${esc(s.name)}</b></a>`).join("")}</div>
-    <p class="m-pick-note">살피는 판매하지 않고 연결만 해요</p>
+    <p class="m-pick-note m-pick-ad">쿠팡 링크는 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</p>
     <button type="button" class="m-pick-close">닫기</button></div>`;
   box.addEventListener("click", (e) => { if (e.target === box || e.target.closest(".m-pick-close") || e.target.closest("a")) box.remove(); });
   document.body.appendChild(box);

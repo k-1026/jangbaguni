@@ -32,7 +32,7 @@ function openBuyPicker(item, foodspringUrl) {
     <div class="buy-pick-list">${BUY_SHOPS.map((s) => `<a href="${esc(buyUrl(s, item, foodspringUrl))}" target="_blank" rel="noopener noreferrer">
       <span class="buy-pick-logo"><img src="/static/img/shops/${s.logo}.png" alt="" width="44" height="44" loading="lazy"></span>
       <b>${esc(s.name)}</b></a>`).join("")}</div>
-    <p class="buy-pick-note">살피는 판매하지 않고 연결만 해요</p>
+    <p class="buy-pick-note buy-pick-ad">쿠팡 링크는 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</p>
     <button type="button" class="buy-pick-close">닫기</button></div>`;
   const close = () => { box.remove(); document.removeEventListener("keydown", onKey); };
   const onKey = (e) => { if (e.key === "Escape") close(); };

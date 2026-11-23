@@ -1514,6 +1514,24 @@ body.login-view .login-only, body.signup-view .signup-only { display: flex; }
 @keyframes praise-title { 0% { opacity: 0; transform: scale(.4); } 60% { opacity: 1; transform: scale(1.18); } 100% { transform: none; } }
 @keyframes praise-time { to { transform: scaleX(0); } }
 
+/* 재고 입력 (나의 가게 · 재고 관리 [재고 입력]) */
+.prep-btns { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.order-all.stock-edit { background: var(--surface); color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
+.order-all.stock-edit:hover { background: var(--primary-container); }
+.modal-box.stock-box { width: min(520px, 100%); }
+.sk-rows { margin: 14px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.sk-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 10px; background: var(--surface-variant); }
+.sk-row.off { opacity: .7; }
+.sk-row.changed { background: var(--primary-container); }
+.sk-name { display: flex; flex-direction: column; font-weight: 600; }
+.sk-name small { color: var(--muted); font-size: 12px; font-weight: 500; }
+.sk-row input { width: 90px; text-align: right; }
+@media (max-width: 700px) {
+  .prep-head:has(.prep-btns) { flex-wrap: wrap; }
+  .prep-head:has(.prep-btns) h3 { flex: 1 1 100%; }
+  .prep-btns { justify-content: flex-start; }
+}
+
 /* 대체 재료: 원산지 표시 변경 안내 · 다른 후보 */
 .swap-origin, .swap-others { flex-basis: 100%; margin: 8px 0 0; font-size: 13.5px; }
 .swap-origin { color: #8A4B00; font-weight: 700; }

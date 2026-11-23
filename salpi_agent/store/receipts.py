@@ -17,7 +17,8 @@ from google import genai
 from google.genai import errors, types
 
 from sources import supabase_db as db
-from sources.data_sources import ApiKeyMissing
+from store import inventory
+from sources.data_sources import ApiError, ApiKeyMissing
 
 KST = timezone(timedelta(hours=9))
 MODELS = [os.getenv("GEMINI_MODEL", "gemini-3.5-flash")] + [
@@ -156,6 +157,14 @@ def _with_change(store_id, before):
     return after
 
 
+def _restock(store_id, delta):
+    """영수증으로 재고 늘리고 줄이기. 재고 저장이 실패해도 영수증 저장은 그대로 (재고는 화면에서 고칠 수 있음)."""
+    try:
+        inventory.adjust(store_id, delta)
+    except (ApiError, ApiKeyMissing) as e:
+        print(f"재고 반영 실패: {e}")
+
+
 def save(store_id, data, image=None, mime=None):
     rows = _checked_rows(data)
     day = data.get("date") or str(datetime.now(KST).date())
@@ -167,7 +176,9 @@ def save(store_id, data, image=None, mime=None):
         path = db.upload("receipts", f"{store_id}/{day}_{uuid.uuid4().hex[:8]}.{ext}", image, mime or "image/jpeg")
     p = db.insert("purchases", [{"store_id": store_id, "purchased_on": day, "supplier": data.get("supplier"),
                                  "total_amount": int(sum(float(r["amount"]) for r in rows)), "source": "ocr", "image_path": path}])[0]
-    db.insert("purchase_items", _item_rows(p["id"], rows))
+    lines = _item_rows(p["id"], rows)
+    db.insert("purchase_items", lines)
+    _restock(store_id, inventory.qty_by_item(lines))   # 산 만큼 재고 늘리기
     # 다음부터 같은 이름은 바로 맞추도록 짝 저장 (이미 있으면 사장님이 고친 값으로 바꿈)
     pairs = {}
     for r in rows:
@@ -190,10 +201,17 @@ def edit(store_id, purchase_id, data):
     if not db.update("purchases", fields, id=f"eq.{purchase_id}", store_id=f"eq.{store_id}"):
         raise ValueError("영수증을 찾지 못했어요")
     # 줄은 통째로 바꿈 (빠진 줄 · 더한 줄 모두 반영). 새 줄을 먼저 넣고 예전 줄을 지워서, 중간에 실패해도 줄이 사라지지 않게
-    old = [r["id"] for r in db.select("purchase_items", purchase_id=f"eq.{purchase_id}", select="id")]
-    db.insert("purchase_items", _item_rows(purchase_id, rows))
+    old_rows = db.select("purchase_items", purchase_id=f"eq.{purchase_id}", select="id,item_id,qty_base")
+    old = [r["id"] for r in old_rows]
+    lines = _item_rows(purchase_id, rows)
+    db.insert("purchase_items", lines)
     if old:
         db.delete("purchase_items", id=f"in.({','.join(map(str, old))})")
+    # 재고는 바뀐 만큼만 (새 양 − 예전 양)
+    delta = inventory.qty_by_item(lines)
+    for i, q in inventory.qty_by_item(old_rows).items():
+        delta[i] = delta.get(i, 0) - q
+    _restock(store_id, delta)
     # 이름 → 재료 짝도 고친 값으로 (원래 수량을 모르면 1개 기준으로 보지 않고 건너뜀)
     db.upsert("item_aliases", [{"alias": r["raw_name"], "item_id": r["item_id"],
                                 "base_qty_per_unit": round(float(r["qty_base"]) / float(r["qty"]), 3)}
@@ -434,9 +452,11 @@ def detail(store_id, purchase_id):
 
 
 def remove(store_id, purchase_id):
+    lines = db.select("purchase_items", purchase_id=f"eq.{purchase_id}", select="item_id,qty_base")
     gone = db.delete("purchases", id=f"eq.{purchase_id}", store_id=f"eq.{store_id}")   # 기본(시연) 영수증도 지울 수 있음
     if not gone:
         raise ValueError("영수증을 찾지 못했어요")
+    _restock(store_id, {i: -q for i, q in inventory.qty_by_item(lines).items()})   # 지운 영수증만큼 재고 줄이기
     for g in gone:
         if g.get("image_path"):
             db.remove_file(g["image_path"])

@@ -1253,7 +1253,8 @@ async function loadDemand() {
   $("#orderCard").innerHTML = `
     <div class="prep-head">
       <h3>재고 관리 <span>주문할 재료 <b>${d.items.filter((i) => i.order_qty > 0).length}개</b></span></h3>
-      <button class="order-all stock-all" type="button">근거 모두 보기</button>
+      <span class="prep-btns"><button class="order-all stock-edit" type="button">재고 입력</button>
+        <button class="order-all stock-all" type="button">근거 모두 보기</button></span>
     </div>
     <div class="stock-cols">${orderGroups(d.items).map((g) => `<section class="stock-col ${g.key}">
       <h4>${g.title}${g.note ? `<small>${g.note}</small>` : ""}</h4>
@@ -1322,6 +1323,7 @@ $("#menuForecast").onclick = (e) => {
 
 // 재료를 누르면 계산 근거를 펼침 · 맨 위 버튼은 전체를 펴고 접음
 $("#orderCard").onclick = (e) => {
+  if (e.target.closest(".stock-edit")) { openStock(); return; }
   const rows = [...$("#orderCard").querySelectorAll(".order-row")];
   const row = e.target.closest(".order-row");
   if (row) setOpen(row, row.getAttribute("aria-expanded") !== "true");
@@ -1331,6 +1333,52 @@ $("#orderCard").onclick = (e) => {
   } else return;
   $(".stock-all").textContent = rows.every((b) => b.getAttribute("aria-expanded") === "true") ? "모두 접기" : "근거 모두 보기";
 };
+
+// 재고 입력 (/api/inventory): 재료마다 남은 양을 고쳐 저장 → 주문량 다시 계산
+// kg · L · 모는 소수 한 자리 · 개는 정수. 영수증을 저장하면 산 만큼 자동으로 늘어남
+const stockStep = (u) => (u === "개" ? "1" : "0.1");
+async function openStock() {
+  const modal = $("#stockModal"), box = $("#stockModalBody");
+  box.innerHTML = `<div class="reading"><div class="spinner"></div><b>재고를 불러오는 중이에요</b></div>`;
+  modal.hidden = false;
+  let d;
+  try { d = await getJSON("/api/inventory"); }
+  catch (e) { box.innerHTML = `<p class="rc-warn">${esc(e.message)}</p>`; return; }
+  const when = (s) => (s ? `${mmdd(s.slice(0, 10))} 고침` : "입력 전");
+  box.innerHTML = `<h3>재고 입력</h3>
+    <p class="muted small">지금 가게에 남은 양을 적어 주세요. 영수증을 저장하면 산 만큼 자동으로 늘어나요.</p>
+    <form id="stockForm" novalidate>
+      <ul class="sk-rows">${d.items.map((i) => `<li class="sk-row${i.in_menu ? "" : " off"}">
+        <span class="sk-name">${esc(i.item)}<small>${when(i.updated_at)}${i.in_menu ? "" : " · 메뉴에 안 씀"}</small></span>
+        <span class="mf-amount"><input type="number" inputmode="decimal" min="0" step="${stockStep(i.unit)}" data-id="${i.item_id}"
+          data-was="${i.on_hand}" value="${+(+i.on_hand).toFixed(i.unit === "개" ? 0 : 1)}" aria-label="${esc(i.item)} 남은 양"><span class="mf-unit">${esc(i.unit)}</span></span>
+      </li>`).join("")}</ul>
+      <p class="rc-warn" id="skMsg" hidden></p>
+      <div class="mf-actions"><button type="button" class="btn" id="skCancel">취소</button>
+        <button type="submit" class="btn primary" id="skSave">저장</button></div>
+    </form>`;
+  $("#skCancel").onclick = closeStock;
+  $("#stockForm").oninput = (e) => e.target.closest(".sk-row")?.classList.toggle("changed", +e.target.value !== +(+e.target.dataset.was).toFixed(3));
+  $("#stockForm").onsubmit = async (e) => {
+    e.preventDefault();
+    const inputs = [...box.querySelectorAll("input[data-id]")];
+    const bad = inputs.find((x) => x.value === "" || !(+x.value >= 0));
+    const msg = $("#skMsg"), btn = $("#skSave");
+    if (bad) { msg.textContent = "남은 양은 0 이상 숫자로 넣어 주세요"; msg.hidden = false; bad.focus(); return; }
+    const items = inputs.filter((x) => x.closest(".sk-row").classList.contains("changed"))
+      .map((x) => ({ item_id: +x.dataset.id, on_hand: +x.value }));
+    if (!items.length) { closeStock(); return; }
+    btn.disabled = true; btn.textContent = "저장하는 중"; msg.hidden = true;
+    try {
+      await sendJSON("/api/inventory", "PUT", { items });
+      closeStock();
+      loadDemand();   // 주문량 다시 계산
+    } catch (err) { msg.textContent = err.message; msg.hidden = false; btn.disabled = false; btn.textContent = "저장"; }
+  };
+}
+const closeStock = () => { $("#stockModal").hidden = true; };
+$("#stockModalClose").onclick = closeStock;
+$("#stockModal").onclick = (e) => { if (e.target.id === "stockModal") closeStock(); };
 
 // ---------------------------------------------------------------
 // 영수증으로 원가율 (사진 → 읽기 → 확인 · 수정 → 저장 → 원가율)
@@ -3233,7 +3281,7 @@ $("#mypageBody").onchange = (e) => {
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
   if (!$("#leaveModal").hidden) return closeLeave();   // 탈퇴 팝업만 닫고 마이페이지는 그대로
-  closeReceipt(); closeMypage(); closeEvent(); closeCamera();
+  closeReceipt(); closeMypage(); closeEvent(); closeCamera(); closeStock();
 });
 
 // 회원탈퇴: 한 번 더 묻는 팝업 → '안내를 확인했어요'에 체크해야 [탈퇴하기]가 눌림

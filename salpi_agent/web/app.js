@@ -6,24 +6,29 @@ const cls = (v, band = 0) => (v == null ? "" : v > band ? "up" : v < -band ? "do
 const mmdd = (d) => `${d.slice(5, 7)}.${d.slice(8, 10)}`;
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
-// 사러 가기: 판매처 고르기 창. 살피는 팔지 않고 연결만 함 (재료가 있으면 그 재료 검색 결과로, 없으면 판매처 첫 화면으로)
+// 사러 가기: 판매처 고르기 창. 살피는 팔지 않고 연결만 함 (재료 검색 없이 항상 각 사이트 첫 화면으로)
 // 나중에 쿠팡 파트너스를 가입하면 아래 coupang 주소만 제휴 주소로 바꾸면 됨
+// 로고는 각 사이트가 공개한 사이트 아이콘(img/shops/)을 그대로 씀 (모양 · 색 바꾸지 않음)
 const BUY_SHOPS = [
-  { name: "식봄",     home: "https://www.foodspring.co.kr", search: null },   // 식봄은 서버가 준 주소(foodspring_url)를 씀
-  { name: "쿠팡",     home: "https://www.coupang.com",     search: (q) => `https://www.coupang.com/np/search?q=${q}` },
-  { name: "마켓컬리", home: "https://www.kurly.com",       search: (q) => `https://www.kurly.com/search?sword=${q}` },
-  { name: "이마트몰", home: "https://emart.ssg.com",       search: (q) => `https://emart.ssg.com/search.ssg?query=${q}` },
+  { name: "식봄",          logo: "foodspring", home: "https://www.foodspring.co.kr" },
+  { name: "쿠팡",          logo: "coupang",    home: "https://www.coupang.com" },
+  { name: "농협몰",        logo: "nonghyup",   home: "https://www.nonghyupmall.com" },
+  { name: "이마트몰",      logo: "emart",      home: "https://emart.ssg.com" },
+  { name: "롯데마트 제타", logo: "zetta",      home: "https://lottemartzetta.com" },
+  { name: "배민상회",      logo: "baemin",     home: "https://mart.baemin.com" },
 ];
-function openBuyPicker(item, foodspringUrl) {
-  const q = item ? encodeURIComponent(item) : "";
-  const links = BUY_SHOPS.map((s) => ({ name: s.name, url: item ? (s.search ? s.search(q) : foodspringUrl || s.home) : s.home }));
+function openBuyPicker(item) {
   document.querySelector(".buy-pick")?.remove();
   const box = document.createElement("div");
   box.className = "buy-pick";
   box.innerHTML = `<div class="buy-pick-card" role="dialog" aria-modal="true" aria-label="구매할 곳 고르기">
-    <h3>${item ? `${esc(item)} 사러 가기` : "식자재 사러 가기"}</h3>
-    <p class="muted">${item ? "고른 곳의 검색 결과로 이동해요" : "고른 곳으로 이동해요"}</p>
-    <div class="buy-pick-list">${links.map((l) => `<a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.name)}<i aria-hidden="true">↗</i></a>`).join("")}</div>
+    <p class="buy-pick-eyebrow">사러 가기</p>
+    <h3>${item ? `${esc(item)}, 어디서 살까요?` : "어디서 살까요?"}</h3>
+    <p class="buy-pick-sub">누르면 그 사이트가 새 창으로 열려요</p>
+    <div class="buy-pick-list">${BUY_SHOPS.map((s) => `<a href="${esc(s.home)}" target="_blank" rel="noopener noreferrer">
+      <span class="buy-pick-logo"><img src="/static/img/shops/${s.logo}.png" alt="" width="44" height="44" loading="lazy"></span>
+      <b>${esc(s.name)}</b></a>`).join("")}</div>
+    <p class="buy-pick-note">살피는 판매하지 않고 연결만 해요 · 가격은 사이트마다 달라요</p>
     <button type="button" class="buy-pick-close">닫기</button></div>`;
   const close = () => { box.remove(); document.removeEventListener("keydown", onKey); };
   const onKey = (e) => { if (e.key === "Escape") close(); };
@@ -34,7 +39,7 @@ function openBuyPicker(item, foodspringUrl) {
 }
 document.addEventListener("click", (e) => {
   const b = e.target.closest("[data-buy]");
-  if (b) openBuyPicker(b.dataset.buy, b.dataset.fs);
+  if (b) openBuyPicker(b.dataset.buy);
 });
 
 let overview = [];          // 재료별 시세 · 날짜별 기록 · 예측 (/api/overview 한 번으로 받음)

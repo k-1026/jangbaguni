@@ -155,12 +155,27 @@ img { display: block; }
 button.m-buy, button.m-shortcut { width: 100%; border: 0; font: inherit; text-align: left; cursor: pointer; }
 button.m-buy { margin-top: 12px; }
 /* 사러 가기: 판매처 고르기 시트 */
-.m-pick { position: fixed; inset: 0; z-index: 60; display: flex; align-items: flex-end; background: rgba(0,0,0,.4); }
-.m-pick-sheet { width: 100%; display: grid; gap: 8px; padding: 20px 16px calc(16px + var(--safe-b, 0px)); border-radius: 18px 18px 0 0; background: var(--surface, #fff); }
-.m-pick-sheet h3 { margin: 0; font-size: 18px; } .m-pick-sheet .m-note { margin: 0 0 4px; }
-.m-pick-sheet a { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-radius: 12px; background: var(--primary-weak);
-  color: var(--ink); font-weight: 700; text-decoration: none; }
-.m-pick-close { border: 0; background: none; padding: 12px; font: inherit; color: var(--muted); cursor: pointer; }
+.m-pick { position: fixed; inset: 0; z-index: 60; display: flex; align-items: flex-end; background: rgba(16, 22, 18, .48);
+  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); animation: m-pick-fade .18s ease-out; }
+.m-pick-sheet { width: 100%; display: grid; padding: 10px 16px calc(12px + var(--safe-b, 0px)); border-radius: 26px 26px 0 0; background: var(--surface, #fff);
+  box-shadow: 0 -12px 40px rgba(16, 22, 18, .18); animation: m-pick-up .26s cubic-bezier(.2, .8, .2, 1); }
+.m-pick-grip { justify-self: center; width: 40px; height: 4px; margin-bottom: 14px; border-radius: 4px; background: var(--outline); }
+.m-pick-eyebrow { margin: 0 4px 4px; font-size: 12px; font-weight: 700; letter-spacing: .08em; color: var(--primary); }
+.m-pick-sheet h3 { margin: 0 4px; font-size: 21px; font-weight: 800; letter-spacing: -.02em; }
+.m-pick-sub { margin: 6px 4px 18px; font-size: 14px; color: var(--muted); }
+.m-pick-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.m-pick-grid a { display: flex; flex-direction: column; align-items: center; gap: 10px; min-height: 112px; padding: 16px 4px 12px; border-radius: 18px;
+  border: 1px solid rgba(20, 30, 22, .08); background: var(--surface); color: var(--ink); text-decoration: none; transition: transform .12s ease, background .12s ease; }
+.m-pick-grid a:active { transform: scale(.96); background: var(--surface-2); }
+.m-pick-logo { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 15px; overflow: hidden; background: #fff;
+  box-shadow: 0 0 0 1px rgba(20, 30, 22, .08), 0 3px 8px rgba(20, 30, 22, .08); }
+.m-pick-logo img { width: 100%; height: 100%; object-fit: contain; }
+.m-pick-grid b { font-size: 14px; font-weight: 700; letter-spacing: -.01em; text-align: center; word-break: keep-all; line-height: 1.3; }
+.m-pick-note { margin: 16px 0 0; font-size: 12px; text-align: center; color: var(--muted); }
+.m-pick-close { border: 0; background: none; padding: 12px; margin-top: 2px; font: inherit; font-weight: 600; color: var(--muted); cursor: pointer; }
+@keyframes m-pick-fade { from { opacity: 0; } }
+@keyframes m-pick-up { from { transform: translateY(100%); } }
+@media (prefers-reduced-motion: reduce) { .m-pick, .m-pick-sheet { animation: none; } }
 .m-shortcut.buy { background: var(--primary-weak); } .m-shortcut.buy i { color: var(--primary); }
 .m-sum-btn { border: 0; background: none; padding: 6px 0; border-radius: 12px; cursor: pointer; }
 .m-sum-btn.on { background: var(--primary-weak); outline: 2px solid var(--primary); }

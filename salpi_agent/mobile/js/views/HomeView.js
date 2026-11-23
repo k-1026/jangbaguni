@@ -20,7 +20,7 @@ export function mount(outlet) {
       <img src="/static/img/receipt_scan.png" alt="" width="44" height="44" loading="lazy">
       <span><b>영수증 분석</b><small>사진 한 장이면 메뉴별 원가율을 계산해요</small></span><i aria-hidden="true">›</i>
     </a>
-    ${buyButton("", "", `<span><b>식자재 바로가기</b><small>식봄 · 쿠팡 · 마켓컬리 · 이마트몰 중에 골라요</small></span><i aria-hidden="true">›</i>`, "m-shortcut buy")}
+    ${buyButton("", "", `<span><b>식자재 바로가기</b><small>식봄 · 쿠팡 · 농협몰 등 6곳 중에 골라요</small></span><i aria-hidden="true">›</i>`, "m-shortcut buy")}
     <div id="summary"></div>
   </div>`;
   const dash = outlet.querySelector("#dash"), tabs = outlet.querySelector("#kindTabs"), sum = outlet.querySelector("#summary");

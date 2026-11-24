@@ -2814,7 +2814,7 @@ async function renderMypage(view) {
   const cached = cachedProfile();
   costEdit = false; costAdding = false; addSec = "fixed"; storeDraft = null; storeErr = ""; costFold = new Set(["fixed", "sale", "delivery"]);   // 처음 들어오면 비용 칸은 모두 접힌 채로
   draw(cached);
-  freshProfile().then((me) => { if (JSON.stringify(me) !== JSON.stringify(cached)) draw(me); }).catch(() => draw(cached, true));
+  freshProfile().then((me) => { if (JSON.stringify(me) !== JSON.stringify(cached)) draw(me); syncCosts(me); }).catch(() => draw(cached, true));
   loadReceiptMaterial();
 }
 
@@ -2841,7 +2841,7 @@ function myHome(me, offline) {
 
 // ---------------------------------------------------------------
 // 내 정보 · 가게 비용: 고정 비용 · 판매 비용 · 배달 비용을 넣으면 "하루 얼마 팔아야 본전인지" 알려 줌
-// 금액은 모두 '만 원' 단위로, 이 브라우저에 사장님별로 기억 (서버 저장은 나중에)
+// 금액은 모두 '만 원' 단위로, 이 브라우저에 사장님별로 기억 + 계정에도 저장 (/api/store/costs)
 // ---------------------------------------------------------------
 const COST_KEY = () => { const u = readLogin(); return `salpi_costs_${u?.profile?.id || u?.id || "me"}`; };
 const WEEK = ["월", "화", "수", "목", "금", "토", "일"];
@@ -2891,7 +2891,29 @@ function costs() {
   const c = { ...COST_DEFAULT, ...load(COST_KEY(), {}) };
   return { ...c, fixed: { ...c.fixed }, deliv: { ...c.deliv }, extra: [...c.extra], closed: [...c.closed] };
 }
-const saveCosts = (c) => store(COST_KEY(), c);
+// 이 브라우저에 바로 기억하고 → 0.8초 동안 더 안 바뀌면 서버(계정)에도 저장 (다른 기기 · 앱에서도 같은 값)
+let costPush = null;
+function saveCosts(c) {
+  store(COST_KEY(), c);
+  clearTimeout(costPush);
+  costPush = setTimeout(() => pushCosts(c), 800);
+}
+async function pushCosts(c) {
+  const u = readLogin();
+  if (!u?.access_token) return;
+  try { await authCall("/api/store/costs", { method: "PUT", token: u.access_token, body: { costs: c } }); }
+  catch (e) { /* 저장 실패해도 이 브라우저에는 남아 있음 → 다음에 바꿀 때 다시 보냄 */ }
+}
+// 서버(계정)에 저장된 비용 → 이 브라우저 기억을 바꿈. 서버에 아직 없으면(예전 사장님) 이 브라우저 값을 올려 둠
+function syncCosts(me) {
+  if (!me) return;
+  if (me.costs) {
+    if (costEdit) return;   // 고치는 중이면 덮어쓰지 않음
+    // 서버는 칸 순서를 바꿔 돌려줌 → 순서를 맞춰 비교 (같으면 다시 그리지 않음)
+    const canon = (v) => JSON.stringify(v, (k, x) => (x && typeof x === "object" && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).sort()) : x));
+    if (canon({ ...COST_DEFAULT, ...load(COST_KEY(), {}) }) !== canon({ ...COST_DEFAULT, ...me.costs })) { store(COST_KEY(), me.costs); drawCost(); }
+  } else if (load(COST_KEY(), null)) pushCosts(costs());
+}
 function setCost(path, raw) {
   const c = costs(), p = path.split(".");
   let o = c;

@@ -28,11 +28,11 @@ from price import forecast_model
 from sources import foodspring
 from account import app_push
 from account import trial
-from account import subscription
 from account import kakao_alert
 from sources import mart_price
 from store import menus
 from price import price_judge
+from account import subscription
 from store import inventory
 from store import receipts
 from sources import supabase_db
@@ -457,6 +457,43 @@ def receipt_trial_found(body: FoundIn, authorization: str | None = Header(None))
     return _auth(lambda: trial.add_found(_bearer(authorization), body.purchase_id, extra))
 
 
+# ---------------------------------------------------------------
+# 살피 플러스 구독 · 모의 결제 (account/subscription.py, 토스페이먼츠 테스트 결제 · 키 없으면 모의 승인)
+# ---------------------------------------------------------------
+class ConfirmIn(BaseModel):
+    payment_key: str = ""
+    order_id: str = ""
+    amount: int | None = None
+
+
+class CancelIn(BaseModel):
+    undo: bool = False
+
+
+@app.get("/api/subscribe")
+def subscribe_status(authorization: str | None = Header(None)):
+    """구독 상태: plan(free · plus) · 끝나는 날 · 해지 예약 · 최근 결제 · 결제 방식(toss 테스트 · mock)."""
+    return _auth(lambda: subscription.status(_bearer(authorization)))
+
+
+@app.post("/api/subscribe/checkout")
+def subscribe_checkout(authorization: str | None = Header(None)):
+    """결제창 열기 전: 주문 번호 · 금액(19,900원) · 결제창 열쇠(client key, 없으면 null = 모의 결제)."""
+    return _auth(lambda: subscription.checkout(_bearer(authorization)))
+
+
+@app.post("/api/subscribe/confirm")
+def subscribe_confirm(body: ConfirmIn, authorization: str | None = Header(None)):
+    """결제창에서 돌아온 paymentKey · orderId · amount 로 승인 → 30일 플러스. 모의 결제면 payment_key 없이 order_id · amount 만."""
+    return _auth(lambda: subscription.confirm(_bearer(authorization), body.payment_key, body.order_id, body.amount))
+
+
+@app.post("/api/subscribe/cancel")
+def subscribe_cancel(body: CancelIn, authorization: str | None = Header(None)):
+    """해지 예약 (지금 기간 끝까지는 플러스). undo=true 면 해지 취소."""
+    return _auth(lambda: subscription.cancel(_bearer(authorization), body.undo))
+
+
 @app.post("/api/receipt/save")
 def receipt_save(body: ReceiptSave):
     data, mime = _image(body.image, body.mime)
@@ -779,43 +816,6 @@ class StoreEditIn(BaseModel):
 def auth_store_edit(body: StoreEditIn, authorization: str | None = Header(None)):
     """마이페이지에서 가게 이름 · 구 바꾸기."""
     return _auth(lambda: auth.update_store(_bearer(authorization), body.model_dump()))
-
-
-# ---------------------------------------------------------------
-# 살피 플러스 구독 · 모의 결제 (account/subscription.py, 토스페이먼츠 테스트 결제 · 키 없으면 모의 승인)
-# ---------------------------------------------------------------
-class ConfirmIn(BaseModel):
-    payment_key: str = ""
-    order_id: str = ""
-    amount: int | None = None
-
-
-class CancelIn(BaseModel):
-    undo: bool = False
-
-
-@app.get("/api/subscribe")
-def subscribe_status(authorization: str | None = Header(None)):
-    """구독 상태: plan(free · plus) · 끝나는 날 · 해지 예약 · 최근 결제 · 결제 방식(toss 테스트 · mock)."""
-    return _auth(lambda: subscription.status(_bearer(authorization)))
-
-
-@app.post("/api/subscribe/checkout")
-def subscribe_checkout(authorization: str | None = Header(None)):
-    """결제창 열기 전: 주문 번호 · 금액(19,900원) · 결제창 열쇠(client key, 없으면 null = 모의 결제)."""
-    return _auth(lambda: subscription.checkout(_bearer(authorization)))
-
-
-@app.post("/api/subscribe/confirm")
-def subscribe_confirm(body: ConfirmIn, authorization: str | None = Header(None)):
-    """결제창에서 돌아온 paymentKey · orderId · amount 로 승인 → 30일 플러스. 모의 결제면 payment_key 없이 order_id · amount 만."""
-    return _auth(lambda: subscription.confirm(_bearer(authorization), body.payment_key, body.order_id, body.amount))
-
-
-@app.post("/api/subscribe/cancel")
-def subscribe_cancel(body: CancelIn, authorization: str | None = Header(None)):
-    """해지 예약 (지금 기간 끝까지는 플러스). undo=true 면 해지 취소."""
-    return _auth(lambda: subscription.cancel(_bearer(authorization), body.undo))
 
 
 @app.post("/api/auth/logout")

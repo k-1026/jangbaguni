@@ -2,12 +2,12 @@
  "summary": {
   "n": 30,
   "count": {
-   "맞음": 25,
-   "틀림": 5
+   "맞음": 30
   },
   "fresh_n": 26,
-  "fresh_ok": 24,
-  "excluded_shown": 4
+  "fresh_ok": 26,
+  "excluded_shown": 0,
+  "fresh_dropped": 0
  },
  "rows": [
   {
@@ -34,11 +34,11 @@
    "answer_per_kg": 2000,
    "answer_how": "정확",
    "exclude": "가공(슬라이스)",
-   "auto_per_kg": 20000,
-   "auto_read_as": "1kg",
+   "auto_per_kg": 2000,
+   "auto_read_as": "10kg",
    "auto_how": "정확",
-   "verdict": "틀림",
-   "gap_pct": 900.0
+   "verdict": "맞음",
+   "gap_pct": 0.0
   },
   {
    "no": 3,
@@ -79,11 +79,11 @@
    "answer_per_kg": 2538,
    "answer_how": "약",
    "exclude": "",
-   "auto_per_kg": 2062,
-   "auto_read_as": "8kg",
+   "auto_per_kg": 2538,
+   "auto_read_as": "6.5kg",
    "auto_how": "정확",
-   "verdict": "틀림",
-   "gap_pct": -18.8
+   "verdict": "맞음",
+   "gap_pct": 0.0
   },
   {
    "no": 6,
@@ -125,7 +125,7 @@
    "answer_how": "정확",
    "exclude": "",
    "auto_per_kg": 9889,
-   "auto_read_as": "900g",
+   "auto_read_as": "0.9kg",
    "auto_how": "정확",
    "verdict": "맞음",
    "gap_pct": 0.0
@@ -184,11 +184,11 @@
    "answer_per_kg": 3273,
    "answer_how": "약",
    "exclude": "",
-   "auto_per_kg": 2160,
+   "auto_per_kg": 3273,
    "auto_read_as": "10개",
    "auto_how": "약",
-   "verdict": "틀림",
-   "gap_pct": -34.0
+   "verdict": "맞음",
+   "gap_pct": 0.0
   },
   {
    "no": 13,
@@ -199,11 +199,11 @@
    "answer_per_kg": 2850,
    "answer_how": "정확",
    "exclude": "가공(당근채)",
-   "auto_per_kg": 11400,
-   "auto_read_as": "4kg",
+   "auto_per_kg": 2850,
+   "auto_read_as": "16kg",
    "auto_how": "정확",
-   "verdict": "틀림",
-   "gap_pct": 300.0
+   "verdict": "맞음",
+   "gap_pct": 0.0
   },
   {
    "no": 14,
@@ -395,7 +395,7 @@
    "answer_how": "약",
    "exclude": "",
    "auto_per_kg": 11600,
-   "auto_read_as": "250g",
+   "auto_read_as": "0.25kg",
    "auto_how": "정확",
    "verdict": "맞음",
    "gap_pct": 0.0
@@ -410,7 +410,7 @@
    "answer_how": "정확",
    "exclude": "",
    "auto_per_kg": 10000,
-   "auto_read_as": "100g",
+   "auto_read_as": "0.1kg",
    "auto_how": "정확",
    "verdict": "맞음",
    "gap_pct": 0.0
@@ -424,11 +424,11 @@
    "answer_per_kg": 2180,
    "answer_how": "정확",
    "exclude": "냉동",
-   "auto_per_kg": 21800,
-   "auto_read_as": "1kg",
+   "auto_per_kg": 2180,
+   "auto_read_as": "10kg",
    "auto_how": "정확",
-   "verdict": "틀림",
-   "gap_pct": 900.0
+   "verdict": "맞음",
+   "gap_pct": 0.0
   },
   {
    "no": 29,

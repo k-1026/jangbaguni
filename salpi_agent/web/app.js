@@ -1267,7 +1267,7 @@ function renderSales() {
       <div class="sales-fold-row">
         <div class="sf-day">
           <span class="sf-dot${d.entered ? "" : " empty"}" aria-hidden="true"></span>
-          <div><b>${dayName}</b><small>${d.entered ? `저장됨${sales.savedAt ? ` ${SEP} ${sales.savedAt}` : ""} ${SEP} 내일 준비, 원가율 반영` : "아직 안 넣었어요"}</small></div>
+          <div><b>${dayName}</b><small>${d.entered ? `저장됨${sales.savedAt ? ` ${SEP} ${sales.savedAt}` : ""} ${SEP} 내일 준비 반영` : "아직 안 넣었어요"}</small></div>
         </div>
         ${d.entered ? `${stat("총 판매량", `${num(d.total)}그릇`)}${stat(isToday ? "오늘 매출" : "매출", won(d.sales_won), "money")}
           ${showDeliv() || deliv ? stat("판매 방식", `홀 ${num(hall)} ${SEP} 배달 ${num(deliv)}`) : ""}` : ""}

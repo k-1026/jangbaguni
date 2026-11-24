@@ -11,6 +11,7 @@ import time
 
 import requests
 
+from price.units import _WEIGHT, _norm_unit, parse_pack
 from sources.data_sources import CACHE_DIR, FOODSPRING_SEARCH, ITEMS
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -24,8 +25,10 @@ NAME_MUST = {"무": re.compile(r"(^|[\s(★】\]])(세척)?무([\s(]|$)"), "오�
 
 
 def _kg(standard, name):
-    m = re.search(r"([\d.]+)\s*kg", f"{standard or ''} {name}", re.I)
-    return float(m.group(1)) if m else None
+    """규격 + 이름의 전체 무게(kg), 없으면 None. '1kg x 10' 같은 묶음은 곱하고 범위는 가운데 (units.parse_pack)"""
+    pack = parse_pack(f"{standard or ''} {name}")
+    w = pack and _WEIGHT.get(_norm_unit(pack[1]))
+    return round(pack[0] * w, 3) if w else None
 
 
 def _fetch(item):

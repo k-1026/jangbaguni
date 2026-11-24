@@ -6,6 +6,8 @@
 4) 산 값보다 싼 것만, 싼 순서. 환산("약")이 들어간 비교는 10% 넘게 싸야 넣음 (오차로 억지 판정 안 함)
 """
 
+import re
+
 from sources import foodspring
 from store import receipts
 from sources import supabase_db as db
@@ -15,6 +17,11 @@ from price.units import base_unit, parse_pack, per_base_price
 
 APPROX_BAND_PCT = 10   # 단위 기준: 환산이 들어간 비교는 10% 안쪽이면 "비슷해요"
 MAX_SELLERS = 5
+
+
+def processed(item, name):
+    """냉동 · 손질 상품(냉동 시금치 · 슬라이스 양파 · 당근채 · 애호박 반달) → 생물 시세 · 영수증과 비교하면 안 됨"""
+    return bool(re.search(rf"냉동|슬라이스|다진|반달|깍둑|채썬|{item}채", name))
 
 
 def _paid(item, store_id):
@@ -69,7 +76,9 @@ def cheaper(item, paid=None, store_id=db.DEMO_STORE):
 
     sellers, unknown = [], []
     for name, sale_price, qty, q_unit, url, free in goods:
-        b = per_base_price(item, sale_price, qty, q_unit) if qty else {"price": None, "how": "모름"}
+        if processed(item, name):
+            continue
+        b =per_base_price(item, sale_price, qty, q_unit) if qty else {"price": None, "how": "모름"}
         if b["price"] is None or b["unit"] != unit:
             unknown.append(name)
             continue

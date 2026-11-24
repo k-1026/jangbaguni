@@ -28,6 +28,7 @@ from price import forecast_model
 from sources import foodspring
 from account import app_push
 from account import trial
+from account import store_costs
 from account import kakao_alert
 from sources import mart_price
 from store import menus
@@ -777,6 +778,22 @@ class StoreEditIn(BaseModel):
 def auth_store_edit(body: StoreEditIn, authorization: str | None = Header(None)):
     """마이페이지에서 가게 이름 · 구 바꾸기."""
     return _auth(lambda: auth.update_store(_bearer(authorization), body.model_dump()))
+
+
+class CostsIn(BaseModel):
+    costs: dict = {}
+
+
+@app.get("/api/store/costs")
+def store_costs_get(authorization: str | None = Header(None)):
+    """마이페이지 '내 정보' 가게 비용 (좌석 · 쉬는 요일 · 업종 · 고정 · 판매 · 배달 비용, 만 원 단위). 넣은 적 없으면 costs = null."""
+    return _auth(lambda: store_costs.get(_bearer(authorization)))
+
+
+@app.put("/api/store/costs")
+def store_costs_put(body: CostsIn, authorization: str | None = Header(None)):
+    """가게 비용 저장 (계정 정보에 → 다른 기기에서도 같은 값). 모양이 틀린 칸은 버리고 저장한 값을 돌려줌."""
+    return _auth(lambda: store_costs.save(_bearer(authorization), body.costs))
 
 
 @app.post("/api/auth/logout")

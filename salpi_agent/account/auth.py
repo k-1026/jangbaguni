@@ -101,7 +101,7 @@ def _profile(user, store=False):
             "phone": meta.get("phone"), "alarm": bool(meta.get("alarm")),
             "store_id": store["id"] if store else None, "store_name": store["name"] if store else None,
             "district": store["district"] if store else None, "business_type": store["business_type"] if store else None,
-            "place": meta.get("place"), "avatar": (meta.get("avatar_url") or meta.get("picture") or "").replace("http://", "https://", 1) or None}   # 카카오 사진은 http 로 옴 → https 사이트에서 막히지 않게
+            "place": meta.get("place"), "costs": meta.get("store_costs"), "avatar": (meta.get("avatar_url") or meta.get("picture") or "").replace("http://", "https://", 1) or None}   # 카카오 사진은 http 로 옴 → https 사이트에서 막히지 않게
 
 
 def _session(body):

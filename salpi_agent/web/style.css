@@ -775,6 +775,8 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .sales-err { margin: 12px 20px 0; background: #FFF0EE; color: #A32A1C; border-radius: 8px; padding: 8px 10px; font-size: 14px; font-weight: 700; }
 .sales-in::placeholder { color: var(--muted); opacity: .55; font-weight: 400; }
 
+/* 값 사이 구분: 얇은 세로선 (가운뎃점 대신) */
+.sep { display: inline-block; width: 1px; height: .85em; margin: 0 4px; vertical-align: -0.05em; background: currentColor; opacity: .3; }
 /* 위 줄: 왼쪽 '오늘 + 날짜', 오른쪽 '배달' · '접기' */
 .sales-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; padding: 14px 20px; border-bottom: 1px solid var(--outline-variant); }
 .sales-bar-right { display: flex; align-items: center; gap: 8px; }
@@ -846,7 +848,7 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .sf-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--primary); }
 .sf-dot.empty { background: var(--accent); }
 .sf-stat { flex: 1 1 130px; padding: 0 20px; border-left: 1px solid var(--outline-variant); }
-.sf-stat span { display: block; font-size: 13px; color: var(--muted); }
+.sf-stat > span { display: block; font-size: 13px; color: var(--muted); }
 .sf-stat b { display: block; margin-top: 2px; font-size: 18px; white-space: nowrap; }
 .sf-stat b.money { color: var(--primary); }
 .sales-fold-row .sales-unfold { margin-left: auto; }

@@ -1248,6 +1248,8 @@ async function loadSales(date, open = true) {
   }
 }
 
+// 값 사이 구분: 가운뎃점 대신 얇은 세로선 (style.css .sep)
+const SEP = `<span class="sep" aria-hidden="true"></span>`;
 function renderSales() {
   const d = sales.data, isToday = d.date === sales.today;
   $("#sales h2").textContent = isToday ? "오늘 판매 기록" : `${dayLabel(d.date)} 판매 기록`;
@@ -1265,10 +1267,10 @@ function renderSales() {
       <div class="sales-fold-row">
         <div class="sf-day">
           <span class="sf-dot${d.entered ? "" : " empty"}" aria-hidden="true"></span>
-          <div><b>${dayName}</b><small>${d.entered ? `저장됨${sales.savedAt ? ` · ${sales.savedAt}` : ""} · 내일 준비 · 원가율 반영` : "아직 안 넣었어요"}</small></div>
+          <div><b>${dayName}</b><small>${d.entered ? `저장됨${sales.savedAt ? ` ${SEP} ${sales.savedAt}` : ""} ${SEP} 내일 준비, 원가율 반영` : "아직 안 넣었어요"}</small></div>
         </div>
         ${d.entered ? `${stat("총 판매량", `${num(d.total)}그릇`)}${stat(isToday ? "오늘 매출" : "매출", won(d.sales_won), "money")}
-          ${showDeliv() || deliv ? stat("판매 방식", `홀 ${num(hall)} · 배달 ${num(deliv)}`) : ""}` : ""}
+          ${showDeliv() || deliv ? stat("판매 방식", `홀 ${num(hall)} ${SEP} 배달 ${num(deliv)}`) : ""}` : ""}
         <button class="sales-unfold" type="button" data-sales="unfold" aria-expanded="false" aria-controls="salesCard" aria-label="판매 기록 펼치기" title="펼치기">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
       </div>`;
@@ -1321,9 +1323,9 @@ function salesStatus(kind, time) {
   el.className = `sales-status ${kind}`;
   el.hidden = !kind;
   el.innerHTML = kind === "saving" ? "저장하는 중…"
-    : kind === "saved" ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>${dayLabel(sales.data.date)} 저장됨${time ? ` · ${time}` : ""}`
+    : kind === "saved" ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>${dayLabel(sales.data.date)} 저장됨${time ? ` ${SEP} ${time}` : ""}`
     : kind === "failed" ? `저장 못 했어요 <button type="button" class="sales-retry" data-sales="retry">다시 시도</button>`
-    : kind === "last" ? `아직 안 넣었어요 · 마지막 ${dayLabel(sales.data.last_sales_date)}`
+    : kind === "last" ? `아직 안 넣었어요 ${SEP} 마지막 ${dayLabel(sales.data.last_sales_date)}`
     : "";
 }
 
@@ -1356,7 +1358,7 @@ function salesTotals() {
   const bowls = ch.hall.n + ch.delivery.n, money = ch.hall.won + ch.delivery.won;
   $("#spMoney").textContent = won(money);
   $("#spBowls").innerHTML = `총 <b>${num(bowls)}그릇</b> 판매`;
-  const line = (label, c, cls = "") => `<div><dt>${label}</dt><dd class="${cls}">${num(c.n)}그릇 · ${won(c.won)}</dd></div>`;
+  const line = (label, c, cls = "") => `<div><dt>${label}</dt><dd class="${cls}">${num(c.n)}그릇 ${SEP} ${won(c.won)}</dd></div>`;
   $("#spChannels").innerHTML = showDeliv() || ch.delivery.n
     ? line("홀 판매", ch.hall) + line("배달 판매", ch.delivery, "deliv") : line("판매", ch.hall);
 }

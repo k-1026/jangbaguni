@@ -166,3 +166,18 @@ PUT /api/sales   (Authorization: Bearer <로그인 표> 같이 보내기)
   - 5번째로 올린 날은 그날 끝까지 분석이 보이고, 다음 날부터 `GET /api/demand` 가 402 · `GET /api/costs` 가 `{locked: true, receipts}` (나의 가게 칸 잠금은 이미 화면에 있음)
   - 남은 횟수: `GET /api/receipt/trial?feature=sales` → `{used, left, locked, paid}`
 - 지금은 시연 가게 한 곳 (영수증 · 메뉴와 같음). 가상 판매 기록은 11/17까지 들어 있음
+
+## 11. 원가율 알림 — `GET /api/cost-alerts?days=7` (11/24, "다음 주 오름 → 다른 재료 어때?" 말풍선 화면은 이성이)
+
+매일 아침 새 시세가 나오면(새벽 학습 → `/api/jobs/alerts`) 원가율을 새 시세로 다시 계산해 **어제와 비교해 새로 생긴 일만** 알림으로 만듦 (`store/cost_alert.py`)
+
+```json
+GET /api/cost-alerts
+{"days": 7, "alerts": [
+  {"id": 12, "sent_at": "2026-11-25T06:05:00+00:00", "clicked_at": null,
+   "message": "다음 주 양파가 +8% 오를 것 같아 김치찌개 원가율이 38.2% → 41.0%로 40%를 넘을 것 같아요. 양파 절반을 대파로 바꾸면 1인분 120원 아껴 39.1%예요. 다른 재료 어때요?"}]}
+```
+- 종류 (메뉴마다 하루 최대 1개): **넘음**(지금 40% 이상이 됨) · **넘을 예정**(다음 주 예상이 40% 이상이 됨) · **오름**(다음 주 예상이 어제보다 3%p 넘게 오름) · **내려옴**(40% 아래로 돌아옴)
+- 문장 = 정보 1개 + 행동 1개 (대체 재료 → 판매가 제안 → 영수증 확인 순). 숫자는 `/api/costs` 와 같은 계산
+- 같은 날 다시 돌려도 새 알림 없음. 아침 앱 · 카카오톡 알림에도 오늘 알림 첫 문장이 한 줄 들어감
+- 미리 보기 (저장 안 함): `POST /api/jobs/cost-alerts?preview=1` → `{alerts: [{menu, kind, ratio, next_ratio, swap, next_up, message}]}`

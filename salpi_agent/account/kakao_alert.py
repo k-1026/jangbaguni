@@ -224,9 +224,16 @@ def message(store_id=None, outlook=None):
         lines.append("다음 7일 크게 움직일 재료는 없어요. 평소대로 사면 돼요")
     if store_id:
         try:
-            high = [m for m in receipts.cost_report(store_id)["menus"] if m.get("high")]
-            if high:
-                lines.append("원가율 40% 넘은 메뉴: " + ", ".join(f"{m['menu']} {m['cost_ratio_pct']}%" for m in high[:2]))
+            # 오늘 새로 생긴 원가율 알림(시세가 바뀌어 다시 계산한 결과, store/cost_alert.py)이 있으면 그 문장 하나를,
+            # 없으면 지금 40% 넘은 메뉴 목록
+            from store import cost_alert
+            news = cost_alert.today_messages(store_id)
+            if news:
+                lines.append(news[0])
+            else:
+                high = [m for m in receipts.cost_report(store_id)["menus"] if m.get("high")]
+                if high:
+                    lines.append("원가율 40% 넘은 메뉴: " + ", ".join(f"{m['menu']} {m['cost_ratio_pct']}%" for m in high[:2]))
         except Exception:
             pass
     lines.append(("내 메뉴 재료 · " if mine else "") + "대구 도매 7일 예측 기준")

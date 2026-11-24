@@ -35,6 +35,7 @@ from account import kakao_alert
 from sources import mart_price
 from store import menus
 from store import sales
+from store import cost_alert
 from price import price_judge
 from account import subscription
 from store import inventory
@@ -897,10 +898,39 @@ def push_test(authorization: str | None = Header(None)):
     return _auth(lambda: app_push.test(_bearer(authorization), _price_outlook()))
 
 
+def _run_cost_alerts(save=True):
+    """새 시세 예측으로 원가율 다시 계산 → 어제와 비교해 원가율 알림 (store/cost_alert.py).
+    다시 계산한 원가율은 원가율 보관값에도 넣음 → 화면 숫자와 알림 숫자가 같음."""
+    out = cost_alert.check(supabase_db.DEMO_STORE, _forecasts(), save=save)
+    if save:
+        ts = time.time()
+        _memo["costs_report"] = (ts, out["report"])
+        _save_shared("costs_report", ts, out["report"])
+        for k in [k for k in _memo if k.startswith("cost_alerts:")]:   # 알림 목록 보관값도 새로
+            _memo.pop(k, None)
+    return {k: v for k, v in out.items() if k != "report"}
+
+
+@app.post("/api/jobs/cost-alerts")
+def jobs_cost_alerts(preview: bool = False):
+    """시세가 바뀐 뒤 원가율 다시 계산 → 원가율 알림 만들기 (보통은 /api/jobs/alerts 가 먼저 부름). preview=1 이면 저장하지 않고 보기만."""
+    return _receipt_guard(lambda: _run_cost_alerts(save=not preview))
+
+
+@app.get("/api/cost-alerts")
+def cost_alerts(days: int = 7):
+    """원가율 알림 목록 (새것부터, 최근 days일): [{id, message, sent_at, clicked_at}] — 화면 '다음 주 오름 → 다른 재료 어때?' 말풍선용."""
+    return _receipt_guard(lambda: memo(f"cost_alerts:{days}", lambda: cost_alert.recent(supabase_db.DEMO_STORE, max(1, min(days, 30))), ttl=300))
+
+
 @app.post("/api/jobs/alerts")
 def jobs_alerts():
-    """예약 실행용 (daily-learn.yml, 새벽 학습 뒤): 아침 앱 알림 + 카카오톡 알림. 한 사람에게 하루 한 번."""
+    """예약 실행용 (daily-learn.yml, 새벽 학습 뒤): 원가율 다시 계산 · 원가율 알림 → 아침 앱 알림 + 카카오톡 알림. 한 사람에게 하루 한 번."""
     outlook, out = _price_outlook(), {}
+    try:
+        out["cost_alerts"] = len(_run_cost_alerts()["alerts"])
+    except Exception as e:   # 원가율 알림이 실패해도 시세 알림은 보냄
+        out["cost_alerts_error"] = str(e)[:200]
     for name, fn in (("push", app_push.send_all), ("kakao", kakao_alert.send_all)):
         try:
             out.update(fn(outlook))

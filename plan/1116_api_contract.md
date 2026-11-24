@@ -110,6 +110,22 @@
 {"locked": true, "message": "이 기능은 유료 플랜 사장님만 사용 가능해요", "receipt_free_left": 0, "plan_price": 19900}
 ```
 
+✅ 서버 있음 (11/24, `account/trial.py` · `account/subscription.py`). 모두 `Authorization: Bearer <로그인 표>` 필요
+
+| 주소 | 하는 일 | 답 |
+|---|---|---|
+| `GET /api/receipt/trial` | 영수증 분석 무료 횟수 | `{limit: 5, used, left, paid, plan_until, locked, found}` |
+| `POST /api/receipt/read` | 영수증 읽기 — 5회 다 쓰면 **402** `{"detail": "이 기능은 유료 플랜 사장님만 사용 가능해요"}` | 성공하면 `trial` 이 같이 옴 |
+| `GET /api/subscribe` | 구독 상태 | `{plan: "free"·"plus", paid, until, cancel_at_end, price: 19900, payments[], mode: "toss"·"mock"}` |
+| `POST /api/subscribe/checkout` | 결제창 열기 전 주문 만들기 | `{order_id, amount: 19900, order_name, client_key, customer_key, customer_name, mode}` |
+| `POST /api/subscribe/confirm` | 결제창에서 돌아온 값으로 승인 → 30일 플러스 | body `{payment_key, order_id, amount}` → 구독 상태 + `approved` |
+| `POST /api/subscribe/cancel` | 해지 예약 (기간 끝까지 플러스) · `{"undo": true}` 면 취소 | 구독 상태 |
+
+**모의 결제 화면 흐름**
+- `mode: "toss"` (서버에 토스페이먼츠 **테스트** 키가 있을 때): checkout 답의 `client_key` 로 토스 결제창(`@tosspayments/tosspayments-sdk`)을 열고 `orderId` · `amount` · `orderName` · `customerKey` 를 그대로 넘김 → 성공 주소로 돌아오면 주소의 `paymentKey` · `orderId` · `amount` 를 confirm 으로. 테스트 키라 돈은 나가지 않음
+- `mode: "mock"` (키가 없을 때, 지금 Vercel): 결제창 없이 화면에서 "결제하기(모의)" 를 누르면 confirm 에 `order_id` · `amount` 만 보냄
+- 잘못된 주문 · 금액 · 같은 주문 두 번은 400 `detail` 로 안내 문구가 옴
+
 ## 8. 앞으로 7일 날씨 — `GET /api/context` 의 `weather_forecast` (윤가언)
 
 ```json

@@ -1,0 +1,408 @@
+{
+ "양배추": {
+  "days": 1432,
+  "first": "20210104",
+  "last": "20261106",
+  "approx_units": true,
+  "all": {
+   "n": 1432,
+   "median": 1.57,
+   "p25": 1.34,
+   "p75": 1.83
+  },
+  "last_12m": {
+   "n": 244,
+   "median": 1.54,
+   "p25": 1.38,
+   "p75": 2.04
+  },
+  "november": {
+   "n": 112,
+   "median": 1.6,
+   "p25": 1.35,
+   "p75": 1.86
+  },
+  "bridge": {
+   "n": 13,
+   "median": 1.68
+  },
+  "retail_over_auction_median": 2.64
+ },
+ "당근": {
+  "days": 1432,
+  "first": "20210104",
+  "last": "20261106",
+  "approx_units": false,
+  "all": {
+   "n": 1432,
+   "median": 2.0,
+   "p25": 1.74,
+   "p75": 2.3
+  },
+  "last_12m": {
+   "n": 244,
+   "median": 2.4,
+   "p25": 2.18,
+   "p75": 2.68
+  },
+  "november": {
+   "n": 112,
+   "median": 2.05,
+   "p25": 1.89,
+   "p75": 2.51
+  },
+  "bridge": {
+   "n": 13,
+   "median": 1.09
+  },
+  "retail_over_auction_median": 2.18
+ },
+ "청양고추": {
+  "days": 1432,
+  "first": "20210104",
+  "last": "20261106",
+  "approx_units": false,
+  "all": {
+   "n": 1432,
+   "median": 2.2,
+   "p25": 1.97,
+   "p75": 2.46
+  },
+  "last_12m": {
+   "n": 244,
+   "median": 2.38,
+   "p25": 2.13,
+   "p75": 2.68
+  },
+  "november": {
+   "n": 112,
+   "median": 2.4,
+   "p25": 2.18,
+   "p75": 2.6
+  },
+  "bridge": {
+   "n": 13,
+   "median": 1.27
+  },
+  "retail_over_auction_median": 2.79
+ },
+ "오이": {
+  "days": 1432,
+  "first": "20210104",
+  "last": "20261106",
+  "approx_units": true,
+  "all": {
+   "n": 1432,
+   "median": 1.93,
+   "p25": 1.63,
+   "p75": 2.37
+  },
+  "last_12m": {
+   "n": 244,
+   "median": 1.97,
+   "p25": 1.71,
+   "p75": 2.38
+  },
+  "november": {
+   "n": 112,
+   "median": 2.08,
+   "p25": 1.69,
+   "p75": 2.39
+  },
+  "bridge": {
+   "n": 13,
+   "median": 1.16
+  },
+  "retail_over_auction_median": 2.24
+ },
+ "대파": {
+  "days": 1432,
+  "first": "20210104",
+  "last": "20261106",
+  "approx_units": false,
+  "all": {
+   "n": 1432,
+   "median": 1.04,
+   "p25": 0.92,
+   "p75": 1.2
+  },
+  "last_12m": {
+   "n": 244,
+   "median": 1.05,
+   "p25": 0.95,
+   "p75": 1.14
+  },
+  "november": {
+   "n": 112,
+   "median": 1.17,
+   "p25": 1.09,
+   "p75": 1.36
+  },
+  "bridge": {
+   "n": 13,
+   "median": 3.77
+  },
+  "retail_over_auction_median": 3.92
+ },
+ "상추": {
+  "days": 1432,
+  "first": "20210104",
+  "last": "20261106",
+  "approx_units": false,
+  "all": {
+   "n": 1432,
+   "median": 2.31,
+   "p25": 1.84,
+   "p75": 2.76
+  },
+  "last_12m": {
+   "n": 244,
+   "median": 2.4,
+   "p25": 1.81,
+   "p75": 2.85
+  },
+  "november": {
+   "n": 112,
+   "median": 2.82,
+   "p25": 2.46,
+   "p75": 3.09
+  },
+  "bridge": {
+   "n": 13,
+   "median": 1.38
+  },
+  "retail_over_auction_median": 3.19
+ },
+ "배추": {
+  "days": 1429,
+  "first": "20210104",
+  "last": "20261106",
+  "approx_units": true,
+  "all": {
+   "n": 1429,
+   "median": 1.33,
+   "p25": 1.15,
+   "p75": 1.53
+  },
+  "last_12m": {
+   "n": 244,
+   "median": 1.57,
+   "p25": 1.32,
+   "p75": 1.69
+  },
+  "november": {
+   "n": 109,
+   "median": 1.29,
+   "p25": 1.02,
+   "p75": 1.46
+  },
+  "bridge": {
+   "n": 13,
+   "median": 1.47
+  },
+  "retail_over_auction_median": 1.96
+ },
+ "양파": {
+  "days": 1432,
+  "first": "20210104",
+  "last": "20261106",
+  "approx_units": false,
+  "all": {
+   "n": 1432,
+   "median": 1.82,
+   "p25": 1.63,
+   "p75": 2.23
+  },
+  "last_12m": {
+   "n": 244,
+   "median": 1.91,
+   "p25": 1.69,
+   "p75": 2.46
+  },
+  "november": {
+   "n": 112,
+   "median": 1.7,
+   "p25": 1.47,
+   "p75": 1.87
+  },
+  "bridge": {
+   "n": 13,
+   "median": 1.16
+  },
+  "retail_over_auction_median": 2.11
+ },
+ "깻잎": {
+  "days": 1432,
+  "first": "20210104",
+  "last": "20261106",
+  "approx_units": false,
+  "all": {
+   "n": 1432,
+   "median": 2.24,
+   "p25": 1.88,
+   "p75": 2.64
+  },
+  "last_12m": {
+   "n": 244,
+   "median": 2.82,
+   "p25": 2.26,
+   "p75": 3.48
+  },
+  "november": {
+   "n": 112,
+   "median": 2.61,
+   "p25": 2.15,
+   "p75": 2.93
+  },
+  "bridge": {
+   "n": 13,
+   "median": 1.66
+  },
+  "retail_over_auction_median": 3.72
+ },
+ "감자": {
+  "days": 1432,
+  "first": "20210104",
+  "last": "20261106",
+  "approx_units": false,
+  "all": {
+   "n": 1432,
+   "median": 2.14,
+   "p25": 1.94,
+   "p75": 2.45
+  },
+  "last_12m": {
+   "n": 244,
+   "median": 2.03,
+   "p25": 1.8,
+   "p75": 2.27
+  },
+  "november": {
+   "n": 112,
+   "median": 2.03,
+   "p25": 1.91,
+   "p75": 2.14
+  },
+  "bridge": {
+   "n": 13,
+   "median": 1.3
+  },
+  "retail_over_auction_median": 2.78
+ },
+ "무": {
+  "days": 1428,
+  "first": "20210104",
+  "last": "20261106",
+  "approx_units": true,
+  "all": {
+   "n": 1428,
+   "median": 1.23,
+   "p25": 1.09,
+   "p75": 1.39
+  },
+  "last_12m": {
+   "n": 244,
+   "median": 1.35,
+   "p25": 1.19,
+   "p75": 1.48
+  },
+  "november": {
+   "n": 112,
+   "median": 1.29,
+   "p25": 1.17,
+   "p75": 1.4
+  },
+  "bridge": {
+   "n": 13,
+   "median": 1.49
+  },
+  "retail_over_auction_median": 1.83
+ },
+ "시금치": {
+  "days": 1432,
+  "first": "20210104",
+  "last": "20261106",
+  "approx_units": false,
+  "all": {
+   "n": 1432,
+   "median": 2.61,
+   "p25": 2.05,
+   "p75": 3.15
+  },
+  "last_12m": {
+   "n": 244,
+   "median": 2.76,
+   "p25": 2.31,
+   "p75": 3.59
+  },
+  "november": {
+   "n": 112,
+   "median": 3.38,
+   "p25": 2.75,
+   "p75": 4.11
+  },
+  "bridge": {
+   "n": 13,
+   "median": 1.09
+  },
+  "retail_over_auction_median": 2.84
+ },
+ "토마토": {
+  "days": 1432,
+  "first": "20210104",
+  "last": "20261106",
+  "approx_units": false,
+  "all": {
+   "n": 1432,
+   "median": 1.7,
+   "p25": 1.51,
+   "p75": 1.9
+  },
+  "last_12m": {
+   "n": 244,
+   "median": 1.65,
+   "p25": 1.51,
+   "p75": 1.92
+  },
+  "november": {
+   "n": 112,
+   "median": 1.65,
+   "p25": 1.55,
+   "p75": 1.77
+  },
+  "bridge": {
+   "n": 13,
+   "median": 1.65
+  },
+  "retail_over_auction_median": 2.8
+ },
+ "애호박": {
+  "days": 1425,
+  "first": "20210104",
+  "last": "20261106",
+  "approx_units": true,
+  "all": {
+   "n": 1425,
+   "median": 3.64,
+   "p25": 2.95,
+   "p75": 4.46
+  },
+  "last_12m": {
+   "n": 244,
+   "median": 3.72,
+   "p25": 2.89,
+   "p75": 4.53
+  },
+  "november": {
+   "n": 112,
+   "median": 3.53,
+   "p25": 3.05,
+   "p75": 4.17
+  },
+  "bridge": {
+   "n": 13,
+   "median": 0.57
+  },
+  "retail_over_auction_median": 2.07
+ }
+}

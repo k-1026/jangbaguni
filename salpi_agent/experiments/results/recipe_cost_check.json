@@ -1,0 +1,464 @@
+{
+ "industry": {
+  "low": 30,
+  "high": 35,
+  "hansik_low": 25,
+  "hansik_high": 40,
+  "salpi_limit": 40,
+  "avg_food_cost": 40.7
+ },
+ "menus": [
+  {
+   "menu": "김치찌개",
+   "price": 9000,
+   "cost": 1822,
+   "ratio_pct": 20.2,
+   "band": "업계 범위보다 낮음",
+   "solid_grams_without_rice": 318,
+   "dish_reference": "300~400g",
+   "parts": [
+    {
+     "item": "배추김치",
+     "unit": "kg",
+     "qty": 0.15,
+     "grams": 150,
+     "unit_price": 3867,
+     "cost": 580,
+     "receipt_date": "2026-11-09"
+    },
+    {
+     "item": "돼지고기 앞다리",
+     "unit": "kg",
+     "qty": 0.04,
+     "grams": 40,
+     "unit_price": 13722,
+     "cost": 549,
+     "receipt_date": "2026-11-09"
+    },
+    {
+     "item": "쌀",
+     "unit": "kg",
+     "qty": 0.11,
+     "grams": 110,
+     "unit_price": 3059,
+     "cost": 337,
+     "receipt_date": "2026-11-09"
+    },
+    {
+     "item": "두부",
+     "unit": "모",
+     "qty": 0.25,
+     "grams": 75,
+     "unit_price": 990,
+     "cost": 248,
+     "receipt_date": "2026-11-19"
+    },
+    {
+     "item": "고춧가루",
+     "unit": "kg",
+     "qty": 0.005,
+     "grams": 5,
+     "unit_price": 13629,
+     "cost": 68,
+     "receipt_date": "2026-11-09"
+    },
+    {
+     "item": "대파",
+     "unit": "kg",
+     "qty": 0.01,
+     "grams": 10,
+     "unit_price": 2639,
+     "cost": 29,
+     "receipt_date": "2026-11-09"
+    },
+    {
+     "item": "양파",
+     "unit": "kg",
+     "qty": 0.0075,
+     "grams": 8,
+     "unit_price": 1417,
+     "cost": 11,
+     "receipt_date": "2026-11-09"
+    },
+    {
+     "item": "어묵",
+     "unit": "kg",
+     "qty": 0.03,
+     "grams": 30,
+     "unit_price": null,
+     "cost": null,
+     "receipt_date": null
+    }
+   ],
+   "amount_checks": [
+    {
+     "item": "배추김치",
+     "grams": 150,
+     "ref": "100~200g",
+     "verdict": "범위 안",
+     "basis": "볶음김치 100g(1인 기준) ~ 김치 1/4포기 400g을 2인분으로"
+    },
+    {
+     "item": "돼지고기 앞다리",
+     "grams": 40,
+     "ref": "50~130g",
+     "verdict": "적음",
+     "basis": "볶음김치 100g + 돼지고기 50g(1인 기준 레시피) ~ 돼지고기 130g : 김치 390g(백종원 1:3 비율 예)"
+    }
+   ],
+   "missing_price": [
+    "어묵"
+   ],
+   "if_sides_500": 25.8,
+   "if_sides_1000": 31.4
+  },
+  {
+   "menu": "제육볶음",
+   "price": 9000,
+   "cost": 3736,
+   "ratio_pct": 41.5,
+   "band": "살피 기준(40%) 넘음",
+   "solid_grams_without_rice": 362,
+   "dish_reference": "250g",
+   "parts": [
+    {
+     "item": "돼지고기 앞다리",
+     "unit": "kg",
+     "qty": 0.2,
+     "grams": 200,
+     "unit_price": 13722,
+     "cost": 2744,
+     "receipt_date": "2026-11-09"
+    },
+    {
+     "item": "쌀",
+     "unit": "kg",
+     "qty": 0.11,
+     "grams": 110,
+     "unit_price": 3059,
+     "cost": 337,
+     "receipt_date": "2026-11-09"
+    },
+    {
+     "item": "고추장",
+     "unit": "kg",
+     "qty": 0.03,
+     "grams": 30,
+     "unit_price": 7130,
+     "cost": 214,
+     "receipt_date": "2026-11-09"
+    },
+    {
+     "item": "양파",
+     "unit": "kg",
+     "qty": 0.08,
+     "grams": 80,
+     "unit_price": 1417,
+     "cost": 113,
+     "receipt_date": "2026-11-09"
+    },
+    {
+     "item": "깐마늘",
+     "unit": "kg",
+     "qty": 0.01,
+     "grams": 10,
+     "unit_price": 11133,
+     "cost": 111,
+     "receipt_date": "2026-11-09"
+    },
+    {
+     "item": "고춧가루",
+     "unit": "kg",
+     "qty": 0.008,
+     "grams": 8,
+     "unit_price": 13629,
+     "cost": 109,
+     "receipt_date": "2026-11-09"
+    },
+    {
+     "item": "대파",
+     "unit": "kg",
+     "qty": 0.02,
+     "grams": 20,
+     "unit_price": 2639,
+     "cost": 59,
+     "receipt_date": "2026-11-09"
+    },
+    {
+     "item": "청양고추",
+     "unit": "kg",
+     "qty": 0.005,
+     "grams": 5,
+     "unit_price": 9750,
+     "cost": 49,
+     "receipt_date": "2026-11-09"
+    },
+    {
+     "item": "식용유",
+     "unit": "L",
+     "qty": 0.01,
+     "grams": 9,
+     "unit_price": null,
+     "cost": null,
+     "receipt_date": null
+    }
+   ],
+   "amount_checks": [
+    {
+     "item": "돼지고기 앞다리",
+     "grams": 200,
+     "ref": "150~200g",
+     "verdict": "범위 안",
+     "basis": "앞다리살 400~500g을 2~3인분으로 (만개의레시피)"
+    }
+   ],
+   "missing_price": [
+    "식용유"
+   ],
+   "if_sides_500": 47.1,
+   "if_sides_1000": 52.6
+  },
+  {
+   "menu": "된장찌개",
+   "price": 8000,
+   "cost": 1699,
+   "ratio_pct": 21.2,
+   "band": "업계 범위보다 낮음",
+   "solid_grams_without_rice": 248,
+   "dish_reference": "450g",
+   "parts": [
+    {
+     "item": "애호박",
+     "unit": "kg",
+     "qty": 0.05,
+     "grams": 50,
+     "unit_price": 11431,
+     "cost": 602,
+     "receipt_date": "2026-11-09"
+    },
+    {
+     "item": "쌀",
+     "unit": "kg",
+     "qty": 0.11,
+     "grams": 110,
+     "unit_price": 3059,
+     "cost": 337,
+     "receipt_date": "2026-11-09"
+    },
+    {
+     "item": "된장",
+     "unit": "kg",
+     "qty": 0.04,
+     "grams": 40,
+     "unit_price": 7011,
+     "cost": 280,
+     "receipt_date": "2026-11-09"
+    },
+    {
+     "item": "두부",
+     "unit": "모",
+     "qty": 0.25,
+     "grams": 75,
+     "unit_price": 990,
+     "cost": 248,
+     "receipt_date": "2026-11-19"
+    },
+    {
+     "item": "감자",
+     "unit": "kg",
+     "qty": 0.05,
+     "grams": 50,
+     "unit_price": 2717,
+     "cost": 160,
+     "receipt_date": "2026-11-09"
+    },
+    {
+     "item": "양파",
+     "unit": "kg",
+     "qty": 0.03,
+     "grams": 30,
+     "unit_price": 1417,
+     "cost": 43,
+     "receipt_date": "2026-11-09"
+    },
+    {
+     "item": "청양고추",
+     "unit": "kg",
+     "qty": 0.003,
+     "grams": 3,
+     "unit_price": 9750,
+     "cost": 29,
+     "receipt_date": "2026-11-09"
+    }
+   ],
+   "amount_checks": [],
+   "missing_price": [],
+   "if_sides_500": 27.5,
+   "if_sides_1000": 33.7
+  },
+  {
+   "menu": "김치볶음밥",
+   "price": 8000,
+   "cost": 1384,
+   "ratio_pct": 17.3,
+   "band": "업계 범위보다 낮음",
+   "solid_grams_without_rice": 200,
+   "dish_reference": "300~350g (볶음밥)",
+   "parts": [
+    {
+     "item": "돼지고기 앞다리",
+     "unit": "kg",
+     "qty": 0.03,
+     "grams": 30,
+     "unit_price": 13722,
+     "cost": 412,
+     "receipt_date": "2026-11-09"
+    },
+    {
+     "item": "쌀",
+     "unit": "kg",
+     "qty": 0.12,
+     "grams": 120,
+     "unit_price": 3059,
+     "cost": 367,
+     "receipt_date": "2026-11-09"
+    },
+    {
+     "item": "배추김치",
+     "unit": "kg",
+     "qty": 0.08,
+     "grams": 80,
+     "unit_price": 3867,
+     "cost": 309,
+     "receipt_date": "2026-11-09"
+    },
+    {
+     "item": "계란",
+     "unit": "개",
+     "qty": 1.0,
+     "grams": 60,
+     "unit_price": 239,
+     "cost": 239,
+     "receipt_date": "2026-11-09"
+    },
+    {
+     "item": "대파",
+     "unit": "kg",
+     "qty": 0.01,
+     "grams": 10,
+     "unit_price": 2639,
+     "cost": 29,
+     "receipt_date": "2026-11-09"
+    },
+    {
+     "item": "양파",
+     "unit": "kg",
+     "qty": 0.02,
+     "grams": 20,
+     "unit_price": 1417,
+     "cost": 28,
+     "receipt_date": "2026-11-09"
+    }
+   ],
+   "amount_checks": [],
+   "missing_price": [],
+   "if_sides_500": 23.5,
+   "if_sides_1000": 29.8
+  },
+  {
+   "menu": "순두부찌개",
+   "price": 9000,
+   "cost": 1845,
+   "ratio_pct": 20.5,
+   "band": "업계 범위보다 낮음",
+   "solid_grams_without_rice": 296,
+   "dish_reference": "500g",
+   "parts": [
+    {
+     "item": "두부",
+     "unit": "모",
+     "qty": 0.5,
+     "grams": 150,
+     "unit_price": 990,
+     "cost": 495,
+     "receipt_date": "2026-11-19"
+    },
+    {
+     "item": "애호박",
+     "unit": "kg",
+     "qty": 0.03,
+     "grams": 30,
+     "unit_price": 11431,
+     "cost": 361,
+     "receipt_date": "2026-11-09"
+    },
+    {
+     "item": "쌀",
+     "unit": "kg",
+     "qty": 0.11,
+     "grams": 110,
+     "unit_price": 3059,
+     "cost": 337,
+     "receipt_date": "2026-11-09"
+    },
+    {
+     "item": "돼지고기 앞다리",
+     "unit": "kg",
+     "qty": 0.02,
+     "grams": 20,
+     "unit_price": 13722,
+     "cost": 274,
+     "receipt_date": "2026-11-09"
+    },
+    {
+     "item": "계란",
+     "unit": "개",
+     "qty": 1.0,
+     "grams": 60,
+     "unit_price": 239,
+     "cost": 239,
+     "receipt_date": "2026-11-09"
+    },
+    {
+     "item": "고춧가루",
+     "unit": "kg",
+     "qty": 0.006,
+     "grams": 6,
+     "unit_price": 13629,
+     "cost": 82,
+     "receipt_date": "2026-11-09"
+    },
+    {
+     "item": "대파",
+     "unit": "kg",
+     "qty": 0.01,
+     "grams": 10,
+     "unit_price": 2639,
+     "cost": 29,
+     "receipt_date": "2026-11-09"
+    },
+    {
+     "item": "양파",
+     "unit": "kg",
+     "qty": 0.02,
+     "grams": 20,
+     "unit_price": 1417,
+     "cost": 28,
+     "receipt_date": "2026-11-09"
+    }
+   ],
+   "amount_checks": [
+    {
+     "item": "돼지고기 앞다리",
+     "grams": 20,
+     "ref": "27~50g",
+     "verdict": "적음",
+     "basis": "다진 돼지고기 80g 3인분(백종원) ~ 100g 2인분(만개의레시피)"
+    }
+   ],
+   "missing_price": [],
+   "if_sides_500": 26.1,
+   "if_sides_1000": 31.6
+  }
+ ]
+}

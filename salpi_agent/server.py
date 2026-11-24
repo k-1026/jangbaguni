@@ -385,8 +385,27 @@ def _price_outlook():
     return {r["item"]: (r.get("forecast") or {}).get("expected_change_pct") for r in hit[1]} if hit else None
 
 
+def _sales_user(authorization, check=True):
+    """판매율 분석: 로그인 표 → 계정 (다 썼으면 check=True 일 때 402). 표가 없거나 만료면 None = 횟수 없이 보여 줌
+    (표 없이 부르는 모바일 시연 화면과 같게 · 로그인이 끝난 화면이 오류로 깨지지 않게)."""
+    token = _bearer(authorization)
+    if not token:
+        return None
+    try:
+        return trial.check(token, "sales") if check else auth.user_of(token)
+    except auth.AuthError as e:
+        if e.status == 401:
+            return None
+        raise HTTPException(e.status, str(e))
+    except (ApiKeyMissing, ApiError):
+        return None
+
+
 @app.get("/api/demand")
-def demand_forecast(target: str | None = None):
+def demand_forecast(target: str | None = None, authorization: str | None = Header(None)):
+    """내일 예상 판매 (판매율 분석). 로그인 표를 같이 보내면 무료 5회(하루 처음 볼 때 1회)를 셈 → 다 쓰면 402.
+    표 없이 부르는 곳(모바일 시연 화면)은 지금처럼 횟수 없이."""
+    user = _sales_user(authorization)
     try:
         day = date.fromisoformat(target) if target else None
     except ValueError:
@@ -394,7 +413,8 @@ def demand_forecast(target: str | None = None):
     # 대시보드 시세가 아직 준비 전이면 기다리지 않고 시세 없이 계산 (1분 뒤 다시 계산할 때 시세 반영)
     outlook = _price_outlook()
     key = f"demand:{day}:{'price' if outlook else 'noprice'}"
-    return _guard(lambda: memo(key, lambda: demand.forecast(target=day, price_outlook=outlook or {}), ttl=600 if outlook else 60))
+    out = _guard(lambda: memo(key, lambda: demand.forecast(target=day, price_outlook=outlook or {}), ttl=600 if outlook else 60))
+    return {**out, "trial": _auth(lambda: trial.count(user, "sales"))} if user else out
 
 
 # ---------------------------------------------------------------
@@ -448,8 +468,11 @@ def receipt_read(body: ReceiptIn, authorization: str | None = Header(None)):
 
 
 @app.get("/api/receipt/trial")
-def receipt_trial(authorization: str | None = Header(None)):
-    return _auth(lambda: trial.status(_bearer(authorization)))
+def receipt_trial(feature: str = "receipt", authorization: str | None = Header(None)):
+    """무료 횟수: feature=receipt(영수증 분석, 기본) · sales(판매율 분석)."""
+    if feature not in trial.FEATURES:
+        raise HTTPException(400, "feature 는 receipt · sales 중 하나예요")
+    return _auth(lambda: trial.status(_bearer(authorization), feature))
 
 
 class FoundIn(BaseModel):
@@ -512,10 +535,19 @@ def receipt_save(body: ReceiptSave):
 
 
 @app.get("/api/costs")
-def costs():
+def costs(authorization: str | None = Header(None)):
+    """메뉴별 원가율 · 남는 돈 (판매율 분석) + 최근 영수증 목록.
+    로그인 표를 보내고 판매율 분석 무료 5회를 다 썼으면 원가율 · 마진은 빼고 {locked: true, trial, receipts} 만 (영수증 목록은 그대로 보여 주게).
+    횟수는 /api/demand 에서만 셈 (나의 가게를 열면 둘을 동시에 불러서 두 번 세지 않게)."""
     # 원가율은 영수증 · 메뉴가 바뀔 때만 달라짐 → 10분 보관, 영수증 저장 · 고치기 · 지우기 · 메뉴 바꾸기 때 비움 (매번 3.5초 → 0.1초)
-    return _receipt_guard(lambda: memo("costs", lambda: {**receipts.cost_report(supabase_db.DEMO_STORE),
+    data = _receipt_guard(lambda: memo("costs", lambda: {**receipts.cost_report(supabase_db.DEMO_STORE),
                                                          "receipts": receipts.recent(supabase_db.DEMO_STORE)}, ttl=600))
+    user = _sales_user(authorization, check=False)
+    if user:
+        st = trial._state(user, "sales")
+        if st["locked"]:
+            return {"locked": True, "message": trial.LOCKED_MSG, "trial": st, "receipts": data["receipts"]}
+    return data
 
 
 def _store_changed(result):

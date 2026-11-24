@@ -2,6 +2,8 @@
 
 - 기능(feature)마다 따로 셈. 쓴 횟수는 계정의 app_metadata 에
     receipt: 영수증 분석 → receipt_used (영수증을 한 장 읽을 때마다 +1, 읽기에 실패하면 세지 않음)
+    sales  : 판매율 분석 (내일 예상 판매 /api/demand · 지금 판매로 남는 돈 /api/costs) → sales_used
+             나의 가게를 열 때마다 자동으로 불러오는 화면이라 **하루에 처음 볼 때 1회** (sales_last_day 에 그날 날짜)
   새 기능을 잠그려면 FEATURES 에 한 줄 더하고, 그 기능 서버에서 check → (성공하면) count 를 부르면 됨
 - 살피 플러스 구독 중이면(subscription.state, 끝나는 날 안 지남) 횟수 제한 없음
 - 5회를 다 쓰면 그 기능 서버가 402 를 돌려주고, 화면은 그 칸을 흐리게 가림
@@ -11,7 +13,8 @@ from sources.data_sources import ApiError
 
 FREE = 5
 FREE_RECEIPTS = FREE   # 예전 이름 (다른 곳에서 부를 수 있어 남겨 둠)
-FEATURES = {"receipt": "receipt_used"}
+FEATURES = {"receipt": "receipt_used", "sales": "sales_used"}
+DAILY = {"sales": "sales_last_day"}   # 하루 한 번만 세는 기능 → 마지막으로 센 날(한국 날짜)
 LOCKED_MSG = "이 기능은 유료 플랜 사장님만 사용 가능해요"
 
 
@@ -26,8 +29,10 @@ def _state(user, feature="receipt"):
     used = int(app.get(_key(feature)) or 0)
     sub = subscription.state(app)
     found = sum(int(v or 0) for v in (app.get("receipt_found") or {}).values())
+    # 하루 한 번 기능은 5번째로 쓴 날에는 그날 끝까지 볼 수 있음 (다음 날부터 잠금)
+    used_today = feature in DAILY and app.get(DAILY[feature]) == subscription._today().isoformat()
     return {"feature": feature, "limit": FREE, "used": used, "left": max(0, FREE - used), "paid": sub["paid"],
-            "plan_until": sub["until"], "locked": not sub["paid"] and used >= FREE, "found": found}
+            "plan_until": sub["until"], "locked": not sub["paid"] and used >= FREE and not used_today, "found": found}
 
 
 def add_found(token, purchase_id, extra_paid):
@@ -56,11 +61,15 @@ def check(token, feature="receipt"):
 
 
 def count(user, feature="receipt"):
-    """한 번 썼을 때 +1 → 바뀐 횟수. 구독 중이면 세지 않음."""
+    """한 번 썼을 때 +1 → 바뀐 횟수. 구독 중이면 세지 않음. 하루 한 번 기능은 오늘 이미 셌으면 그대로."""
     st = _state(user, feature)
     if st["paid"]:
         return st
-    app = {**(user.get("app_metadata") or {}), _key(feature): st["used"] + 1}
+    app = user.get("app_metadata") or {}
+    today = subscription._today().isoformat()
+    if feature in DAILY and app.get(DAILY[feature]) == today:
+        return st
+    app = {**app, _key(feature): st["used"] + 1, **({DAILY[feature]: today} if feature in DAILY else {})}
     r = auth._call("PUT", f"admin/users/{user['id']}", admin=True, json={"app_metadata": app})
     if not r.ok:
         raise ApiError(f"무료 횟수를 저장하지 못했어요 ({r.status_code})")

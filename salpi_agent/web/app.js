@@ -360,11 +360,27 @@ if (SIGNUP_VIEW) {
   $("#suName").focus();
 }
 
-async function getJSON(url) {
-  const r = await fetch(url);
+// auth: 로그인했으면 로그인 표를 같이 보냄 (판매율 분석 무료 횟수를 세는 곳). 실패하면 status 가 붙은 오류
+async function getJSON(url, { auth = false } = {}) {
+  const token = auth && SIGNED_IN ? readLogin()?.access_token : null;
+  const r = await fetch(url, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
   const body = await r.json();
-  if (!r.ok) throw new Error(body.detail || "데이터를 불러오지 못했어요");
+  if (!r.ok) throw Object.assign(new Error(body.detail || "데이터를 불러오지 못했어요"), { status: r.status });
   return body;
+}
+
+// 판매율 분석(내일 예상 판매 · 메뉴별 원가율 · 남는 돈) 무료 5회를 다 쓰면: 두 칸을 잠금 안내로 바꿈 (영수증 잠금과 같은 모양)
+// 횟수는 서버(account/trial.py, feature=sales)가 하루에 처음 볼 때 1회로 셈
+const SALES_LOCK = `<div class="receipt-lock sales-lock"><div class="lock-panel">
+    <p class="lock-title">무료 체험이 끝났어요</p>
+    <p class="lock-sub">살피 플러스로 판매율 분석을 <b>무제한</b> 써 보세요</p>
+    <button class="lock-btn sales-sub-btn" type="button">구독하러 가기</button></div></div>`;
+function showSalesLock() {
+  $("#storeBasis").textContent = "";
+  $("#menuForecast").innerHTML = SALES_LOCK;
+  $("#orderCard").hidden = true;
+  $("#costCard").innerHTML = SALES_LOCK;
+  if ($("#menuAddBtn")) $("#menuAddBtn").hidden = true;
 }
 const byItem = (name) => overview.find((r) => r.item === name);
 const expOf = (r) => r.forecast?.expected_change_pct ?? 0;
@@ -990,7 +1006,7 @@ const SERVING_G = 150;   // 고기 1인분 기준 무게 (식당 1인분 보통 
 async function fillGradeMenus(item) {
   if (!SIGNED_IN || !item) return;
   try {
-    const [mine, costs] = await Promise.all([getJSON("/api/my-items"), getJSON("/api/costs")]);
+    const [mine, costs] = await Promise.all([getJSON("/api/my-items"), getJSON("/api/costs", { auth: true })]);
     const names = (mine.items || {})[item] || [];
     const el = $("#gMenus");
     if (!names.length || !el) return;
@@ -1230,8 +1246,9 @@ function usualChip(predicted, usual) {
 async function loadDemand() {
   let d;
   try {
-    d = await getJSON("/api/demand");
+    d = await getJSON("/api/demand", { auth: true });
   } catch (e) {
+    if (e.status === 402) return showSalesLock();
     $("#storeBasis").textContent = "";
     $("#menuForecast").innerHTML = `<p class="muted">판매 기록을 불러오지 못했어요. ${esc(e.message)}</p>`;
     return;
@@ -1777,8 +1794,9 @@ addEventListener("resize", rcArrows);
 
 async function loadCosts(full = true) {
   try {
-    const r = await getJSON("/api/costs");
-    if (full) renderCosts(r, false);
+    const r = await getJSON("/api/costs", { auth: true });
+    if (r.locked) showSalesLock();
+    else if (full) renderCosts(r, false);
     showReceiptList(r.receipts);
   } catch (e) {
     if (full) $("#costCard").innerHTML = `<p class="muted">원가율을 불러오지 못했어요. ${esc(e.message)}</p>`;

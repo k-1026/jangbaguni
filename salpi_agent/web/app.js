@@ -1274,7 +1274,7 @@ function renderSales(msg = "", kind = "ok") {
           <input type="date" id="salesDate" value="${d.date}" min="${min}" max="${sales.today}"></label>
       </div>
       <div class="sales-top-right">
-        ${d.entered ? `<span class="muted">이미 넣은 날이에요. 바꿀 칸만 고치면 돼요</span>` : d.last_sales_date ? `<span class="muted">마지막으로 넣은 날 ${dayLabel(d.last_sales_date)}</span>` : ""}
+        ${!d.entered && d.last_sales_date ? `<span class="muted">마지막으로 넣은 날 ${dayLabel(d.last_sales_date)}</span>` : ""}
         <button class="btn sales-fold" type="button" data-sales="fold" aria-expanded="true">접기</button>
       </div>
     </div>
@@ -1289,11 +1289,9 @@ function renderSales(msg = "", kind = "ok") {
         <span role="cell" class="sales-sum" data-sum="${m.menu_id}"></span>
       </div>`).join("")}
     </div>
-    <p class="sales-hint">빈칸은 그대로 두고, 0은 ‘안 팔림’으로 저장해요 · Enter 를 누르면 다음 칸으로 가요</p>
     <div class="sales-foot">
       <span class="sales-total" id="salesTotal"></span>
       <div class="sales-foot-btns">
-        ${dayShift(d.date, -7) >= min ? `<button class="btn" type="button" data-sales="lastweek">빈칸에 지난주 ${WEEKDAY[new Date(`${d.date}T00:00:00`).getDay()]}요일 숫자</button>` : ""}
         <button class="btn primary" type="button" data-sales="save">저장하기</button>
       </div>
     </div>`;
@@ -1353,28 +1351,6 @@ function salesMsg(text) {
   $("#salesCard").insertAdjacentHTML("afterbegin", `<p class="sales-err" role="alert">${esc(text)}</p>`);
 }
 
-async function fillLastWeek(btn) {
-  const day = dayShift(sales.data.date, -7);
-  btn.disabled = true;
-  try {
-    const w = await getJSON(`/api/sales?date=${day}`);
-    if (!w.entered) return salesMsg(`지난주 ${dayLabel(day)} 기록이 없어요`);
-    const prev = Object.fromEntries(w.menus.map((m) => [m.menu_id, m]));
-    let n = 0;
-    document.querySelectorAll("#salesCard .sales-in").forEach((el) => {
-      const v = prev[el.dataset.mid]?.[el.dataset.key];
-      if (el.value.trim() === "" && v != null) { el.value = v; n++; }
-    });
-    if (n) { sales.dirty = true; salesTotals(); }
-    $("#salesCard .sales-err")?.remove();
-    $("#salesCard").insertAdjacentHTML("afterbegin", `<p class="ok" role="status">${n ? `빈칸 ${n}개를 지난주 ${dayLabel(day)} 숫자로 채웠어요. 확인하고 저장해 주세요` : "채울 빈칸이 없어요"}</p>`);
-  } catch (e) {
-    salesMsg(e.message);
-  } finally {
-    btn.disabled = false;
-  }
-}
-
 $("#salesCard").addEventListener("click", (e) => {
   const day = e.target.closest("[data-day]")?.dataset.day;
   if (day && day !== sales.data.date && salesAsk()) return loadSales(day, true);
@@ -1385,7 +1361,6 @@ $("#salesCard").addEventListener("click", (e) => {
   if (act === "other") { sales.open = true; renderSales(); $("#salesDate").showPicker?.(); }
   if (act === "fold" && salesAsk()) { sales.open = false; sales.dirty = false; renderSales(); $('#salesCard [data-sales="edit"]')?.focus(); }
   if (act === "save") saveSales(b);
-  if (act === "lastweek") fillLastWeek(b);
 });
 $("#salesCard").addEventListener("change", (e) => {
   if (e.target.id !== "salesDate") return;

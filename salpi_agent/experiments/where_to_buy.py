@@ -6,6 +6,7 @@
     웃돈 0% = 중도매가 그대로 (기본). 20% · 50%는 '소매에 가까울수록' 어떻게 달라지는지 보는 용도 (plan/forecast/1124_retail_wholesale_ratio.md 5절)
 - 식봄 값: Supabase price_snapshots 의 kg당 값(품목마다 상품들의 가운데 값). 도매 기록 날짜에 가장 가까운 앞 기록을 씀
 - 추천 규칙: 예측이 '내릴' → 시장 · '오를' → 식봄 · '비슷할' → 비교에서 뺌
+- 값 차이 10% 안(비슷해요)은 채점에서 뺌 — 결과에 tie 0.0(안 뺌) · 0.1(뺌) 둘 다 냄
 - 정답: 예측한 기준 날짜 + 7일 이후 사흘 안 첫 시세(forecast_log.score 와 같음)에서 더 싼 쪽
 - 결과: experiments/results/where_to_buy.json · where_to_buy_purchases.csv (가상 구매 기록)
 """
@@ -27,6 +28,7 @@ from sources.data_sources import ITEMS, perday_prices   # noqa: E402
 
 OUT = Path(__file__).resolve().parent / "results"
 MARKUPS = (0.0, 0.2, 0.5)
+TIE = 0.10   # 시장 · 식봄 값 차이가 이 안이면 '비슷해요'로 보고 채점에서 뺌 (units.py 와 같은 10%)
 # 도매 '상품' 중도매 조사가가 없는 가지는 뺌
 SKIP = {"가지"}
 
@@ -65,7 +67,7 @@ def forecasts():
     return list(first.values())
 
 
-def evaluate(market, shop, fc, markup):
+def evaluate(market, shop, fc, markup, tie=0.0):
     rows = []
     for f in fc:
         item = f["item"]
@@ -79,14 +81,16 @@ def evaluate(market, shop, fc, markup):
         m, s = market[item][hit] * (1 + markup), shop[item][snaps[-1]]
         rows.append({"item": item, "base_date": f["base_date"], "date": hit, "direction": f["direction"],
                      "market": round(m), "shop": round(s), "cheaper": "시장" if m < s else "식봄"})
-    used = [r for r in rows if r["direction"] != "flat"]
+    near = [r for r in rows if abs(r["market"] - r["shop"]) <= tie * min(r["market"], r["shop"])]   # 값이 비슷한 건 뺌
+    used = [r for r in rows if r["direction"] != "flat" and r not in near]
     if not used:
-        return {"markup": markup, "n_all": len(rows), "n": 0}
+        return {"markup": markup, "tie": tie, "n_all": len(rows), "n": 0}
     pick = lambda r: "시장" if r["direction"] == "down" else "식봄"   # noqa: E731
     cost = lambda r, where: r["market"] if where == "시장" else r["shop"]   # noqa: E731
     n = len(used)
     avg = lambda f: round(statistics.mean(f(r) for r in used))   # noqa: E731
-    return {"markup": markup, "n_all": len(rows), "n_flat_skipped": len(rows) - n, "n": n,
+    return {"markup": markup, "tie": tie, "n_all": len(rows), "n_flat_skipped": sum(r["direction"] == "flat" for r in rows),
+            "n_near_skipped": sum(r["direction"] != "flat" for r in near), "n": n,
             "market_cheaper_pct": round(sum(r["cheaper"] == "시장" for r in used) / n * 100, 1),
             "rule_correct_pct": round(sum(pick(r) == r["cheaper"] for r in used) / n * 100, 1),
             "always_shop_correct_pct": round(sum(r["cheaper"] == "식봄" for r in used) / n * 100, 1),
@@ -101,7 +105,7 @@ def main():
     market = {i: market_series(i) for i in items}
     shop = shop_series()
     fc = forecasts()
-    results = [evaluate(market, shop, fc, m) for m in MARKUPS]
+    results = [evaluate(market, shop, fc, m, t) for t in (0.0, TIE) for m in MARKUPS]
     for r in results:
         print(r)
 

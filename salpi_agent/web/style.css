@@ -768,20 +768,24 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .ok { background: #DDF3EA; color: #0f5e47; border-radius: 8px; padding: 8px 10px; font-size: 14px; font-weight: 700; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-/* 판매 기록 입력 (나의 가게): 안 넣은 날은 표, 넣은 날은 한 줄 */
+/* 판매 기록 입력 (나의 가게): 펼치면 왼쪽 표 + 오른쪽 요약, 접으면 한 줄 요약 */
 .sales-badge { align-self: center; padding: 3px 10px; border-radius: 999px; background: var(--accent-container); color: #8A3510; font-size: 13px; font-weight: 700; }
-#salesCard .ok, .sales-err { margin: 0 0 12px; }
-.sales-err { background: #FFF0EE; color: #A32A1C; border-radius: 8px; padding: 8px 10px; font-size: 14px; font-weight: 700; }
-.sales-done { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-.sales-check { flex: none; width: 36px; height: 36px; border-radius: 50%; background: var(--primary-container); display: grid; place-items: center; }
-.sales-check svg { width: 18px; height: 18px; fill: none; stroke: var(--primary); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
-.sales-done-text { flex: 1 1 220px; font-size: 16px; }
-.sales-done-text small { display: block; margin-top: 2px; font-size: 13px; color: var(--muted); }
-.sales-done-btns, .sales-foot-btns { display: flex; gap: 8px; flex-wrap: wrap; }
-.sales-done-btns .btn, .sales-foot-btns .btn { min-height: 44px; }
-.sales-top { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; margin-bottom: 10px; }
-.sales-top-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.sales-fold { min-height: 40px; padding: 0 16px; }
+#salesCard { padding: 0; overflow: hidden; }
+#salesCard > .muted { padding: 20px; }
+.sales-err { margin: 12px 20px 0; background: #FFF0EE; color: #A32A1C; border-radius: 8px; padding: 8px 10px; font-size: 14px; font-weight: 700; }
+.sales-in::placeholder { color: var(--muted); opacity: .55; font-weight: 400; }
+
+/* 위 줄: 왼쪽 '오늘 + 날짜', 오른쪽 '배달' · '접기' */
+.sales-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; padding: 14px 20px; border-bottom: 1px solid var(--outline-variant); }
+.sales-bar-right { display: flex; align-items: center; gap: 8px; }
+.sales-date { display: inline-flex; align-items: center; gap: 10px; }
+.sales-day-label { font-size: 16px; font-weight: 700; color: var(--ink); }
+.sales-date input { height: 40px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--outline); border-radius: 10px; background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; }
+/* 접기 · 펼치기(넣기) 버튼 */
+.sales-unfold { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border: 1px solid var(--outline); border-radius: 12px; background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.sales-unfold:hover { background: var(--surface-variant); }
+.sales-unfold svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.sales-unfold:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 /* 배달 체크박스형 버튼 (진짜 checkbox 위에 그린 모양 — 키보드 · 화면 읽기 그대로). 켜면 초록 테두리 · 연초록 바탕 · 체크 */
 .sales-opt { position: relative; display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 16px 0 12px; border: 1px solid var(--outline); border-radius: 12px; background: var(--surface); font-size: 14px; color: var(--ink); cursor: pointer; transition: background .15s, border-color .15s; }
 .sales-opt input { position: absolute; opacity: 0; width: 1px; height: 1px; }
@@ -791,49 +795,81 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .sales-opt input:checked + .sales-opt-box { border-color: var(--primary); background: var(--primary); }
 .sales-opt input:checked + .sales-opt-box svg { opacity: 1; }
 .sales-opt input:focus-visible + .sales-opt-box { outline: 2px solid var(--primary); outline-offset: 2px; }
-.sales-table.one .sales-row { grid-template-columns: minmax(0, 1fr) 140px; }
-.sales-table.one .sales-head span:last-child { text-align: center; }
-/* 날짜 줄: 왼쪽 '오늘 + 날짜', 오른쪽 '배달' */
-.sales-date { display: inline-flex; align-items: center; gap: 10px; }
-.sales-day-label { font-size: 16px; font-weight: 700; color: var(--ink); }
-/* 제목 줄 오른쪽 접기 / 펼치기 화살표 */
-.sales-toggle { margin-left: auto; align-self: center; display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid var(--outline); border-radius: 50%; background: var(--surface); cursor: pointer; }
-.sales-toggle:hover { background: var(--surface-variant); }
-.sales-toggle svg { width: 20px; height: 20px; fill: none; stroke: var(--ink); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; transition: transform .15s; }
-.sales-toggle.folded svg { transform: rotate(180deg); }
-.sales-toggle:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
-/* 저장 상태는 합계 바로 뒤 (오른쪽 끝은 떠 있는 캐릭터 버튼에 가려짐) */
-#sales .sales-foot { justify-content: flex-start; gap: 6px 18px; }
-@media (max-width: 520px) {   /* 좁은 화면: 설명 글은 아래 줄로, 화살표는 제목 옆에 */
-  #sales .section-head .muted { order: 3; flex-basis: 100%; }
-}
-.sales-in::placeholder { color: var(--muted); opacity: .55; font-weight: 400; }
-/* 자동 저장 상태: 저장하는 중(회색) · ✓ 저장됨(초록) · 저장 못 함(빨강 + 다시 시도) */
-.sales-status { font-size: 14px; color: var(--muted); }
-.sales-status.saved { color: var(--primary); font-weight: 700; }
-.sales-status.failed { color: #A32A1C; font-weight: 700; }
-.sales-retry { margin-left: 6px; min-height: 32px; padding: 0 12px; border: 1px solid #A32A1C; border-radius: 999px; background: var(--surface); color: #A32A1C; font: inherit; font-size: 13px; font-weight: 700; }
-.sales-days { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.sales-chip { min-height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--outline); background: var(--surface); color: var(--ink); font-size: 14px; }
-.sales-chip.on { border-color: var(--primary); background: var(--primary-container); color: var(--on-primary-container); font-weight: 700; }
-.sales-date input { height: 40px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--outline); border-radius: 10px; background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; }
-.sales-table { display: grid; }
-.sales-row { display: grid; grid-template-columns: minmax(0, 1fr) 96px 96px 64px; gap: 10px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--outline-variant); }
-.sales-head { padding: 8px 0; font-size: 13px; font-weight: 600; color: var(--muted); }
-.sales-head span:nth-child(n+2) { text-align: center; }
-.sales-head span:last-child, .sales-sum { text-align: right; }
-.sales-name { font-size: 16px; font-weight: 600; min-width: 0; }
-.sales-name small { display: block; font-size: 12px; font-weight: 400; color: var(--muted); }
-.sales-in { width: 100%; height: 44px; box-sizing: border-box; border: 1px solid var(--outline); border-radius: 10px; background: var(--surface-variant);
+
+/* 펼친 상태: 왼쪽 표 | 오른쪽 요약 (좁으면 위아래) */
+.sales-split { display: grid; grid-template-columns: minmax(0, 1fr) 300px; }
+.sales-left { min-width: 0; padding: 4px 20px 16px; }
+/* 메뉴가 많으면 표 안에서 스크롤 (6줄쯤까지 보임), 머리줄은 위에 고정 */
+.sales-scroll { max-height: 384px; overflow-y: auto; overscroll-behavior: contain; }
+.sales-grid { width: 100%; border-collapse: collapse; }
+.sales-grid thead th { position: sticky; top: 0; z-index: 1; background: var(--surface); padding: 12px 6px 10px; border-bottom: 1px solid var(--outline-variant);
+  font-size: 13px; font-weight: 600; color: var(--muted); text-align: center; white-space: nowrap; }
+.sales-grid thead th:first-child { text-align: left; padding-left: 8px; }
+.sales-grid .num { text-align: right; }
+.sales-grid tbody th { padding: 6px 8px; text-align: left; font-size: 16px; font-weight: 700; color: var(--ink); word-break: keep-all; }
+.sales-grid td { padding: 6px; border-bottom: 1px solid var(--outline-variant); }
+.sales-grid tbody th { border-bottom: 1px solid var(--outline-variant); }
+.sales-grid td.price { color: var(--muted); font-size: 14px; white-space: nowrap; }
+.sales-grid td:has(.sales-in) { width: 96px; }
+.sales-grid.one td:has(.sales-in) { width: 140px; }
+.sales-sum { font-size: 16px; font-weight: 700; width: 56px; }
+.sales-grid tbody tr.has th, .sales-grid tbody tr.has td { background: #F4FAEE; }   /* 넣은 메뉴는 옅은 초록 */
+.sales-grid tbody tr:focus-within th, .sales-grid tbody tr:focus-within td { background: var(--primary-container); }   /* 지금 넣는 줄 */
+.sales-in { width: 100%; height: 44px; box-sizing: border-box; border: 1px solid var(--outline); border-radius: 10px; background: var(--surface);
   text-align: center; font: inherit; font-size: 17px; font-weight: 700; color: var(--ink); }
-.sales-in:focus { outline: 2px solid var(--primary); outline-offset: 1px; background: var(--surface); }
+.sales-in:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
 .sales-in.bad { border-color: var(--up); background: #FFF0EE; }
-.sales-sum { font-size: 16px; font-weight: 700; }
-.sales-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 14px; padding: 14px 16px; border-radius: 12px; background: var(--primary-container); }
-.sales-total { color: var(--on-primary-container); font-size: 15px; }
+
+/* 오른쪽 요약: 짙은 초록 바탕 */
+.sales-panel { display: flex; flex-direction: column; gap: 6px; padding: 20px 22px; background: #1F3A12; color: #fff; }
+.sales-panel .sales-status { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 10px; padding: 6px 12px; border-radius: 999px;
+  background: rgba(255,255,255,.1); color: #DCEBD0; font-size: 13px; font-weight: 700; }
+.sales-panel .sales-status svg { width: 16px; height: 16px; fill: none; stroke: #9BE07A; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.sales-panel .sales-status.saved { background: rgba(155,224,122,.16); color: #C8F0B4; }
+.sales-panel .sales-status.failed { background: #FFE3DF; color: #A32A1C; }
+.sales-retry { margin-left: 4px; min-height: 30px; padding: 0 10px; border: 1px solid #A32A1C; border-radius: 999px; background: #fff; color: #A32A1C; font: inherit; font-size: 12px; font-weight: 700; }
+.sp-label { margin: 0; font-size: 14px; color: #C9D6C1; }
+.sp-money { margin: 0; font-size: 34px; font-weight: 800; line-height: 1.2; letter-spacing: -0.5px; }
+.sp-bowls { margin: 0 0 12px; font-size: 15px; color: #E3ECDD; }
+.sp-channels { margin: 0; padding: 12px 14px; border: 1px solid rgba(255,255,255,.16); border-radius: 12px; display: grid; gap: 8px; }
+.sp-channels div { display: flex; justify-content: space-between; gap: 10px; }
+.sp-channels dt { font-size: 14px; color: #C9D6C1; }
+.sp-channels dd { margin: 0; font-size: 14px; font-weight: 700; }
+.sp-channels dd.deliv { color: #9BE07A; }
+
+/* 접힌 상태: 날짜 · 저장 상태 | 총 판매량 | 매출 | 채널별 | [펼치기] */
+.sales-fold-row { display: flex; align-items: center; gap: 12px 0; flex-wrap: wrap; padding: 14px 20px; }
+.sf-day { display: flex; align-items: center; gap: 12px; flex: 1 1 200px; min-width: 0; padding-right: 20px; }
+.sf-day b { display: block; font-size: 16px; }
+.sf-day small { display: block; margin-top: 2px; font-size: 13px; color: var(--muted); }
+.sf-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--primary); }
+.sf-dot.empty { background: var(--accent); }
+.sf-stat { flex: 1 1 130px; padding: 0 20px; border-left: 1px solid var(--outline-variant); }
+.sf-stat span { display: block; font-size: 13px; color: var(--muted); }
+.sf-stat b { display: block; margin-top: 2px; font-size: 18px; white-space: nowrap; }
+.sf-stat b.money { color: var(--primary); }
+.sales-fold-row .sales-unfold { margin-left: auto; background: var(--primary-container); border-color: var(--primary-container); color: var(--on-primary-container); }
+.sales-fold-row .sales-unfold:hover { background: #D6EBC0; }
+
+@media (max-width: 760px) {
+  .sales-split { grid-template-columns: 1fr; }
+  .sales-scroll { max-height: 420px; }
+  .sf-stat { padding: 0 14px; }
+}
 @media (max-width: 520px) {
-  .sales-row { grid-template-columns: minmax(0, 1fr) 68px 68px 44px; gap: 6px; }
-  .sales-foot-btns, .sales-foot-btns .btn { width: 100%; }
+  #sales .section-head .muted { order: 3; flex-basis: 100%; }
+  .sales-left { padding: 4px 12px 12px; }
+  .sales-bar { padding: 12px; }
+  .sales-grid td.price, .sales-grid thead th:nth-child(2) { display: none; }   /* 좁으면 단가 칸은 빼고 */
+  .sales-grid td:has(.sales-in) { width: 64px; }
+  .sales-grid tbody th { font-size: 15px; }
+  .sales-sum { width: 40px; }
+  .sales-fold-row { padding: 12px; }
+  .sf-day { flex-basis: 100%; padding-right: 0; }
+  .sf-stat { flex: 1 1 0; padding: 0 10px; }
+  .sf-day + .sf-stat { border-left: 0; padding-left: 0; }
+  .sf-stat b { font-size: 15px; }
+  .sales-fold-row .sales-unfold { flex-basis: 100%; justify-content: center; margin-left: 0; }
 }
 /* 메뉴별 원가율 카드 (구글 스타일 · 어르신도 한눈에): 메뉴 이름 → 숫자 넷 한 줄(세로 선으로 구분) → 대체 재료 제안 띠 */
 .cost-guide { margin: -4px 0 16px; font-size: 15px; line-height: 1.6; color: var(--muted); }

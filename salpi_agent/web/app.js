@@ -1206,7 +1206,7 @@ function monthRange(history, now) {
 // 판매 기록 입력 (/api/sales, store/sales.py): 하루 메뉴별 홀 · 배달 그릇 수
 // 자동 저장: 숫자를 고치고 칸을 벗어나면(Enter · Tab · 다른 곳 누르기) 바로 저장 → 위에 '저장하는 중 / ✓ 저장됨'
 // 저장되면 잠깐 뒤 내일 준비 · 원가율을 다시 불러옴 (여러 칸을 연달아 넣어도 한 번만)
-// 표는 늘 펼쳐 두고, 사장님이 [접기]를 눌렀을 때만 한 줄로 접음
+// 펼치면 왼쪽 표(메뉴가 많으면 표 안에서 스크롤) + 오른쪽 요약(총 매출 · 그릇 · 홀 / 배달 · 저장 상태). [접기]를 누르면 한 줄 요약
 // 빈칸 = 안 넣음, 0 = 안 팔림. 단 이미 저장된 칸을 비우면 0(안 팔림)으로 저장 (흐린 '0'으로 미리 보여 줌)
 // 서버와 같은 규칙(0 이상 정수 · 하루 2000그릇 · 60일 전까지)을 먼저 화면에서 확인
 // '배달'을 끄면 배달 칸을 없애고 메뉴당 칸 하나(홀로 저장) — 이 브라우저에 기억. 예전에 넣은 배달 기록은 지우지 않고 합계에만 넣음
@@ -1218,7 +1218,7 @@ const setDelivOn = (on) => { try { localStorage.setItem(SALES_DELIV_KEY, on ? "1
 const showDeliv = () => delivOn();
 const WEEKDAY = ["일", "월", "화", "수", "목", "금", "토"];
 // saving: 지금 저장 중인 요청(Promise) · again: 저장 중에 또 고쳐서 끝나면 한 번 더 · failed: 마지막 저장이 실패함
-const sales = { today: null, data: null, open: true, saving: null, again: false, failed: false, timer: null, refresh: null };
+const sales = { today: null, data: null, open: true, saving: null, again: false, failed: false, timer: null, refresh: null, savedAt: null };
 const dayShift = (d, n) => { const x = new Date(`${d}T00:00:00`); x.setDate(x.getDate() + n); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`; };
 const dayLabel = (d) => `${mmdd(d)} (${WEEKDAY[new Date(`${d}T00:00:00`).getDay()]})`;
 const salesSum = (menus, key) => menus.reduce((s, m) => s + (m[key] || 0), 0);
@@ -1241,6 +1241,7 @@ async function loadSales(date, open = true) {
     sales.data = d;
     sales.open = open;
     sales.failed = false;
+    if (date) sales.savedAt = null;
     renderSales();
   } catch (e) {
     $("#salesCard").innerHTML = `<p class="muted">판매 기록을 불러오지 못했어요. ${esc(e.message)}</p>`;
@@ -1251,70 +1252,78 @@ function renderSales() {
   const d = sales.data, isToday = d.date === sales.today;
   $("#sales h2").textContent = isToday ? "오늘 판매 기록" : `${dayLabel(d.date)} 판매 기록`;
   $("#salesBadge").hidden = d.entered || !isToday;
-  // 제목 줄 오른쪽 화살표: 펼침 ⌃ / 접힘 ⌄ (메뉴가 없으면 숨김)
-  const tg = $("#salesToggle");
-  tg.hidden = !d.menus.length;
-  tg.setAttribute("aria-expanded", String(sales.open));
-  tg.setAttribute("aria-label", sales.open ? "판매 기록 접기" : "판매 기록 펼치기");
-  tg.classList.toggle("folded", !sales.open);
   if (!d.menus.length) {
     $("#salesCard").innerHTML = `<p class="muted">판매 중인 메뉴가 없어요. 아래 메뉴별 원가율에서 메뉴를 먼저 추가해 주세요.</p>`;
     return;
   }
-  if (!sales.open) {   // 접힌 한 줄: 그날 합계 · 매출 (펼치기는 제목 줄 화살표)
+  const dayName = `${dayLabel(d.date)}${isToday ? " 오늘" : ""}`;
+  const num = (n) => n.toLocaleString("ko-KR");
+  if (!sales.open) {   // 접힌 한 줄: 날짜 · 저장 상태 | 총 판매량 | 매출 | 채널별 | [펼치기]
     const hall = salesSum(d.menus, "hall"), deliv = salesSum(d.menus, "delivery");
+    const stat = (label, value, cls = "") => `<div class="sf-stat"><span>${label}</span><b class="${cls}">${value}</b></div>`;
     $("#salesCard").innerHTML = `
-      <div class="sales-done">
-        <span class="sales-check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></span>
-        <div class="sales-done-text">
-          <b>${dayLabel(d.date)}${isToday ? " 오늘" : ""}</b> ${d.entered ? `${d.total.toLocaleString("ko-KR")}그릇 · ${won(d.sales_won)}` : "아직 안 넣었어요"}
-          ${d.entered && showDeliv(d) ? `<small>홀 ${hall.toLocaleString("ko-KR")} · 배달 ${deliv.toLocaleString("ko-KR")}</small>` : ""}
+      <div class="sales-fold-row">
+        <div class="sf-day">
+          <span class="sf-dot${d.entered ? "" : " empty"}" aria-hidden="true"></span>
+          <div><b>${dayName}</b><small>${d.entered ? `저장됨${sales.savedAt ? ` · ${sales.savedAt}` : ""} · 내일 준비 · 원가율 반영` : "아직 안 넣었어요"}</small></div>
         </div>
+        ${d.entered ? `${stat("총 판매량", `${num(d.total)}그릇`)}${stat(isToday ? "오늘 매출" : "매출", won(d.sales_won), "money")}
+          ${showDeliv() || deliv ? stat("채널별", `홀 ${num(hall)} · 배달 ${num(deliv)}`) : ""}` : ""}
+        <button class="sales-unfold" type="button" data-sales="unfold" aria-expanded="false" aria-controls="salesCard">
+          ${d.entered ? "펼치기" : "넣기"}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
       </div>`;
     return;
   }
   const min = dayShift(sales.today, -SALES_BACK_DAYS);
-  const both = showDeliv(d);
+  const both = showDeliv();
   const cell = (m, key, label) => `<input class="sales-in" type="text" inputmode="numeric" autocomplete="off" maxlength="4"
       data-mid="${m.menu_id}" data-key="${key}" value="${m[key] ?? ""}" placeholder="${m[key] != null ? "0" : "-"}" aria-label="${esc(m.name)}${label ? ` ${label}` : ""} 그릇 수">`;
-  // 배달 칸 켜고 끄기: 날짜 줄 오른쪽
-  const deliv = `<label class="sales-opt"><input type="checkbox" id="salesDeliv" ${delivOn() ? "checked" : ""}><span class="sales-opt-box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></span>배달</label>`;
   $("#salesCard").innerHTML = `
-    <div class="sales-top">
+    <div class="sales-bar">
       <label class="sales-date"><span class="sales-day-label">${isToday ? "오늘" : `${WEEKDAY[new Date(`${d.date}T00:00:00`).getDay()]}요일`}</span>
         <input type="date" id="salesDate" value="${d.date}" min="${min}" max="${sales.today}" aria-label="날짜 고르기"></label>
-      ${deliv}
-    </div>
-    <div class="sales-table${both ? "" : " one"}" role="table" aria-label="메뉴별 판매 그릇 수">
-      <div class="sales-row sales-head" role="row">
-        ${both ? `<span role="columnheader">메뉴</span><span role="columnheader">홀</span><span role="columnheader">배달</span><span role="columnheader">합계</span>`
-          : `<span role="columnheader">메뉴</span><span role="columnheader">판매 그릇 수</span>`}
+      <div class="sales-bar-right">
+        <label class="sales-opt"><input type="checkbox" id="salesDeliv" ${delivOn() ? "checked" : ""}><span class="sales-opt-box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></span>배달</label>
+        <button class="sales-unfold" type="button" data-sales="fold" aria-expanded="true" aria-controls="salesCard">
+          접기<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>
       </div>
-      ${d.menus.map((m) => `<div class="sales-row" role="row" data-mid="${m.menu_id}">
-        <span role="cell" class="sales-name">${esc(m.name)}<small>${won(m.price)}</small></span>
-        ${both ? `<span role="cell">${cell(m, "hall", "홀")}</span>
-        <span role="cell">${cell(m, "delivery", "배달")}</span>
-        <span role="cell" class="sales-sum" data-sum="${m.menu_id}"></span>`
-          : `<span role="cell">${cell(m, "hall", "")}</span><span class="sales-sum" data-sum="${m.menu_id}" hidden></span>`}
-      </div>`).join("")}
     </div>
-    <div class="sales-foot">
-      <span class="sales-total" id="salesTotal"></span>
-      <span class="sales-status" id="salesStatus" role="status" aria-live="polite"></span>
+    <div class="sales-split">
+      <div class="sales-left">
+        <div class="sales-scroll">
+          <table class="sales-grid${both ? "" : " one"}">
+            <thead><tr><th scope="col">메뉴</th><th scope="col" class="num">단가</th>
+              ${both ? `<th scope="col">홀</th><th scope="col">배달</th><th scope="col" class="num">합계</th>` : `<th scope="col">판매 그릇 수</th>`}</tr></thead>
+            <tbody>${d.menus.map((m) => `<tr data-mid="${m.menu_id}">
+              <th scope="row">${esc(m.name)}</th><td class="num price">${won(m.price)}</td>
+              ${both ? `<td>${cell(m, "hall", "홀")}</td><td>${cell(m, "delivery", "배달")}</td><td class="num sales-sum" data-sum="${m.menu_id}"></td>`
+                : `<td>${cell(m, "hall", "")}<span class="sales-sum" data-sum="${m.menu_id}" hidden></span></td>`}
+            </tr>`).join("")}</tbody>
+          </table>
+        </div>
+      </div>
+      <aside class="sales-panel" aria-label="판매 요약">
+        <div class="sales-status" id="salesStatus" role="status" aria-live="polite"></div>
+        <p class="sp-label">${isToday ? "오늘" : dayLabel(d.date)} 총 매출</p>
+        <p class="sp-money" id="spMoney">0원</p>
+        <p class="sp-bowls" id="spBowls">총 0그릇 판매</p>
+        <dl class="sp-channels" id="spChannels"></dl>
+      </aside>
     </div>`;
   salesTotals();
-  salesStatus(d.entered ? "saved" : d.last_sales_date ? "last" : "");
+  salesStatus(d.entered ? "saved" : d.last_sales_date ? "last" : "", d.entered ? sales.savedAt : null);
 }
 
-// 아래 합계 줄 오른쪽 상태 글자: 저장하는 중 · ✓ 저장됨 · 저장 못 함(다시 시도) · 마지막으로 넣은 날
+// 오른쪽 요약 맨 위 상태 칩: 저장하는 중 · ✓ 저장됨 · 저장 못 함(다시 시도) · 마지막으로 넣은 날
 function salesStatus(kind, time) {
   const el = $("#salesStatus");
   if (!el) return;
   el.className = `sales-status ${kind}`;
+  el.hidden = !kind;
   el.innerHTML = kind === "saving" ? "저장하는 중…"
-    : kind === "saved" ? `✓ ${time ? `${time} ` : ""}저장됨`
+    : kind === "saved" ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>${dayLabel(sales.data.date)} 저장됨${time ? ` · ${time}` : ""}`
     : kind === "failed" ? `저장 못 했어요 <button type="button" class="sales-retry" data-sales="retry">다시 시도</button>`
-    : kind === "last" ? `마지막으로 넣은 날 ${dayLabel(sales.data.last_sales_date)}`
+    : kind === "last" ? `아직 안 넣었어요 · 마지막 ${dayLabel(sales.data.last_sales_date)}`
     : "";
 }
 
@@ -1324,19 +1333,32 @@ const savedVal = (el) => sales.data.menus.find((m) => String(m.menu_id) === el.d
 // 저장될 값: 이미 저장된 칸을 비우면 0 (안 팔림), 처음부터 빈칸이면 null (안 넣음)
 const effVal = (el) => { const v = salesVal(el); return v === null && savedVal(el) !== null ? 0 : v; };
 
+// 메뉴별 합계 칸 + 오른쪽 요약(총 매출 · 그릇 · 홀 / 배달)을 입력하는 대로 다시 계산
 function salesTotals() {
-  const price = Object.fromEntries(sales.data.menus.map((m) => [m.menu_id, m.price]));
-  let bowls = 0, money = 0;
-  document.querySelectorAll("#salesCard [data-sum]").forEach((s) => {
-    const vals = [...document.querySelectorAll(`#salesCard .sales-in[data-mid="${s.dataset.sum}"]`)].map(effVal);
-    // 배달 칸을 없앴어도 예전에 넣은 배달 기록은 저장돼 있으니 합계 · 매출에 넣음 (접힌 줄 · 서버 합계와 같게)
-    if (!showDeliv()) vals.push(sales.data.menus.find((m) => String(m.menu_id) === s.dataset.sum)?.delivery ?? null);
-    const n = vals.reduce((a, v) => a + (Number.isFinite(v) ? v : 0), 0);
-    const any = vals.some((v) => v !== null);
-    s.textContent = any ? n.toLocaleString("ko-KR") : "-";
-    bowls += n; money += n * price[s.dataset.sum];
+  const num = (n) => n.toLocaleString("ko-KR");
+  const ch = { hall: { n: 0, won: 0 }, delivery: { n: 0, won: 0 } };
+  sales.data.menus.forEach((m) => {
+    const row = {};
+    ["hall", "delivery"].forEach((key) => {
+      const el = document.querySelector(`#salesCard .sales-in[data-mid="${m.menu_id}"][data-key="${key}"]`);
+      // 배달 칸을 없앴어도 예전에 넣은 배달 기록은 저장돼 있으니 합계 · 매출에 넣음 (접힌 줄 · 서버 합계와 같게)
+      const v = el ? effVal(el) : m[key] ?? null;
+      row[key] = v;
+      if (Number.isFinite(v)) { ch[key].n += v; ch[key].won += v * m.price; }
+    });
+    const s = $(`#salesCard [data-sum="${m.menu_id}"]`);
+    if (s) {
+      const any = row.hall !== null || row.delivery !== null;
+      s.textContent = any ? num((Number.isFinite(row.hall) ? row.hall : 0) + (Number.isFinite(row.delivery) ? row.delivery : 0)) : "-";
+    }
+    $(`#salesCard tr[data-mid="${m.menu_id}"]`)?.classList.toggle("has", row.hall !== null || row.delivery !== null);
   });
-  $("#salesTotal").innerHTML = `합계 <b>${bowls.toLocaleString("ko-KR")}그릇</b> · 매출 <b>${won(money)}</b>`;
+  const bowls = ch.hall.n + ch.delivery.n, money = ch.hall.won + ch.delivery.won;
+  $("#spMoney").textContent = won(money);
+  $("#spBowls").innerHTML = `총 <b>${num(bowls)}그릇</b> 판매`;
+  const line = (label, c, cls = "") => `<div><dt>${label}</dt><dd class="${cls}">${num(c.n)}그릇 · ${won(c.won)}</dd></div>`;
+  $("#spChannels").innerHTML = showDeliv() || ch.delivery.n
+    ? line("홀 판매", ch.hall) + line("배달 판매", ch.delivery, "deliv") : line("판매", ch.hall);
 }
 
 // 저장된 값과 다르고 규칙에 맞는 칸만 → [{menu_id, hall, delivery}] (안 바뀐 쪽은 null = 그대로)
@@ -1367,7 +1389,8 @@ async function autoSave() {
     $("#salesCard .sales-err")?.remove();
     // 이제 저장된 칸은 비우면 0이 됨 → 흐린 '0'으로 미리 보여 줌
     document.querySelectorAll("#salesCard .sales-in").forEach((el) => { el.placeholder = savedVal(el) !== null ? "0" : "-"; });
-    salesStatus("saved", nowLabel());
+    sales.savedAt = nowLabel();
+    salesStatus("saved", sales.savedAt);
     clearTimeout(sales.refresh);
     sales.refresh = setTimeout(() => { loadDemand(); loadCosts(false); }, 1500);
   }).catch((e) => {
@@ -1409,16 +1432,12 @@ function salesLeave(el) {
   sales.timer = setTimeout(autoSave, 300);   // Enter 로 여러 칸을 빠르게 넘어가도 한 번에 묶어 저장
 }
 
-// 저장 못 했을 때 [다시 시도]
-$("#salesCard").addEventListener("click", (e) => {
-  if (e.target.closest('[data-sales="retry"]')) { sales.failed = false; autoSave(); }
-});
-// 제목 줄 화살표: 펼치기 / 접기 (접기 전에 고친 숫자부터 저장)
-$("#salesToggle").addEventListener("click", async () => {
-  if (sales.open && !(await salesFlush())) return;
-  sales.open = !sales.open;
-  renderSales();
-  if (sales.open) $("#salesCard .sales-in")?.focus();
+// [접기] · [펼치기] · 저장 못 했을 때 [다시 시도]
+$("#salesCard").addEventListener("click", async (e) => {
+  const act = e.target.closest("[data-sales]")?.dataset.sales;
+  if (act === "retry") { sales.failed = false; autoSave(); }
+  if (act === "fold" && await salesFlush()) { sales.open = false; renderSales(); $('#salesCard [data-sales="unfold"]')?.focus(); }
+  if (act === "unfold") { sales.open = true; renderSales(); $("#salesCard .sales-in")?.focus(); }
 });
 $("#salesCard").addEventListener("change", async (e) => {
   if (e.target.classList.contains("sales-in")) return salesLeave(e.target);

@@ -1,0 +1,175 @@
+# 학습 · 실험 돌리기 — numpy가 필요한 작업을 GitHub 실행 컴퓨터에서 대신 돌림
+# 왜: 팀원 PC 여러 대가 보안 정책으로 numpy · scikit-learn · LightGBM 의 실행 파일(DLL)을 막아서
+#
+# 돌리는 법: Actions 탭 → "학습 · 실험 돌리기" → Run workflow
+#   1. Use workflow from: 돌릴 작업 공간(브랜치) — 내 기능 브랜치를 고르면 그 브랜치의 코드로 돌아감
+#   2. 무엇을 돌릴까요: 아래 목록에서 고르기
+#   3. 추가 옵션: 필요할 때만 (예: 13개 기법 재시합에 --kinds 야채)
+#   4. 바뀐 파일 저장: 체크하면 학습 결과 파일(모델 · 결과표)을 저장 기록으로 남김
+#      - 내 기능 브랜치에서 돌렸으면 → 그 브랜치에 바로 올라감 (내 PC에서 git pull 로 받기)
+#      - main · dev 에서 돌렸으면 → 새 작업 공간 feat/auto-<작업>-<번호> 로 올라감 (Summary 에 합치기 요청 링크)
+# 결과 보기: 실행 기록 첫 화면(Summary)에 터미널 출력 전체 + 아래 Artifacts 에 출력 · 바뀐 파일 묶음
+#
+# 목록에 없는 것
+#   - 매일 시세 학습 (실제로 교체 · 올리기): "매일 새벽 AI 예측 학습" 버튼 (daily-learn.yml)
+#   - LightGBM · XGBoost 비교: "LightGBM 비교" 버튼 (lgbm-compare.yml)
+#   - 새 요인 비교(lead_weather_compare): 가락 경락 · 주산지 날씨 원자료가 저장소에 없어 여기서 못 돌림
+#
+# 평가 코드(order_eval · demand_learn · gbdt)나 이 파일을 고친 합치기 요청(PR)을 올리면 발주량 추천 평가가 자동으로 돔 (저장 안 함)
+name: 학습 · 실험 돌리기
+
+on:
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "무엇을 돌릴까요"
+        type: choice
+        default: "발주량 추천 평가"
+        options:
+          - "발주량 추천 평가"
+          - "판매량 학습 (시연 가게 모델 새로 만들기)"
+          - "고객 세그먼트 (음식점 묶기)"
+          - "야채 부스팅 비교"
+          - "13개 기법 재시합"
+          - "시세 학습 미리보기 (올리지 않음)"
+      options:
+        description: "추가 옵션 (필요할 때만, 예: --kinds 야채)"
+        type: string
+        default: ""
+      save:
+        description: "바뀐 파일 저장 (학습 결과 모델 · 결과표를 저장 기록으로 남김)"
+        type: boolean
+        default: false
+  pull_request:
+    paths:
+      - "salpi_agent/demand/order_eval.py"
+      - "salpi_agent/demand/demand_learn.py"
+      - "salpi_agent/price/gbdt.py"
+      - ".github/workflows/numpy-run.yml"
+
+permissions:
+  contents: write   # "바뀐 파일 저장"을 켰을 때만 씀
+
+concurrency:
+  group: numpy-run-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      PYTHONIOENCODING: utf-8
+      JOB: ${{ github.event.inputs.job || '발주량 추천 평가' }}
+      EXTRA: ${{ github.event.inputs.options }}
+      SAVE: ${{ github.event.inputs.save == 'true' }}
+      AT_SALE_API_KEY: ${{ secrets.AT_SALE_API_KEY }}
+      AT_PERDAY_API_KEY: ${{ secrets.AT_PERDAY_API_KEY }}
+      KMA_ASOS_API_KEY: ${{ secrets.KMA_ASOS_API_KEY }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 필요한 것 설치 (numpy 포함)
+        run: pip install numpy requests python-dotenv google-genai
+
+      - name: 고른 작업 정하기
+        id: pick
+        run: |
+          case "$JOB" in
+            "발주량 추천 평가")                          mod="demand.order_eval";          slug="order-eval" ;;
+            "판매량 학습 (시연 가게 모델 새로 만들기)")  mod="demand.demand_learn";        slug="demand-learn" ;;
+            "고객 세그먼트 (음식점 묶기)")               mod="experiments.segment";        slug="segment" ;;
+            "야채 부스팅 비교")                          mod="experiments.boost_compare";  slug="boost-compare" ;;
+            "13개 기법 재시합")                          mod="experiments.method_match";   slug="method-match" ;;
+            "시세 학습 미리보기 (올리지 않음)")          mod="price.learner --dry-run";    slug="learner-dry-run" ;;
+            *) echo "::error::모르는 작업: $JOB"; exit 1 ;;
+          esac
+          echo "mod=$mod" >> "$GITHUB_OUTPUT"
+          echo "slug=$slug" >> "$GITHUB_OUTPUT"
+          echo "작업: $JOB → python -m $mod $EXTRA"
+
+      - name: 돌리기
+        working-directory: salpi_agent
+        env:
+          MOD: ${{ steps.pick.outputs.mod }}
+        run: |
+          set -o pipefail
+          # MOD · EXTRA 는 띄어쓰기로만 나눔 (명령으로 실행되지 않음)
+          python -u -m $MOD $EXTRA 2>&1 | tee ../run_output.txt
+
+      - name: 발주량 추천 평가 — 학습 모델이 빠지지 않았는지 확인
+        if: steps.pick.outputs.slug == 'order-eval'
+        run: |
+          n=$(grep -c "학습 모델 .* 예측 완료" run_output.txt || true)
+          echo "학습 모델 예측 완료: ${n}번 (6번이면 성공)"
+          if grep -q "학습 모델 건너뜀" run_output.txt || [ "$n" != "6" ]; then
+            echo "::error::살피 학습 모델이 빠졌어요. 위 출력을 확인해 주세요."
+            exit 1
+          fi
+
+      - name: 바뀐 파일 목록
+        if: always()
+        run: |
+          git add -A
+          git reset -q -- run_output.txt
+          git diff --cached --name-only > changed_files.txt
+          echo "바뀐 파일:"; cat changed_files.txt
+          mkdir -p changed && git diff --cached --name-only -z | xargs -0 -r cp --parents -t changed 2>/dev/null || true
+
+      - name: 바뀐 파일 저장 (체크했을 때만)
+        if: env.SAVE == 'true' && github.event_name == 'workflow_dispatch'
+        env:
+          SLUG: ${{ steps.pick.outputs.slug }}
+        run: |
+          if [ ! -s changed_files.txt ]; then echo "바뀐 파일이 없어 저장할 게 없어요"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -q -m "build : actions/$SLUG $JOB 결과 저장 (GitHub 실행 #$GITHUB_RUN_NUMBER, 실행한 사람 $GITHUB_ACTOR)"
+          ref="$GITHUB_REF_NAME"
+          if [ "$ref" = "main" ] || [ "$ref" = "dev" ]; then
+            ref="feat/auto-$SLUG-$GITHUB_RUN_NUMBER"
+            git push origin "HEAD:refs/heads/$ref"
+            link="https://github.com/$GITHUB_REPOSITORY/compare/dev...$ref?expand=1"
+            msg="새 작업 공간 **$ref** 에 올렸어요. 합치기 요청 만들기: $link"
+          else
+            git push origin "HEAD:refs/heads/$ref"
+            msg="작업 공간 **$ref** 에 올렸어요. 내 PC에서 \`git pull origin $ref\` 로 받으세요."
+          fi
+          echo "$msg"
+          echo "### 저장" >> "$GITHUB_STEP_SUMMARY"
+          echo "$msg" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 첫 화면(Summary)에 출력 전체 붙이기
+        if: always()
+        run: |
+          {
+            echo "## $JOB"
+            echo "작업 공간: \`$GITHUB_REF_NAME\` · 실행: \`python -m ${{ steps.pick.outputs.mod }} $EXTRA\`"
+            echo
+            echo "**바뀐 파일**"
+            echo '```'
+            cat changed_files.txt 2>/dev/null; [ -s changed_files.txt ] || echo "(없음)"
+            echo '```'
+            echo "**터미널 출력 전체**"
+            echo '```'
+            cat run_output.txt 2>/dev/null || echo "(출력 없음)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 출력 · 바뀐 파일 내려받기용으로 남기기
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: result-${{ steps.pick.outputs.slug || 'run' }}
+          path: |
+            run_output.txt
+            changed/
+          if-no-files-found: ignore
+          retention-days: 14

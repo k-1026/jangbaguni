@@ -1321,9 +1321,10 @@ function salesStatus(kind, time) {
   const el = $("#salesStatus");
   if (!el) return;
   el.className = `sales-status ${kind}`;
+  el.title = kind === "saved" && time ? `${time} 저장` : "";
   el.hidden = !kind;
   el.innerHTML = kind === "saving" ? "저장하는 중…"
-    : kind === "saved" ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>${dayLabel(sales.data.date)} 저장됨${time ? ` ${SEP} ${time}` : ""}`
+    : kind === "saved" ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>${dayLabel(sales.data.date)} 저장됨`
     : kind === "failed" ? `저장 못 했어요 <button type="button" class="sales-retry" data-sales="retry">다시 시도</button>`
     : kind === "last" ? `아직 안 넣었어요 ${SEP} 마지막 ${dayLabel(sales.data.last_sales_date)}`
     : "";
@@ -1356,9 +1357,10 @@ function salesTotals() {
     $(`#salesCard tr[data-mid="${m.menu_id}"]`)?.classList.toggle("has", row.hall !== null || row.delivery !== null);
   });
   const bowls = ch.hall.n + ch.delivery.n, money = ch.hall.won + ch.delivery.won;
-  $("#spMoney").textContent = won(money);
+  $("#spMoney").innerHTML = `${num(Math.round(money))}<small>원</small>`;   // 숫자는 크게, '원'은 작게
   $("#spBowls").innerHTML = `총 <b>${num(bowls)}그릇</b> 판매`;
-  const line = (label, c, cls = "") => `<div><dt>${label}</dt><dd class="${cls}">${num(c.n)}그릇 ${SEP} ${won(c.won)}</dd></div>`;
+  // 홀 / 배달 한 줄: 이름 | 그릇 | 금액 — 세 칸으로 줄 맞춤
+  const line = (label, c, cls = "") => `<div class="${cls}"><dt>${label}</dt><dd>${num(c.n)}그릇</dd><dd class="won">${won(c.won)}</dd></div>`;
   $("#spChannels").innerHTML = showDeliv() || ch.delivery.n
     ? line("홀 판매", ch.hall) + line("배달 판매", ch.delivery, "deliv") : line("판매", ch.hall);
 }

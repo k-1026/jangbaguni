@@ -33,7 +33,7 @@ function costCard(m, T) {
       <li><b>대체 재료</b> ${m.swap ? `${esc(m.swap.from)} 절반을 ${esc(m.swap.to)}(으)로 · 1인분 ${won(m.swap.saving_per_serving)} 아낌` : "지금은 바꿀 만한 재료가 없어요"}
         ${m.swap?.origin_notice ? `<small class="m-origin">⚠ ${esc(m.swap.origin_notice)}</small>` : ""}
         ${m.swap?.others?.length ? `<small class="m-origin">다른 후보: ${m.swap.others.map((o) => `${esc(o.to)} (1인분 ${won(o.saving_per_serving)} 절약)`).join(" · ")}</small>` : ""}</li>
-      <li><b>메뉴 제안</b> ${m.push_menu ? `${esc(m.push_menu.menu)} 밀기 · 한 그릇 ${won(m.push_menu.margin)} 남음` : "원가율이 괜찮은 다른 메뉴가 없어요"}</li></ol></div>` : "";
+      <li><b>메뉴 제안</b> ${m.push_menu ? `${esc(m.push_menu.menu)} 판매 늘리기 ·한 그릇 ${won(m.push_menu.margin)} 남음` : "원가율이 괜찮은 다른 메뉴가 없어요"}</li></ol></div>` : "";
   return `<li class="m-cost ${m.high ? "high" : "ok"}">
     <div class="m-cost-top"><b>${esc(m.menu)}</b><span class="m-ratio">${m.cost_ratio_pct ?? "-"}<small>%</small></span></div>
     <p class="m-note">${esc(m.verdict)} · 판매가 ${won(m.price)} · 재료비 ${won(m.cost_per_serving)} · 남는 돈 ${won(m.margin)}${

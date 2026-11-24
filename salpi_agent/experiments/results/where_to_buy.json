@@ -1,0 +1,44 @@
+[
+ {
+  "markup": 0.0,
+  "n_all": 65,
+  "n_flat_skipped": 12,
+  "n": 53,
+  "market_cheaper_pct": 62.3,
+  "rule_correct_pct": 50.9,
+  "always_shop_correct_pct": 37.7,
+  "always_market_correct_pct": 62.3,
+  "avg_cost_rule": 4353,
+  "avg_cost_always_shop": 4727,
+  "avg_cost_always_market": 4361,
+  "avg_cost_best_possible": 3928
+ },
+ {
+  "markup": 0.2,
+  "n_all": 65,
+  "n_flat_skipped": 12,
+  "n": 53,
+  "market_cheaper_pct": 41.5,
+  "rule_correct_pct": 49.1,
+  "always_shop_correct_pct": 58.5,
+  "always_market_correct_pct": 41.5,
+  "avg_cost_rule": 5026,
+  "avg_cost_always_shop": 4727,
+  "avg_cost_always_market": 5233,
+  "avg_cost_best_possible": 4378
+ },
+ {
+  "markup": 0.5,
+  "n_all": 65,
+  "n_flat_skipped": 12,
+  "n": 53,
+  "market_cheaper_pct": 9.4,
+  "rule_correct_pct": 43.4,
+  "always_shop_correct_pct": 90.6,
+  "always_market_correct_pct": 9.4,
+  "avg_cost_rule": 6037,
+  "avg_cost_always_shop": 4727,
+  "avg_cost_always_market": 6541,
+  "avg_cost_best_possible": 4708
+ }
+]

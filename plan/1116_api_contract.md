@@ -144,3 +144,25 @@
 
 - `on_screen.야채.metrics` = `{opposite_pct, mae_pp, range_hit_pct}` (지표 3개) · `version` · `trained_at`
 - `history[]` = 매일 학습 기록: `diagnosis`(AI 진단) · `experiments[]`(실험 · 교체 여부) · `promoted`
+
+## 10. 판매 기록 입력 · 확인 — `GET /api/sales?date=` · `PUT /api/sales` (11/24, 화면은 이성이)
+
+하루에 메뉴별로 몇 그릇 팔았는지 넣는 곳. 넣으면 내일 준비(예상 판매) · 원가율이 다시 계산됨 (`store/sales.py`)
+
+```json
+GET /api/sales?date=2026-11-24   (date 없으면 오늘)
+{"date": "2026-11-24", "entered": true, "total": 15, "sales_won": 135000, "last_sales_date": "2026-11-24",
+ "menus": [{"menu_id": 1, "name": "김치찌개", "price": 9000, "hall": 12, "delivery": 3},
+           {"menu_id": 2, "name": "제육볶음", "price": 10000, "hall": null, "delivery": null}]}
+
+PUT /api/sales   (Authorization: Bearer <로그인 표> 같이 보내기)
+{"date": "2026-11-24", "items": [{"menu_id": 1, "hall": 12, "delivery": 3}, {"menu_id": 2, "hall": 20}]}
+→ GET 과 같은 모양 + "new"(이 날짜를 처음 넣었나) · "trial"(판매율 분석 남은 횟수)
+```
+- `hall` · `delivery` = 홀 · 배달 그릇 수 (0 이상 정수). `null` · 빠진 칸은 **안 바꿈**, `0` 은 안 팔림
+- 날짜: 오늘 ~ 60일 전까지 (뒤 날짜 · 너무 오래된 날짜는 400 `detail`)
+- 판매 중인 메뉴만 (`menus[].menu_id`). 틀린 값은 400 `detail` 에 메뉴 이름과 함께 안내 문구
+- **판매율 분석 무료 5회** = 새 날짜를 올린 횟수 (같은 날짜를 고치면 안 셈). 5회를 다 쓰면 새 날짜는 **402** → 영수증 잠금처럼 "구독하러 가기"
+  - 5번째로 올린 날은 그날 끝까지 분석이 보이고, 다음 날부터 `GET /api/demand` 가 402 · `GET /api/costs` 가 `{locked: true, receipts}` (나의 가게 칸 잠금은 이미 화면에 있음)
+  - 남은 횟수: `GET /api/receipt/trial?feature=sales` → `{used, left, locked, paid}`
+- 지금은 시연 가게 한 곳 (영수증 · 메뉴와 같음). 가상 판매 기록은 11/17까지 들어 있음

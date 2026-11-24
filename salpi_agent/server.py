@@ -33,6 +33,7 @@ from account import store_costs
 from account import kakao_alert
 from sources import mart_price
 from store import menus
+from store import sales
 from price import price_judge
 from account import subscription
 from store import inventory
@@ -403,8 +404,8 @@ def _sales_user(authorization, check=True):
 
 @app.get("/api/demand")
 def demand_forecast(target: str | None = None, authorization: str | None = Header(None)):
-    """내일 예상 판매 (판매율 분석). 로그인 표를 같이 보내면 무료 5회(하루 처음 볼 때 1회)를 셈 → 다 쓰면 402.
-    표 없이 부르는 곳(모바일 시연 화면)은 지금처럼 횟수 없이."""
+    """내일 예상 판매 (판매율 분석). 로그인 표를 같이 보내고 무료 5회(판매 올린 날짜 수)를 다 썼으면 402.
+    보는 것은 횟수를 세지 않음 (세는 곳은 PUT /api/sales). 표 없이 부르는 곳(모바일 시연 화면)은 지금처럼."""
     user = _sales_user(authorization)
     try:
         day = date.fromisoformat(target) if target else None
@@ -414,7 +415,34 @@ def demand_forecast(target: str | None = None, authorization: str | None = Heade
     outlook = _price_outlook()
     key = f"demand:{day}:{'price' if outlook else 'noprice'}"
     out = _guard(lambda: memo(key, lambda: demand.forecast(target=day, price_outlook=outlook or {}), ttl=600 if outlook else 60))
-    return {**out, "trial": _auth(lambda: trial.count(user, "sales"))} if user else out
+    return {**out, "trial": trial._state(user, "sales")} if user else out
+
+
+class SalesIn(BaseModel):
+    date: str | None = None
+    items: list[dict] = []   # [{"menu_id": 3, "hall": 25, "delivery": 8}] — 빈칸(null)은 안 바꿈
+
+
+@app.get("/api/sales")
+def sales_day(date: str | None = None):
+    """판매 기록 확인: 그날(기본 오늘) 메뉴별 홀 · 배달 그릇 수 · 합계 · 매출 · 마지막으로 넣은 날."""
+    return _receipt_guard(lambda: sales.day(supabase_db.DEMO_STORE, date))
+
+
+@app.put("/api/sales")
+def sales_save(body: SalesIn, authorization: str | None = Header(None)):
+    """판매 기록 입력 → 내일 준비 · 원가율 다시 계산. 로그인 표가 있으면 새 날짜를 올릴 때 판매율 분석 1회
+    (같은 날짜를 고치면 안 셈, 무료 5회를 다 썼으면 새 날짜는 402)."""
+    user = _sales_user(authorization)
+    if user:
+        st = trial._state(user, "sales")
+        new = not _receipt_guard(lambda: sales.day(supabase_db.DEMO_STORE, body.date))["entered"]
+        if new and not st["paid"] and st["used"] >= trial.FREE:
+            raise HTTPException(402, trial.LOCKED_MSG)
+    out = _receipt_guard(lambda: _store_changed(sales.save(supabase_db.DEMO_STORE, body.model_dump())))
+    if user:
+        out["trial"] = _auth(lambda: trial.count(user, "sales")) if out["new"] else trial._state(user, "sales")
+    return out
 
 
 # ---------------------------------------------------------------

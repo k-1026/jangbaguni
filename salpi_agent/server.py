@@ -25,6 +25,7 @@ from price import cheaper as cheaper_sellers
 from demand import demand
 from price import forecast_log
 from price import forecast_model
+from price import seller_links
 from sources import foodspring
 from account import app_push
 from account import trial
@@ -36,7 +37,7 @@ from store import inventory
 from store import receipts
 from sources import supabase_db
 from chat.agent import SalpiAgent
-from sources.data_sources import ITEMS, ApiError, ApiKeyMissing, event_detail, holidays, month_events, weather_forecast
+from sources.data_sources import ITEMS, ApiError, ApiKeyMissing, event_detail, foodspring_url, holidays, month_events, weather_forecast
 
 ROOT = Path(__file__).resolve().parent
 WEB = ROOT / "web"         # 데스크톱 화면
@@ -326,6 +327,15 @@ def event(content_id: str):
 def mart():
     """대형마트 판매가 (한국소비자원 참가격, 음식 재료만). 2주마다 조사돼서 6시간 보관."""
     return _guard(lambda: shared("mart", mart_price.mart_prices, ttl=6 * 3600, keep=3 * 24 * 3600))
+
+
+@app.get("/api/buy-links")
+def buy_links(item: str = ""):
+    """사러 가기 판매처 6곳 주소: 재료가 있으면 상품 목록(검색 결과), 없으면 첫 화면.
+    쿠팡 파트너스 키가 있으면 쿠팡은 제휴 주소 + ad_note(대가성 안내 문구), 없으면 ad_note = null. 1시간 보관."""
+    item = item.strip()[:30]
+    fs = foodspring_url(item) if item in ITEMS else None
+    return memo(f"buy_links:{item}", lambda: seller_links.links(item or None, fs), ttl=3600)
 
 
 @app.get("/api/cheaper")

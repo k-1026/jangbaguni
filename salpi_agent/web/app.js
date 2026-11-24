@@ -1207,9 +1207,15 @@ function monthRange(history, now) {
 // 자동 저장: 숫자를 고치고 칸을 벗어나면(Enter · Tab · 다른 곳 누르기) 바로 저장 → 위에 '저장하는 중 / ✓ 저장됨'
 // 저장되면 잠깐 뒤 내일 준비 · 원가율을 다시 불러옴 (여러 칸을 연달아 넣어도 한 번만)
 // 표는 늘 펼쳐 두고, 사장님이 [접기]를 눌렀을 때만 한 줄로 접음
-// 빈칸 = 안 넣음(그 칸은 안 바뀜), 0 = 안 팔림. 서버와 같은 규칙(0 이상 정수 · 하루 2000그릇 · 60일 전까지)을 먼저 화면에서 확인
+// 빈칸 = 안 넣음, 0 = 안 팔림. 단 이미 저장된 칸을 비우면 0(안 팔림)으로 저장 (흐린 '0'으로 미리 보여 줌)
+// 서버와 같은 규칙(0 이상 정수 · 하루 2000그릇 · 60일 전까지)을 먼저 화면에서 확인
+// '배달'을 끄면 배달 칸을 없애고 메뉴당 칸 하나(홀로 저장) — 이 브라우저에 기억. 예전에 넣은 배달 기록은 지우지 않고 합계에만 넣음
 // ---------------------------------------------------------------
 const SALES_MAX = 2000, SALES_BACK_DAYS = 60;
+const SALES_DELIV_KEY = "salpi_sales_delivery";
+const delivOn = () => { try { return localStorage.getItem(SALES_DELIV_KEY) !== "0"; } catch (e) { return true; } };
+const setDelivOn = (on) => { try { localStorage.setItem(SALES_DELIV_KEY, on ? "1" : "0"); } catch (e) {} };
+const showDeliv = () => delivOn();
 const WEEKDAY = ["일", "월", "화", "수", "목", "금", "토"];
 // saving: 지금 저장 중인 요청(Promise) · again: 저장 중에 또 고쳐서 끝나면 한 번 더 · failed: 마지막 저장이 실패함
 const sales = { today: null, data: null, open: true, saving: null, again: false, failed: false, timer: null, refresh: null };
@@ -1256,7 +1262,7 @@ function renderSales() {
         <span class="sales-check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></span>
         <div class="sales-done-text">
           <b>${dayLabel(d.date)}${isToday ? " 오늘" : ""}</b> ${d.entered ? `${d.total.toLocaleString("ko-KR")}그릇 · ${won(d.sales_won)}` : "아직 안 넣었어요"}
-          ${d.entered ? `<small>홀 ${hall.toLocaleString("ko-KR")} · 배달 ${deliv.toLocaleString("ko-KR")}</small>` : ""}
+          ${d.entered && showDeliv(d) ? `<small>홀 ${hall.toLocaleString("ko-KR")} · 배달 ${deliv.toLocaleString("ko-KR")}</small>` : ""}
         </div>
         <div class="sales-done-btns">
           <button class="btn primary" type="button" data-sales="edit" aria-expanded="false">펼치기</button>
@@ -1266,8 +1272,9 @@ function renderSales() {
   }
   const yest = dayShift(sales.today, -1), min = dayShift(sales.today, -SALES_BACK_DAYS);
   const chip = (day, text) => `<button type="button" class="sales-chip${d.date === day ? " on" : ""}" data-day="${day}" aria-pressed="${d.date === day}">${text}</button>`;
+  const both = showDeliv(d);
   const cell = (m, key, label) => `<input class="sales-in" type="text" inputmode="numeric" autocomplete="off" maxlength="4"
-      data-mid="${m.menu_id}" data-key="${key}" value="${m[key] ?? ""}" placeholder="-" aria-label="${esc(m.name)} ${label} 그릇 수">`;
+      data-mid="${m.menu_id}" data-key="${key}" value="${m[key] ?? ""}" placeholder="${m[key] != null ? "0" : "-"}" aria-label="${esc(m.name)}${label ? ` ${label}` : ""} 그릇 수">`;
   $("#salesCard").innerHTML = `
     <div class="sales-top">
       <div class="sales-days" role="group" aria-label="날짜">
@@ -1277,18 +1284,21 @@ function renderSales() {
       </div>
       <div class="sales-top-right">
         <span class="sales-status" id="salesStatus" role="status" aria-live="polite"></span>
+        <label class="sales-switch"><input type="checkbox" id="salesDeliv" ${delivOn() ? "checked" : ""}><span class="sales-switch-ui" aria-hidden="true"></span>배달</label>
         <button class="btn sales-fold" type="button" data-sales="fold" aria-expanded="true">접기</button>
       </div>
     </div>
-    <div class="sales-table" role="table" aria-label="메뉴별 판매 그릇 수">
+    <div class="sales-table${both ? "" : " one"}" role="table" aria-label="메뉴별 판매 그릇 수">
       <div class="sales-row sales-head" role="row">
-        <span role="columnheader">메뉴</span><span role="columnheader">홀</span><span role="columnheader">배달</span><span role="columnheader">합계</span>
+        ${both ? `<span role="columnheader">메뉴</span><span role="columnheader">홀</span><span role="columnheader">배달</span><span role="columnheader">합계</span>`
+          : `<span role="columnheader">메뉴</span><span role="columnheader">판매 그릇 수</span>`}
       </div>
       ${d.menus.map((m) => `<div class="sales-row" role="row" data-mid="${m.menu_id}">
         <span role="cell" class="sales-name">${esc(m.name)}<small>${won(m.price)}</small></span>
-        <span role="cell">${cell(m, "hall", "홀")}</span>
+        ${both ? `<span role="cell">${cell(m, "hall", "홀")}</span>
         <span role="cell">${cell(m, "delivery", "배달")}</span>
-        <span role="cell" class="sales-sum" data-sum="${m.menu_id}"></span>
+        <span role="cell" class="sales-sum" data-sum="${m.menu_id}"></span>`
+          : `<span role="cell">${cell(m, "hall", "")}</span><span class="sales-sum" data-sum="${m.menu_id}" hidden></span>`}
       </div>`).join("")}
     </div>
     <div class="sales-foot"><span class="sales-total" id="salesTotal"></span></div>`;
@@ -1311,12 +1321,16 @@ function salesStatus(kind, time) {
 // 칸 값 읽기: "" → null(안 넣음), 숫자가 아니면 NaN
 const salesVal = (el) => { const v = el.value.trim(); return v === "" ? null : /^\d+$/.test(v) ? +v : NaN; };
 const savedVal = (el) => sales.data.menus.find((m) => String(m.menu_id) === el.dataset.mid)?.[el.dataset.key] ?? null;
+// 저장될 값: 이미 저장된 칸을 비우면 0 (안 팔림), 처음부터 빈칸이면 null (안 넣음)
+const effVal = (el) => { const v = salesVal(el); return v === null && savedVal(el) !== null ? 0 : v; };
 
 function salesTotals() {
   const price = Object.fromEntries(sales.data.menus.map((m) => [m.menu_id, m.price]));
   let bowls = 0, money = 0;
   document.querySelectorAll("#salesCard [data-sum]").forEach((s) => {
-    const vals = [...document.querySelectorAll(`#salesCard .sales-in[data-mid="${s.dataset.sum}"]`)].map(salesVal);
+    const vals = [...document.querySelectorAll(`#salesCard .sales-in[data-mid="${s.dataset.sum}"]`)].map(effVal);
+    // 배달 칸을 없앴어도 예전에 넣은 배달 기록은 저장돼 있으니 합계 · 매출에 넣음 (접힌 줄 · 서버 합계와 같게)
+    if (!showDeliv()) vals.push(sales.data.menus.find((m) => String(m.menu_id) === s.dataset.sum)?.delivery ?? null);
     const n = vals.reduce((a, v) => a + (Number.isFinite(v) ? v : 0), 0);
     const any = vals.some((v) => v !== null);
     s.textContent = any ? n.toLocaleString("ko-KR") : "-";
@@ -1329,7 +1343,7 @@ function salesTotals() {
 function salesChanges() {
   const items = {};
   document.querySelectorAll("#salesCard .sales-in").forEach((el) => {
-    const v = salesVal(el);
+    const v = effVal(el);
     if (v === null || Number.isNaN(v) || v > SALES_MAX || v === savedVal(el)) return;
     (items[el.dataset.mid] ||= { menu_id: +el.dataset.mid, hall: null, delivery: null })[el.dataset.key] = v;
   });
@@ -1351,6 +1365,8 @@ async function autoSave() {
     sales.failed = false;
     $("#salesBadge").hidden = r.entered || r.date !== sales.today;
     $("#salesCard .sales-err")?.remove();
+    // 이제 저장된 칸은 비우면 0이 됨 → 흐린 '0'으로 미리 보여 줌
+    document.querySelectorAll("#salesCard .sales-in").forEach((el) => { el.placeholder = savedVal(el) !== null ? "0" : "-"; });
     salesStatus("saved", nowLabel());
     clearTimeout(sales.refresh);
     sales.refresh = setTimeout(() => { loadDemand(); loadCosts(false); }, 1500);
@@ -1379,18 +1395,14 @@ function salesMsg(text) {
   $("#salesCard").insertAdjacentHTML("afterbegin", `<p class="sales-err" role="alert">${esc(text)}</p>`);
 }
 
-// 칸을 벗어날 때: 규칙에 안 맞으면 표시만 하고 저장 안 함 · 저장된 칸을 비우면 빈칸은 저장되지 않으니 원래 숫자로 되돌리고 알려 줌
+// 칸을 벗어날 때: 규칙에 안 맞으면 표시만 하고 저장 안 함 · 저장된 칸을 비웠으면 0으로 채우고 저장
 function salesLeave(el) {
-  const v = salesVal(el), saved = savedVal(el);
+  const v = salesVal(el);
   if (Number.isNaN(v) || v > SALES_MAX) {
     el.classList.add("bad");
     return salesMsg(`${el.getAttribute("aria-label")}: 0부터 ${SALES_MAX.toLocaleString("ko-KR")} 사이 숫자로 넣어 주세요`);
   }
-  if (v === null && saved !== null) {
-    el.value = saved;
-    salesTotals();
-    return salesMsg(`${el.getAttribute("aria-label").replace(" 그릇 수", "")}: 빈칸은 저장되지 않아요. 안 팔렸으면 0을 넣어 주세요`);
-  }
+  if (v === null && savedVal(el) !== null) el.value = "0";
   if (!salesChanges().length) return;
   salesStatus("saving");
   clearTimeout(sales.timer);
@@ -1409,6 +1421,14 @@ $("#salesCard").addEventListener("click", async (e) => {
 });
 $("#salesCard").addEventListener("change", async (e) => {
   if (e.target.classList.contains("sales-in")) return salesLeave(e.target);
+  if (e.target.id === "salesDeliv") {   // 배달 칸 켜고 끄기: 그 전에 고친 숫자부터 저장
+    const on = e.target.checked;
+    if (!(await salesFlush())) { e.target.checked = !on; return; }
+    setDelivOn(on);
+    renderSales();
+    $("#salesDeliv")?.focus();
+    return;
+  }
   if (e.target.id !== "salesDate") return;
   const day = e.target.value;
   if (!day || day === sales.data.date) return;

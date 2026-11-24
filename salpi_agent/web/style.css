@@ -782,6 +782,17 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .sales-top { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; margin-bottom: 10px; }
 .sales-top-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .sales-fold { min-height: 40px; padding: 0 16px; }
+/* 배달도 해요 스위치 (진짜 checkbox 위에 그린 모양 — 키보드 · 화면 읽기 그대로) */
+.sales-switch { position: relative; display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px 0 10px; border: 1px solid var(--outline); border-radius: 999px; font-size: 14px; cursor: pointer; }
+.sales-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.sales-switch-ui { position: relative; width: 36px; height: 20px; border-radius: 999px; background: var(--outline); transition: background .15s; }
+.sales-switch-ui::after { content: ""; position: absolute; left: 2px; top: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.sales-switch input:checked + .sales-switch-ui { background: var(--primary); }
+.sales-switch input:checked + .sales-switch-ui::after { transform: translateX(16px); }
+.sales-switch input:focus-visible + .sales-switch-ui { outline: 2px solid var(--primary); outline-offset: 2px; }
+.sales-table.one .sales-row { grid-template-columns: minmax(0, 1fr) 140px; }
+.sales-table.one .sales-head span:last-child { text-align: center; }
+.sales-in::placeholder { color: var(--muted); opacity: .55; font-weight: 400; }
 /* 자동 저장 상태: 저장하는 중(회색) · ✓ 저장됨(초록) · 저장 못 함(빨강 + 다시 시도) */
 .sales-status { font-size: 14px; color: var(--muted); }
 .sales-status.saved { color: var(--primary); font-weight: 700; }

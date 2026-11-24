@@ -86,6 +86,10 @@ def read(image, mime):
                 model=model, contents=[types.Part.from_bytes(data=image, mime_type=mime), _prompt(items)],
                 config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0))
             data = json.loads(r.text)
+            if isinstance(data, list):   # 예비 모델이 품목 목록만 [..] 으로 줄 때가 있음 (11/24 OCR 20장 시험에서 6장)
+                data = {"items": data[0].get("items", data) if len(data) == 1 and isinstance(data[0], dict) and "items" in data[0] else data}
+            if not isinstance(data, dict):
+                raise ValueError("영수증 답 모양이 이상해요")
             break
         except errors.APIError as e:
             if 400 <= e.code < 500 and e.code not in (404, 429):
@@ -108,7 +112,12 @@ def read(image, mime):
         if a and qty:
             it, qty_base, how = by_id.get(a["item_id"]), qty * float(a["base_qty_per_unit"]), "저장된 짝"
         else:
-            it, qty_base, how = by_name.get(x.get("item")), _num(x.get("qty_base")), "AI 추정"
+            # AI 가 재료 목록 모양 그대로 '양파(kg)' 처럼 단위를 붙여 줄 때가 있음 → 괄호를 떼고 찾음 (11/24 OCR 20장: 마트 영수증 4줄)
+            name = str(x.get("item") or "").strip()
+            it = by_name.get(name) or by_name.get(re.sub(r"\s*\([^)]*\)\s*$", "", name))
+            qty_base, how = _num(x.get("qty_base")), "AI 추정"
+            if it and qty:
+                qty_base = _piece_qty(it["name"], str(x.get("raw_name") or ""), qty, qty_base)
         rows.append({"raw_name": str(x.get("raw_name") or "").strip(), "qty": qty, "amount": _num(x.get("amount")),
                      "item_id": it["id"] if it else None, "item": it["name"] if it else None,
                      "base_unit": it["base_unit"] if it else None, "qty_base": qty_base, "matched_by": how if it else None})
@@ -118,6 +127,21 @@ def read(image, mime):
             "items_list": [{"id": i["id"], "name": i["name"], "base_unit": i["base_unit"]} for i in items],
             "total_matches": total is None or abs(total - line_sum) < 1,   # 줄 금액 합 = 합계인지 (틀리면 다시 보라고 안내)
             "line_sum": line_sum, "model": model}
+
+
+def _piece_qty(item, raw_name, qty, ai_qty_base):
+    """개 · 통 · 단으로 산 재료(애호박 1개 · 양배추(통))는 살피 환산표(units.PIECE_KG)로 기준 양을 계산
+    → 단가 판정 · 원가율과 같은 기준 (AI 는 애호박 1개를 0.3kg 로 보거나 비워 둠). 무게가 적힌 줄은 AI 값 그대로."""
+    from price import units
+    if item not in units.PIECE_KG:
+        return ai_qty_base
+    pack = units.parse_pack(raw_name)
+    if pack and units._norm_unit(pack[1]) in units.PIECE_WORDS:     # '애호박 1개' · '배추 3포기' → 묶음 개수 × 1개 무게
+        b = units.to_base(item, pack[0], pack[1])
+        return round(qty * b["qty"], 3) if b["qty"] else ai_qty_base
+    if pack is None and ai_qty_base is None:                       # '양배추(통)' · '애호박' 처럼 무게 없이 개수만 → 1개씩
+        return round(qty * units.PIECE_KG[item][0], 3)
+    return ai_qty_base
 
 
 def _num(v):

@@ -272,6 +272,8 @@ button.chip:hover { background: #F7FAF3; }
 .receipt-lock .lock-found b { color: #B33A00; font-weight: 800; }
 .receipt-lock .lock-btn:hover { background: var(--primary-hover); }
 .receipt-lock .lock-btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+/* 판매율 분석 잠금: 카드 안에 그대로 놓는 같은 안내 (내일 준비 · 메뉴별 원가율 칸) */
+.receipt-lock.sales-lock { position: static; min-height: 240px; border-radius: var(--radius); }
 .section-head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
 .section-head h2 { margin: 0; font-size: 22px; font-weight: 700; }
 

@@ -7,7 +7,7 @@ const mmdd = (d) => `${d.slice(5, 7)}.${d.slice(8, 10)}`;
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
 // 사러 가기: 판매처 고르기 창. 살피는 팔지 않고 연결만 함 (재료 페이지에서 열면 그 재료 검색 결과로, 첫 화면에서 열면 각 사이트 첫 화면으로)
-// 나중에 쿠팡 파트너스를 가입하면 아래 coupang 주소만 제휴 주소로 바꾸면 됨
+// 쿠팡 파트너스 제휴 주소는 서버(price/seller_links.py)가 바꿔 줌 — 키는 .env COUPANG_ACCESS_KEY · COUPANG_SECRET_KEY
 // 로고는 각 사이트가 공개한 사이트 아이콘(img/shops/)을 그대로 씀 (모양 · 색 바꾸지 않음)
 const BUY_SHOPS = [
   { name: "식봄",          logo: "foodspring", home: "https://www.foodspring.co.kr", search: (q) => `https://www.foodspring.co.kr/search/all?key=${q}` },
@@ -29,10 +29,10 @@ function openBuyPicker(item, foodspringUrl) {
   box.className = "buy-pick";
   box.innerHTML = `<div class="buy-pick-card" role="dialog" aria-modal="true" aria-label="구매할 곳 고르기">
     <h3>${item ? `${esc(item)}, 어디서 살까요?` : "어디서 살까요?"}</h3>
-    <div class="buy-pick-list">${BUY_SHOPS.map((s) => `<a href="${esc(buyUrl(s, item, foodspringUrl))}" target="_blank" rel="noopener noreferrer">
+    <div class="buy-pick-list">${BUY_SHOPS.map((s) => `<a href="${esc(buyUrl(s, item, foodspringUrl))}" data-shop="${s.logo}" target="_blank" rel="noopener noreferrer">
       <span class="buy-pick-logo"><img src="/static/img/shops/${s.logo}.png" alt="" width="44" height="44" loading="lazy"></span>
       <b>${esc(s.name)}</b></a>`).join("")}</div>
-    <p class="buy-pick-note buy-pick-ad">쿠팡 링크는 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</p>
+    <p class="buy-pick-note buy-pick-ad" hidden></p>
     <button type="button" class="buy-pick-close">닫기</button></div>`;
   const close = () => { box.remove(); document.removeEventListener("keydown", onKey); };
   const onKey = (e) => { if (e.key === "Escape") close(); };
@@ -40,6 +40,22 @@ function openBuyPicker(item, foodspringUrl) {
   document.addEventListener("keydown", onKey);
   document.body.appendChild(box);
   box.querySelector("a").focus();
+  applyBuyLinks(box, item, "buy-pick-ad");
+}
+// 판매처 주소는 서버(/api/buy-links)가 정함: 쿠팡 파트너스 키가 있으면 제휴 주소 + 대가성 안내 문구, 없으면 안내를 숨김
+// 창은 위 기본 주소로 바로 열고, 서버 답이 오면 주소만 바꿈 (재료마다 한 번만 물어봄)
+const buyLinkCache = {};
+async function applyBuyLinks(box, item, adClass) {
+  try {
+    const key = item || "";
+    const d = buyLinkCache[key] ||= await getJSON(`/api/buy-links?item=${encodeURIComponent(key)}`);
+    for (const s of d.shops || []) {
+      const a = box.querySelector(`a[data-shop="${s.logo}"]`);
+      if (a) { a.href = s.url; if (s.affiliate) a.rel = "noopener noreferrer sponsored"; }
+    }
+    const note = box.querySelector(`.${adClass}`);
+    if (note) { note.textContent = d.ad_note || ""; note.hidden = !d.ad_note; }
+  } catch (e) { delete buyLinkCache[item || ""]; }
 }
 document.addEventListener("click", (e) => {
   const b = e.target.closest("[data-buy]");
@@ -344,11 +360,27 @@ if (SIGNUP_VIEW) {
   $("#suName").focus();
 }
 
-async function getJSON(url) {
-  const r = await fetch(url);
+// auth: 로그인했으면 로그인 표를 같이 보냄 (판매율 분석 무료 횟수를 세는 곳). 실패하면 status 가 붙은 오류
+async function getJSON(url, { auth = false } = {}) {
+  const token = auth && SIGNED_IN ? readLogin()?.access_token : null;
+  const r = await fetch(url, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
   const body = await r.json();
-  if (!r.ok) throw new Error(body.detail || "데이터를 불러오지 못했어요");
+  if (!r.ok) throw Object.assign(new Error(body.detail || "데이터를 불러오지 못했어요"), { status: r.status });
   return body;
+}
+
+// 판매율 분석(내일 예상 판매 · 메뉴별 원가율 · 남는 돈) 무료 5회를 다 쓰면: 두 칸을 잠금 안내로 바꿈 (영수증 잠금과 같은 모양)
+// 횟수는 서버(account/trial.py, feature=sales)가 하루에 처음 볼 때 1회로 셈
+const SALES_LOCK = `<div class="receipt-lock sales-lock"><div class="lock-panel">
+    <p class="lock-title">무료 체험이 끝났어요</p>
+    <p class="lock-sub">살피 플러스로 판매율 분석을 <b>무제한</b> 써 보세요</p>
+    <button class="lock-btn sales-sub-btn" type="button">구독하러 가기</button></div></div>`;
+function showSalesLock() {
+  $("#storeBasis").textContent = "";
+  $("#menuForecast").innerHTML = SALES_LOCK;
+  $("#orderCard").hidden = true;
+  $("#costCard").innerHTML = SALES_LOCK;
+  if ($("#menuAddBtn")) $("#menuAddBtn").hidden = true;
 }
 const byItem = (name) => overview.find((r) => r.item === name);
 const expOf = (r) => r.forecast?.expected_change_pct ?? 0;
@@ -974,7 +1006,7 @@ const SERVING_G = 150;   // 고기 1인분 기준 무게 (식당 1인분 보통 
 async function fillGradeMenus(item) {
   if (!SIGNED_IN || !item) return;
   try {
-    const [mine, costs] = await Promise.all([getJSON("/api/my-items"), getJSON("/api/costs")]);
+    const [mine, costs] = await Promise.all([getJSON("/api/my-items"), getJSON("/api/costs", { auth: true })]);
     const names = (mine.items || {})[item] || [];
     const el = $("#gMenus");
     if (!names.length || !el) return;
@@ -1214,8 +1246,9 @@ function usualChip(predicted, usual) {
 async function loadDemand() {
   let d;
   try {
-    d = await getJSON("/api/demand");
+    d = await getJSON("/api/demand", { auth: true });
   } catch (e) {
+    if (e.status === 402) return showSalesLock();
     $("#storeBasis").textContent = "";
     $("#menuForecast").innerHTML = `<p class="muted">판매 기록을 불러오지 못했어요. ${esc(e.message)}</p>`;
     return;
@@ -1761,8 +1794,9 @@ addEventListener("resize", rcArrows);
 
 async function loadCosts(full = true) {
   try {
-    const r = await getJSON("/api/costs");
-    if (full) renderCosts(r, false);
+    const r = await getJSON("/api/costs", { auth: true });
+    if (r.locked) showSalesLock();
+    else if (full) renderCosts(r, false);
     showReceiptList(r.receipts);
   } catch (e) {
     if (full) $("#costCard").innerHTML = `<p class="muted">원가율을 불러오지 못했어요. ${esc(e.message)}</p>`;
@@ -2814,7 +2848,7 @@ async function renderMypage(view) {
   const cached = cachedProfile();
   costEdit = false; costAdding = false; addSec = "fixed"; storeDraft = null; storeErr = ""; costFold = new Set(["fixed", "sale", "delivery"]);   // 처음 들어오면 비용 칸은 모두 접힌 채로
   draw(cached);
-  freshProfile().then((me) => { if (JSON.stringify(me) !== JSON.stringify(cached)) draw(me); }).catch(() => draw(cached, true));
+  freshProfile().then((me) => { if (JSON.stringify(me) !== JSON.stringify(cached)) draw(me); syncCosts(me); }).catch(() => draw(cached, true));
   loadReceiptMaterial();
 }
 
@@ -2841,7 +2875,7 @@ function myHome(me, offline) {
 
 // ---------------------------------------------------------------
 // 내 정보 · 가게 비용: 고정 비용 · 판매 비용 · 배달 비용을 넣으면 "하루 얼마 팔아야 본전인지" 알려 줌
-// 금액은 모두 '만 원' 단위로, 이 브라우저에 사장님별로 기억 (서버 저장은 나중에)
+// 금액은 모두 '만 원' 단위로, 이 브라우저에 사장님별로 기억 + 계정에도 저장 (/api/store/costs)
 // ---------------------------------------------------------------
 const COST_KEY = () => { const u = readLogin(); return `salpi_costs_${u?.profile?.id || u?.id || "me"}`; };
 const WEEK = ["월", "화", "수", "목", "금", "토", "일"];
@@ -2891,7 +2925,29 @@ function costs() {
   const c = { ...COST_DEFAULT, ...load(COST_KEY(), {}) };
   return { ...c, fixed: { ...c.fixed }, deliv: { ...c.deliv }, extra: [...c.extra], closed: [...c.closed] };
 }
-const saveCosts = (c) => store(COST_KEY(), c);
+// 이 브라우저에 바로 기억하고 → 0.8초 동안 더 안 바뀌면 서버(계정)에도 저장 (다른 기기 · 앱에서도 같은 값)
+let costPush = null;
+function saveCosts(c) {
+  store(COST_KEY(), c);
+  clearTimeout(costPush);
+  costPush = setTimeout(() => pushCosts(c), 800);
+}
+async function pushCosts(c) {
+  const u = readLogin();
+  if (!u?.access_token) return;
+  try { await authCall("/api/store/costs", { method: "PUT", token: u.access_token, body: { costs: c } }); }
+  catch (e) { /* 저장 실패해도 이 브라우저에는 남아 있음 → 다음에 바꿀 때 다시 보냄 */ }
+}
+// 서버(계정)에 저장된 비용 → 이 브라우저 기억을 바꿈. 서버에 아직 없으면(예전 사장님) 이 브라우저 값을 올려 둠
+function syncCosts(me) {
+  if (!me) return;
+  if (me.costs) {
+    if (costEdit) return;   // 고치는 중이면 덮어쓰지 않음
+    // 서버는 칸 순서를 바꿔 돌려줌 → 순서를 맞춰 비교 (같으면 다시 그리지 않음)
+    const canon = (v) => JSON.stringify(v, (k, x) => (x && typeof x === "object" && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).sort()) : x));
+    if (canon({ ...COST_DEFAULT, ...load(COST_KEY(), {}) }) !== canon({ ...COST_DEFAULT, ...me.costs })) { store(COST_KEY(), me.costs); drawCost(); }
+  } else if (load(COST_KEY(), null)) pushCosts(costs());
+}
 function setCost(path, raw) {
   const c = costs(), p = path.split(".");
   let o = c;

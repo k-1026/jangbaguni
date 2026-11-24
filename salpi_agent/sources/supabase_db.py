@@ -160,6 +160,18 @@ def remove_file(path):
         pass
 
 
+def remove_files(bucket, names):
+    """보관함에서 파일 여러 개를 한 번에 지우기 (없는 파일은 그냥 넘어감). 실패해도 계속."""
+    if not names:
+        return
+    base, headers = _base()
+    try:
+        _http().delete(base.replace("/rest/v1/", "/storage/v1/") + f"object/{bucket}", json={"prefixes": list(names)}, timeout=20,
+                        headers={"apikey": headers["apikey"], "Authorization": f"Bearer {headers['apikey']}"})
+    except requests.RequestException:
+        pass
+
+
 def signed_url(path, seconds=600):
     """비공개 보관함 파일을 잠깐(기본 10분)만 열 수 있는 주소. 실패하면 None."""
     base, headers = _base()

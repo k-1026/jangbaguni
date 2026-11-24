@@ -12,6 +12,7 @@
 """
 
 import math
+from concurrent.futures import ThreadPoolExecutor
 import statistics
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
@@ -40,23 +41,40 @@ def _holidays(start, end):
     return days
 
 
-def _load(store_id):
-    store = db.select("stores", id=f"eq.{store_id}")
-    if not store:
-        raise ValueError("가게 정보를 찾지 못했어요")
-    menus = db.select("menus", store_id=f"eq.{store_id}", is_active="is.true", select="id,name,price", order="id")
-    # 판매 기록은 1년 치면 1000줄을 넘어서 (Supabase 한 번에 1000줄) 나눠 받음
+SALES_PAGE = 1000   # Supabase 한 번에 1000줄
+
+
+def _sales_page(store_id, k):
+    return db.select("sales_daily", store_id=f"eq.{store_id}", select="menu_id,sale_date,qty",
+                     order="sale_date,menu_id,channel", limit=str(SALES_PAGE), offset=str(k))
+
+
+def _all_sales(store_id, pool):
+    """판매 기록 전부. 1년 치면 1000줄을 넘어서 나눠 받음 → 3쪽씩 동시에 받고, 3쪽이 다 차 있으면 다음 3쪽."""
     sales, k = [], 0
     while True:
-        part = db.select("sales_daily", store_id=f"eq.{store_id}", select="menu_id,sale_date,qty",
-                         order="sale_date,menu_id,channel", limit="1000", offset=str(k))
-        sales += part
-        if len(part) < 1000:
-            break
-        k += 1000
-    recipes = db.select("recipe_items", menu_id=f"in.({','.join(str(m['id']) for m in menus) or 0})",
-                        select="menu_id,qty_per_serving,loss_rate,items(id,name,base_unit)")
-    stock = db.select("inventory", store_id=f"eq.{store_id}", select="item_id,on_hand_qty,next_delivery_date,updated_at")
+        parts = list(pool.map(lambda o: _sales_page(store_id, o), [k, k + SALES_PAGE, k + 2 * SALES_PAGE]))
+        for part in parts:
+            sales += part
+            if len(part) < SALES_PAGE:
+                return sales
+        k += 3 * SALES_PAGE
+
+
+def _load(store_id):
+    """가게 · 메뉴(+레시피) · 판매 기록 · 재고를 동시에 읽음 (차례로 하면 약 4.5초)."""
+    def menus_and_recipes():
+        menus = db.select("menus", store_id=f"eq.{store_id}", is_active="is.true", select="id,name,price", order="id")
+        return menus, db.select("recipe_items", menu_id=f"in.({','.join(str(m['id']) for m in menus) or 0})",
+                                select="menu_id,qty_per_serving,loss_rate,items(id,name,base_unit)")
+    with ThreadPoolExecutor(max_workers=4) as pool, ThreadPoolExecutor(max_workers=3) as pages:
+        f_store = pool.submit(db.select, "stores", id=f"eq.{store_id}")
+        f_menus = pool.submit(menus_and_recipes)
+        f_sales = pool.submit(_all_sales, store_id, pages)
+        f_stock = pool.submit(db.select, "inventory", store_id=f"eq.{store_id}", select="item_id,on_hand_qty,next_delivery_date,updated_at")
+        store, (menus, recipes), sales, stock = f_store.result(), f_menus.result(), f_sales.result(), f_stock.result()
+    if not store:
+        raise ValueError("가게 정보를 찾지 못했어요")
     return store[0], menus, sales, recipes, stock
 
 

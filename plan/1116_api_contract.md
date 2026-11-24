@@ -110,6 +110,22 @@
 {"locked": true, "message": "이 기능은 유료 플랜 사장님만 사용 가능해요", "receipt_free_left": 0, "plan_price": 19900}
 ```
 
+✅ 서버 있음 (11/24, `account/trial.py` · `account/subscription.py`). 모두 `Authorization: Bearer <로그인 표>` 필요
+
+| 주소 | 하는 일 | 답 |
+|---|---|---|
+| `GET /api/receipt/trial` | 영수증 분석 무료 횟수 | `{limit: 5, used, left, paid, plan_until, locked, found}` |
+| `POST /api/receipt/read` | 영수증 읽기 — 5회 다 쓰면 **402** `{"detail": "이 기능은 유료 플랜 사장님만 사용 가능해요"}` | 성공하면 `trial` 이 같이 옴 |
+| `GET /api/subscribe` | 구독 상태 | `{plan: "free"·"plus", paid, until, cancel_at_end, price: 19900, payments[], mode: "toss"·"mock"}` |
+| `POST /api/subscribe/checkout` | 결제창 열기 전 주문 만들기 | `{order_id, amount: 19900, order_name, client_key, customer_key, customer_name, mode}` |
+| `POST /api/subscribe/confirm` | 결제창에서 돌아온 값으로 승인 → 30일 플러스 | body `{payment_key, order_id, amount}` → 구독 상태 + `approved` |
+| `POST /api/subscribe/cancel` | 해지 예약 (기간 끝까지 플러스) · `{"undo": true}` 면 취소 | 구독 상태 |
+
+**모의 결제 화면 흐름**
+- `mode: "toss"` (서버에 토스페이먼츠 **테스트** 키가 있을 때): checkout 답의 `client_key` 로 토스 결제창(`@tosspayments/tosspayments-sdk`)을 열고 `orderId` · `amount` · `orderName` · `customerKey` 를 그대로 넘김 → 성공 주소로 돌아오면 주소의 `paymentKey` · `orderId` · `amount` 를 confirm 으로. 테스트 키라 돈은 나가지 않음
+- `mode: "mock"` (키가 없을 때, 지금 Vercel): 결제창 없이 화면에서 "결제하기(모의)" 를 누르면 confirm 에 `order_id` · `amount` 만 보냄
+- 잘못된 주문 · 금액 · 같은 주문 두 번은 400 `detail` 로 안내 문구가 옴
+
 ## 8. 앞으로 7일 날씨 — `GET /api/context` 의 `weather_forecast` (윤가언)
 
 ```json
@@ -128,3 +144,40 @@
 
 - `on_screen.야채.metrics` = `{opposite_pct, mae_pp, range_hit_pct}` (지표 3개) · `version` · `trained_at`
 - `history[]` = 매일 학습 기록: `diagnosis`(AI 진단) · `experiments[]`(실험 · 교체 여부) · `promoted`
+
+## 10. 판매 기록 입력 · 확인 — `GET /api/sales?date=` · `PUT /api/sales` (11/24, 화면은 이성이)
+
+하루에 메뉴별로 몇 그릇 팔았는지 넣는 곳. 넣으면 내일 준비(예상 판매) · 원가율이 다시 계산됨 (`store/sales.py`)
+
+```json
+GET /api/sales?date=2026-11-24   (date 없으면 오늘)
+{"date": "2026-11-24", "entered": true, "total": 15, "sales_won": 135000, "last_sales_date": "2026-11-24",
+ "menus": [{"menu_id": 1, "name": "김치찌개", "price": 9000, "hall": 12, "delivery": 3},
+           {"menu_id": 2, "name": "제육볶음", "price": 10000, "hall": null, "delivery": null}]}
+
+PUT /api/sales   (Authorization: Bearer <로그인 표> 같이 보내기)
+{"date": "2026-11-24", "items": [{"menu_id": 1, "hall": 12, "delivery": 3}, {"menu_id": 2, "hall": 20}]}
+→ GET 과 같은 모양 + "new"(이 날짜를 처음 넣었나) · "trial"(판매율 분석 남은 횟수)
+```
+- `hall` · `delivery` = 홀 · 배달 그릇 수 (0 이상 정수). `null` · 빠진 칸은 **안 바꿈**, `0` 은 안 팔림
+- 날짜: 오늘 ~ 60일 전까지 (뒤 날짜 · 너무 오래된 날짜는 400 `detail`)
+- 판매 중인 메뉴만 (`menus[].menu_id`). 틀린 값은 400 `detail` 에 메뉴 이름과 함께 안내 문구
+- **판매율 분석 무료 5회** = 새 날짜를 올린 횟수 (같은 날짜를 고치면 안 셈). 5회를 다 쓰면 새 날짜는 **402** → 영수증 잠금처럼 "구독하러 가기"
+  - 5번째로 올린 날은 그날 끝까지 분석이 보이고, 다음 날부터 `GET /api/demand` 가 402 · `GET /api/costs` 가 `{locked: true, receipts}` (나의 가게 칸 잠금은 이미 화면에 있음)
+  - 남은 횟수: `GET /api/receipt/trial?feature=sales` → `{used, left, locked, paid}`
+- 지금은 시연 가게 한 곳 (영수증 · 메뉴와 같음). 가상 판매 기록은 11/17까지 들어 있음
+
+## 11. 원가율 알림 — `GET /api/cost-alerts?days=7` (11/24, "다음 주 오름 → 다른 재료 어때?" 말풍선 화면은 이성이)
+
+매일 아침 새 시세가 나오면(새벽 학습 → `/api/jobs/alerts`) 원가율을 새 시세로 다시 계산해 **어제와 비교해 새로 생긴 일만** 알림으로 만듦 (`store/cost_alert.py`)
+
+```json
+GET /api/cost-alerts
+{"days": 7, "alerts": [
+  {"id": 12, "sent_at": "2026-11-25T06:05:00+00:00", "clicked_at": null,
+   "message": "다음 주 양파가 +8% 오를 것 같아 김치찌개 원가율이 38.2% → 41.0%로 40%를 넘을 것 같아요. 양파 절반을 대파로 바꾸면 1인분 120원 아껴 39.1%예요. 다른 재료 어때요?"}]}
+```
+- 종류 (메뉴마다 하루 최대 1개): **넘음**(지금 40% 이상이 됨) · **넘을 예정**(다음 주 예상이 40% 이상이 됨) · **오름**(다음 주 예상이 어제보다 3%p 넘게 오름) · **내려옴**(40% 아래로 돌아옴)
+- 문장 = 정보 1개 + 행동 1개 (대체 재료 → 판매가 제안 → 영수증 확인 순). 숫자는 `/api/costs` 와 같은 계산
+- 같은 날 다시 돌려도 새 알림 없음. 아침 앱 · 카카오톡 알림에도 오늘 알림 첫 문장이 한 줄 들어감
+- 미리 보기 (저장 안 함): `POST /api/jobs/cost-alerts?preview=1` → `{alerts: [{menu, kind, ratio, next_ratio, swap, next_up, message}]}`

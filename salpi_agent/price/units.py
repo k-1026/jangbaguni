@@ -35,7 +35,7 @@ PIECE_KG = {
     "깻잎":   (0.02, "식봄 '깻잎 10속 200g' → 1속 20g (11/17)"),
     # 낱개(식봄 규격의 개당 무게 범위 가운데)
     "양파":   (0.22, "식봄 '180~230g/개' · '250g내외/개' (11/17)"),
-    "당근":   (0.25, "식봄 '세척당근 130~200g/개' · '3입내외 1Kg' (11/17)"),
+    "당근":   (0.165, "식봄 '세척당근 130~200g/개' 가운데 (11/24)"),   # 0.25 → 0.165: plan/forecast/1124_unit_price_answer_key.md
     "감자":   (0.15, "식봄 '80g이상/개(대)' ~ '180g이상/개(왕왕)' (11/17)"),
     "토마토": (0.2,  "식봄 '3~4과 1Kg' · '5~7과 1Kg' (11/17)"),
 }
@@ -101,8 +101,9 @@ def per_base_price(item, price, qty, unit):
     return {"price": round(float(price) / b["qty"]), "unit": b["unit"], "how": b["how"], "note": b["note"]}
 
 
-_PACK = re.compile(r"(\d+(?:\.\d+)?)\s*(kg|㎏|g|ml|㎖|l|ℓ|리터|포기|통|개|입|구|모|단|속|봉|팩|마리)(?![a-z])"
+_PACK = re.compile(r"(\d+(?:\.\d+)?)\s*(kg|㎏|g|ml|㎖|l|ℓ|리터|포기|통|개|입|구|모|단|속|봉|팩|마리)(?![a-wyz])"   # 'kgx10'의 x는 곱하기
                    r"(?:\s*[x×*]\s*(\d+)\s*(?:개|봉|팩|입|통|ea)?)?", re.I)
+_RANGE = re.compile(r"(\d+(?:\.\d+)?)\s*(?:kg|㎏|g)?\s*~\s*(\d+(?:\.\d+)?)\s*(kg|㎏|g)(?![a-z])", re.I)
 _PER_PIECE = re.compile(r"^\s*(이상|내외|미만)?\s*/\s*(개|과|입)")   # '80g이상/개' 같은 1개 무게 ('/EA'는 한 봉 전체라 해당 없음)
 _BARE_KG = re.compile(r"(^|[\s(_,])kg\s*(단위)?(?=[\s)_,]|$)", re.I)   # '흙당근(실속 KG)': 숫자 없이 kg → 1kg 단위로 팖
 
@@ -112,8 +113,14 @@ def parse_pack(text):
     '양파 15kg' → (15, 'kg') · '감자 500g×2봉' → (1000, 'g') · '배추 3포기' → (3, '포기')
     '감자 (대, 80g이상/개, 1Kg/EA)' → (1, 'Kg'): 1개 무게(○g/개)는 빼고, 무게 · 용량이 여럿이면 가장 큰 것
     (예: '깻잎 20g내외*10단 200g' → 200g). 무게 · 용량이 없으면 처음 나온 개수."""
+    text = text or ""
+    # 범위 무게('5~8kg', '3.7kg~4kg')는 어림값 → 정확한 무게가 없을 때만, 처음 나온 것(규격 칸)의 가운데
+    ranges = [(m, (float(m.group(1)) + float(m.group(2))) / 2) for m in _RANGE.finditer(text)
+              if not _PER_PIECE.match(text[m.end():])]
+    for m, _ in ranges:
+        text = text[:m.start()] + " " * (m.end() - m.start()) + text[m.end():]
     weights, counts = [], []
-    for m in _PACK.finditer(text or ""):
+    for m in _PACK.finditer(text):
         qty, unit, times = float(m.group(1)), m.group(2), m.group(3)
         qty *= int(times) if times else 1
         u = _norm_unit(unit)
@@ -126,6 +133,9 @@ def parse_pack(text):
     if weights:
         _, qty, unit = max(weights)
         return qty, unit
+    if ranges:
+        m, mid = ranges[0]
+        return mid, m.group(3)
     if counts:
         return counts[0]
     return (1.0, "kg") if _BARE_KG.search(text or "") else None

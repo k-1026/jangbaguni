@@ -5,6 +5,7 @@
 - 사장님이 고친 '영수증 이름 → 재료' 짝은 item_aliases 에 쌓아 다음부터 바로 맞춤
 """
 
+from concurrent.futures import ThreadPoolExecutor
 import json
 import math
 import os
@@ -46,8 +47,10 @@ def _norm(s):
 def _josa(word, with_batchim, without):
     """받침에 따라 조사 고르기 (애호박이 / 양파가)."""
     ch = word[-1] if word else ""
-    has = "가" <= ch <= "힣" and (ord(ch) - 0xAC00) % 28 > 0
-    return word + (with_batchim if has else without)
+    tail = (ord(ch) - 0xAC00) % 28 if "가" <= ch <= "힣" else 0
+    if with_batchim == "으로" and tail == 8:   # ㄹ 받침 뒤는 '로' (삼겹살로 · 쌀로)
+        return word + without
+    return word + (with_batchim if tail > 0 else without)
 
 
 def _items():
@@ -85,6 +88,10 @@ def read(image, mime):
                 model=model, contents=[types.Part.from_bytes(data=image, mime_type=mime), _prompt(items)],
                 config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0))
             data = json.loads(r.text)
+            if isinstance(data, list):   # 예비 모델이 품목 목록만 [..] 으로 줄 때가 있음 (11/24 OCR 20장 시험에서 6장)
+                data = {"items": data[0].get("items", data) if len(data) == 1 and isinstance(data[0], dict) and "items" in data[0] else data}
+            if not isinstance(data, dict):
+                raise ValueError("영수증 답 모양이 이상해요")
             break
         except errors.APIError as e:
             if 400 <= e.code < 500 and e.code not in (404, 429):
@@ -107,7 +114,12 @@ def read(image, mime):
         if a and qty:
             it, qty_base, how = by_id.get(a["item_id"]), qty * float(a["base_qty_per_unit"]), "저장된 짝"
         else:
-            it, qty_base, how = by_name.get(x.get("item")), _num(x.get("qty_base")), "AI 추정"
+            # AI 가 재료 목록 모양 그대로 '양파(kg)' 처럼 단위를 붙여 줄 때가 있음 → 괄호를 떼고 찾음 (11/24 OCR 20장: 마트 영수증 4줄)
+            name = str(x.get("item") or "").strip()
+            it = by_name.get(name) or by_name.get(re.sub(r"\s*\([^)]*\)\s*$", "", name))
+            qty_base, how = _num(x.get("qty_base")), "AI 추정"
+            if it and qty:
+                qty_base = _piece_qty(it["name"], str(x.get("raw_name") or ""), qty, qty_base)
         rows.append({"raw_name": str(x.get("raw_name") or "").strip(), "qty": qty, "amount": _num(x.get("amount")),
                      "item_id": it["id"] if it else None, "item": it["name"] if it else None,
                      "base_unit": it["base_unit"] if it else None, "qty_base": qty_base, "matched_by": how if it else None})
@@ -117,6 +129,21 @@ def read(image, mime):
             "items_list": [{"id": i["id"], "name": i["name"], "base_unit": i["base_unit"]} for i in items],
             "total_matches": total is None or abs(total - line_sum) < 1,   # 줄 금액 합 = 합계인지 (틀리면 다시 보라고 안내)
             "line_sum": line_sum, "model": model}
+
+
+def _piece_qty(item, raw_name, qty, ai_qty_base):
+    """개 · 통 · 단으로 산 재료(애호박 1개 · 양배추(통))는 살피 환산표(units.PIECE_KG)로 기준 양을 계산
+    → 단가 판정 · 원가율과 같은 기준 (AI 는 애호박 1개를 0.3kg 로 보거나 비워 둠). 무게가 적힌 줄은 AI 값 그대로."""
+    from price import units
+    if item not in units.PIECE_KG:
+        return ai_qty_base
+    pack = units.parse_pack(raw_name)
+    if pack and units._norm_unit(pack[1]) in units.PIECE_WORDS:     # '애호박 1개' · '배추 3포기' → 묶음 개수 × 1개 무게
+        b = units.to_base(item, pack[0], pack[1])
+        return round(qty * b["qty"], 3) if b["qty"] else ai_qty_base
+    if pack is None and ai_qty_base is None:                       # '양배추(통)' · '애호박' 처럼 무게 없이 개수만 → 1개씩
+        return round(qty * units.PIECE_KG[item][0], 3)
+    return ai_qty_base
 
 
 def _num(v):
@@ -295,14 +322,21 @@ def _swap(riser, per, cost, price, store_price, cache):
     return best
 
 
-def cost_report(store_id=db.DEMO_STORE):
-    menus = db.select("v_menu_cost_ratio", store_id=f"eq.{store_id}", order="menu_id")
-    recipes = db.select("recipe_items", menu_id=f"in.({','.join(str(m['menu_id']) for m in menus) or 0})",
-                        select="menu_id,item_id,qty_per_serving,loss_rate,items(name,base_unit)")
-    hist = _price_history(store_id)
-    names = {i["id"]: i["name"] for i in _items()}
+def cost_report(store_id=db.DEMO_STORE, forecasts=None):
+    """forecasts: {재료 이름: 시세 예측(analysis.forecast_item 결과)} — 첫 화면 시세(/api/overview)에 이미 있으면 넘겨 받아
+    재료마다 시세 API · AI 모델을 다시 부르지 않음 (없는 재료만 _wholesale 이 직접 계산)."""
+    def menus_and_recipes():
+        menus = db.select("v_menu_cost_ratio", store_id=f"eq.{store_id}", order="menu_id")
+        return menus, db.select("recipe_items", menu_id=f"in.({','.join(str(m['menu_id']) for m in menus) or 0})",
+                                select="menu_id,item_id,qty_per_serving,loss_rate,items(name,base_unit)")
+    # 서로 기다릴 필요 없는 Supabase 읽기는 동시에 (차례로 하면 약 3.7초)
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        f_menus, f_hist, f_items = pool.submit(menus_and_recipes), pool.submit(_price_history, store_id), pool.submit(_items)
+        (menus, recipes), hist, items = f_menus.result(), f_hist.result(), f_items.result()
+    names = {i["id"]: i["name"] for i in items}
     store_price = {names[k]: v[-1][1] for k, v in hist.items() if k in names}   # 재료 이름 → 우리 가게 최근 영수증 단가
-    cache, out = {}, []
+    cache = {k: f for k, f in (forecasts or {}).items() if f and f.get("base_kg_price") and f.get("expected_change_pct") is not None}
+    out = []
     for m in menus:
         ratio = float(m["cost_ratio_pct"]) if m["cost_ratio_pct"] is not None else None
         cost = float(m["cost_per_serving"] or 0)
@@ -323,11 +357,14 @@ def cost_report(store_id=db.DEMO_STORE):
         risers = sorted((p for p in parts if p["cost_up"] >= 30), key=lambda p: -p["cost_up"])   # 1인분 30원 미만은 알릴 만큼 아님
         riser = risers[0] if risers else None
         # 다음 주 예상 원가율: 시세가 있는 재료(야채)는 7일 예측만큼 단가가 바뀐다고 보고 다시 계산 (유저플로우 v2 왼쪽 갈래)
-        next_cost = cost
+        next_cost, next_up = cost, None
         for p in parts:
             fc = _wholesale(p["item"], cache)
             if fc:
-                next_cost += p["_per"] * p["latest_price"] * fc["expected_change_pct"] / 100
+                delta = p["_per"] * p["latest_price"] * fc["expected_change_pct"] / 100
+                next_cost += delta
+                if delta >= 10 and (not next_up or delta > next_up["cost_up"]):   # 다음 주 1인분 재료비를 가장 많이 올리는 재료 (원가율 알림 '왜')
+                    next_up = {"item": p["item"], "change_pct": fc["expected_change_pct"], "cost_up": round(delta)}
         next_ratio = round(next_cost / m["price"] * 100, 1) if m["price"] and ratio is not None else None
         high = ratio is not None and (ratio >= TARGET_RATIO or (next_ratio or 0) >= TARGET_RATIO)
         if ratio is None:
@@ -375,7 +412,7 @@ def cost_report(store_id=db.DEMO_STORE):
                     "high": high, "items_without_price": m["items_without_price"],
                     "top_items": [{k: v for k, v in p.items() if k != "_per"} for p in parts[:3]],
                     "riser": {k: v for k, v in riser.items() if k != "_per"} if riser else None, "tips": tips, "swap": swap,
-                    "price_up": price_up, "push_menu": None})
+                    "price_up": price_up, "push_menu": None, "next_up": next_up})
     # 메뉴 제안: 원가율이 높은 메뉴가 있으면, 지금 · 다음 주 모두 40% 아래인 메뉴 중 한 그릇에 가장 많이 남는 메뉴를 밀어 보자고 제안
     good = [x for x in out if x["cost_ratio_pct"] is not None and not x["high"]]
     best = max(good, key=lambda x: x["margin"], default=None)
@@ -405,6 +442,7 @@ def my_ingredients(store_id):
 # ---------------------------------------------------------------
 
 def recent(store_id, limit=8):
+    """최근 영수증 목록 + 사진 미리보기 주소 (1시간 동안 열리는 주소 → 보관할 때는 1시간보다 짧게)."""
     ps = db.select("purchases", store_id=f"eq.{store_id}", select="id,purchased_on,supplier,total_amount,source,image_path",
                    order="purchased_on.desc,id.desc", limit=str(limit))
     counts, names = {}, {}

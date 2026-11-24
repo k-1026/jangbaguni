@@ -1741,7 +1741,7 @@ function costPlan(m) {
   const opts = [
     { kind: "price", label: "가격 조정", ratio: p?.new_ratio_pct, none: "계산할 수 없어요",
       what: p && `<s>${won(m.price)}</s><i aria-label="에서">→</i><b>${won(p.price)}</b>`,
-      key: p?.basis === "다음 주 예상 원가" ? "남는 금액(다음 주)" : "남는 금액", val: p && won(p.new_margin) },
+      key: p?.basis === "다음 주 예상 원가" ? "남는 금액(다음 주 원가로 계산)" : "남는 금액", val: p && won(p.new_margin) },
     { kind: "swap", label: "대체 재료", ratio: s?.new_ratio_pct, none: "바꿀 만한 재료가 없어요",
       what: s && `${esc(s.from)} ${s.share_pct}%<i aria-label="대신">→</i><b>${esc(s.to)}</b>`,
       key: "1인분", val: s && `${won(s.saving_per_serving)} 절약` },

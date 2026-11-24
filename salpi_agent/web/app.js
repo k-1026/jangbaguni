@@ -1713,7 +1713,25 @@ function renderCosts(r, withChange) {
       </article>`;
     }).join("")}</div>
     <p class="muted small">레시피에 주재료만 들어 있어 실제보다 원가율이 조금 낮게 나와요.</p>`;
+  fitCpWhat();
 }
+
+// 원가율 낮추는 방법 카드의 내용은 늘 한 줄: 칸보다 길면(예: 돼지고기 앞다리 50% → 수입 돼지고기 삼겹살) 글자를 칸에 맞을 때까지 조금씩 줄임
+// → 세 카드 높이가 같아져 옆 카드에 빈 여백이 생기지 않음. 화면 폭이 바뀌면 다시 맞춤
+function fitCpWhat() {
+  document.querySelectorAll("#costCard .cp-what").forEach((el) => {
+    el.style.fontSize = "";
+    el.classList.remove("wrap");
+    if (!el.clientWidth) return;   // 숨겨진 칸은 폭을 잴 수 없음
+    let size = parseFloat(getComputedStyle(el).fontSize);
+    while (el.scrollWidth > el.clientWidth + 1 && size > 13) { size -= 0.5; el.style.fontSize = `${size}px`; }
+    // 13px로도 안 들어가는 좁은 화면(휴대폰 등)은 글자가 잘리지 않게 원래 크기로 두 줄
+    if (el.scrollWidth > el.clientWidth + 1) { el.style.fontSize = ""; el.classList.add("wrap"); }
+  });
+}
+let fitCpTimer;
+addEventListener("resize", () => { clearTimeout(fitCpTimer); fitCpTimer = setTimeout(fitCpWhat, 150); });
+document.fonts?.ready.then(fitCpWhat);   // 글꼴을 다 받은 뒤 폭이 달라지면 다시 맞춤
 
 // 대체 재료 이름 바로 아래(구분선 위) 작게: 원산지 표시 변경 안내(고기). '원산지 표시 변경 필요'까지 한 줄, 설명은 다음 줄
 const swapOrigin = (s) => {

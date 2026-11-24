@@ -809,7 +809,8 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .cp-swap .cp-chip { background: #E6EEFB; color: #1A4FB8; }
 .cp-menu .cp-chip { background: #DDF3E4; color: #1E7A3C; }
 /* 세 카드 모두: 칩 한 줄 → 아래 줄에 내용 (16px, 바뀌는 값만 굵게) → 구분선 → 숫자 — 시작 줄 · 글자 크기를 맞춤 */
-.cp-what { flex-basis: 100%; margin: 0; font-size: 16px; line-height: 1.45; color: var(--ink); }
+.cp-what { flex-basis: 100%; min-width: 0; margin: 0; font-size: 16px; line-height: 1.45; color: var(--ink); white-space: nowrap; overflow: hidden; }   /* 늘 한 줄 (길면 app.js fitCpWhat 이 글자를 줄임) */
+.cp-what.wrap { white-space: normal; }
 .cp-what b, .cp-what s { white-space: nowrap; }
 .cp-what s { color: var(--muted); }
 .cp-what i { margin: 0 6px; font-style: normal; color: var(--muted); }

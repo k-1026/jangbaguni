@@ -793,6 +793,20 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .sales-opt input:focus-visible + .sales-opt-box { outline: 2px solid var(--primary); outline-offset: 2px; }
 .sales-table.one .sales-row { grid-template-columns: minmax(0, 1fr) 140px; }
 .sales-table.one .sales-head span:last-child { text-align: center; }
+/* 날짜 줄: 왼쪽 '오늘 + 날짜', 오른쪽 '배달' */
+.sales-date { display: inline-flex; align-items: center; gap: 10px; }
+.sales-day-label { font-size: 16px; font-weight: 700; color: var(--ink); }
+/* 제목 줄 오른쪽 접기 / 펼치기 화살표 */
+.sales-toggle { margin-left: auto; align-self: center; display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid var(--outline); border-radius: 50%; background: var(--surface); cursor: pointer; }
+.sales-toggle:hover { background: var(--surface-variant); }
+.sales-toggle svg { width: 20px; height: 20px; fill: none; stroke: var(--ink); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; transition: transform .15s; }
+.sales-toggle.folded svg { transform: rotate(180deg); }
+.sales-toggle:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+/* 저장 상태는 합계 바로 뒤 (오른쪽 끝은 떠 있는 캐릭터 버튼에 가려짐) */
+#sales .sales-foot { justify-content: flex-start; gap: 6px 18px; }
+@media (max-width: 520px) {   /* 좁은 화면: 설명 글은 아래 줄로, 화살표는 제목 옆에 */
+  #sales .section-head .muted { order: 3; flex-basis: 100%; }
+}
 .sales-in::placeholder { color: var(--muted); opacity: .55; font-weight: 400; }
 /* 자동 저장 상태: 저장하는 중(회색) · ✓ 저장됨(초록) · 저장 못 함(빨강 + 다시 시도) */
 .sales-status { font-size: 14px; color: var(--muted); }

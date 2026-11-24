@@ -1251,11 +1251,17 @@ function renderSales() {
   const d = sales.data, isToday = d.date === sales.today;
   $("#sales h2").textContent = isToday ? "오늘 판매 기록" : `${dayLabel(d.date)} 판매 기록`;
   $("#salesBadge").hidden = d.entered || !isToday;
+  // 제목 줄 오른쪽 화살표: 펼침 ⌃ / 접힘 ⌄ (메뉴가 없으면 숨김)
+  const tg = $("#salesToggle");
+  tg.hidden = !d.menus.length;
+  tg.setAttribute("aria-expanded", String(sales.open));
+  tg.setAttribute("aria-label", sales.open ? "판매 기록 접기" : "판매 기록 펼치기");
+  tg.classList.toggle("folded", !sales.open);
   if (!d.menus.length) {
     $("#salesCard").innerHTML = `<p class="muted">판매 중인 메뉴가 없어요. 아래 메뉴별 원가율에서 메뉴를 먼저 추가해 주세요.</p>`;
     return;
   }
-  if (!sales.open) {   // 접힌 한 줄: 그날 합계 · 매출 + 펼치기
+  if (!sales.open) {   // 접힌 한 줄: 그날 합계 · 매출 (펼치기는 제목 줄 화살표)
     const hall = salesSum(d.menus, "hall"), deliv = salesSum(d.menus, "delivery");
     $("#salesCard").innerHTML = `
       <div class="sales-done">
@@ -1264,29 +1270,20 @@ function renderSales() {
           <b>${dayLabel(d.date)}${isToday ? " 오늘" : ""}</b> ${d.entered ? `${d.total.toLocaleString("ko-KR")}그릇 · ${won(d.sales_won)}` : "아직 안 넣었어요"}
           ${d.entered && showDeliv(d) ? `<small>홀 ${hall.toLocaleString("ko-KR")} · 배달 ${deliv.toLocaleString("ko-KR")}</small>` : ""}
         </div>
-        <div class="sales-done-btns">
-          <button class="btn primary" type="button" data-sales="edit" aria-expanded="false">펼치기</button>
-        </div>
       </div>`;
     return;
   }
-  const yest = dayShift(sales.today, -1), min = dayShift(sales.today, -SALES_BACK_DAYS);
-  const chip = (day, text) => `<button type="button" class="sales-chip${d.date === day ? " on" : ""}" data-day="${day}" aria-pressed="${d.date === day}">${text}</button>`;
+  const min = dayShift(sales.today, -SALES_BACK_DAYS);
   const both = showDeliv(d);
   const cell = (m, key, label) => `<input class="sales-in" type="text" inputmode="numeric" autocomplete="off" maxlength="4"
       data-mid="${m.menu_id}" data-key="${key}" value="${m[key] ?? ""}" placeholder="${m[key] != null ? "0" : "-"}" aria-label="${esc(m.name)}${label ? ` ${label}` : ""} 그릇 수">`;
+  // 배달 칸 켜고 끄기: 날짜 줄 오른쪽
+  const deliv = `<label class="sales-opt"><input type="checkbox" id="salesDeliv" ${delivOn() ? "checked" : ""}><span class="sales-opt-box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></span>배달</label>`;
   $("#salesCard").innerHTML = `
     <div class="sales-top">
-      <div class="sales-days" role="group" aria-label="날짜">
-        ${chip(sales.today, "오늘")}${chip(yest, "어제")}
-        <label class="sales-date"><span class="sr-only">날짜 고르기</span>
-          <input type="date" id="salesDate" value="${d.date}" min="${min}" max="${sales.today}"></label>
-      </div>
-      <div class="sales-top-right">
-        <span class="sales-status" id="salesStatus" role="status" aria-live="polite"></span>
-        <label class="sales-opt"><input type="checkbox" id="salesDeliv" ${delivOn() ? "checked" : ""}><span class="sales-opt-box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></span>배달</label>
-        <button class="btn sales-fold" type="button" data-sales="fold" aria-expanded="true">접기</button>
-      </div>
+      <label class="sales-date"><span class="sales-day-label">${isToday ? "오늘" : `${WEEKDAY[new Date(`${d.date}T00:00:00`).getDay()]}요일`}</span>
+        <input type="date" id="salesDate" value="${d.date}" min="${min}" max="${sales.today}" aria-label="날짜 고르기"></label>
+      ${deliv}
     </div>
     <div class="sales-table${both ? "" : " one"}" role="table" aria-label="메뉴별 판매 그릇 수">
       <div class="sales-row sales-head" role="row">
@@ -1301,12 +1298,15 @@ function renderSales() {
           : `<span role="cell">${cell(m, "hall", "")}</span><span class="sales-sum" data-sum="${m.menu_id}" hidden></span>`}
       </div>`).join("")}
     </div>
-    <div class="sales-foot"><span class="sales-total" id="salesTotal"></span></div>`;
+    <div class="sales-foot">
+      <span class="sales-total" id="salesTotal"></span>
+      <span class="sales-status" id="salesStatus" role="status" aria-live="polite"></span>
+    </div>`;
   salesTotals();
   salesStatus(d.entered ? "saved" : d.last_sales_date ? "last" : "");
 }
 
-// 위 오른쪽 상태 글자: 저장하는 중 · ✓ 저장됨 · 저장 못 함(다시 시도) · 마지막으로 넣은 날
+// 아래 합계 줄 오른쪽 상태 글자: 저장하는 중 · ✓ 저장됨 · 저장 못 함(다시 시도) · 마지막으로 넣은 날
 function salesStatus(kind, time) {
   const el = $("#salesStatus");
   if (!el) return;
@@ -1409,15 +1409,16 @@ function salesLeave(el) {
   sales.timer = setTimeout(autoSave, 300);   // Enter 로 여러 칸을 빠르게 넘어가도 한 번에 묶어 저장
 }
 
-$("#salesCard").addEventListener("click", async (e) => {
-  const day = e.target.closest("[data-day]")?.dataset.day;
-  if (day && day !== sales.data.date) { if (await salesFlush()) loadSales(day, true); return; }
-  const b = e.target.closest("[data-sales]");
-  if (!b) return;
-  const act = b.dataset.sales;
-  if (act === "edit") { sales.open = true; renderSales(); $("#salesCard .sales-in")?.focus(); }
-  if (act === "fold" && await salesFlush()) { sales.open = false; renderSales(); $('#salesCard [data-sales="edit"]')?.focus(); }
-  if (act === "retry") { sales.failed = false; autoSave(); }
+// 저장 못 했을 때 [다시 시도]
+$("#salesCard").addEventListener("click", (e) => {
+  if (e.target.closest('[data-sales="retry"]')) { sales.failed = false; autoSave(); }
+});
+// 제목 줄 화살표: 펼치기 / 접기 (접기 전에 고친 숫자부터 저장)
+$("#salesToggle").addEventListener("click", async () => {
+  if (sales.open && !(await salesFlush())) return;
+  sales.open = !sales.open;
+  renderSales();
+  if (sales.open) $("#salesCard .sales-in")?.focus();
 });
 $("#salesCard").addEventListener("change", async (e) => {
   if (e.target.classList.contains("sales-in")) return salesLeave(e.target);

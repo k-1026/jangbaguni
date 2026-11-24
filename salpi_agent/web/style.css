@@ -933,11 +933,13 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .cp-price .cp-chip { background: #FFF4DB; color: #8A5A00; }
 .cp-swap .cp-chip { background: #E6EEFB; color: #1A4FB8; }
 .cp-menu .cp-chip { background: #DDF3E4; color: #1E7A3C; }
-.cp-what { margin: 0; font-size: 15px; color: var(--ink); }
+/* 세 카드 모두: 칩 한 줄 → 아래 줄에 내용 (16px, 바뀌는 값만 굵게) → 구분선 → 숫자 — 시작 줄 · 글자 크기를 맞춤 */
+.cp-what { flex-basis: 100%; min-width: 0; margin: 0; font-size: 16px; line-height: 1.45; color: var(--ink); white-space: nowrap; overflow: hidden; }   /* 늘 한 줄 (길면 app.js fitCpWhat 이 글자를 줄임) */
+.cp-what.wrap { white-space: normal; }
 .cp-what b, .cp-what s { white-space: nowrap; }
 .cp-what s { color: var(--muted); }
 .cp-what i { margin: 0 6px; font-style: normal; color: var(--muted); }
-.cp-what b { font-size: 17px; font-weight: 800; }
+.cp-what b { font-weight: 800; }
 .cost-plan dl { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; margin: auto 0 0; padding-top: 10px; border-top: 1px solid var(--outline-variant); font-size: 13px; }
 .cost-plan dt { color: var(--muted); white-space: nowrap; }
 .cost-plan dd { margin: 0; white-space: nowrap; font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
@@ -1680,3 +1682,17 @@ body.login-view .login-only, body.signup-view .signup-only { display: flex; }
 .swap-origin { color: #8A4B00; font-weight: 700; }
 .swap-others { color: var(--muted); }
 .cp-swap .swap-origin, .cp-swap .swap-others { margin-top: 6px; font-size: 12.5px; }
+/* 원산지 안내: '⚠ 원산지 표시 변경 필요' 한 줄 + 설명 한 줄 */
+.swap-origin b, .swap-origin span { display: block; }
+.swap-origin span { font-weight: 400; word-break: keep-all; }
+/* 원가율 낮추는 방법의 대체 재료 카드: '대체 재료' 칩 옆 작은 원산지 버튼 (누르면 설명), 바꿀 재료 이름은 앞 재료와 같은 크기(굵게만) */
+.cp-origin-wrap { position: relative; display: inline-flex; }
+.cp-origin { min-height: 28px; padding: 0; border: 0; background: none; color: #8A4B00; font: inherit; font-size: 13px; font-weight: 700; cursor: help; }
+.cp-origin:hover { text-decoration: underline dotted; text-underline-offset: 3px; }
+.cp-origin:focus-visible { outline: 2px solid #8A4B00; outline-offset: 2px; border-radius: 4px; }
+/* 설명 말풍선: 마우스를 올리거나 키보드로 고르면(휴대폰은 누르면) 아래에 뜸 — 카드 높이는 안 바뀜 */
+.cp-tip { position: absolute; top: calc(100% + 6px); left: 0; z-index: 5; width: max-content; max-width: 240px; padding: 8px 12px; border-radius: 8px;
+  background: #2B2F2C; color: #fff; font-size: 12.5px; font-weight: 400; line-height: 1.5; word-break: keep-all; box-shadow: 0 4px 12px rgba(0,0,0,.18);
+  opacity: 0; visibility: hidden; transition: opacity .12s; pointer-events: none; }
+.cp-origin-wrap:hover .cp-tip, .cp-origin-wrap:has(.cp-origin:focus-visible) .cp-tip, .cp-origin-wrap.open .cp-tip { opacity: 1; visibility: visible; }
+@media (max-width: 520px) { .cp-tip { left: auto; right: 0; max-width: min(240px, 70vw); } }   /* 좁은 화면: 오른쪽 끝에 맞춰 화면 밖으로 안 나가게 */

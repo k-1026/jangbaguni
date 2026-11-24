@@ -404,7 +404,7 @@ def cost_report(store_id=db.DEMO_STORE, forecasts=None):
             if base / new_price * 100 >= TARGET_RATIO:
                 new_price += 500
             price_up = {"price": new_price, "raise": new_price - m["price"], "new_ratio_pct": round(base / new_price * 100, 1),
-                        "new_margin": round(new_price - cost), "basis": "다음 주 예상 원가" if next_cost > cost + 1 else "지금 원가"}
+                        "new_margin": round(new_price - base), "basis": "다음 주 예상 원가" if next_cost > cost + 1 else "지금 원가"}   # 원가율 · 남는 금액 모두 같은 원가(base)로
             tips.append(f"판매가를 {new_price:,}원으로 {new_price - m['price']:,}원 올리면 원가율 {price_up['new_ratio_pct']}%로 "
                         f"{TARGET_RATIO}% 아래예요")
         out.append({"menu_id": m["menu_id"], "menu": m["menu_name"], "price": m["price"], "cost_per_serving": round(cost),

@@ -5,62 +5,86 @@
    {
     "raw_name": "깐양파 15kg",
     "qty": 1,
-    "amount": 19500
+    "amount": 19500,
+    "item": "양파",
+    "qty_base": 15
    },
    {
     "raw_name": "돈앞다리 1kg",
     "qty": 12,
-    "amount": 138000
+    "amount": 138000,
+    "item": "돼지고기 앞다리",
+    "qty_base": 12
    },
    {
     "raw_name": "국산두부 1모",
     "qty": 45,
-    "amount": 54000
+    "amount": 54000,
+    "item": "두부",
+    "qty_base": 45
    },
    {
     "raw_name": "포기김치 10kg",
     "qty": 2,
-    "amount": 76000
+    "amount": 76000,
+    "item": "배추김치",
+    "qty_base": 20
    },
    {
     "raw_name": "대파 1kg",
     "qty": 3,
-    "amount": 9000
+    "amount": 9000,
+    "item": "대파",
+    "qty_base": 3
    },
    {
     "raw_name": "청양고추 1kg",
     "qty": 1,
-    "amount": 9500
+    "amount": 9500,
+    "item": "청양고추",
+    "qty_base": 1
    },
    {
     "raw_name": "애호박 1개",
     "qty": 10,
-    "amount": 15000
+    "amount": 15000,
+    "item": "애호박",
+    "qty_base": 3.0
    },
    {
     "raw_name": "감자 10kg",
     "qty": 1,
-    "amount": 26000
+    "amount": 26000,
+    "item": "감자",
+    "qty_base": 10
    },
    {
     "raw_name": "재래된장 2kg",
     "qty": 1,
-    "amount": 14000
+    "amount": 14000,
+    "item": "된장",
+    "qty_base": 2
    },
    {
     "raw_name": "태양초고추장 3kg",
     "qty": 1,
-    "amount": 21000
+    "amount": 21000,
+    "item": "고추장",
+    "qty_base": 3
    },
    {
     "raw_name": "고춧가루(중국) 1kg",
     "qty": 1,
-    "amount": 14000
+    "amount": 14000,
+    "item": "고춧가루",
+    "qty_base": 1
    },
    {
     "raw_name": "깐마늘 1kg",
     "qty": 1,
-    "amount": 11000
+    "amount": 11000,
+    "item": "깐마늘",
+    "qty_base": 1
    }
   ],
   "total": 407000
@@ -71,22 +95,30 @@
    {
     "raw_name": "깐양파 15kg",
     "qty": 1,
-    "amount": 22500
+    "amount": 22500,
+    "item": "양파",
+    "qty_base": 15
    },
    {
     "raw_name": "돈앞다리 1kg",
     "qty": 12,
-    "amount": 144000
+    "amount": 144000,
+    "item": "돼지고기 앞다리",
+    "qty_base": 12
    },
    {
     "raw_name": "국산두부 1모",
     "qty": 45,
-    "amount": 54000
+    "amount": 54000,
+    "item": "두부",
+    "qty_base": 45
    },
    {
     "raw_name": "대파 1kg",
     "qty": 3,
-    "amount": 9600
+    "amount": 9600,
+    "item": "대파",
+    "qty_base": 3
    }
   ],
   "total": 230100
@@ -97,22 +129,30 @@
    {
     "raw_name": "깐양파15K",
     "qty": 1,
-    "amount": 25500
+    "amount": 25500,
+    "item": "양파",
+    "qty_base": 15
    },
    {
     "raw_name": "돈앞다리(냉장)1K",
     "qty": 12,
-    "amount": 150000
+    "amount": 150000,
+    "item": "돼지고기 앞다리",
+    "qty_base": 12
    },
    {
     "raw_name": "국산두부300G",
     "qty": 45,
-    "amount": 54000
+    "amount": 54000,
+    "item": "두부",
+    "qty_base": 45
    },
    {
     "raw_name": "포기김치10K",
     "qty": 2,
-    "amount": 76000
+    "amount": 76000,
+    "item": "배추김치",
+    "qty_base": 20
    }
   ],
   "total": 305500
@@ -123,46 +163,26 @@
    {
     "raw_name": "양파 1망",
     "qty": 1,
-    "amount": 28500
+    "amount": 28500,
+    "item": "양파",
+    "qty_base": null
    },
    {
     "raw_name": "돼지 앞다리",
     "qty": 12,
-    "amount": 153600
+    "amount": 153600,
+    "item": "돼지고기 앞다리",
+    "qty_base": 12
    },
    {
     "raw_name": "대파",
     "qty": 3,
-    "amount": 10500
+    "amount": 10500,
+    "item": "대파",
+    "qty_base": 3
    }
   ],
   "total": 192600
- },
- "receipt_1019_photo_tilted": {
-  "date": "2026-10-19",
-  "items": [
-   {
-    "raw_name": "깐양파 15kg",
-    "qty": 1,
-    "amount": 22500
-   },
-   {
-    "raw_name": "돈앞다리 1kg",
-    "qty": 12,
-    "amount": 144000
-   },
-   {
-    "raw_name": "국산두부 1모",
-    "qty": 45,
-    "amount": 54000
-   },
-   {
-    "raw_name": "대파 1kg",
-    "qty": 3,
-    "amount": 9600
-   }
-  ],
-  "total": 230100
  },
  "receipt_1104_mart_up": {
   "date": "2026-11-04",
@@ -170,19 +190,654 @@
    {
     "raw_name": "깐양파15K",
     "qty": 1,
-    "amount": 34500
+    "amount": 34500,
+    "item": "양파",
+    "qty_base": 15
    },
    {
     "raw_name": "돈앞다리(냉장)1K",
     "qty": 12,
-    "amount": 168000
+    "amount": 168000,
+    "item": "돼지고기 앞다리",
+    "qty_base": 12
    },
    {
     "raw_name": "대파1단",
     "qty": 3,
-    "amount": 11400
+    "amount": 11400,
+    "item": "대파",
+    "qty_base": 3
    }
   ],
   "total": 213900
+ },
+ "receipt_1019_photo_tilted": {
+  "date": "2026-10-19",
+  "items": [
+   {
+    "raw_name": "깐양파 15kg",
+    "qty": 1,
+    "amount": 22500,
+    "item": "양파",
+    "qty_base": 15
+   },
+   {
+    "raw_name": "돈앞다리 1kg",
+    "qty": 12,
+    "amount": 144000,
+    "item": "돼지고기 앞다리",
+    "qty_base": 12
+   },
+   {
+    "raw_name": "국산두부 1모",
+    "qty": 45,
+    "amount": 54000,
+    "item": "두부",
+    "qty_base": 45
+   },
+   {
+    "raw_name": "대파 1kg",
+    "qty": 3,
+    "amount": 9600,
+    "item": "대파",
+    "qty_base": 3
+   }
+  ],
+  "total": 230100
+ },
+ "receipt_1005_statement": {
+  "date": "2026-10-05",
+  "items": [
+   {
+    "raw_name": "쌀 20kg",
+    "qty": 2,
+    "amount": 118000,
+    "item": "쌀",
+    "qty_base": 40
+   },
+   {
+    "raw_name": "계란 1판(30구)",
+    "qty": 3,
+    "amount": 22500,
+    "item": "계란",
+    "qty_base": 90
+   },
+   {
+    "raw_name": "식용유 18L",
+    "qty": 1,
+    "amount": 52000,
+    "item": "식용유",
+    "qty_base": 18
+   },
+   {
+    "raw_name": "사각어묵 1kg",
+    "qty": 5,
+    "amount": 27500,
+    "item": "어묵",
+    "qty_base": 5
+   },
+   {
+    "raw_name": "당근 10kg",
+    "qty": 1,
+    "amount": 21000,
+    "item": "당근",
+    "qty_base": 10
+   }
+  ],
+  "total": 241000
+ },
+ "receipt_1022_statement_dark": {
+  "date": "2026-10-22",
+  "items": [
+   {
+    "raw_name": "깐양파 15kg",
+    "qty": 1,
+    "amount": 24000,
+    "item": "양파",
+    "qty_base": 15
+   },
+   {
+    "raw_name": "돈앞다리 1kg",
+    "qty": 10,
+    "amount": 125000,
+    "item": "돼지고기 앞다리",
+    "qty_base": 10
+   },
+   {
+    "raw_name": "국산두부 1모",
+    "qty": 40,
+    "amount": 48000,
+    "item": "두부",
+    "qty_base": 40
+   },
+   {
+    "raw_name": "양배추 8kg(3통)",
+    "qty": 1,
+    "amount": 13500,
+    "item": "양배추",
+    "qty_base": 8
+   },
+   {
+    "raw_name": "깻잎 1kg",
+    "qty": 1,
+    "amount": 15500,
+    "item": "깻잎",
+    "qty_base": 1
+   },
+   {
+    "raw_name": "건고추 1kg",
+    "qty": 1,
+    "amount": 19000,
+    "item": "건고추",
+    "qty_base": 1
+   }
+  ],
+  "total": 245000
+ },
+ "receipt_1109_statement": {
+  "date": "2026-11-09",
+  "items": [
+   {
+    "raw_name": "쌀 20kg",
+    "qty": 2,
+    "amount": 120000,
+    "item": "쌀",
+    "qty_base": 40
+   },
+   {
+    "raw_name": "계란 1판(30구)",
+    "qty": 4,
+    "amount": 30800,
+    "item": "계란",
+    "qty_base": 120
+   },
+   {
+    "raw_name": "배추김치 10kg",
+    "qty": 2,
+    "amount": 78000,
+    "item": "배추김치",
+    "qty_base": 20
+   },
+   {
+    "raw_name": "재래된장 2kg",
+    "qty": 2,
+    "amount": 28000,
+    "item": "된장",
+    "qty_base": 4
+   },
+   {
+    "raw_name": "태양초고추장 3kg",
+    "qty": 1,
+    "amount": 21500,
+    "item": "고추장",
+    "qty_base": 3
+   },
+   {
+    "raw_name": "배달비",
+    "qty": 1,
+    "amount": 5000,
+    "item": null,
+    "qty_base": null
+   }
+  ],
+  "total": 283300
+ },
+ "receipt_1116_statement_long": {
+  "date": "2026-11-16",
+  "items": [
+   {
+    "raw_name": "깐양파 15kg",
+    "qty": 1,
+    "amount": 26000,
+    "item": "양파",
+    "qty_base": 15
+   },
+   {
+    "raw_name": "돈앞다리 1kg",
+    "qty": 12,
+    "amount": 152400,
+    "item": "돼지고기 앞다리",
+    "qty_base": 12
+   },
+   {
+    "raw_name": "국산두부 1모",
+    "qty": 45,
+    "amount": 54000,
+    "item": "두부",
+    "qty_base": 45
+   },
+   {
+    "raw_name": "포기김치 10kg",
+    "qty": 2,
+    "amount": 78000,
+    "item": "배추김치",
+    "qty_base": 20
+   },
+   {
+    "raw_name": "대파 1kg",
+    "qty": 4,
+    "amount": 11600,
+    "item": "대파",
+    "qty_base": 4
+   },
+   {
+    "raw_name": "청양고추 1kg",
+    "qty": 1,
+    "amount": 8800,
+    "item": "청양고추",
+    "qty_base": 1
+   },
+   {
+    "raw_name": "애호박 1개",
+    "qty": 12,
+    "amount": 19200,
+    "item": "애호박",
+    "qty_base": 3.6
+   },
+   {
+    "raw_name": "감자 10kg",
+    "qty": 1,
+    "amount": 24000,
+    "item": "감자",
+    "qty_base": 10
+   },
+   {
+    "raw_name": "깐마늘 1kg",
+    "qty": 2,
+    "amount": 22000,
+    "item": "깐마늘",
+    "qty_base": 2
+   },
+   {
+    "raw_name": "고춧가루(국산) 1kg",
+    "qty": 1,
+    "amount": 32000,
+    "item": "고춧가루",
+    "qty_base": 1
+   },
+   {
+    "raw_name": "양배추 8kg(3통)",
+    "qty": 1,
+    "amount": 12500,
+    "item": "양배추",
+    "qty_base": 8
+   },
+   {
+    "raw_name": "당근 10kg",
+    "qty": 1,
+    "amount": 20500,
+    "item": "당근",
+    "qty_base": 10
+   },
+   {
+    "raw_name": "사각어묵 1kg",
+    "qty": 3,
+    "amount": 16500,
+    "item": "어묵",
+    "qty_base": 3
+   },
+   {
+    "raw_name": "식용유 18L",
+    "qty": 1,
+    "amount": 53000,
+    "item": "식용유",
+    "qty_base": 18
+   },
+   {
+    "raw_name": "계란 1판(30구)",
+    "qty": 3,
+    "amount": 23400,
+    "item": "계란",
+    "qty_base": 90
+   },
+   {
+    "raw_name": "쌀 20kg",
+    "qty": 1,
+    "amount": 61000,
+    "item": "쌀",
+    "qty_base": 20
+   }
+  ],
+  "total": 614900
+ },
+ "receipt_1123_statement_tilted": {
+  "date": "2026-11-23",
+  "items": [
+   {
+    "raw_name": "양배추 8kg(3통)",
+    "qty": 1,
+    "amount": 12000,
+    "item": "양배추",
+    "qty_base": 8
+   },
+   {
+    "raw_name": "대파 1단",
+    "qty": 5,
+    "amount": 14500,
+    "item": "대파",
+    "qty_base": 5
+   },
+   {
+    "raw_name": "건고추 1kg",
+    "qty": 1,
+    "amount": 19500,
+    "item": "건고추",
+    "qty_base": 1
+   },
+   {
+    "raw_name": "깻잎 1kg",
+    "qty": 1,
+    "amount": 16000,
+    "item": "깻잎",
+    "qty_base": 1
+   },
+   {
+    "raw_name": "배달비",
+    "qty": 1,
+    "amount": 5000,
+    "item": null,
+    "qty_base": null
+   }
+  ],
+  "total": 67000
+ },
+ "receipt_1029_mart": {
+  "date": "2026-10-29",
+  "items": [
+   {
+    "raw_name": "국산콩두부300G",
+    "qty": 10,
+    "amount": 18900,
+    "item": "두부",
+    "qty_base": 10
+   },
+   {
+    "raw_name": "청양고추500G",
+    "qty": 2,
+    "amount": 6980,
+    "item": "청양고추",
+    "qty_base": 1.0
+   },
+   {
+    "raw_name": "깐마늘1K",
+    "qty": 1,
+    "amount": 11900,
+    "item": "깐마늘",
+    "qty_base": 1
+   },
+   {
+    "raw_name": "애호박(개)",
+    "qty": 6,
+    "amount": 8940,
+    "item": "애호박",
+    "qty_base": 1.5
+   },
+   {
+    "raw_name": "종량제봉투20L",
+    "qty": 1,
+    "amount": 2600,
+    "item": null,
+    "qty_base": null
+   }
+  ],
+  "total": 49320
+ },
+ "receipt_1111_mart": {
+  "date": "2026-11-11",
+  "items": [
+   {
+    "raw_name": "햇양파3K",
+    "qty": 2,
+    "amount": 9960,
+    "item": "양파",
+    "qty_base": 6
+   },
+   {
+    "raw_name": "감자2K",
+    "qty": 2,
+    "amount": 8980,
+    "item": "감자",
+    "qty_base": 4
+   },
+   {
+    "raw_name": "세척당근1K",
+    "qty": 3,
+    "amount": 7470,
+    "item": "당근",
+    "qty_base": 3
+   },
+   {
+    "raw_name": "대파(단)",
+    "qty": 2,
+    "amount": 5980,
+    "item": "대파",
+    "qty_base": 2
+   },
+   {
+    "raw_name": "생수2L*6",
+    "qty": 1,
+    "amount": 4980,
+    "item": null,
+    "qty_base": null
+   }
+  ],
+  "total": 37370
+ },
+ "receipt_1118_mart_tilted": {
+  "date": "2026-11-18",
+  "items": [
+   {
+    "raw_name": "계란30구(특)",
+    "qty": 2,
+    "amount": 15980,
+    "item": "계란",
+    "qty_base": 60
+   },
+   {
+    "raw_name": "어묵사각1K",
+    "qty": 2,
+    "amount": 11980,
+    "item": "어묵",
+    "qty_base": 2
+   },
+   {
+    "raw_name": "식용유1.8L",
+    "qty": 2,
+    "amount": 9960,
+    "item": "식용유",
+    "qty_base": 3.6
+   },
+   {
+    "raw_name": "깐마늘500G",
+    "qty": 2,
+    "amount": 9980,
+    "item": "깐마늘",
+    "qty_base": 1.0
+   }
+  ],
+  "total": 47900
+ },
+ "receipt_1120_mart_dark": {
+  "date": "2026-11-20",
+  "items": [
+   {
+    "raw_name": "돈앞다리(냉장)1K",
+    "qty": 5,
+    "amount": 64500,
+    "item": "돼지고기 앞다리",
+    "qty_base": 5
+   },
+   {
+    "raw_name": "국산두부300G",
+    "qty": 20,
+    "amount": 24000,
+    "item": "두부",
+    "qty_base": 20
+   },
+   {
+    "raw_name": "양배추(통)",
+    "qty": 2,
+    "amount": 7980,
+    "item": "양배추",
+    "qty_base": 5.0
+   }
+  ],
+  "total": 96480
+ },
+ "receipt_1107_handwritten": {
+  "date": "2026-11-07",
+  "items": [
+   {
+    "raw_name": "양파 20k",
+    "qty": 1,
+    "amount": 31000,
+    "item": "양파",
+    "qty_base": 20
+   },
+   {
+    "raw_name": "감자",
+    "qty": 1,
+    "amount": 25000,
+    "item": "감자",
+    "qty_base": null
+   },
+   {
+    "raw_name": "대파",
+    "qty": 3,
+    "amount": 9900,
+    "item": "대파",
+    "qty_base": 3
+   }
+  ],
+  "total": 65900
+ },
+ "receipt_1114_handwritten": {
+  "date": "2026-11-14",
+  "items": [
+   {
+    "raw_name": "돼지 앞다리",
+    "qty": 10,
+    "amount": 128000,
+    "item": "돼지고기 앞다리",
+    "qty_base": 10
+   },
+   {
+    "raw_name": "두부",
+    "qty": 30,
+    "amount": 36000,
+    "item": "두부",
+    "qty_base": 30
+   },
+   {
+    "raw_name": "청양",
+    "qty": 1,
+    "amount": 9000,
+    "item": "청양고추",
+    "qty_base": 1
+   },
+   {
+    "raw_name": "깻잎",
+    "qty": 1,
+    "amount": 16500,
+    "item": "깻잎",
+    "qty_base": 1
+   }
+  ],
+  "total": 189500
+ },
+ "receipt_1121_handwritten_tilted": {
+  "date": "2026-11-21",
+  "items": [
+   {
+    "raw_name": "배추김치",
+    "qty": 1,
+    "amount": 39000,
+    "item": "배추김치",
+    "qty_base": 10
+   },
+   {
+    "raw_name": "애호박",
+    "qty": 10,
+    "amount": 16000,
+    "item": "애호박",
+    "qty_base": 2.5
+   },
+   {
+    "raw_name": "당근",
+    "qty": 5,
+    "amount": 11000,
+    "item": "당근",
+    "qty_base": 5
+   }
+  ],
+  "total": 66000
+ },
+ "receipt_1025_handwritten_dark": {
+  "date": "2026-10-25",
+  "items": [
+   {
+    "raw_name": "고춧가루",
+    "qty": 1,
+    "amount": 30000,
+    "item": "고춧가루",
+    "qty_base": 1
+   },
+   {
+    "raw_name": "마늘(깐것)",
+    "qty": 2,
+    "amount": 22000,
+    "item": "깐마늘",
+    "qty_base": 2
+   },
+   {
+    "raw_name": "생강",
+    "qty": 1,
+    "amount": 6000,
+    "item": null,
+    "qty_base": null
+   }
+  ],
+  "total": 58000
+ },
+ "receipt_1101_statement_tilted": {
+  "date": "2026-11-01",
+  "items": [
+   {
+    "raw_name": "깐양파 15kg",
+    "qty": 1,
+    "amount": 25000,
+    "item": "양파",
+    "qty_base": 15
+   },
+   {
+    "raw_name": "돈앞다리 1kg",
+    "qty": 8,
+    "amount": 100000,
+    "item": "돼지고기 앞다리",
+    "qty_base": 8
+   },
+   {
+    "raw_name": "어묵(부산) 1kg",
+    "qty": 4,
+    "amount": 23200,
+    "item": "어묵",
+    "qty_base": 4
+   },
+   {
+    "raw_name": "깐마늘 1kg",
+    "qty": 1,
+    "amount": 11500,
+    "item": "깐마늘",
+    "qty_base": 1
+   },
+   {
+    "raw_name": "봉투",
+    "qty": 2,
+    "amount": 200,
+    "item": null,
+    "qty_base": null
+   }
+  ],
+  "total": 159900
  }
 }

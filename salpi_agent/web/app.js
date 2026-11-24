@@ -1256,7 +1256,7 @@ function renderSales() {
     $("#salesCard").innerHTML = `<p class="muted">판매 중인 메뉴가 없어요. 아래 메뉴별 원가율에서 메뉴를 먼저 추가해 주세요.</p>`;
     return;
   }
-  const dayName = `${dayLabel(d.date)}${isToday ? " 오늘" : ""}`;
+  const dayName = dayLabel(d.date);
   const num = (n) => n.toLocaleString("ko-KR");
   if (!sales.open) {   // 접힌 한 줄: 날짜 · 저장 상태 | 총 판매량 | 매출 | 채널별 | [펼치기]
     const hall = salesSum(d.menus, "hall"), deliv = salesSum(d.menus, "delivery");

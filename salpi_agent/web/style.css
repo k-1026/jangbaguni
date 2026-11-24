@@ -272,6 +272,8 @@ button.chip:hover { background: #F7FAF3; }
 .receipt-lock .lock-found b { color: #B33A00; font-weight: 800; }
 .receipt-lock .lock-btn:hover { background: var(--primary-hover); }
 .receipt-lock .lock-btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+/* 판매율 분석 잠금: 카드 안에 그대로 놓는 같은 안내 (내일 준비 · 메뉴별 원가율 칸) */
+.receipt-lock.sales-lock { position: static; min-height: 240px; border-radius: var(--radius); }
 .section-head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
 .section-head h2 { margin: 0; font-size: 22px; font-weight: 700; }
 
@@ -716,6 +718,25 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .rc-table td.rc-judge-cell { padding-left: 4px; text-align: left; }
 .rc-table .rc-chip { display: inline-block; margin: 0; padding: 1px 7px; font-size: 11.5px; vertical-align: 1px; }
 .rc-table .rc-chip:empty { display: none; }
+/* 더 싼 판매처 (비싸게 산 줄 아래로 펼침) */
+.rc-cheaper-btn { margin-left: 6px; padding: 1px 8px; border: 1px solid var(--primary); border-radius: 6px; background: var(--surface); color: var(--primary); font-size: 11.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.rc-cheaper-btn[aria-expanded="true"] { background: var(--primary); color: #fff; }
+.rc-table tr.rc-cheaper td { padding: 0 8px 10px; }
+.cs-box { padding: 10px 12px; border-radius: 10px; background: var(--surface-variant); font-size: 13px; white-space: normal; }
+/* 휴대폰: 표는 옆으로 밀어서 보지만 판매처 목록은 화면 폭에 맞춰 왼쪽에 고정 */
+@media (max-width: 700px) { .cs-box { position: sticky; left: 0; box-sizing: border-box; width: calc(100vw - 90px); } }
+.cs-head { margin: 0 0 8px; } .cs-head small { margin-left: 6px; color: var(--muted); }
+.cs-empty { margin: 0; color: var(--muted); }
+.cs-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.cs-list a { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 8px 10px; border-radius: 8px; background: var(--surface); color: var(--ink); text-decoration: none; }
+.cs-list a:hover { outline: 1px solid var(--primary); }
+.cs-name { grid-column: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.cs-pack { grid-column: 1; color: var(--muted); font-size: 12px; }
+.cs-price { grid-column: 2; grid-row: 1 / 3; align-self: center; text-align: right; white-space: nowrap; }
+.cs-price em { display: block; font-style: normal; color: var(--down); font-size: 12px; font-weight: 700; }
+.cs-tag { margin-left: 6px; padding: 0 6px; border-radius: 5px; background: var(--surface-variant); color: var(--muted); font-size: 11px; font-weight: 600; vertical-align: 1px; }
+.cs-tag.aff { background: var(--accent-container); color: var(--accent-hover); }
+.cs-tag.retail { background: #FFF6DC; color: #8A5A00; }
 .demand-chip.rise { background: #FFF6DC; color: #8A5A00; }
 .rc-table tfoot td { padding: 12px 8px 4px; border-bottom: 0; }
 .rc-total div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
@@ -920,18 +941,34 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .buy-link small { display: block; margin-top: 4px; color: #5C4A00; font-size: 14px; }
 .buy-link i { font-style: normal; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex: none;
   font-size: 22px; font-weight: 700; color: var(--primary); background: var(--hero-card, var(--surface)); box-shadow: var(--neu-out, none); transition: box-shadow .15s, transform .15s; }
-button.buy-link { width: 100%; font: inherit; text-align: left; cursor: pointer; }
+button.buy-link { width: 100%; min-height: 100px; font: inherit; text-align: left; cursor: pointer; }   /* 설명 문구를 뺐어도 칸 높이는 그대로 */
 button.item-shop { border: 0; font: inherit; font-weight: 700; cursor: pointer; }
 /* 사러 가기: 판매처 고르기 창 */
-.buy-pick { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: rgba(0,0,0,.4); }
-.buy-pick-card { width: min(360px, 100%); padding: 22px; border-radius: var(--radius); background: var(--surface); box-shadow: var(--e1); }
-.buy-pick-card h3 { margin: 0 0 4px; font-size: 20px; }
-.buy-pick-card .muted { margin: 0 0 14px; font-size: 14px; }
-.buy-pick-list { display: grid; gap: 8px; }
-.buy-pick-list a { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-radius: 12px; background: var(--primary-container);
-  color: var(--on-primary-container); font-weight: 700; text-decoration: none; }
-.buy-pick-list a:hover { filter: brightness(.97); }
-.buy-pick-close { width: 100%; margin-top: 12px; padding: 12px; border: 0; border-radius: 12px; background: transparent; color: var(--muted, #666); font: inherit; cursor: pointer; }
+.buy-pick { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: rgba(16, 22, 18, .48);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); animation: buy-fade .18s ease-out; }
+.buy-pick-card { width: min(560px, 100%); padding: 32px 28px 20px; border-radius: 26px; background: var(--surface);
+  box-shadow: 0 24px 60px rgba(16, 22, 18, .22), 0 2px 6px rgba(16, 22, 18, .08); animation: buy-rise .22s cubic-bezier(.2, .8, .2, 1); }
+.buy-pick-card h3 { margin: 0 0 22px; font-size: 24px; font-weight: 800; letter-spacing: -.02em; color: var(--ink); }
+.buy-pick-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.buy-pick-list a { position: relative; display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 22px 6px 16px; border-radius: 20px;
+  border: 1px solid rgba(20, 30, 22, .08); background: var(--surface); color: var(--ink); text-decoration: none;
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease; }
+.buy-pick-list a::after { content: "↗"; position: absolute; top: 8px; right: 10px; font-size: 12px; color: var(--muted); opacity: 0; transition: opacity .15s ease; }
+.buy-pick-list a:hover, .buy-pick-list a:focus-visible { transform: translateY(-2px); border-color: rgba(59, 122, 10, .35);
+  box-shadow: 0 10px 24px rgba(20, 30, 22, .10); outline: none; }
+.buy-pick-list a:hover::after, .buy-pick-list a:focus-visible::after { opacity: 1; }
+.buy-pick-logo { width: 60px; height: 60px; display: grid; place-items: center; border-radius: 17px; overflow: hidden; background: #fff;
+  box-shadow: 0 0 0 1px rgba(20, 30, 22, .08), 0 3px 8px rgba(20, 30, 22, .08); }
+.buy-pick-logo img { width: 100%; height: 100%; object-fit: contain; }
+.buy-pick-list b { font-size: 15px; font-weight: 700; letter-spacing: -.01em; text-align: center; word-break: keep-all; line-height: 1.3; }
+.buy-pick-note { margin: 20px 0 0; font-size: 12px; text-align: center; color: var(--muted); }
+.buy-pick-note.buy-pick-ad { font-size: 12px; line-height: 1.5; white-space: nowrap; }   /* 쿠팡 파트너스 수수료 안내 (한 줄, 창 너비 560px 에 맞춤) */
+@media (max-width: 600px) { .buy-pick-note.buy-pick-ad { white-space: normal; word-break: keep-all; } }   /* 좁은 화면은 잘리지 않게 두 줄 */
+.buy-pick-close { width: 100%; margin-top: 12px; padding: 14px; border: 0; border-radius: 12px; background: transparent; color: var(--muted, #666); font: inherit; font-weight: 600; cursor: pointer; }
+.buy-pick-close:hover { background: rgba(20, 30, 22, .05); }
+@keyframes buy-fade { from { opacity: 0; } }
+@keyframes buy-rise { from { opacity: 0; transform: translateY(12px) scale(.98); } }
+@media (prefers-reduced-motion: reduce) { .buy-pick, .buy-pick-card { animation: none; } .buy-pick-list a { transition: none; } }
 .buy-link:hover { background: #F7FAF3; }
 .buy-link:hover i { transform: translateX(2px); }
 .buy-link:active i { box-shadow: var(--neu-in, none); }
@@ -1494,6 +1531,24 @@ body.login-view .login-only, body.signup-view .signup-only { display: flex; }
 @keyframes praise-bounce { 0% { transform: translateY(0) rotate(0); } 25% { transform: translateY(-26px) rotate(-8deg); } 45% { transform: translateY(0) rotate(0); } 60% { transform: translateY(-12px) rotate(6deg); } 75% { transform: translateY(0) rotate(0); } 88% { transform: translateY(-4px); } 100% { transform: none; } }
 @keyframes praise-title { 0% { opacity: 0; transform: scale(.4); } 60% { opacity: 1; transform: scale(1.18); } 100% { transform: none; } }
 @keyframes praise-time { to { transform: scaleX(0); } }
+
+/* 재고 입력 (나의 가게 · 재고 관리 [재고 입력]) */
+.prep-btns { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.order-all.stock-edit { background: var(--surface); color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
+.order-all.stock-edit:hover { background: var(--primary-container); }
+.modal-box.stock-box { width: min(520px, 100%); }
+.sk-rows { margin: 14px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.sk-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 10px; background: var(--surface-variant); }
+.sk-row.off { opacity: .7; }
+.sk-row.changed { background: var(--primary-container); }
+.sk-name { display: flex; flex-direction: column; font-weight: 600; }
+.sk-name small { color: var(--muted); font-size: 12px; font-weight: 500; }
+.sk-row input { width: 90px; text-align: right; }
+@media (max-width: 700px) {
+  .prep-head:has(.prep-btns) { flex-wrap: wrap; }
+  .prep-head:has(.prep-btns) h3 { flex: 1 1 100%; }
+  .prep-btns { justify-content: flex-start; }
+}
 
 /* 대체 재료: 원산지 표시 변경 안내 · 다른 후보 */
 .swap-origin, .swap-others { flex-basis: 100%; margin: 8px 0 0; font-size: 13.5px; }

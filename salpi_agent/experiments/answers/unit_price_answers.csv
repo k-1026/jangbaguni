@@ -1,0 +1,31 @@
+﻿no,item,nid,name,standard,sale_price,answer_kg,answer_per_kg,how,exclude,basis,url
+1,양파,737331,"피양파 (국내산, 250g내외/개, 15Kg/망)",15KG,17990,15,1199,정확,,15Kg/망,https://www.foodspring.co.kr/goods/detail/737331
+2,양파,668501,슬라이스 양파 10kg,1kg 10팩,20000,10,2000,정확,가공(슬라이스),규격 '1kg 10팩' · 이름 '10kg' → 1kg × 10팩 = 10kg,https://www.foodspring.co.kr/goods/detail/668501
+3,대파,924156,"흙대파 (1단, 국내산)",1단,2060,1.0,2060,약,,"1단. 같은 식봄 '흙대파(실속, 1단 1Kg/EA)' → 1단 ≈ 1kg",https://www.foodspring.co.kr/goods/detail/924156
+4,대파,777543,"흙대파 (국내산, 10단/망)",10단,21000,10,2100,약,,"10단/망. 같은 식봄 '흙대파(국내산, 10단/망)' 규격 10KG",https://www.foodspring.co.kr/goods/detail/777543
+5,배추,483298,강원도 통배추 3포기 7~10kg,평창꽃순이 통배추 3포기 5~8kg,16500,6.5,2538,약,,규격 '3포기 5~8kg'의 가운데 6.5kg (이름은 '7~10kg'로 규격과 다름 → 판매 규격을 따름),https://www.foodspring.co.kr/goods/detail/483298
+6,배추,878691,야채왕 알배추 알배기 쌈배추 12통 박스 무배 6kg,6kg*1,15000,6,2500,정확,,알배추 12통 6kg,https://www.foodspring.co.kr/goods/detail/878691
+7,무,997898,"무(상품,실온,세척,국산)",1Kg,1960,1,1960,정확,,1Kg,https://www.foodspring.co.kr/goods/detail/997898
+8,양배추,830232,늘바른 국내산 친환경 무농약 양배추300g 3개 900g,300g,8900,0.9,9889,정확,,300g × 3개 = 900g,https://www.foodspring.co.kr/goods/detail/830232
+9,양배추,498745,깐양배추(상품 KG)/국내산,1KG,1360,1,1360,정확,,깐양배추(상품 KG) = 1kg 단위,https://www.foodspring.co.kr/goods/detail/498745
+10,감자,832671,"★매일시장특가★ 감자 (왕왕, 180g이상/개, 20Kg/BOX)",20KG,40350,20,2018,정확,,20Kg/BOX,https://www.foodspring.co.kr/goods/detail/832671
+11,감자,891388,"★매일시장특가★ 감자 (조림용, 1Kg/EA) 알감자",1KG,1950,1,1950,정확,,1Kg/EA,https://www.foodspring.co.kr/goods/detail/891388
+12,당근,894326,야채왕 세척당근 10개,10개,5400,1.65,3273,약,,10개. 같은 식봄 '세척당근(130~200g/개)' 가운데 165g × 10 = 1.65kg,https://www.foodspring.co.kr/goods/detail/894326
+13,당근,937296,포에버 당근채 [국내산] 3mm 4kgx4ea [김밥용],4kg*4ea,45600,16,2850,정확,가공(당근채),4kg × 4ea = 16kg,https://www.foodspring.co.kr/goods/detail/937296
+14,애호박,969864,"★매일시장특가★ 프레시원 애호박(상, 1입)",0.25KG,1670,0.25,6680,정확,,1입 0.25KG,https://www.foodspring.co.kr/goods/detail/969864
+15,애호박,1059528,산지직송 싱싱한 국내산 애호박 1BOX (20~25개입) 5kg내외,1BOX (20~25개입),49900,5,9980,약,,20~25개입 5kg내외,https://www.foodspring.co.kr/goods/detail/1059528
+16,애호박,499186,냉동애호박(반달 1Kg/EA)/중국산,1KG,3240,1,3240,정확,냉동 · 가공(반달),1Kg/EA,https://www.foodspring.co.kr/goods/detail/499186
+17,오이,790863,"★매일시장특가★ 백오이 (특, 5입) 다다기",EA,4240,1.0,4240,약,,"백오이(특, 5입). 같은 식봄 '취청오이(상 5입 1Kg)' → 5입 ≈ 1kg",https://www.foodspring.co.kr/goods/detail/790863
+18,오이,1007583,국내산 가시오이 5kg (15-25입),5kg,10900,5,2180,정확,,가시오이 5kg (15-25입),https://www.foodspring.co.kr/goods/detail/1007583
+19,오이,969848,★매일시장특가★ 프레시원 취청오이(상 5입 1Kg/EA),1KG,2560,1,2560,정확,,취청오이(상 5입 1Kg/EA),https://www.foodspring.co.kr/goods/detail/969848
+20,청양고추,821492,★매일시장특가★ 청양고추(특 500g/EA),0.5KG,4090,0.5,8180,정확,,500g/EA,https://www.foodspring.co.kr/goods/detail/821492
+21,청양고추,995009,"★매일시장특가★ 청양고추(실속형, 적색+청색 KG단위)",1KG,4670,1,4670,정확,,KG단위 = 1kg,https://www.foodspring.co.kr/goods/detail/995009
+22,깻잎,495096,깻잎(쌈채_1속_20g내외 20g/EA)/국내산,0.02KG,390,0.02,19500,정확,,1속 20g/EA,https://www.foodspring.co.kr/goods/detail/495096
+23,깻잎,976032,깻잎 1단(10장),1단g,350,0.02,17500,약,,"1단(10장). 같은 식봄 '깻잎 100단(1,000장) 약 2kg' → 1장 2g × 10장 = 20g",https://www.foodspring.co.kr/goods/detail/976032
+24,깻잎,976027,"깻잎 100단  (1,000장) 약 2kg",100단g,29000,2,14500,약,,"100단(1,000장) 약 2kg",https://www.foodspring.co.kr/goods/detail/976027
+25,상추,878912,야채왕 적상추 꽃상추 4kg(3.7kg~4kg) 박스,4kg*1,23000,4,5750,약,,"4kg(3.7~4kg) → 표기 4kg (최소 3.7kg면 kg당 6,216원)",https://www.foodspring.co.kr/goods/detail/878912
+26,시금치,976108,시금치 1단-약250g,1단g,2900,0.25,11600,약,,1단-약250g,https://www.foodspring.co.kr/goods/detail/976108
+27,시금치,1161763,국내산 시금치 100g,100g,1000,0.1,10000,정확,,100g,https://www.foodspring.co.kr/goods/detail/1161763
+28,시금치,943756,냉동 시금치 1kgx10,1kg*1EA,21800,10,2180,정확,냉동,"이름 '1kgx10' = 10kg (규격 칸은 '1kg*1EA'로 잘못 적힘, 21,800원이 냉동 1kg 값으로는 너무 비쌈)",https://www.foodspring.co.kr/goods/detail/943756
+29,토마토,494944,토마토(완숙_34~50과 5Kg/BOX)/국내산,5KG,23460,5,4692,정확,,34~50과 5Kg/BOX,https://www.foodspring.co.kr/goods/detail/494944
+30,가지,976007,가지 10개,10개 약1.5kg,8500,1.5,5667,약,,10개 약1.5kg,https://www.foodspring.co.kr/goods/detail/976007

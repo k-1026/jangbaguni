@@ -5,6 +5,7 @@
 - 사장님이 고친 '영수증 이름 → 재료' 짝은 item_aliases 에 쌓아 다음부터 바로 맞춤
 """
 
+from concurrent.futures import ThreadPoolExecutor
 import json
 import math
 import os
@@ -17,7 +18,8 @@ from google import genai
 from google.genai import errors, types
 
 from sources import supabase_db as db
-from sources.data_sources import ApiKeyMissing
+from store import inventory
+from sources.data_sources import ApiError, ApiKeyMissing
 
 KST = timezone(timedelta(hours=9))
 MODELS = [os.getenv("GEMINI_MODEL", "gemini-3.5-flash")] + [
@@ -156,6 +158,14 @@ def _with_change(store_id, before):
     return after
 
 
+def _restock(store_id, delta):
+    """영수증으로 재고 늘리고 줄이기. 재고 저장이 실패해도 영수증 저장은 그대로 (재고는 화면에서 고칠 수 있음)."""
+    try:
+        inventory.adjust(store_id, delta)
+    except (ApiError, ApiKeyMissing) as e:
+        print(f"재고 반영 실패: {e}")
+
+
 def save(store_id, data, image=None, mime=None):
     rows = _checked_rows(data)
     day = data.get("date") or str(datetime.now(KST).date())
@@ -167,7 +177,9 @@ def save(store_id, data, image=None, mime=None):
         path = db.upload("receipts", f"{store_id}/{day}_{uuid.uuid4().hex[:8]}.{ext}", image, mime or "image/jpeg")
     p = db.insert("purchases", [{"store_id": store_id, "purchased_on": day, "supplier": data.get("supplier"),
                                  "total_amount": int(sum(float(r["amount"]) for r in rows)), "source": "ocr", "image_path": path}])[0]
-    db.insert("purchase_items", _item_rows(p["id"], rows))
+    lines = _item_rows(p["id"], rows)
+    db.insert("purchase_items", lines)
+    _restock(store_id, inventory.qty_by_item(lines))   # 산 만큼 재고 늘리기
     # 다음부터 같은 이름은 바로 맞추도록 짝 저장 (이미 있으면 사장님이 고친 값으로 바꿈)
     pairs = {}
     for r in rows:
@@ -190,10 +202,17 @@ def edit(store_id, purchase_id, data):
     if not db.update("purchases", fields, id=f"eq.{purchase_id}", store_id=f"eq.{store_id}"):
         raise ValueError("영수증을 찾지 못했어요")
     # 줄은 통째로 바꿈 (빠진 줄 · 더한 줄 모두 반영). 새 줄을 먼저 넣고 예전 줄을 지워서, 중간에 실패해도 줄이 사라지지 않게
-    old = [r["id"] for r in db.select("purchase_items", purchase_id=f"eq.{purchase_id}", select="id")]
-    db.insert("purchase_items", _item_rows(purchase_id, rows))
+    old_rows = db.select("purchase_items", purchase_id=f"eq.{purchase_id}", select="id,item_id,qty_base")
+    old = [r["id"] for r in old_rows]
+    lines = _item_rows(purchase_id, rows)
+    db.insert("purchase_items", lines)
     if old:
         db.delete("purchase_items", id=f"in.({','.join(map(str, old))})")
+    # 재고는 바뀐 만큼만 (새 양 − 예전 양)
+    delta = inventory.qty_by_item(lines)
+    for i, q in inventory.qty_by_item(old_rows).items():
+        delta[i] = delta.get(i, 0) - q
+    _restock(store_id, delta)
     # 이름 → 재료 짝도 고친 값으로 (원래 수량을 모르면 1개 기준으로 보지 않고 건너뜀)
     db.upsert("item_aliases", [{"alias": r["raw_name"], "item_id": r["item_id"],
                                 "base_qty_per_unit": round(float(r["qty_base"]) / float(r["qty"]), 3)}
@@ -277,14 +296,21 @@ def _swap(riser, per, cost, price, store_price, cache):
     return best
 
 
-def cost_report(store_id=db.DEMO_STORE):
-    menus = db.select("v_menu_cost_ratio", store_id=f"eq.{store_id}", order="menu_id")
-    recipes = db.select("recipe_items", menu_id=f"in.({','.join(str(m['menu_id']) for m in menus) or 0})",
-                        select="menu_id,item_id,qty_per_serving,loss_rate,items(name,base_unit)")
-    hist = _price_history(store_id)
-    names = {i["id"]: i["name"] for i in _items()}
+def cost_report(store_id=db.DEMO_STORE, forecasts=None):
+    """forecasts: {재료 이름: 시세 예측(analysis.forecast_item 결과)} — 첫 화면 시세(/api/overview)에 이미 있으면 넘겨 받아
+    재료마다 시세 API · AI 모델을 다시 부르지 않음 (없는 재료만 _wholesale 이 직접 계산)."""
+    def menus_and_recipes():
+        menus = db.select("v_menu_cost_ratio", store_id=f"eq.{store_id}", order="menu_id")
+        return menus, db.select("recipe_items", menu_id=f"in.({','.join(str(m['menu_id']) for m in menus) or 0})",
+                                select="menu_id,item_id,qty_per_serving,loss_rate,items(name,base_unit)")
+    # 서로 기다릴 필요 없는 Supabase 읽기는 동시에 (차례로 하면 약 3.7초)
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        f_menus, f_hist, f_items = pool.submit(menus_and_recipes), pool.submit(_price_history, store_id), pool.submit(_items)
+        (menus, recipes), hist, items = f_menus.result(), f_hist.result(), f_items.result()
+    names = {i["id"]: i["name"] for i in items}
     store_price = {names[k]: v[-1][1] for k, v in hist.items() if k in names}   # 재료 이름 → 우리 가게 최근 영수증 단가
-    cache, out = {}, []
+    cache = {k: f for k, f in (forecasts or {}).items() if f and f.get("base_kg_price") and f.get("expected_change_pct") is not None}
+    out = []
     for m in menus:
         ratio = float(m["cost_ratio_pct"]) if m["cost_ratio_pct"] is not None else None
         cost = float(m["cost_per_serving"] or 0)
@@ -387,6 +413,7 @@ def my_ingredients(store_id):
 # ---------------------------------------------------------------
 
 def recent(store_id, limit=8):
+    """최근 영수증 목록 + 사진 미리보기 주소 (1시간 동안 열리는 주소 → 보관할 때는 1시간보다 짧게)."""
     ps = db.select("purchases", store_id=f"eq.{store_id}", select="id,purchased_on,supplier,total_amount,source,image_path",
                    order="purchased_on.desc,id.desc", limit=str(limit))
     counts, names = {}, {}
@@ -434,9 +461,11 @@ def detail(store_id, purchase_id):
 
 
 def remove(store_id, purchase_id):
+    lines = db.select("purchase_items", purchase_id=f"eq.{purchase_id}", select="item_id,qty_base")
     gone = db.delete("purchases", id=f"eq.{purchase_id}", store_id=f"eq.{store_id}")   # 기본(시연) 영수증도 지울 수 있음
     if not gone:
         raise ValueError("영수증을 찾지 못했어요")
+    _restock(store_id, {i: -q for i, q in inventory.qty_by_item(lines).items()})   # 지운 영수증만큼 재고 줄이기
     for g in gone:
         if g.get("image_path"):
             db.remove_file(g["image_path"])

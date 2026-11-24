@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>가락 선행 문구 후보 3개 (미리보기)</title>
+<link rel="stylesheet" href="../../salpi_agent/web/style.css">
+<style>
+  body { padding: 24px 16px 60px; background: var(--surface-variant); }
+  .wrap { max-width: 760px; margin: 0 auto; display: grid; gap: 22px; }
+  h1 { font-size: 20px; margin: 0; } .note { color: var(--muted); font-size: 13px; margin: 4px 0 0; line-height: 1.6; }
+  .cand > h2 { font-size: 15px; margin: 0 0 4px; } .cand > p.how { font-size: 12.5px; color: var(--muted); margin: 0 0 12px; line-height: 1.55; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 8px; background: var(--accent-container); color: var(--accent-hover); margin-right: 6px; }
+  .dir { font-size: 20px; font-weight: 800; margin: 0 0 4px; color: var(--up); }
+  .tip { margin: 0 0 12px; color: var(--muted); font-size: 13.5px; }
+  .sum { background: var(--surface-variant); border-radius: 12px; padding: 18px; }
+  /* B: 요약 아래 띠 */
+  .lead-strip { display: flex; gap: 10px; align-items: flex-start; margin: 0 0 12px; padding: 11px 14px; border-radius: 10px; background: #FFF4D6; font-size: 13.5px; line-height: 1.5; }
+  .lead-strip b { color: #8A5A00; } .lead-strip small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+  /* C: 서울 vs 대구 두 줄 */
+  .twin { display: grid; gap: 8px; margin-top: 12px; }
+  .twin .row { display: grid; grid-template-columns: 74px 1fr 64px; gap: 10px; align-items: center; font-size: 12.5px; }
+  .twin .bar { height: 10px; border-radius: 6px; background: #E4E9E1; position: relative; overflow: hidden; }
+  .twin .bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 6px; }
+  .twin .seoul i { background: var(--up); } .twin .daegu i { background: #9AA79E; }
+  .twin strong { text-align: right; }
+  .twin-msg { margin: 12px 0 0; font-size: 13.5px; line-height: 1.55; }
+  .why { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1>"서울 가락시장에서 먼저 올랐어요" 문구 후보 3개</h1>
+    <p class="note">예시: 애호박 (가락 3거래일 +8% 오름 → 대구는 2일 안에 따라 오르는 편, 지난 1년 같은 상황에서 67% 오름 · 아무 날은 39%).<br>
+    화면 모양은 지금 "이렇게 본 이유" 카드를 그대로 쓴 미리보기이고 실제 화면 코드는 건드리지 않았어요. 숫자는 예시 값이에요.</p>
+  </div>
+
+  <section class="card cand">
+    <h2><span class="tag">후보 A</span>"이렇게 본 이유" 카드에 한 칸 추가</h2>
+    <p class="how">기존 이유 카드(▲/▼ + 이름 + 설명 + 숫자)와 똑같은 모양. 가장 자연스럽고 개발도 가장 쉬움. 다만 다른 이유(4주 평균 · 반입량 등)와 섞여 눈에 덜 띌 수 있음.</p>
+    <div class="sum"><p class="dir">앞으로 오를 것 같아요</p><p class="tip">지금 사 두는 쪽이 유리해요</p></div>
+    <h4 style="margin:16px 0 10px;font-size:15px">이렇게 본 이유</h4>
+    <div class="reason-grid">
+      <div class="reason r-up"><span class="reason-icon">▲</span><div><b>서울 가락시장</b><small>가락에서 3일째 올랐어요. 대구는 보통 2일 안에 따라 올라요</small></div><strong>+8%</strong></div>
+      <div class="reason r-up"><span class="reason-icon">▲</span><div><b>4주 평균과의 차이</b><small>4주 평균보다 5% 낮아서 오를 여지가 있어요</small></div><strong>+2.1%</strong></div>
+    </div>
+  </section>
+
+  <section class="card cand">
+    <h2><span class="tag">후보 B</span>요약 바로 아래 노란 띠 (가장 눈에 띔)</h2>
+    <p class="how">결론("오를 것 같아요") 바로 밑에 한 줄 띠. 사장님이 제일 먼저 봄. 근거(과거 적중 횟수)를 같이 보여 줘서 믿을 만함. 가락 신호가 있는 날만 나타나서 평소엔 안 보임.</p>
+    <div class="sum">
+      <p class="dir">앞으로 오를 것 같아요</p><p class="tip">지금 사 두는 쪽이 유리해요</p>
+      <div class="lead-strip"><span aria-hidden="true">🔔</span><div><b>서울 가락시장에서 먼저 올랐어요</b>
+        <small>지난 1년 이런 날 10번 중 7번, 2일 안에 대구도 올랐어요</small></div></div>
+    </div>
+  </section>
+
+  <section class="card cand">
+    <h2><span class="tag">후보 C</span>"서울 vs 대구" 비교 카드 (가장 설명이 풍부)</h2>
+    <p class="how">가락(서울)과 대구의 최근 3일 변화를 두 줄로 나란히 보여 주고 아래에 한 문장. "서울은 올랐는데 대구는 아직"이 눈으로 보임. 자리를 가장 많이 차지하고 화면 코드도 가장 많이 필요함.</p>
+    <div class="sum"><p class="dir">앞으로 오를 것 같아요</p><p class="tip">지금 사 두는 쪽이 유리해요</p></div>
+    <h4 style="margin:16px 0 4px;font-size:15px">서울 가락시장은 어때요?</h4>
+    <div class="twin">
+      <div class="row seoul"><span>서울 가락</span><div class="bar"><i style="width:80%"></i></div><strong style="color:var(--up)">+8%</strong></div>
+      <div class="row daegu"><span>대구 북부</span><div class="bar"><i style="width:20%"></i></div><strong>+2%</strong></div>
+    </div>
+    <p class="twin-msg"><b>서울이 먼저 올랐고 대구는 아직이에요.</b> 보통 2일쯤 뒤 대구도 따라 올라요.</p>
+    <p class="why">최근 3거래일 값 변화 기준 · 지난 1년 같은 상황에서 67% 따라 올랐어요 (아무 날은 39%)</p>
+  </section>
+
+  <p class="note">공통 규칙(안): 가락이 3거래일 동안 ±3% 이상 움직였고, 그 품목 시차 표 판정이 "쓸 만함"일 때만 표시 · 양파(시차 7일)·감자·배추는 표시 안 함 · 값은 약 2일 늦게 올라와서 실제 쓸 수 있는 앞서감은 (시차 − 2일).</p>
+</div>
+</body>
+</html>

@@ -7,6 +7,7 @@ import os
 import base64
 import json
 import threading
+from concurrent.futures import ThreadPoolExecutor
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -25,17 +26,22 @@ from price import cheaper as cheaper_sellers
 from demand import demand
 from price import forecast_log
 from price import forecast_model
+from price import seller_links
 from sources import foodspring
 from account import app_push
 from account import trial
+from account import store_costs
 from account import kakao_alert
 from sources import mart_price
 from store import menus
+from store import sales
 from price import price_judge
+from account import subscription
+from store import inventory
 from store import receipts
 from sources import supabase_db
 from chat.agent import SalpiAgent
-from sources.data_sources import ITEMS, ApiError, ApiKeyMissing, event_detail, holidays, month_events, weather_forecast
+from sources.data_sources import ITEMS, ApiError, ApiKeyMissing, event_detail, foodspring_url, holidays, month_events, weather_forecast
 
 ROOT = Path(__file__).resolve().parent
 WEB = ROOT / "web"         # 데스크톱 화면
@@ -142,6 +148,30 @@ def shared(key, fn, ttl=3600, keep=24 * 3600):
     return memo(key, compute, ttl)
 
 
+def _peek_shared(key):
+    """보관값이 있으면 꺼내기만 함 (메모리 → 보관함). 없으면 None — 계산은 하지 않음 (다른 계산이 기다리지 않게)."""
+    hit = _memo.get(key)
+    if hit:
+        return hit[1]
+    try:
+        raw = supabase_db.download(CACHE_BUCKET, f"cache/{key}.json")
+        blob = json.loads(raw) if raw else None
+    except Exception:
+        return None
+    if not blob:
+        return None
+    _memo.setdefault(key, (blob["saved_at"], blob["value"]))
+    return blob["value"]
+
+
+# 우리 가게 자료(영수증 · 메뉴 · 판매 · 재고)로 계산한 보관값 — 자료가 바뀌면 _store_changed 가 메모리 · 보관함에서 같이 지움
+STORE_KEYS = ("costs_report", "receipts_recent", "my_items")
+
+
+def _demand_key():
+    return f"demand_{forecast_log.today().isoformat()}"   # 날이 바뀌면 '내일'이 바뀌므로 날짜를 이름에
+
+
 def _overview():
     """첫 화면에 필요한 것 전부 (재료별 시세 · 날짜별 기록 · 예측) — 화면은 이 한 번으로 모든 대시보드를 그림."""
     rows = analysis.market_overview()
@@ -167,7 +197,8 @@ def index():
 KEY_NAMES = ["AT_SALE_API_KEY", "AT_PERDAY_API_KEY", "AT_REALTIME_API_KEY", "KMA_ASOS_API_KEY", "KASI_SPCDE_API_KEY",
              "KTO_TOUR_API_KEY", "KAMIS_CERT_KEY", "KAMIS_CERT_ID", "GEMINI_API_KEY", "SUPABASE_URL", "SUPABASE_SECRET_KEY",
              "KCA_PRICE_API_KEY", "KMA_VILAGE_API_KEY", "KMA_MID_API_KEY", "KOSIS_API_KEY", "MOIS_RESTAURANT_API_KEY",
-             "KAKAO_REST_API_KEY", "KAKAO_CLIENT_SECRET", "VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY", "FCM_SERVICE_ACCOUNT"]
+             "KAKAO_REST_API_KEY", "KAKAO_CLIENT_SECRET", "VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY", "FCM_SERVICE_ACCOUNT",
+             "TOSS_CLIENT_KEY", "TOSS_SECRET_KEY"]
 
 
 # 설치형 앱(PWA): 앱 정보 · 백그라운드 작업 파일은 사이트 맨 위 주소에 있어야 앱 전체를 맡을 수 있음
@@ -327,6 +358,15 @@ def mart():
     return _guard(lambda: shared("mart", mart_price.mart_prices, ttl=6 * 3600, keep=3 * 24 * 3600))
 
 
+@app.get("/api/buy-links")
+def buy_links(item: str = ""):
+    """사러 가기 판매처 6곳 주소: 재료가 있으면 상품 목록(검색 결과), 없으면 첫 화면.
+    쿠팡 파트너스 키가 있으면 쿠팡은 제휴 주소 + ad_note(대가성 안내 문구), 없으면 ad_note = null. 1시간 보관."""
+    item = item.strip()[:30]
+    fs = foodspring_url(item) if item in ITEMS else None
+    return memo(f"buy_links:{item}", lambda: seller_links.links(item or None, fs), ttl=3600)
+
+
 @app.get("/api/cheaper")
 def cheaper(item: str, paid: float | None = None):
     """더 싼 판매처: 산 값(최근 영수증 · 없으면 대구 소매 평균)보다 기준 단위당 싼 식봄 상품, 싼 순서.
@@ -366,21 +406,77 @@ def context():
 
 
 def _price_outlook():
-    """대시보드 시세 예측이 이미 계산돼 있으면 그대로 씀 (없으면 demand 가 필요한 재료만 계산)."""
-    hit = _memo.get("overview")
-    return {r["item"]: (r.get("forecast") or {}).get("expected_change_pct") for r in hit[1]} if hit else None
+    """대시보드 시세 예측이 이미 계산돼 있으면(메모리 · 보관함) 그대로 씀 (없으면 demand 가 필요한 재료만 계산)."""
+    rows = _peek_shared("overview")
+    return {r["item"]: (r.get("forecast") or {}).get("expected_change_pct") for r in rows} if rows else None
+
+
+def _forecasts():
+    """원가율 계산용: 재료 → 시세 예측 (첫 화면 시세 보관값). 없으면 {} → 원가율이 재료마다 직접 계산."""
+    rows = _peek_shared("overview") or []
+    return {r["item"]: r.get("forecast") for r in rows if r.get("forecast")}
+
+
+def _sales_user(authorization, check=True):
+    """판매율 분석: 로그인 표 → 계정 (다 썼으면 check=True 일 때 402). 표가 없거나 만료면 None = 횟수 없이 보여 줌
+    (표 없이 부르는 모바일 시연 화면과 같게 · 로그인이 끝난 화면이 오류로 깨지지 않게)."""
+    token = _bearer(authorization)
+    if not token:
+        return None
+    try:
+        return trial.check(token, "sales") if check else auth.user_of(token)
+    except auth.AuthError as e:
+        if e.status == 401:
+            return None
+        raise HTTPException(e.status, str(e))
+    except (ApiKeyMissing, ApiError):
+        return None
 
 
 @app.get("/api/demand")
-def demand_forecast(target: str | None = None):
+def demand_forecast(target: str | None = None, authorization: str | None = Header(None)):
+    """내일 예상 판매 (판매율 분석). 로그인 표를 같이 보내고 무료 5회(판매 올린 날짜 수)를 다 썼으면 402.
+    보는 것은 횟수를 세지 않음 (세는 곳은 PUT /api/sales). 표 없이 부르는 곳(모바일 시연 화면)은 지금처럼."""
+    user = _sales_user(authorization)
     try:
         day = date.fromisoformat(target) if target else None
     except ValueError:
         raise HTTPException(400, "날짜는 2026-11-05 형식으로 보내 주세요")
     # 대시보드 시세가 아직 준비 전이면 기다리지 않고 시세 없이 계산 (1분 뒤 다시 계산할 때 시세 반영)
     outlook = _price_outlook()
-    key = f"demand:{day}:{'price' if outlook else 'noprice'}"
-    return _guard(lambda: memo(key, lambda: demand.forecast(target=day, price_outlook=outlook or {}), ttl=600 if outlook else 60))
+    if day is None and outlook:   # 보통의 경우(내일 · 시세 있음): 보관함에도 둠 → 새로 켜진 서버도 바로 (9초 → 0.5초)
+        out = _guard(lambda: shared(_demand_key(), lambda: demand.forecast(price_outlook=outlook), ttl=600))
+    else:
+        key = f"demand:{day}:{'price' if outlook else 'noprice'}"
+        out = _guard(lambda: memo(key, lambda: demand.forecast(target=day, price_outlook=outlook or {}), ttl=600 if outlook else 60))
+    return {**out, "trial": trial._state(user, "sales")} if user else out
+
+
+class SalesIn(BaseModel):
+    date: str | None = None
+    items: list[dict] = []   # [{"menu_id": 3, "hall": 25, "delivery": 8}] — 빈칸(null)은 안 바꿈
+
+
+@app.get("/api/sales")
+def sales_day(date: str | None = None):
+    """판매 기록 확인: 그날(기본 오늘) 메뉴별 홀 · 배달 그릇 수 · 합계 · 매출 · 마지막으로 넣은 날."""
+    return _receipt_guard(lambda: sales.day(supabase_db.DEMO_STORE, date))
+
+
+@app.put("/api/sales")
+def sales_save(body: SalesIn, authorization: str | None = Header(None)):
+    """판매 기록 입력 → 내일 준비 · 원가율 다시 계산. 로그인 표가 있으면 새 날짜를 올릴 때 판매율 분석 1회
+    (같은 날짜를 고치면 안 셈, 무료 5회를 다 썼으면 새 날짜는 402)."""
+    user = _sales_user(authorization)
+    if user:
+        st = trial._state(user, "sales")
+        new = not _receipt_guard(lambda: sales.day(supabase_db.DEMO_STORE, body.date))["entered"]
+        if new and not st["paid"] and st["used"] >= trial.FREE:
+            raise HTTPException(402, trial.LOCKED_MSG)
+    out = _receipt_guard(lambda: _store_changed(sales.save(supabase_db.DEMO_STORE, body.model_dump())))
+    if user:
+        out["trial"] = _auth(lambda: trial.count(user, "sales")) if out["new"] else trial._state(user, "sales")
+    return out
 
 
 # ---------------------------------------------------------------
@@ -434,8 +530,11 @@ def receipt_read(body: ReceiptIn, authorization: str | None = Header(None)):
 
 
 @app.get("/api/receipt/trial")
-def receipt_trial(authorization: str | None = Header(None)):
-    return _auth(lambda: trial.status(_bearer(authorization)))
+def receipt_trial(feature: str = "receipt", authorization: str | None = Header(None)):
+    """무료 횟수: feature=receipt(영수증 분석, 기본) · sales(판매율 분석)."""
+    if feature not in trial.FEATURES:
+        raise HTTPException(400, "feature 는 receipt · sales 중 하나예요")
+    return _auth(lambda: trial.status(_bearer(authorization), feature))
 
 
 class FoundIn(BaseModel):
@@ -454,6 +553,43 @@ def receipt_trial_found(body: FoundIn, authorization: str | None = Header(None))
     return _auth(lambda: trial.add_found(_bearer(authorization), body.purchase_id, extra))
 
 
+# ---------------------------------------------------------------
+# 살피 플러스 구독 · 모의 결제 (account/subscription.py, 토스페이먼츠 테스트 결제 · 키 없으면 모의 승인)
+# ---------------------------------------------------------------
+class ConfirmIn(BaseModel):
+    payment_key: str = ""
+    order_id: str = ""
+    amount: int | None = None
+
+
+class CancelIn(BaseModel):
+    undo: bool = False
+
+
+@app.get("/api/subscribe")
+def subscribe_status(authorization: str | None = Header(None)):
+    """구독 상태: plan(free · plus) · 끝나는 날 · 해지 예약 · 최근 결제 · 결제 방식(toss 테스트 · mock)."""
+    return _auth(lambda: subscription.status(_bearer(authorization)))
+
+
+@app.post("/api/subscribe/checkout")
+def subscribe_checkout(authorization: str | None = Header(None)):
+    """결제창 열기 전: 주문 번호 · 금액(19,900원) · 결제창 열쇠(client key, 없으면 null = 모의 결제)."""
+    return _auth(lambda: subscription.checkout(_bearer(authorization)))
+
+
+@app.post("/api/subscribe/confirm")
+def subscribe_confirm(body: ConfirmIn, authorization: str | None = Header(None)):
+    """결제창에서 돌아온 paymentKey · orderId · amount 로 승인 → 30일 플러스. 모의 결제면 payment_key 없이 order_id · amount 만."""
+    return _auth(lambda: subscription.confirm(_bearer(authorization), body.payment_key, body.order_id, body.amount))
+
+
+@app.post("/api/subscribe/cancel")
+def subscribe_cancel(body: CancelIn, authorization: str | None = Header(None)):
+    """해지 예약 (지금 기간 끝까지는 플러스). undo=true 면 해지 취소."""
+    return _auth(lambda: subscription.cancel(_bearer(authorization), body.undo))
+
+
 @app.post("/api/receipt/save")
 def receipt_save(body: ReceiptSave):
     data, mime = _image(body.image, body.mime)
@@ -461,16 +597,34 @@ def receipt_save(body: ReceiptSave):
 
 
 @app.get("/api/costs")
-def costs():
-    # 원가율은 영수증 · 메뉴가 바뀔 때만 달라짐 → 10분 보관, 영수증 저장 · 고치기 · 지우기 · 메뉴 바꾸기 때 비움 (매번 3.5초 → 0.1초)
-    return _receipt_guard(lambda: memo("costs", lambda: {**receipts.cost_report(supabase_db.DEMO_STORE),
-                                                         "receipts": receipts.recent(supabase_db.DEMO_STORE)}, ttl=600))
+def costs(authorization: str | None = Header(None)):
+    """메뉴별 원가율 · 남는 돈 (판매율 분석) + 최근 영수증 목록.
+    로그인 표를 보내고 판매율 분석 무료 5회를 다 썼으면 원가율 · 마진은 빼고 {locked: true, trial, receipts} 만 (영수증 목록은 그대로 보여 주게).
+    보는 것은 횟수를 세지 않음 (세는 곳은 PUT /api/sales)."""
+    data = _receipt_guard(_costs_data)
+    user = _sales_user(authorization, check=False)
+    if user:
+        st = trial._state(user, "sales")
+        if st["locked"]:
+            return {"locked": True, "message": trial.LOCKED_MSG, "trial": st, "receipts": data["receipts"]}
+    return data
+
+
+def _costs_data():
+    """원가율(보관 10분) + 최근 영수증(사진 주소가 1시간이라 보관값은 40분까지만). 둘 다 보관함에도 둠 → 새로 켜진 서버도 바로 (11초 → 0.5초).
+    영수증 저장 · 고치기 · 지우기 · 메뉴 · 판매 · 재고를 바꾸면 _store_changed 가 비움."""
+    with ThreadPoolExecutor(max_workers=2) as pool:   # 보관함 파일 하나 받는 데 0.3~0.8초 → 둘을 동시에
+        f_report = pool.submit(shared, "costs_report", lambda: receipts.cost_report(supabase_db.DEMO_STORE, _forecasts()), 600)
+        f_recent = pool.submit(shared, "receipts_recent", lambda: receipts.recent(supabase_db.DEMO_STORE), 600, 2400)
+        return {**f_report.result(), "receipts": f_recent.result()}
 
 
 def _store_changed(result):
-    """영수증 · 메뉴가 바뀌면 원가율 · 내일 준비 보관값을 비움."""
-    for k in [k for k in _memo if k == "costs" or k.startswith("demand:")]:
+    """가게 자료가 바뀌면 원가율 · 내일 준비 · 영수증 목록 · 내 메뉴 재료 보관값을 메모리와 보관함에서 지움 (다른 서버도 새로 계산)."""
+    keys = [*STORE_KEYS, _demand_key()]
+    for k in [k for k in _memo if k in keys or k.startswith("demand")]:
         _memo.pop(k, None)
+    supabase_db.remove_files(CACHE_BUCKET, [f"cache/{k}.json" for k in keys])
     return result
 
 
@@ -494,7 +648,7 @@ def receipt_edit(purchase_id: int, body: ReceiptEdit):
 @app.get("/api/my-items")
 def my_items():
     """우리 가게 메뉴에 들어가는 재료 (알림 '내 메뉴 재료만'). 메뉴가 자주 바뀌지 않아 10분 보관."""
-    return _receipt_guard(lambda: memo("my_items", lambda: receipts.my_ingredients(supabase_db.DEMO_STORE), ttl=600))
+    return _receipt_guard(lambda: shared("my_items", lambda: receipts.my_ingredients(supabase_db.DEMO_STORE), ttl=600))
 
 
 class MenuIn(BaseModel):
@@ -505,9 +659,8 @@ class MenuIn(BaseModel):
 
 def _menu_changed(result):
     """메뉴를 바꾸면 '내 메뉴 재료' 보관값을 비우고, 화면이 다시 그릴 원가율을 함께 돌려줌."""
-    _memo.pop("my_items", None)
     _store_changed(None)
-    return {**result, **receipts.cost_report(supabase_db.DEMO_STORE), "receipts": receipts.recent(supabase_db.DEMO_STORE)}
+    return {**result, **_costs_data()}
 
 
 @app.get("/api/menus")
@@ -530,6 +683,22 @@ def menu_edit(menu_id: int, body: MenuIn):
 def menu_stop(menu_id: int):
     """판매 중지 (메뉴를 지우면 판매 기록까지 지워져서 지우지 않음)."""
     return _receipt_guard(lambda: _menu_changed(menus.stop(supabase_db.DEMO_STORE, menu_id)))
+
+
+class StockIn(BaseModel):
+    items: list[dict] = []   # [{"item_id": 3, "on_hand": 4.5}] — 기준 단위(kg · 모 · 개 · L)
+
+
+@app.get("/api/inventory")
+def inventory_list():
+    """재고 입력 창용: 메뉴 재료 + 재고 있는 재료의 남은 양 (영수증 저장 · 고치기 · 지우기 때 자동으로 바뀜)."""
+    return _receipt_guard(lambda: inventory.listing(supabase_db.DEMO_STORE))
+
+
+@app.put("/api/inventory")
+def inventory_set(body: StockIn):
+    """사장님이 고친 남은 양 저장 → 내일 준비(주문량) 다시 계산."""
+    return _receipt_guard(lambda: _store_changed(inventory.set_qty(supabase_db.DEMO_STORE, body.items)))
 
 
 @app.get("/api/receipts")
@@ -760,6 +929,22 @@ class StoreEditIn(BaseModel):
 def auth_store_edit(body: StoreEditIn, authorization: str | None = Header(None)):
     """마이페이지에서 가게 이름 · 구 바꾸기."""
     return _auth(lambda: auth.update_store(_bearer(authorization), body.model_dump()))
+
+
+class CostsIn(BaseModel):
+    costs: dict = {}
+
+
+@app.get("/api/store/costs")
+def store_costs_get(authorization: str | None = Header(None)):
+    """마이페이지 '내 정보' 가게 비용 (좌석 · 쉬는 요일 · 업종 · 고정 · 판매 · 배달 비용, 만 원 단위). 넣은 적 없으면 costs = null."""
+    return _auth(lambda: store_costs.get(_bearer(authorization)))
+
+
+@app.put("/api/store/costs")
+def store_costs_put(body: CostsIn, authorization: str | None = Header(None)):
+    """가게 비용 저장 (계정 정보에 → 다른 기기에서도 같은 값). 모양이 틀린 칸은 버리고 저장한 값을 돌려줌."""
+    return _auth(lambda: store_costs.save(_bearer(authorization), body.costs))
 
 
 @app.post("/api/auth/logout")

@@ -3,7 +3,7 @@
 > 왜: 서버(이하영)가 끝나길 기다리지 않고 **화면(이성이)을 먼저 만들기 위해**, 서버가 돌려줄 자료 모양을 미리 정함
 > 쓰는 법: 화면은 아래 예시를 `salpi_agent/web/mock/<이름>.json` 샘플 파일로 두고 먼저 만듦 → 서버가 생기면 주소만 바꿈 (11/26)
 > 모양을 바꿔야 하면: 바꾸는 사람이 이 문서를 먼저 고치고 팀에 알림
-> 일정: [README](../README.md)
+> 일정: [Issue #86 "📅 살피 일정 체크"](https://github.com/k-1026/jangbaguni/issues/86)
 
 | # | 화면 | 주소 | 서버 | 화면 | 샘플 파일 |
 |---|---|---|---|---|---|
@@ -110,6 +110,22 @@
 {"locked": true, "message": "이 기능은 유료 플랜 사장님만 사용 가능해요", "receipt_free_left": 0, "plan_price": 19900}
 ```
 
+✅ 서버 있음 (11/24, `account/trial.py` · `account/subscription.py`). 모두 `Authorization: Bearer <로그인 표>` 필요
+
+| 주소 | 하는 일 | 답 |
+|---|---|---|
+| `GET /api/receipt/trial` | 영수증 분석 무료 횟수 | `{limit: 5, used, left, paid, plan_until, locked, found}` |
+| `POST /api/receipt/read` | 영수증 읽기 — 5회 다 쓰면 **402** `{"detail": "이 기능은 유료 플랜 사장님만 사용 가능해요"}` | 성공하면 `trial` 이 같이 옴 |
+| `GET /api/subscribe` | 구독 상태 | `{plan: "free"·"plus", paid, until, cancel_at_end, price: 19900, payments[], mode: "toss"·"mock"}` |
+| `POST /api/subscribe/checkout` | 결제창 열기 전 주문 만들기 | `{order_id, amount: 19900, order_name, client_key, customer_key, customer_name, mode}` |
+| `POST /api/subscribe/confirm` | 결제창에서 돌아온 값으로 승인 → 30일 플러스 | body `{payment_key, order_id, amount}` → 구독 상태 + `approved` |
+| `POST /api/subscribe/cancel` | 해지 예약 (기간 끝까지 플러스) · `{"undo": true}` 면 취소 | 구독 상태 |
+
+**모의 결제 화면 흐름**
+- `mode: "toss"` (서버에 토스페이먼츠 **테스트** 키가 있을 때): checkout 답의 `client_key` 로 토스 결제창(`@tosspayments/tosspayments-sdk`)을 열고 `orderId` · `amount` · `orderName` · `customerKey` 를 그대로 넘김 → 성공 주소로 돌아오면 주소의 `paymentKey` · `orderId` · `amount` 를 confirm 으로. 테스트 키라 돈은 나가지 않음
+- `mode: "mock"` (키가 없을 때, 지금 Vercel): 결제창 없이 화면에서 "결제하기(모의)" 를 누르면 confirm 에 `order_id` · `amount` 만 보냄
+- 잘못된 주문 · 금액 · 같은 주문 두 번은 400 `detail` 로 안내 문구가 옴
+
 ## 8. 앞으로 7일 날씨 — `GET /api/context` 의 `weather_forecast` (윤가언)
 
 ```json
@@ -128,3 +144,25 @@
 
 - `on_screen.야채.metrics` = `{opposite_pct, mae_pp, range_hit_pct}` (지표 3개) · `version` · `trained_at`
 - `history[]` = 매일 학습 기록: `diagnosis`(AI 진단) · `experiments[]`(실험 · 교체 여부) · `promoted`
+
+## 10. 판매 기록 입력 · 확인 — `GET /api/sales?date=` · `PUT /api/sales` (11/24, 화면은 이성이)
+
+하루에 메뉴별로 몇 그릇 팔았는지 넣는 곳. 넣으면 내일 준비(예상 판매) · 원가율이 다시 계산됨 (`store/sales.py`)
+
+```json
+GET /api/sales?date=2026-11-24   (date 없으면 오늘)
+{"date": "2026-11-24", "entered": true, "total": 15, "sales_won": 135000, "last_sales_date": "2026-11-24",
+ "menus": [{"menu_id": 1, "name": "김치찌개", "price": 9000, "hall": 12, "delivery": 3},
+           {"menu_id": 2, "name": "제육볶음", "price": 10000, "hall": null, "delivery": null}]}
+
+PUT /api/sales   (Authorization: Bearer <로그인 표> 같이 보내기)
+{"date": "2026-11-24", "items": [{"menu_id": 1, "hall": 12, "delivery": 3}, {"menu_id": 2, "hall": 20}]}
+→ GET 과 같은 모양 + "new"(이 날짜를 처음 넣었나) · "trial"(판매율 분석 남은 횟수)
+```
+- `hall` · `delivery` = 홀 · 배달 그릇 수 (0 이상 정수). `null` · 빠진 칸은 **안 바꿈**, `0` 은 안 팔림
+- 날짜: 오늘 ~ 60일 전까지 (뒤 날짜 · 너무 오래된 날짜는 400 `detail`)
+- 판매 중인 메뉴만 (`menus[].menu_id`). 틀린 값은 400 `detail` 에 메뉴 이름과 함께 안내 문구
+- **판매율 분석 무료 5회** = 새 날짜를 올린 횟수 (같은 날짜를 고치면 안 셈). 5회를 다 쓰면 새 날짜는 **402** → 영수증 잠금처럼 "구독하러 가기"
+  - 5번째로 올린 날은 그날 끝까지 분석이 보이고, 다음 날부터 `GET /api/demand` 가 402 · `GET /api/costs` 가 `{locked: true, receipts}` (나의 가게 칸 잠금은 이미 화면에 있음)
+  - 남은 횟수: `GET /api/receipt/trial?feature=sales` → `{used, left, locked, paid}`
+- 지금은 시연 가게 한 곳 (영수증 · 메뉴와 같음). 가상 판매 기록은 11/17까지 들어 있음

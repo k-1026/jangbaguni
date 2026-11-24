@@ -782,6 +782,11 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .sales-top { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; margin-bottom: 10px; }
 .sales-top-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .sales-fold { min-height: 40px; padding: 0 16px; }
+/* 자동 저장 상태: 저장하는 중(회색) · ✓ 저장됨(초록) · 저장 못 함(빨강 + 다시 시도) */
+.sales-status { font-size: 14px; color: var(--muted); }
+.sales-status.saved { color: var(--primary); font-weight: 700; }
+.sales-status.failed { color: #A32A1C; font-weight: 700; }
+.sales-retry { margin-left: 6px; min-height: 32px; padding: 0 12px; border: 1px solid #A32A1C; border-radius: 999px; background: var(--surface); color: #A32A1C; font: inherit; font-size: 13px; font-weight: 700; }
 .sales-days { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .sales-chip { min-height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--outline); background: var(--surface); color: var(--ink); font-size: 14px; }
 .sales-chip.on { border-color: var(--primary); background: var(--primary-container); color: var(--on-primary-container); font-weight: 700; }

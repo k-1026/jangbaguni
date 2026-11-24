@@ -47,8 +47,10 @@ def _norm(s):
 def _josa(word, with_batchim, without):
     """받침에 따라 조사 고르기 (애호박이 / 양파가)."""
     ch = word[-1] if word else ""
-    has = "가" <= ch <= "힣" and (ord(ch) - 0xAC00) % 28 > 0
-    return word + (with_batchim if has else without)
+    tail = (ord(ch) - 0xAC00) % 28 if "가" <= ch <= "힣" else 0
+    if with_batchim == "으로" and tail == 8:   # ㄹ 받침 뒤는 '로' (삼겹살로 · 쌀로)
+        return word + without
+    return word + (with_batchim if tail > 0 else without)
 
 
 def _items():
@@ -331,11 +333,14 @@ def cost_report(store_id=db.DEMO_STORE, forecasts=None):
         risers = sorted((p for p in parts if p["cost_up"] >= 30), key=lambda p: -p["cost_up"])   # 1인분 30원 미만은 알릴 만큼 아님
         riser = risers[0] if risers else None
         # 다음 주 예상 원가율: 시세가 있는 재료(야채)는 7일 예측만큼 단가가 바뀐다고 보고 다시 계산 (유저플로우 v2 왼쪽 갈래)
-        next_cost = cost
+        next_cost, next_up = cost, None
         for p in parts:
             fc = _wholesale(p["item"], cache)
             if fc:
-                next_cost += p["_per"] * p["latest_price"] * fc["expected_change_pct"] / 100
+                delta = p["_per"] * p["latest_price"] * fc["expected_change_pct"] / 100
+                next_cost += delta
+                if delta >= 10 and (not next_up or delta > next_up["cost_up"]):   # 다음 주 1인분 재료비를 가장 많이 올리는 재료 (원가율 알림 '왜')
+                    next_up = {"item": p["item"], "change_pct": fc["expected_change_pct"], "cost_up": round(delta)}
         next_ratio = round(next_cost / m["price"] * 100, 1) if m["price"] and ratio is not None else None
         high = ratio is not None and (ratio >= TARGET_RATIO or (next_ratio or 0) >= TARGET_RATIO)
         if ratio is None:
@@ -383,7 +388,7 @@ def cost_report(store_id=db.DEMO_STORE, forecasts=None):
                     "high": high, "items_without_price": m["items_without_price"],
                     "top_items": [{k: v for k, v in p.items() if k != "_per"} for p in parts[:3]],
                     "riser": {k: v for k, v in riser.items() if k != "_per"} if riser else None, "tips": tips, "swap": swap,
-                    "price_up": price_up, "push_menu": None})
+                    "price_up": price_up, "push_menu": None, "next_up": next_up})
     # 메뉴 제안: 원가율이 높은 메뉴가 있으면, 지금 · 다음 주 모두 40% 아래인 메뉴 중 한 그릇에 가장 많이 남는 메뉴를 밀어 보자고 제안
     good = [x for x in out if x["cost_ratio_pct"] is not None and not x["high"]]
     best = max(good, key=lambda x: x["margin"], default=None)

@@ -1359,7 +1359,7 @@ function salesTotals() {
     const r = $(`#salesCard [data-rev="${m.menu_id}"]`);
     if (r) {
       const n = (Number.isFinite(row.hall) ? row.hall : 0) + (Number.isFinite(row.delivery) ? row.delivery : 0);
-      r.textContent = row.hall !== null || row.delivery !== null ? won(n * m.price) : "-";
+      r.textContent = n > 0 ? won(n * m.price) : "-";   // 0그릇(안 팔림)이면 0원 대신 '-'
     }
     $(`#salesCard tr[data-mid="${m.menu_id}"]`)?.classList.toggle("has", row.hall !== null || row.delivery !== null);
   });

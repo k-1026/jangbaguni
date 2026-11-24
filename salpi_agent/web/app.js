@@ -1707,17 +1707,50 @@ function renderCosts(r, withChange) {
               <p class="swap-reason">💡 ${esc(m.swap.reason)}</p>
             </div>
             <p class="swap-calc">${esc(m.swap.from)} ${m.swap.share_pct}%를 바꾸면 1인분 <b>${won(m.swap.saving_per_serving)}</b> 아껴요 · 원가율 ${m.cost_ratio_pct}% → <b>${m.swap.new_ratio_pct}%</b> · 남는 돈 ${won(m.margin)} → <b>${won(m.swap.new_margin)}</b></p>
-            ${swapExtra(m.swap)}
+            ${swapOrigin(m.swap)}${swapExtra(m.swap)}
           </div>
         </div>` : ""}
       </article>`;
     }).join("")}</div>
     <p class="muted small">레시피에 주재료만 들어 있어 실제보다 원가율이 조금 낮게 나와요.</p>`;
+  fitCpWhat();
 }
 
-// 대체 재료 아래 덧붙임: 원산지 표시 변경 안내(고기) · 다른 후보(예: 수입 돼지고기)
-const swapExtra = (s) => !s ? "" : `${s.origin_notice ? `<p class="swap-origin">⚠ ${esc(s.origin_notice)}</p>` : ""}${(s.others || []).length
-  ? `<p class="swap-others">다른 후보: ${s.others.map((o) => `${esc(o.to)} (1인분 ${won(o.saving_per_serving)} 절약 · 원가율 ${o.new_ratio_pct}%)`).join(" · ")}</p>` : ""}`;
+// 원가율 낮추는 방법 카드의 내용은 늘 한 줄: 칸보다 길면(예: 돼지고기 앞다리 50% → 수입 돼지고기 삼겹살) 글자를 칸에 맞을 때까지 조금씩 줄임
+// → 세 카드 높이가 같아져 옆 카드에 빈 여백이 생기지 않음. 화면 폭이 바뀌면 다시 맞춤
+function fitCpWhat() {
+  document.querySelectorAll("#costCard .cp-what").forEach((el) => {
+    el.style.fontSize = "";
+    el.classList.remove("wrap");
+    if (!el.clientWidth) return;   // 숨겨진 칸은 폭을 잴 수 없음
+    let size = parseFloat(getComputedStyle(el).fontSize);
+    while (el.scrollWidth > el.clientWidth + 1 && size > 13) { size -= 0.5; el.style.fontSize = `${size}px`; }
+    // 13px로도 안 들어가는 좁은 화면(휴대폰 등)은 글자가 잘리지 않게 원래 크기로 두 줄
+    if (el.scrollWidth > el.clientWidth + 1) { el.style.fontSize = ""; el.classList.add("wrap"); }
+  });
+}
+let fitCpTimer;
+addEventListener("resize", () => { clearTimeout(fitCpTimer); fitCpTimer = setTimeout(fitCpWhat, 150); });
+document.fonts?.ready.then(fitCpWhat);   // 글꼴을 다 받은 뒤 폭이 달라지면 다시 맞춤
+
+// 대체 재료 이름 바로 아래(구분선 위) 작게: 원산지 표시 변경 안내(고기). '원산지 표시 변경 필요'까지 한 줄, 설명은 다음 줄
+const swapOrigin = (s) => {
+  if (!s?.origin_notice) return "";
+  const [head, ...rest] = s.origin_notice.split(":");
+  return `<p class="swap-origin"><b>⚠ ${esc(head.trim())}</b>${rest.length ? `<span>${esc(rest.join(":").trim())}</span>` : ""}</p>`;
+};
+// 원가율 낮추는 방법 카드: '대체 재료' 칩 옆에 '⚠ 원산지 표시 변경 필요' 글자 → 마우스를 올리면(휴대폰은 누르면) 설명 말풍선 (카드 높이는 그대로)
+let cpOriginSeq = 0;
+const cpOrigin = (s) => {
+  if (!s?.origin_notice) return "";
+  const [head, ...rest] = s.origin_notice.split(":");
+  const id = `cpOrigin${++cpOriginSeq}`;
+  return `<span class="cp-origin-wrap"><button type="button" class="cp-origin"${rest.length ? ` aria-describedby="${id}"` : ""}>⚠ ${esc(head.trim())}</button>${rest.length
+    ? `<span class="cp-tip" role="tooltip" id="${id}">${esc(rest.join(":").trim())}</span>` : ""}</span>`;
+};
+// 대체 재료 카드 맨 아래: 다른 후보(예: 수입 돼지고기)
+const swapExtra = (s) => (s?.others || []).length
+  ? `<p class="swap-others">다른 후보: ${s.others.map((o) => `${esc(o.to)} (1인분 ${won(o.saving_per_serving)} 절약 · 원가율 ${o.new_ratio_pct}%)`).join(" · ")}</p>` : "";
 
 // 원가율 40% 이상(지금 또는 다음 주): 원가율 낮추는 방법(가격 · 재료 · 메뉴)을 함께 보여 줌 — 고르는 건 사장님 (유저플로우 v2)
 // 방법마다 카드 하나: 종류 칩 · 바꾸는 것 · 원가율 · 남는 금액(또는 아끼는 돈) — 세 카드는 똑같이 (고르는 건 사장님)
@@ -1726,17 +1759,17 @@ function costPlan(m) {
   const opts = [
     { kind: "price", label: "가격 조정", ratio: p?.new_ratio_pct, none: "계산할 수 없어요",
       what: p && `<s>${won(m.price)}</s><i aria-label="에서">→</i><b>${won(p.price)}</b>`,
-      key: p?.basis === "다음 주 예상 원가" ? "남는 금액(다음 주)" : "남는 금액", val: p && won(p.new_margin) },
+      key: p?.basis === "다음 주 예상 원가" ? "남는 금액(다음 주 원가로 계산)" : "남는 금액", val: p && won(p.new_margin) },
     { kind: "swap", label: "대체 재료", ratio: s?.new_ratio_pct, none: "바꿀 만한 재료가 없어요",
       what: s && `${esc(s.from)} ${s.share_pct}%<i aria-label="대신">→</i><b>${esc(s.to)}</b>`,
       key: "1인분", val: s && `${won(s.saving_per_serving)} 절약` },
     { kind: "menu", label: "메뉴 제안", ratio: k?.cost_ratio_pct, none: "원가율이 괜찮은 다른 메뉴가 없어요",
-      what: k && `<b>${esc(k.menu)} 밀기</b>`, key: "남는 금액", val: k && won(k.margin) },
+      what: k && `<b>${esc(k.menu)} 판매 늘리기</b>`, key: "남는 금액", val: k && won(k.margin) },
   ];
   return `<div class="cost-plan">
     <b class="cp-title">원가율 낮추는 방법</b>
     <ol>${opts.map((o) => `<li class="cp-${o.kind}">
-      <div class="cp-head"><span class="cp-chip">${o.label}</span>${o.ratio == null ? "" : `<p class="cp-what">${o.what}</p>`}</div>
+      <div class="cp-head"><span class="cp-chip">${o.label}</span>${o.kind === "swap" && o.ratio != null ? cpOrigin(s) : ""}${o.ratio == null ? "" : `<p class="cp-what">${o.what}</p>`}</div>
       ${o.ratio == null ? `<p class="cp-none">${o.none}</p>` : `<dl><dt>원가율</dt><dd class="cp-ratio">${o.ratio}%</dd><dt>${o.key}</dt><dd class="cp-money">${o.val}</dd></dl>`}
       ${o.kind === "swap" ? swapExtra(s) : ""}
     </li>`).join("")}</ol>
@@ -1950,6 +1983,10 @@ $("#menuAddBtn").onclick = () => openMenuEditor(null);
 $("#costCard").addEventListener("click", (e) => {
   const b = e.target.closest(".cost-edit");
   if (b) openMenuEditor(b.dataset.mid);
+  // 원산지 안내 말풍선: 휴대폰처럼 마우스가 없으면 눌러서 열고 닫음 (다른 곳을 누르면 닫힘)
+  const o = e.target.closest(".cp-origin-wrap");
+  document.querySelectorAll("#costCard .cp-origin-wrap.open").forEach((w) => { if (w !== o) w.classList.remove("open"); });
+  if (o) o.classList.toggle("open");
 });
 
 $("#demoReceipts").innerHTML = DEMO_RECEIPTS.map(([f, label]) =>

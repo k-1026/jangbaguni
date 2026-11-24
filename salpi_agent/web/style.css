@@ -814,7 +814,8 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .sales-grid tbody th { padding: 6px 8px; text-align: left; font-size: 16px; font-weight: 700; color: var(--ink); word-break: keep-all; }
 .sales-grid td { padding: 6px; border-bottom: 1px solid var(--outline-variant); }
 .sales-grid tbody th { border-bottom: 1px solid var(--outline-variant); }
-.sales-grid td.price { color: var(--muted); font-size: 14px; white-space: nowrap; }
+.sales-grid tbody th small { margin-left: 8px; font-size: 13px; font-weight: 400; color: var(--muted); white-space: nowrap; }   /* 단가는 메뉴 이름 옆에 작게 (한 줄) */
+.sales-grid td.rev { width: 104px; padding-left: 12px; font-size: 15px; font-weight: 700; color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; }   /* 메뉴별 매출 */
 .sales-grid td:has(.sales-in) { width: 96px; }
 .sales-grid.one td:has(.sales-in) { width: 140px; }
 .sales-sum { font-size: 16px; font-weight: 700; width: 56px; }
@@ -877,7 +878,7 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
   #sales .section-head .muted { order: 3; flex-basis: 100%; }
   .sales-left { padding: 4px 12px 12px; }
   .sales-bar-left { padding: 12px; }
-  .sales-grid td.price, .sales-grid thead th:nth-child(2) { display: none; }   /* 좁으면 단가 칸은 빼고 */
+  .sales-grid td.rev, .sales-grid th.rev { display: none; }   /* 좁으면 메뉴별 매출 칸은 빼고 (오른쪽 요약에 총 매출) */
   .sales-grid td:has(.sales-in) { width: 64px; }
   .sales-grid tbody th { font-size: 15px; }
   .sales-sum { width: 40px; }

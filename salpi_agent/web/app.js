@@ -1294,12 +1294,13 @@ function renderSales() {
       <div class="sales-left">
         <div class="sales-scroll">
           <table class="sales-grid${both ? "" : " one"}">
-            <thead><tr><th scope="col">메뉴</th><th scope="col" class="num">단가</th>
-              ${both ? `<th scope="col">홀</th><th scope="col">배달</th><th scope="col" class="num">합계</th>` : `<th scope="col">판매 그릇 수</th>`}</tr></thead>
+            <thead><tr><th scope="col">메뉴</th>
+              ${both ? `<th scope="col">홀</th><th scope="col">배달</th><th scope="col" class="num">합계</th>` : `<th scope="col">판매 그릇 수</th>`}<th scope="col" class="num rev">매출</th></tr></thead>
             <tbody>${d.menus.map((m) => `<tr data-mid="${m.menu_id}">
-              <th scope="row">${esc(m.name)}</th><td class="num price">${won(m.price)}</td>
+              <th scope="row">${esc(m.name)}<small>${won(m.price)}</small></th>
               ${both ? `<td>${cell(m, "hall", "홀")}</td><td>${cell(m, "delivery", "배달")}</td><td class="num sales-sum" data-sum="${m.menu_id}"></td>`
                 : `<td>${cell(m, "hall", "")}<span class="sales-sum" data-sum="${m.menu_id}" hidden></span></td>`}
+              <td class="num rev" data-rev="${m.menu_id}"></td>
             </tr>`).join("")}</tbody>
           </table>
         </div>
@@ -1353,6 +1354,12 @@ function salesTotals() {
     if (s) {
       const any = row.hall !== null || row.delivery !== null;
       s.textContent = any ? num((Number.isFinite(row.hall) ? row.hall : 0) + (Number.isFinite(row.delivery) ? row.delivery : 0)) : "-";
+    }
+    // 메뉴별 매출 = (홀 + 배달) × 판매가 — 단가 칸 자리에 (단가는 메뉴 이름 옆에 작게)
+    const r = $(`#salesCard [data-rev="${m.menu_id}"]`);
+    if (r) {
+      const n = (Number.isFinite(row.hall) ? row.hall : 0) + (Number.isFinite(row.delivery) ? row.delivery : 0);
+      r.textContent = row.hall !== null || row.delivery !== null ? won(n * m.price) : "-";
     }
     $(`#salesCard tr[data-mid="${m.menu_id}"]`)?.classList.toggle("has", row.hall !== null || row.delivery !== null);
   });

@@ -1268,7 +1268,7 @@ function renderSales() {
           <div><b>${dayName}</b><small>${d.entered ? `저장됨${sales.savedAt ? ` · ${sales.savedAt}` : ""} · 내일 준비 · 원가율 반영` : "아직 안 넣었어요"}</small></div>
         </div>
         ${d.entered ? `${stat("총 판매량", `${num(d.total)}그릇`)}${stat(isToday ? "오늘 매출" : "매출", won(d.sales_won), "money")}
-          ${showDeliv() || deliv ? stat("채널별", `홀 ${num(hall)} · 배달 ${num(deliv)}`) : ""}` : ""}
+          ${showDeliv() || deliv ? stat("판매 방식", `홀 ${num(hall)} · 배달 ${num(deliv)}`) : ""}` : ""}
         <button class="sales-unfold" type="button" data-sales="unfold" aria-expanded="false" aria-controls="salesCard" aria-label="판매 기록 펼치기" title="펼치기">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
       </div>`;

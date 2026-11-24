@@ -5,6 +5,7 @@
 - 사장님이 고친 '영수증 이름 → 재료' 짝은 item_aliases 에 쌓아 다음부터 바로 맞춤
 """
 
+from concurrent.futures import ThreadPoolExecutor
 import json
 import math
 import os
@@ -295,14 +296,21 @@ def _swap(riser, per, cost, price, store_price, cache):
     return best
 
 
-def cost_report(store_id=db.DEMO_STORE):
-    menus = db.select("v_menu_cost_ratio", store_id=f"eq.{store_id}", order="menu_id")
-    recipes = db.select("recipe_items", menu_id=f"in.({','.join(str(m['menu_id']) for m in menus) or 0})",
-                        select="menu_id,item_id,qty_per_serving,loss_rate,items(name,base_unit)")
-    hist = _price_history(store_id)
-    names = {i["id"]: i["name"] for i in _items()}
+def cost_report(store_id=db.DEMO_STORE, forecasts=None):
+    """forecasts: {재료 이름: 시세 예측(analysis.forecast_item 결과)} — 첫 화면 시세(/api/overview)에 이미 있으면 넘겨 받아
+    재료마다 시세 API · AI 모델을 다시 부르지 않음 (없는 재료만 _wholesale 이 직접 계산)."""
+    def menus_and_recipes():
+        menus = db.select("v_menu_cost_ratio", store_id=f"eq.{store_id}", order="menu_id")
+        return menus, db.select("recipe_items", menu_id=f"in.({','.join(str(m['menu_id']) for m in menus) or 0})",
+                                select="menu_id,item_id,qty_per_serving,loss_rate,items(name,base_unit)")
+    # 서로 기다릴 필요 없는 Supabase 읽기는 동시에 (차례로 하면 약 3.7초)
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        f_menus, f_hist, f_items = pool.submit(menus_and_recipes), pool.submit(_price_history, store_id), pool.submit(_items)
+        (menus, recipes), hist, items = f_menus.result(), f_hist.result(), f_items.result()
+    names = {i["id"]: i["name"] for i in items}
     store_price = {names[k]: v[-1][1] for k, v in hist.items() if k in names}   # 재료 이름 → 우리 가게 최근 영수증 단가
-    cache, out = {}, []
+    cache = {k: f for k, f in (forecasts or {}).items() if f and f.get("base_kg_price") and f.get("expected_change_pct") is not None}
+    out = []
     for m in menus:
         ratio = float(m["cost_ratio_pct"]) if m["cost_ratio_pct"] is not None else None
         cost = float(m["cost_per_serving"] or 0)
@@ -405,6 +413,7 @@ def my_ingredients(store_id):
 # ---------------------------------------------------------------
 
 def recent(store_id, limit=8):
+    """최근 영수증 목록 + 사진 미리보기 주소 (1시간 동안 열리는 주소 → 보관할 때는 1시간보다 짧게)."""
     ps = db.select("purchases", store_id=f"eq.{store_id}", select="id,purchased_on,supplier,total_amount,source,image_path",
                    order="purchased_on.desc,id.desc", limit=str(limit))
     counts, names = {}, {}

@@ -12,6 +12,7 @@ import csv
 import json
 from pathlib import Path
 
+from price.cheaper import processed
 from price.units import parse_pack, per_base_price
 from sources.foodspring import _kg
 
@@ -55,7 +56,9 @@ def main():
     fresh = [o for o in out if not o["exclude"]]
     summary = {"n": len(out), "count": count,
                "fresh_n": len(fresh), "fresh_ok": sum(o["verdict"] in ("맞음", "비슷") for o in fresh),
-               "excluded_shown": sum(1 for o in out if o["exclude"] and o["auto_per_kg"] is not None)}
+               # 더 싼 곳(cheaper.processed)이 빼야 할 냉동 · 손질을 못 뺀 수 · 신선인데 잘못 뺀 수 (둘 다 0이어야 함)
+               "excluded_shown": sum(1 for o in out if o["exclude"] and not processed(o["item"], o["name"])),
+               "fresh_dropped": sum(1 for o in fresh if processed(o["item"], o["name"]))}
     OUT.write_text(json.dumps({"summary": summary, "rows": out}, ensure_ascii=False, indent=1), encoding="utf-8")
     print(summary)
     for o in out:

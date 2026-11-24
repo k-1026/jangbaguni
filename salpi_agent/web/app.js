@@ -1360,7 +1360,7 @@ function salesTotals() {
   $("#spMoney").innerHTML = `${num(Math.round(money))}<small>원</small>`;   // 숫자는 크게, '원'은 작게
   $("#spBowls").innerHTML = `총 <b>${num(bowls)}그릇</b> 판매`;
   // 홀 / 배달 한 줄: 이름 | 그릇 | 금액 — 세 칸으로 줄 맞춤
-  const line = (label, c, cls = "") => `<div class="${cls}"><dt>${label}</dt><dd>${num(c.n)}그릇</dd><dd class="won">${won(c.won)}</dd></div>`;
+  const line = (label, c, cls = "") => `<div class="${cls}"><dt>${label}</dt><dd>${num(c.n)}<span class="unit">그릇</span></dd><dd class="won">${won(c.won)}</dd></div>`;
   $("#spChannels").innerHTML = showDeliv() || ch.delivery.n
     ? line("홀", ch.hall) + line("배달", ch.delivery, "deliv") : line("홀", ch.hall);
 }

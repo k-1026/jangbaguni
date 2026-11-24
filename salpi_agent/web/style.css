@@ -850,6 +850,7 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .sp-channels dt { color: #D5E3CD; }
 .sp-channels dd { padding-left: 12px; font-weight: 700; color: #fff; }
 .sp-channels dd.won { padding-left: 0; text-align: right; font-weight: 800; }
+.sp-channels .unit { margin-left: 3px; font-size: 13px; font-weight: 500; color: #D5E3CD; }   /* 숫자와 '그릇' 사이를 띄우고 단위는 연하게 */
 
 /* 접힌 상태: 날짜 · 저장 상태 | 총 판매량 | 매출 | 채널별 | [펼치기] */
 .sales-fold-row { display: flex; align-items: center; gap: 12px 0; flex-wrap: wrap; padding: 14px 20px; }

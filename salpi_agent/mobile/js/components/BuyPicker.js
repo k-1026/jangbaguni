@@ -1,7 +1,8 @@
 // 사러 가기: 판매처 고르기 창 (아래에서 올라오는 시트). 살피는 팔지 않고 연결만 함
 // 재료 페이지에서 열면 그 재료 검색 결과로, 홈에서 열면 각 판매처 첫 화면으로 보냄
-// 나중에 쿠팡 파트너스를 가입하면 coupang 주소만 제휴 주소로 바꾸면 됨
+// 쿠팡 파트너스 제휴 주소는 서버(price/seller_links.py)가 바꿔 줌 — 키는 .env COUPANG_ACCESS_KEY · COUPANG_SECRET_KEY
 import { esc } from "../core/dom.js";
+import { get } from "../core/api.js";
 
 // 로고는 각 사이트가 공개한 사이트 아이콘(/static/img/shops/)을 그대로 씀 (모양 · 색 바꾸지 않음)
 const SHOPS = [
@@ -30,13 +31,27 @@ function open(item, fs) {
   box.innerHTML = `<div class="m-pick-sheet" role="dialog" aria-modal="true" aria-label="구매할 곳 고르기">
     <span class="m-pick-grip" aria-hidden="true"></span>
     <h3>${item ? `${esc(item)}, 어디서 살까요?` : "어디서 살까요?"}</h3>
-    <div class="m-pick-grid">${SHOPS.map((s) => `<a href="${esc(urlOf(s, item, fs))}" target="_blank" rel="noopener noreferrer">
+    <div class="m-pick-grid">${SHOPS.map((s) => `<a href="${esc(urlOf(s, item, fs))}" data-shop="${s.logo}" target="_blank" rel="noopener noreferrer">
       <span class="m-pick-logo"><img src="/static/img/shops/${s.logo}.png" alt="" width="48" height="48" loading="lazy"></span>
       <b>${esc(s.name)}</b></a>`).join("")}</div>
-    <p class="m-pick-note m-pick-ad">쿠팡 링크는 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</p>
+    <p class="m-pick-note m-pick-ad" hidden></p>
     <button type="button" class="m-pick-close">닫기</button></div>`;
   box.addEventListener("click", (e) => { if (e.target === box || e.target.closest(".m-pick-close") || e.target.closest("a")) box.remove(); });
   document.body.appendChild(box);
+  applyLinks(box, item);
+}
+
+// 판매처 주소는 서버(/api/buy-links)가 정함: 쿠팡 파트너스 키가 있으면 제휴 주소 + 대가성 안내 문구, 없으면 안내를 숨김
+async function applyLinks(box, item) {
+  try {
+    const d = await get(`/api/buy-links?item=${encodeURIComponent(item || "")}`, { ttl: 3600 });
+    for (const s of d.shops || []) {
+      const a = box.querySelector(`a[data-shop="${s.logo}"]`);
+      if (a) { a.href = s.url; if (s.affiliate) a.rel = "noopener noreferrer sponsored"; }
+    }
+    const note = box.querySelector(".m-pick-ad");
+    if (note) { note.textContent = d.ad_note || ""; note.hidden = !d.ad_note; }
+  } catch (e) { /* 서버에 못 닿으면 기본 주소 그대로 */ }
 }
 
 // 한 번만 연결: [data-buy] 를 누르면 어느 화면에서든 같은 창이 뜸

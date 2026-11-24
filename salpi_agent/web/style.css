@@ -782,14 +782,15 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .sales-top { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; margin-bottom: 10px; }
 .sales-top-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .sales-fold { min-height: 40px; padding: 0 16px; }
-/* 배달도 해요 스위치 (진짜 checkbox 위에 그린 모양 — 키보드 · 화면 읽기 그대로) */
-.sales-switch { position: relative; display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px 0 10px; border: 1px solid var(--outline); border-radius: 999px; font-size: 14px; cursor: pointer; }
-.sales-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-.sales-switch-ui { position: relative; width: 36px; height: 20px; border-radius: 999px; background: var(--outline); transition: background .15s; }
-.sales-switch-ui::after { content: ""; position: absolute; left: 2px; top: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .15s; }
-.sales-switch input:checked + .sales-switch-ui { background: var(--primary); }
-.sales-switch input:checked + .sales-switch-ui::after { transform: translateX(16px); }
-.sales-switch input:focus-visible + .sales-switch-ui { outline: 2px solid var(--primary); outline-offset: 2px; }
+/* 배달 체크박스형 버튼 (진짜 checkbox 위에 그린 모양 — 키보드 · 화면 읽기 그대로). 켜면 초록 테두리 · 연초록 바탕 · 체크 */
+.sales-opt { position: relative; display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 16px 0 12px; border: 1px solid var(--outline); border-radius: 12px; background: var(--surface); font-size: 14px; color: var(--ink); cursor: pointer; transition: background .15s, border-color .15s; }
+.sales-opt input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.sales-opt-box { display: grid; place-items: center; width: 18px; height: 18px; box-sizing: border-box; border: 2px solid #9AA39C; border-radius: 4px; background: var(--surface); }
+.sales-opt-box svg { width: 14px; height: 14px; fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; opacity: 0; }
+.sales-opt:has(input:checked) { border: 2px solid var(--primary); background: var(--primary-container); color: var(--on-primary-container); font-weight: 700; padding: 0 15px 0 11px; }
+.sales-opt input:checked + .sales-opt-box { border-color: var(--primary); background: var(--primary); }
+.sales-opt input:checked + .sales-opt-box svg { opacity: 1; }
+.sales-opt input:focus-visible + .sales-opt-box { outline: 2px solid var(--primary); outline-offset: 2px; }
 .sales-table.one .sales-row { grid-template-columns: minmax(0, 1fr) 140px; }
 .sales-table.one .sales-head span:last-child { text-align: center; }
 .sales-in::placeholder { color: var(--muted); opacity: .55; font-weight: 400; }

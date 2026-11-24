@@ -1284,7 +1284,7 @@ function renderSales() {
       </div>
       <div class="sales-top-right">
         <span class="sales-status" id="salesStatus" role="status" aria-live="polite"></span>
-        <label class="sales-switch"><input type="checkbox" id="salesDeliv" ${delivOn() ? "checked" : ""}><span class="sales-switch-ui" aria-hidden="true"></span>배달</label>
+        <label class="sales-opt"><input type="checkbox" id="salesDeliv" ${delivOn() ? "checked" : ""}><span class="sales-opt-box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></span>배달</label>
         <button class="btn sales-fold" type="button" data-sales="fold" aria-expanded="true">접기</button>
       </div>
     </div>

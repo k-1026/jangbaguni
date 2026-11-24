@@ -1204,7 +1204,7 @@ function monthRange(history, now) {
 
 // ---------------------------------------------------------------
 // 판매 기록 입력 (/api/sales, store/sales.py): 하루 메뉴별 홀 · 배달 그릇 수
-// 그날을 아직 안 넣었으면 표를 펼치고, 저장하면 한 줄로 접음 → 내일 준비 · 원가율을 다시 불러옴
+// 표는 늘 펼쳐 두고, 사장님이 [접기]를 눌렀을 때만 한 줄로 접음. 저장하면 내일 준비 · 원가율을 다시 불러옴
 // 빈칸 = 안 넣음(그 칸은 안 바뀜), 0 = 안 팔림. 서버와 같은 규칙(0 이상 정수 · 하루 2000그릇 · 60일 전까지)을 먼저 화면에서 확인
 // ---------------------------------------------------------------
 const SALES_MAX = 2000, SALES_BACK_DAYS = 60;
@@ -1223,13 +1223,13 @@ async function salesPut(body) {
   return out;
 }
 
-// date 없으면 서버 기준 오늘(한국 시간). open: 표를 펼칠지 (없으면 그날 안 넣었을 때만 펼침)
-async function loadSales(date, open) {
+// date 없으면 서버 기준 오늘(한국 시간). open: 표를 펼칠지 (기본 펼침)
+async function loadSales(date, open = true) {
   try {
     const d = await getJSON(date ? `/api/sales?date=${date}` : "/api/sales");
     if (!sales.today) sales.today = d.date;
     sales.data = d;
-    sales.open = open ?? !d.entered;
+    sales.open = open;
     sales.dirty = false;
     renderSales();
   } catch (e) {
@@ -1252,12 +1252,12 @@ function renderSales(msg = "", kind = "ok") {
       <div class="sales-done">
         <span class="sales-check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></span>
         <div class="sales-done-text">
-          <b>${dayLabel(d.date)}${isToday ? " 오늘" : ""}</b> ${d.total.toLocaleString("ko-KR")}그릇 · ${won(d.sales_won)}
-          <small>홀 ${hall.toLocaleString("ko-KR")} · 배달 ${deliv.toLocaleString("ko-KR")}</small>
+          <b>${dayLabel(d.date)}${isToday ? " 오늘" : ""}</b> ${d.entered ? `${d.total.toLocaleString("ko-KR")}그릇 · ${won(d.sales_won)}` : "아직 안 넣었어요"}
+          ${d.entered ? `<small>홀 ${hall.toLocaleString("ko-KR")} · 배달 ${deliv.toLocaleString("ko-KR")}</small>` : ""}
         </div>
         <div class="sales-done-btns">
           <button class="btn" type="button" data-sales="other">다른 날 넣기</button>
-          <button class="btn primary" type="button" data-sales="edit">고치기</button>
+          <button class="btn primary" type="button" data-sales="edit" aria-expanded="false">펼치기</button>
         </div>
       </div>`;
     return;
@@ -1273,7 +1273,10 @@ function renderSales(msg = "", kind = "ok") {
         <label class="sales-date"><span class="sr-only">날짜 고르기</span>
           <input type="date" id="salesDate" value="${d.date}" min="${min}" max="${sales.today}"></label>
       </div>
-      ${d.entered ? `<span class="muted">이미 넣은 날이에요. 바꿀 칸만 고치면 돼요</span>` : d.last_sales_date ? `<span class="muted">마지막으로 넣은 날 ${dayLabel(d.last_sales_date)}</span>` : ""}
+      <div class="sales-top-right">
+        ${d.entered ? `<span class="muted">이미 넣은 날이에요. 바꿀 칸만 고치면 돼요</span>` : d.last_sales_date ? `<span class="muted">마지막으로 넣은 날 ${dayLabel(d.last_sales_date)}</span>` : ""}
+        <button class="btn sales-fold" type="button" data-sales="fold" aria-expanded="true">접기</button>
+      </div>
     </div>
     <div class="sales-table" role="table" aria-label="메뉴별 판매 그릇 수">
       <div class="sales-row sales-head" role="row">
@@ -1291,7 +1294,6 @@ function renderSales(msg = "", kind = "ok") {
       <span class="sales-total" id="salesTotal"></span>
       <div class="sales-foot-btns">
         ${dayShift(d.date, -7) >= min ? `<button class="btn" type="button" data-sales="lastweek">빈칸에 지난주 ${WEEKDAY[new Date(`${d.date}T00:00:00`).getDay()]}요일 숫자</button>` : ""}
-        ${d.entered ? `<button class="btn" type="button" data-sales="cancel">취소</button>` : ""}
         <button class="btn primary" type="button" data-sales="save">저장하기</button>
       </div>
     </div>`;
@@ -1336,7 +1338,7 @@ async function saveSales(btn) {
   btn.disabled = true; btn.textContent = "저장하는 중";
   try {
     const r = await salesPut({ date: sales.data.date, items });
-    sales.data = r; sales.open = false; sales.dirty = false;
+    sales.data = r; sales.dirty = false;   // 표는 펼친 채로 둠 (접기는 [접기]를 눌렀을 때만)
     renderSales(`${dayLabel(r.date)} 판매를 저장했어요. 내일 준비 · 원가율을 다시 계산하고 있어요`);
     loadDemand();
     loadCosts(false);
@@ -1381,7 +1383,7 @@ $("#salesCard").addEventListener("click", (e) => {
   const act = b.dataset.sales;
   if (act === "edit") { sales.open = true; renderSales(); $("#salesCard .sales-in")?.focus(); }
   if (act === "other") { sales.open = true; renderSales(); $("#salesDate").showPicker?.(); }
-  if (act === "cancel" && salesAsk()) { sales.open = false; sales.dirty = false; renderSales(); }
+  if (act === "fold" && salesAsk()) { sales.open = false; sales.dirty = false; renderSales(); $('#salesCard [data-sales="edit"]')?.focus(); }
   if (act === "save") saveSales(b);
   if (act === "lastweek") fillLastWeek(b);
 });

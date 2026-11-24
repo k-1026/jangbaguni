@@ -780,6 +780,8 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .sales-done-btns, .sales-foot-btns { display: flex; gap: 8px; flex-wrap: wrap; }
 .sales-done-btns .btn, .sales-foot-btns .btn { min-height: 44px; }
 .sales-top { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; margin-bottom: 10px; }
+.sales-top-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.sales-fold { min-height: 40px; padding: 0 16px; }
 .sales-days { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .sales-chip { min-height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--outline); background: var(--surface); color: var(--ink); font-size: 14px; }
 .sales-chip.on { border-color: var(--primary); background: var(--primary-container); color: var(--on-primary-container); font-weight: 700; }

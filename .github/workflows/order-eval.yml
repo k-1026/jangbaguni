@@ -1,0 +1,71 @@
+# 발주량 추천 평가 (demand/order_eval.py) — "살피 학습 모델" 줄까지 채워서 돌림
+# - 팀원 PC는 보안 정책으로 numpy가 막혀 학습 모델 줄이 비므로, 깃허브 실행 컴퓨터에서 돌림
+# - 직접 돌리기: Actions 탭 → "발주량 추천 평가" → Run workflow (작업 공간 고를 수 있음)
+# - 평가 코드(order_eval · demand_learn · gbdt)를 고친 합치기 요청(PR)을 올리면 자동으로도 돔
+# - 결과 보기: 실행 기록 첫 화면(Summary)에 터미널 출력 전체, 아래 Artifacts 에 결과 파일(json)
+# - 저장소나 Supabase 보관함에는 아무것도 저장하지 않음
+name: 발주량 추천 평가
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "salpi_agent/demand/order_eval.py"
+      - "salpi_agent/demand/demand_learn.py"
+      - "salpi_agent/price/gbdt.py"
+      - ".github/workflows/order-eval.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      PYTHONIOENCODING: utf-8
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 필요한 것 설치 (numpy 포함)
+        run: pip install numpy requests python-dotenv
+
+      - name: 발주량 추천 평가 돌리기
+        working-directory: salpi_agent
+        run: |
+          set -o pipefail
+          python -u -m demand.order_eval 2>&1 | tee ../order_eval_output.txt
+
+      - name: 학습 모델이 빠지지 않았는지 확인
+        run: |
+          n=$(grep -c "학습 모델 .* 예측 완료" order_eval_output.txt || true)
+          echo "학습 모델 예측 완료: ${n}번 (6번이면 성공)"
+          if grep -q "학습 모델 건너뜀" order_eval_output.txt || [ "$n" != "6" ]; then
+            echo "::error::살피 학습 모델이 빠졌어요. 위 출력을 확인해 주세요."
+            exit 1
+          fi
+
+      - name: 첫 화면(Summary)에 출력 전체 붙이기
+        if: always()
+        run: |
+          {
+            echo "## 발주량 추천 평가 결과"
+            echo '```'
+            cat order_eval_output.txt 2>/dev/null || echo "(출력 없음)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 결과 파일 내려받기용으로 남기기
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: order-eval-result
+          path: |
+            order_eval_output.txt
+            plan/forecast/1124_order_baseline_eval.json
+          if-no-files-found: ignore
+          retention-days: 14

@@ -800,7 +800,6 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .sales-sum { font-size: 16px; font-weight: 700; }
 .sales-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 14px; padding: 14px 16px; border-radius: 12px; background: var(--primary-container); }
 .sales-total { color: var(--on-primary-container); font-size: 15px; }
-.sales-total small { display: block; font-size: 12px; }
 @media (max-width: 520px) {
   .sales-row { grid-template-columns: minmax(0, 1fr) 68px 68px 44px; gap: 6px; }
   .sales-foot-btns, .sales-foot-btns .btn { width: 100%; }

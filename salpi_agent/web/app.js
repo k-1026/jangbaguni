@@ -1256,7 +1256,6 @@ function renderSales(msg = "", kind = "ok") {
           ${d.entered ? `<small>홀 ${hall.toLocaleString("ko-KR")} · 배달 ${deliv.toLocaleString("ko-KR")}</small>` : ""}
         </div>
         <div class="sales-done-btns">
-          <button class="btn" type="button" data-sales="other">다른 날 넣기</button>
           <button class="btn primary" type="button" data-sales="edit" aria-expanded="false">펼치기</button>
         </div>
       </div>`;
@@ -1303,17 +1302,15 @@ const salesVal = (el) => { const v = el.value.trim(); return v === "" ? null : /
 
 function salesTotals() {
   const price = Object.fromEntries(sales.data.menus.map((m) => [m.menu_id, m.price]));
-  let bowls = 0, money = 0, filled = 0;
+  let bowls = 0, money = 0;
   document.querySelectorAll("#salesCard [data-sum]").forEach((s) => {
     const vals = [...document.querySelectorAll(`#salesCard .sales-in[data-mid="${s.dataset.sum}"]`)].map(salesVal);
     const n = vals.reduce((a, v) => a + (Number.isFinite(v) ? v : 0), 0);
     const any = vals.some((v) => v !== null);
     s.textContent = any ? n.toLocaleString("ko-KR") : "-";
-    if (any) filled++;
     bowls += n; money += n * price[s.dataset.sum];
   });
-  $("#salesTotal").innerHTML = `합계 <b>${bowls.toLocaleString("ko-KR")}그릇</b> · 매출 <b>${won(money)}</b>
-    <small>${filled}/${sales.data.menus.length}개 메뉴 넣음</small>`;
+  $("#salesTotal").innerHTML = `합계 <b>${bowls.toLocaleString("ko-KR")}그릇</b> · 매출 <b>${won(money)}</b>`;
 }
 
 function salesAsk() {
@@ -1358,7 +1355,6 @@ $("#salesCard").addEventListener("click", (e) => {
   if (!b) return;
   const act = b.dataset.sales;
   if (act === "edit") { sales.open = true; renderSales(); $("#salesCard .sales-in")?.focus(); }
-  if (act === "other") { sales.open = true; renderSales(); $("#salesDate").showPicker?.(); }
   if (act === "fold" && salesAsk()) { sales.open = false; sales.dirty = false; renderSales(); $('#salesCard [data-sales="edit"]')?.focus(); }
   if (act === "save") saveSales(b);
 });

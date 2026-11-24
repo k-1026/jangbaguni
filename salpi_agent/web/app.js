@@ -1203,6 +1203,217 @@ function monthRange(history, now) {
 }
 
 // ---------------------------------------------------------------
+// 판매 기록 입력 (/api/sales, store/sales.py): 하루 메뉴별 홀 · 배달 그릇 수
+// 그날을 아직 안 넣었으면 표를 펼치고, 저장하면 한 줄로 접음 → 내일 준비 · 원가율을 다시 불러옴
+// 빈칸 = 안 넣음(그 칸은 안 바뀜), 0 = 안 팔림. 서버와 같은 규칙(0 이상 정수 · 하루 2000그릇 · 60일 전까지)을 먼저 화면에서 확인
+// ---------------------------------------------------------------
+const SALES_MAX = 2000, SALES_BACK_DAYS = 60;
+const WEEKDAY = ["일", "월", "화", "수", "목", "금", "토"];
+const sales = { today: null, data: null, open: false, dirty: false, busy: false };
+const dayShift = (d, n) => { const x = new Date(`${d}T00:00:00`); x.setDate(x.getDate() + n); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`; };
+const dayLabel = (d) => `${mmdd(d)} (${WEEKDAY[new Date(`${d}T00:00:00`).getDay()]})`;
+const salesSum = (menus, key) => menus.reduce((s, m) => s + (m[key] || 0), 0);
+
+async function salesPut(body) {
+  const token = SIGNED_IN ? readLogin()?.access_token : null;   // 로그인했으면 판매율 분석 횟수를 셈 (새 날짜만)
+  const r = await fetch("/api/sales", { method: "PUT", body: JSON.stringify(body),
+    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
+  const out = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(out.detail || "잠시 뒤 다시 해 주세요"), { status: r.status });
+  return out;
+}
+
+// date 없으면 서버 기준 오늘(한국 시간). open: 표를 펼칠지 (없으면 그날 안 넣었을 때만 펼침)
+async function loadSales(date, open) {
+  try {
+    const d = await getJSON(date ? `/api/sales?date=${date}` : "/api/sales");
+    if (!sales.today) sales.today = d.date;
+    sales.data = d;
+    sales.open = open ?? !d.entered;
+    sales.dirty = false;
+    renderSales();
+  } catch (e) {
+    $("#salesCard").innerHTML = `<p class="muted">판매 기록을 불러오지 못했어요. ${esc(e.message)}</p>`;
+  }
+}
+
+function renderSales(msg = "", kind = "ok") {
+  const d = sales.data, isToday = d.date === sales.today;
+  $("#sales h2").textContent = isToday ? "오늘 판매 기록" : `${dayLabel(d.date)} 판매 기록`;
+  $("#salesBadge").hidden = d.entered || !isToday;
+  const note = msg ? `<p class="${kind === "ok" ? "ok" : "sales-err"}" role="status">${esc(msg)}</p>` : "";
+  if (!d.menus.length) {
+    $("#salesCard").innerHTML = `<p class="muted">판매 중인 메뉴가 없어요. 아래 메뉴별 원가율에서 메뉴를 먼저 추가해 주세요.</p>`;
+    return;
+  }
+  if (!sales.open) {   // 접힌 한 줄: 그날 합계 · 매출 + 고치기 · 다른 날
+    const hall = salesSum(d.menus, "hall"), deliv = salesSum(d.menus, "delivery");
+    $("#salesCard").innerHTML = `${note}
+      <div class="sales-done">
+        <span class="sales-check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></span>
+        <div class="sales-done-text">
+          <b>${dayLabel(d.date)}${isToday ? " 오늘" : ""}</b> ${d.total.toLocaleString("ko-KR")}그릇 · ${won(d.sales_won)}
+          <small>홀 ${hall.toLocaleString("ko-KR")} · 배달 ${deliv.toLocaleString("ko-KR")}</small>
+        </div>
+        <div class="sales-done-btns">
+          <button class="btn" type="button" data-sales="other">다른 날 넣기</button>
+          <button class="btn primary" type="button" data-sales="edit">고치기</button>
+        </div>
+      </div>`;
+    return;
+  }
+  const yest = dayShift(sales.today, -1), min = dayShift(sales.today, -SALES_BACK_DAYS);
+  const chip = (day, text) => `<button type="button" class="sales-chip${d.date === day ? " on" : ""}" data-day="${day}" aria-pressed="${d.date === day}">${text}</button>`;
+  const cell = (m, key, label) => `<input class="sales-in" type="text" inputmode="numeric" autocomplete="off" maxlength="4"
+      data-mid="${m.menu_id}" data-key="${key}" value="${m[key] ?? ""}" placeholder="-" aria-label="${esc(m.name)} ${label} 그릇 수">`;
+  $("#salesCard").innerHTML = `${note}
+    <div class="sales-top">
+      <div class="sales-days" role="group" aria-label="날짜">
+        ${chip(sales.today, "오늘")}${chip(yest, "어제")}
+        <label class="sales-date"><span class="sr-only">날짜 고르기</span>
+          <input type="date" id="salesDate" value="${d.date}" min="${min}" max="${sales.today}"></label>
+      </div>
+      ${d.entered ? `<span class="muted">이미 넣은 날이에요. 바꿀 칸만 고치면 돼요</span>` : d.last_sales_date ? `<span class="muted">마지막으로 넣은 날 ${dayLabel(d.last_sales_date)}</span>` : ""}
+    </div>
+    <div class="sales-table" role="table" aria-label="메뉴별 판매 그릇 수">
+      <div class="sales-row sales-head" role="row">
+        <span role="columnheader">메뉴</span><span role="columnheader">홀</span><span role="columnheader">배달</span><span role="columnheader">합계</span>
+      </div>
+      ${d.menus.map((m) => `<div class="sales-row" role="row" data-mid="${m.menu_id}">
+        <span role="cell" class="sales-name">${esc(m.name)}<small>${won(m.price)}</small></span>
+        <span role="cell">${cell(m, "hall", "홀")}</span>
+        <span role="cell">${cell(m, "delivery", "배달")}</span>
+        <span role="cell" class="sales-sum" data-sum="${m.menu_id}"></span>
+      </div>`).join("")}
+    </div>
+    <p class="sales-hint">빈칸은 그대로 두고, 0은 ‘안 팔림’으로 저장해요 · Enter 를 누르면 다음 칸으로 가요</p>
+    <div class="sales-foot">
+      <span class="sales-total" id="salesTotal"></span>
+      <div class="sales-foot-btns">
+        ${dayShift(d.date, -7) >= min ? `<button class="btn" type="button" data-sales="lastweek">빈칸에 지난주 ${WEEKDAY[new Date(`${d.date}T00:00:00`).getDay()]}요일 숫자</button>` : ""}
+        ${d.entered ? `<button class="btn" type="button" data-sales="cancel">취소</button>` : ""}
+        <button class="btn primary" type="button" data-sales="save">저장하기</button>
+      </div>
+    </div>`;
+  salesTotals();
+}
+
+// 칸 값 읽기: "" → null(안 넣음), 숫자가 아니면 NaN
+const salesVal = (el) => { const v = el.value.trim(); return v === "" ? null : /^\d+$/.test(v) ? +v : NaN; };
+
+function salesTotals() {
+  const price = Object.fromEntries(sales.data.menus.map((m) => [m.menu_id, m.price]));
+  let bowls = 0, money = 0, filled = 0;
+  document.querySelectorAll("#salesCard [data-sum]").forEach((s) => {
+    const vals = [...document.querySelectorAll(`#salesCard .sales-in[data-mid="${s.dataset.sum}"]`)].map(salesVal);
+    const n = vals.reduce((a, v) => a + (Number.isFinite(v) ? v : 0), 0);
+    const any = vals.some((v) => v !== null);
+    s.textContent = any ? n.toLocaleString("ko-KR") : "-";
+    if (any) filled++;
+    bowls += n; money += n * price[s.dataset.sum];
+  });
+  $("#salesTotal").innerHTML = `합계 <b>${bowls.toLocaleString("ko-KR")}그릇</b> · 매출 <b>${won(money)}</b>
+    <small>${filled}/${sales.data.menus.length}개 메뉴 넣음</small>`;
+}
+
+function salesAsk() {
+  return !sales.dirty || confirm("고친 숫자를 아직 저장하지 않았어요. 저장하지 않고 넘어갈까요?");
+}
+
+async function saveSales(btn) {
+  const inputs = [...document.querySelectorAll("#salesCard .sales-in")];
+  const bad = inputs.find((el) => { const v = salesVal(el); return Number.isNaN(v) || v > SALES_MAX; });
+  inputs.forEach((el) => el.classList.remove("bad"));
+  if (bad) {
+    bad.classList.add("bad"); bad.focus(); bad.select();
+    return salesMsg(`${bad.getAttribute("aria-label")}: 0부터 ${SALES_MAX.toLocaleString("ko-KR")} 사이 숫자로 넣어 주세요`);
+  }
+  const items = sales.data.menus.map((m) => {
+    const v = (key) => salesVal(document.querySelector(`#salesCard .sales-in[data-mid="${m.menu_id}"][data-key="${key}"]`));
+    return { menu_id: m.menu_id, hall: v("hall"), delivery: v("delivery") };
+  }).filter((x) => x.hall !== null || x.delivery !== null);
+  if (!items.length) return salesMsg("그릇 수를 하나 이상 넣어 주세요");
+  btn.disabled = true; btn.textContent = "저장하는 중";
+  try {
+    const r = await salesPut({ date: sales.data.date, items });
+    sales.data = r; sales.open = false; sales.dirty = false;
+    renderSales(`${dayLabel(r.date)} 판매를 저장했어요. 내일 준비 · 원가율을 다시 계산하고 있어요`);
+    loadDemand();
+    loadCosts(false);
+  } catch (e) {
+    btn.disabled = false; btn.textContent = "저장하기";
+    salesMsg(e.status === 402 ? `${e.message} (이미 넣은 날짜는 계속 고칠 수 있어요)` : e.message);
+  }
+}
+
+function salesMsg(text) {
+  $("#salesCard .sales-err")?.remove();
+  $("#salesCard").insertAdjacentHTML("afterbegin", `<p class="sales-err" role="alert">${esc(text)}</p>`);
+}
+
+async function fillLastWeek(btn) {
+  const day = dayShift(sales.data.date, -7);
+  btn.disabled = true;
+  try {
+    const w = await getJSON(`/api/sales?date=${day}`);
+    if (!w.entered) return salesMsg(`지난주 ${dayLabel(day)} 기록이 없어요`);
+    const prev = Object.fromEntries(w.menus.map((m) => [m.menu_id, m]));
+    let n = 0;
+    document.querySelectorAll("#salesCard .sales-in").forEach((el) => {
+      const v = prev[el.dataset.mid]?.[el.dataset.key];
+      if (el.value.trim() === "" && v != null) { el.value = v; n++; }
+    });
+    if (n) { sales.dirty = true; salesTotals(); }
+    $("#salesCard .sales-err")?.remove();
+    $("#salesCard").insertAdjacentHTML("afterbegin", `<p class="ok" role="status">${n ? `빈칸 ${n}개를 지난주 ${dayLabel(day)} 숫자로 채웠어요. 확인하고 저장해 주세요` : "채울 빈칸이 없어요"}</p>`);
+  } catch (e) {
+    salesMsg(e.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+$("#salesCard").addEventListener("click", (e) => {
+  const day = e.target.closest("[data-day]")?.dataset.day;
+  if (day && day !== sales.data.date && salesAsk()) return loadSales(day, true);
+  const b = e.target.closest("[data-sales]");
+  if (!b) return;
+  const act = b.dataset.sales;
+  if (act === "edit") { sales.open = true; renderSales(); $("#salesCard .sales-in")?.focus(); }
+  if (act === "other") { sales.open = true; renderSales(); $("#salesDate").showPicker?.(); }
+  if (act === "cancel" && salesAsk()) { sales.open = false; sales.dirty = false; renderSales(); }
+  if (act === "save") saveSales(b);
+  if (act === "lastweek") fillLastWeek(b);
+});
+$("#salesCard").addEventListener("change", (e) => {
+  if (e.target.id !== "salesDate") return;
+  const day = e.target.value;
+  if (!day || day === sales.data.date) return;
+  if (day > sales.today || day < dayShift(sales.today, -SALES_BACK_DAYS)) {
+    e.target.value = sales.data.date;
+    return salesMsg(`오늘부터 ${SALES_BACK_DAYS}일 전까지만 넣을 수 있어요`);
+  }
+  if (salesAsk()) loadSales(day, true); else e.target.value = sales.data.date;
+});
+$("#salesCard").addEventListener("input", (e) => {
+  if (!e.target.classList.contains("sales-in")) return;
+  e.target.value = e.target.value.replace(/[^\d]/g, "");   // 숫자만 (음수 · 소수점 · 글자는 들어가지 않게)
+  e.target.classList.remove("bad");
+  sales.dirty = true;
+  salesTotals();
+});
+$("#salesCard").addEventListener("focusin", (e) => { if (e.target.classList.contains("sales-in")) e.target.select(); });
+// Enter: 다음 칸으로 (홀 → 배달 → 다음 메뉴 홀), 마지막 칸이면 저장
+$("#salesCard").addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" || !e.target.classList.contains("sales-in")) return;
+  e.preventDefault();
+  const all = [...document.querySelectorAll("#salesCard .sales-in")];
+  const next = all[all.indexOf(e.target) + 1];
+  if (next) next.focus(); else saveSales($('#salesCard [data-sales="save"]'));
+});
+addEventListener("beforeunload", (e) => { if (sales.dirty) e.preventDefault(); });
+
+// ---------------------------------------------------------------
 // 우리 가게 내일 준비 (판매 기록 → 예상 그릇 수 → 재료 필요량 · 발주)
 // ---------------------------------------------------------------
 const qty = (v, unit) => (unit === "모" ? `${Math.round(v)}모` : `${(+v).toFixed(1)}${unit}`);
@@ -2585,7 +2796,7 @@ loadExtra();   // 육류 · 수산물: 탭 · 검색 · 재료 페이지(/?item=
 loadProducts();
 loadMyItems();
 if (STORE_VIEW) {
-  const storeReady = Promise.allSettled([loadDemand(), loadCosts()]);
+  const storeReady = Promise.allSettled([loadSales(), loadDemand(), loadCosts()]);
   // 첫 화면 영수증 분석 체험 칸(/?page=store#receipt): 열자마자 영수증 분석 칸으로 이동하고,
   // 위 칸(내일 준비 · 원가율)이 늦게 채워져 길어지는 동안에도 그 자리에 머무름 (사용자가 직접 스크롤하면 멈춤)
   if (location.hash === "#receipt") {
@@ -2595,7 +2806,7 @@ if (STORE_VIEW) {
     ["wheel", "touchstart", "keydown"].forEach((t) => addEventListener(t, stop, { once: true, passive: true }));
     toReceipt();
     const keep = new ResizeObserver(() => { if (follow) toReceipt(); });
-    keep.observe($("#store")); keep.observe($("#costs"));
+    keep.observe($("#sales")); keep.observe($("#store")); keep.observe($("#costs"));
     storeReady.then(() => setTimeout(() => { follow = false; keep.disconnect(); }, 5000));   // 다 그려진 뒤 5초 동안 늦게 바뀌는 칸 크기도 따라감
   }
 } else if (!ITEM && !AUTH_VIEW) {

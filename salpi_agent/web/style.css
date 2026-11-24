@@ -777,9 +777,11 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 
 /* 값 사이 구분: 얇은 세로선 (가운뎃점 대신) */
 .sep { display: inline-block; width: 1px; height: .85em; margin: 0 4px; vertical-align: -0.05em; background: currentColor; opacity: .3; }
-/* 위 줄: 왼쪽 '오늘 + 날짜', 오른쪽 '배달' · '접기' */
-.sales-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; padding: 14px 20px; border-bottom: 1px solid var(--outline-variant); }
-.sales-bar-right { display: flex; align-items: center; gap: 8px; }
+/* 위 줄: 왼쪽 '오늘 + 날짜', 오른쪽 '접기' */
+/* 위 줄을 아래 좌우 분할과 같은 칸으로: 왼쪽 칸 = 날짜 … 배달(표 오른쪽 끝 위), 오른쪽 칸(요약 판 위) = 접기 */
+.sales-bar { display: grid; grid-template-columns: minmax(0, 1fr) 330px; align-items: center; border-bottom: 1px solid var(--outline-variant); }
+.sales-bar-left { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; padding: 14px 20px; }
+.sales-bar-right { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 0 20px; }
 .sales-date { display: inline-flex; align-items: center; gap: 10px; }
 .sales-day-label { font-size: 16px; font-weight: 700; color: var(--ink); }
 .sales-date input { height: 40px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--outline); border-radius: 10px; background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; }
@@ -864,6 +866,8 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 
 @media (max-width: 760px) {
   .sales-split > .sales-panel { margin: 0 12px 12px; }
+  .sales-bar { grid-template-columns: minmax(0, 1fr) auto; }
+  .sales-bar-right { padding: 0 12px 0 0; }
   .sales-split { grid-template-columns: 1fr; }
   .sales-scroll { max-height: 420px; }
   .sf-stat { padding: 0 14px; }
@@ -871,7 +875,7 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 @media (max-width: 520px) {
   #sales .section-head .muted { order: 3; flex-basis: 100%; }
   .sales-left { padding: 4px 12px 12px; }
-  .sales-bar { padding: 12px; }
+  .sales-bar-left { padding: 12px; }
   .sales-grid td.price, .sales-grid thead th:nth-child(2) { display: none; }   /* 좁으면 단가 칸은 빼고 */
   .sales-grid td:has(.sales-in) { width: 64px; }
   .sales-grid tbody th { font-size: 15px; }

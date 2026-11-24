@@ -1282,10 +1282,10 @@ function renderSales() {
       data-mid="${m.menu_id}" data-key="${key}" value="${m[key] ?? ""}" placeholder="${m[key] != null ? "0" : "-"}" aria-label="${esc(m.name)}${label ? ` ${label}` : ""} 그릇 수">`;
   $("#salesCard").innerHTML = `
     <div class="sales-bar">
-      <label class="sales-date"><span class="sales-day-label">${isToday ? "오늘" : `${WEEKDAY[new Date(`${d.date}T00:00:00`).getDay()]}요일`}</span>
+      <div class="sales-bar-left"><label class="sales-date"><span class="sales-day-label">${isToday ? "오늘" : `${WEEKDAY[new Date(`${d.date}T00:00:00`).getDay()]}요일`}</span>
         <input type="date" id="salesDate" value="${d.date}" min="${min}" max="${sales.today}" aria-label="날짜 고르기"></label>
+        <label class="sales-opt"><input type="checkbox" id="salesDeliv" ${delivOn() ? "checked" : ""}><span class="sales-opt-box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></span>배달</label></div>
       <div class="sales-bar-right">
-        <label class="sales-opt"><input type="checkbox" id="salesDeliv" ${delivOn() ? "checked" : ""}><span class="sales-opt-box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></span>배달</label>
         <button class="sales-unfold" type="button" data-sales="fold" aria-expanded="true" aria-controls="salesCard" aria-label="판매 기록 접기" title="접기">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>
       </div>

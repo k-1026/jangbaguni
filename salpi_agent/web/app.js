@@ -7,7 +7,7 @@ const mmdd = (d) => `${d.slice(5, 7)}.${d.slice(8, 10)}`;
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
 // 사러 가기: 판매처 고르기 창. 살피는 팔지 않고 연결만 함 (재료 페이지에서 열면 그 재료 검색 결과로, 첫 화면에서 열면 각 사이트 첫 화면으로)
-// 나중에 쿠팡 파트너스를 가입하면 아래 coupang 주소만 제휴 주소로 바꾸면 됨
+// 쿠팡 파트너스 제휴 주소는 서버(price/seller_links.py)가 바꿔 줌 — 키는 .env COUPANG_ACCESS_KEY · COUPANG_SECRET_KEY
 // 로고는 각 사이트가 공개한 사이트 아이콘(img/shops/)을 그대로 씀 (모양 · 색 바꾸지 않음)
 const BUY_SHOPS = [
   { name: "식봄",          logo: "foodspring", home: "https://www.foodspring.co.kr", search: (q) => `https://www.foodspring.co.kr/search/all?key=${q}` },
@@ -29,10 +29,10 @@ function openBuyPicker(item, foodspringUrl) {
   box.className = "buy-pick";
   box.innerHTML = `<div class="buy-pick-card" role="dialog" aria-modal="true" aria-label="구매할 곳 고르기">
     <h3>${item ? `${esc(item)}, 어디서 살까요?` : "어디서 살까요?"}</h3>
-    <div class="buy-pick-list">${BUY_SHOPS.map((s) => `<a href="${esc(buyUrl(s, item, foodspringUrl))}" target="_blank" rel="noopener noreferrer">
+    <div class="buy-pick-list">${BUY_SHOPS.map((s) => `<a href="${esc(buyUrl(s, item, foodspringUrl))}" data-shop="${s.logo}" target="_blank" rel="noopener noreferrer">
       <span class="buy-pick-logo"><img src="/static/img/shops/${s.logo}.png" alt="" width="44" height="44" loading="lazy"></span>
       <b>${esc(s.name)}</b></a>`).join("")}</div>
-    <p class="buy-pick-note buy-pick-ad">쿠팡 링크는 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</p>
+    <p class="buy-pick-note buy-pick-ad" hidden></p>
     <button type="button" class="buy-pick-close">닫기</button></div>`;
   const close = () => { box.remove(); document.removeEventListener("keydown", onKey); };
   const onKey = (e) => { if (e.key === "Escape") close(); };
@@ -40,6 +40,22 @@ function openBuyPicker(item, foodspringUrl) {
   document.addEventListener("keydown", onKey);
   document.body.appendChild(box);
   box.querySelector("a").focus();
+  applyBuyLinks(box, item, "buy-pick-ad");
+}
+// 판매처 주소는 서버(/api/buy-links)가 정함: 쿠팡 파트너스 키가 있으면 제휴 주소 + 대가성 안내 문구, 없으면 안내를 숨김
+// 창은 위 기본 주소로 바로 열고, 서버 답이 오면 주소만 바꿈 (재료마다 한 번만 물어봄)
+const buyLinkCache = {};
+async function applyBuyLinks(box, item, adClass) {
+  try {
+    const key = item || "";
+    const d = buyLinkCache[key] ||= await getJSON(`/api/buy-links?item=${encodeURIComponent(key)}`);
+    for (const s of d.shops || []) {
+      const a = box.querySelector(`a[data-shop="${s.logo}"]`);
+      if (a) { a.href = s.url; if (s.affiliate) a.rel = "noopener noreferrer sponsored"; }
+    }
+    const note = box.querySelector(`.${adClass}`);
+    if (note) { note.textContent = d.ad_note || ""; note.hidden = !d.ad_note; }
+  } catch (e) { delete buyLinkCache[item || ""]; }
 }
 document.addEventListener("click", (e) => {
   const b = e.target.closest("[data-buy]");

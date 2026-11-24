@@ -1203,6 +1203,291 @@ function monthRange(history, now) {
 }
 
 // ---------------------------------------------------------------
+// 판매 기록 입력 (/api/sales, store/sales.py): 하루 메뉴별 홀 · 배달 그릇 수
+// 자동 저장: 숫자를 고치고 칸을 벗어나면(Enter · Tab · 다른 곳 누르기) 바로 저장 → 위에 '저장하는 중 / ✓ 저장됨'
+// 저장되면 잠깐 뒤 내일 준비 · 원가율을 다시 불러옴 (여러 칸을 연달아 넣어도 한 번만)
+// 펼치면 왼쪽 표(메뉴가 많으면 표 안에서 스크롤) + 오른쪽 요약(총 매출 · 그릇 · 홀 / 배달 · 저장 상태). [접기]를 누르면 한 줄 요약
+// 빈칸 = 안 넣음, 0 = 안 팔림. 단 이미 저장된 칸을 비우면 0(안 팔림)으로 저장 (흐린 '0'으로 미리 보여 줌)
+// 서버와 같은 규칙(0 이상 정수 · 하루 2000그릇 · 60일 전까지)을 먼저 화면에서 확인
+// '배달'을 끄면 배달 칸을 없애고 메뉴당 칸 하나(홀로 저장) — 이 브라우저에 기억. 예전에 넣은 배달 기록은 지우지 않고 합계에만 넣음
+// ---------------------------------------------------------------
+const SALES_MAX = 2000, SALES_BACK_DAYS = 60;
+const SALES_DELIV_KEY = "salpi_sales_delivery";
+const delivOn = () => { try { return localStorage.getItem(SALES_DELIV_KEY) !== "0"; } catch (e) { return true; } };
+const setDelivOn = (on) => { try { localStorage.setItem(SALES_DELIV_KEY, on ? "1" : "0"); } catch (e) {} };
+const showDeliv = () => delivOn();
+const WEEKDAY = ["일", "월", "화", "수", "목", "금", "토"];
+// saving: 지금 저장 중인 요청(Promise) · again: 저장 중에 또 고쳐서 끝나면 한 번 더 · failed: 마지막 저장이 실패함
+const sales = { today: null, data: null, open: true, saving: null, again: false, failed: false, timer: null, refresh: null, savedAt: null };
+const dayShift = (d, n) => { const x = new Date(`${d}T00:00:00`); x.setDate(x.getDate() + n); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`; };
+const dayLabel = (d) => `${mmdd(d)} (${WEEKDAY[new Date(`${d}T00:00:00`).getDay()]})`;
+const salesSum = (menus, key) => menus.reduce((s, m) => s + (m[key] || 0), 0);
+const nowLabel = () => new Date().toLocaleTimeString("ko-KR", { hour: "numeric", minute: "2-digit" });
+
+async function salesPut(body) {
+  const token = SIGNED_IN ? readLogin()?.access_token : null;   // 로그인했으면 판매율 분석 횟수를 셈 (새 날짜만)
+  const r = await fetch("/api/sales", { method: "PUT", body: JSON.stringify(body),
+    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
+  const out = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(out.detail || "잠시 뒤 다시 해 주세요"), { status: r.status });
+  return out;
+}
+
+// date 없으면 서버 기준 오늘(한국 시간). open: 표를 펼칠지 (기본 펼침)
+async function loadSales(date, open = true) {
+  try {
+    const d = await getJSON(date ? `/api/sales?date=${date}` : "/api/sales");
+    if (!sales.today) sales.today = d.date;
+    sales.data = d;
+    sales.open = open;
+    sales.failed = false;
+    if (date) sales.savedAt = null;
+    renderSales();
+  } catch (e) {
+    $("#salesCard").innerHTML = `<p class="muted">판매 기록을 불러오지 못했어요. ${esc(e.message)}</p>`;
+  }
+}
+
+// 값 사이 구분: 가운뎃점 대신 얇은 세로선 (style.css .sep)
+const SEP = `<span class="sep" aria-hidden="true"></span>`;
+function renderSales() {
+  const d = sales.data, isToday = d.date === sales.today;
+  $("#sales h2").textContent = isToday ? "오늘 판매 기록" : `${dayLabel(d.date)} 판매 기록`;
+  $("#salesBadge").hidden = d.entered || !isToday;
+  if (!d.menus.length) {
+    $("#salesCard").innerHTML = `<p class="muted">판매 중인 메뉴가 없어요. 아래 메뉴별 원가율에서 메뉴를 먼저 추가해 주세요.</p>`;
+    return;
+  }
+  const dayName = dayLabel(d.date);
+  const num = (n) => n.toLocaleString("ko-KR");
+  if (!sales.open) {   // 접힌 한 줄: 날짜 · 저장 상태 | 총 판매량 | 매출 | 채널별 | [펼치기]
+    const hall = salesSum(d.menus, "hall"), deliv = salesSum(d.menus, "delivery");
+    const stat = (label, value, cls = "") => `<div class="sf-stat"><span>${label}</span><b class="${cls}">${value}</b></div>`;
+    $("#salesCard").innerHTML = `
+      <div class="sales-fold-row">
+        <div class="sf-day">
+          <span class="sf-dot${d.entered ? "" : " empty"}" aria-hidden="true"></span>
+          <div><b>${dayName}</b><small>${d.entered ? `저장됨${sales.savedAt ? ` ${SEP} ${sales.savedAt}` : ""} ${SEP} 내일 준비 반영` : "아직 안 넣었어요"}</small></div>
+        </div>
+        ${d.entered ? `${stat("총 판매량", `${num(d.total)}그릇`)}${stat(isToday ? "오늘 매출" : "매출", won(d.sales_won), "money")}
+          ${showDeliv() || deliv ? stat("판매 방식", `홀 ${num(hall)} ${SEP} 배달 ${num(deliv)}`) : ""}` : ""}
+        <button class="sales-unfold" type="button" data-sales="unfold" aria-expanded="false" aria-controls="salesCard" aria-label="판매 기록 펼치기" title="펼치기">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+      </div>`;
+    return;
+  }
+  const min = dayShift(sales.today, -SALES_BACK_DAYS);
+  const both = showDeliv();
+  const cell = (m, key, label) => `<input class="sales-in" type="text" inputmode="numeric" autocomplete="off" maxlength="4"
+      data-mid="${m.menu_id}" data-key="${key}" value="${m[key] ?? ""}" placeholder="${m[key] != null ? "0" : "-"}" aria-label="${esc(m.name)}${label ? ` ${label}` : ""} 그릇 수">`;
+  $("#salesCard").innerHTML = `
+    <div class="sales-bar">
+      <div class="sales-bar-left"><label class="sales-date"><span class="sales-day-label">${isToday ? "오늘" : `${WEEKDAY[new Date(`${d.date}T00:00:00`).getDay()]}요일`}</span>
+        <input type="date" id="salesDate" value="${d.date}" min="${min}" max="${sales.today}" aria-label="날짜 고르기"></label>
+        <label class="sales-opt"><input type="checkbox" id="salesDeliv" ${delivOn() ? "checked" : ""}><span class="sales-opt-box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></span>배달</label></div>
+      <div class="sales-bar-right">
+        <button class="sales-unfold" type="button" data-sales="fold" aria-expanded="true" aria-controls="salesCard" aria-label="판매 기록 접기" title="접기">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>
+      </div>
+    </div>
+    <div class="sales-split">
+      <div class="sales-left">
+        <div class="sales-scroll">
+          <table class="sales-grid${both ? "" : " one"}">
+            <thead><tr><th scope="col">메뉴</th>
+              ${both ? `<th scope="col">홀</th><th scope="col">배달</th><th scope="col" class="num">합계</th>` : `<th scope="col">판매 그릇 수</th>`}<th scope="col" class="num rev">매출</th></tr></thead>
+            <tbody>${d.menus.map((m) => `<tr data-mid="${m.menu_id}">
+              <th scope="row">${esc(m.name)}<small>${won(m.price)}</small></th>
+              ${both ? `<td>${cell(m, "hall", "홀")}</td><td>${cell(m, "delivery", "배달")}</td><td class="num sales-sum" data-sum="${m.menu_id}"></td>`
+                : `<td>${cell(m, "hall", "")}<span class="sales-sum" data-sum="${m.menu_id}" hidden></span></td>`}
+              <td class="num rev" data-rev="${m.menu_id}"></td>
+            </tr>`).join("")}</tbody>
+          </table>
+        </div>
+      </div>
+      <aside class="sales-panel" aria-label="판매 요약">
+        <div class="sales-status" id="salesStatus" role="status" aria-live="polite"></div>
+        <p class="sp-label">${isToday ? "오늘" : dayLabel(d.date)} 총 매출</p>
+        <p class="sp-money" id="spMoney">0원</p>
+        <p class="sp-bowls" id="spBowls">총 0그릇 판매</p>
+        <dl class="sp-channels" id="spChannels"></dl>
+      </aside>
+    </div>`;
+  salesTotals();
+  salesStatus(d.entered ? "saved" : d.last_sales_date ? "last" : "", d.entered ? sales.savedAt : null);
+}
+
+// 오른쪽 요약 맨 위 상태 칩: 저장하는 중 · ✓ 저장됨 · 저장 못 함(다시 시도) · 마지막으로 넣은 날
+function salesStatus(kind, time) {
+  const el = $("#salesStatus");
+  if (!el) return;
+  el.className = `sales-status ${kind}`;
+  el.title = kind === "saved" && time ? `${time} 저장` : "";
+  el.hidden = !kind;
+  el.innerHTML = kind === "saving" ? "저장하는 중…"
+    : kind === "saved" ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>${dayLabel(sales.data.date)} 저장됨`
+    : kind === "failed" ? `저장 못 했어요 <button type="button" class="sales-retry" data-sales="retry">다시 시도</button>`
+    : kind === "last" ? `아직 안 넣었어요 ${SEP} 마지막 ${dayLabel(sales.data.last_sales_date)}`
+    : "";
+}
+
+// 칸 값 읽기: "" → null(안 넣음), 숫자가 아니면 NaN
+const salesVal = (el) => { const v = el.value.trim(); return v === "" ? null : /^\d+$/.test(v) ? +v : NaN; };
+const savedVal = (el) => sales.data.menus.find((m) => String(m.menu_id) === el.dataset.mid)?.[el.dataset.key] ?? null;
+// 저장될 값: 이미 저장된 칸을 비우면 0 (안 팔림), 처음부터 빈칸이면 null (안 넣음)
+const effVal = (el) => { const v = salesVal(el); return v === null && savedVal(el) !== null ? 0 : v; };
+
+// 메뉴별 합계 칸 + 오른쪽 요약(총 매출 · 그릇 · 홀 / 배달)을 입력하는 대로 다시 계산
+function salesTotals() {
+  const num = (n) => n.toLocaleString("ko-KR");
+  const ch = { hall: { n: 0, won: 0 }, delivery: { n: 0, won: 0 } };
+  sales.data.menus.forEach((m) => {
+    const row = {};
+    ["hall", "delivery"].forEach((key) => {
+      const el = document.querySelector(`#salesCard .sales-in[data-mid="${m.menu_id}"][data-key="${key}"]`);
+      // 배달 칸을 없앴어도 예전에 넣은 배달 기록은 저장돼 있으니 합계 · 매출에 넣음 (접힌 줄 · 서버 합계와 같게)
+      const v = el ? effVal(el) : m[key] ?? null;
+      row[key] = v;
+      if (Number.isFinite(v)) { ch[key].n += v; ch[key].won += v * m.price; }
+    });
+    const s = $(`#salesCard [data-sum="${m.menu_id}"]`);
+    if (s) {
+      const any = row.hall !== null || row.delivery !== null;
+      s.textContent = any ? num((Number.isFinite(row.hall) ? row.hall : 0) + (Number.isFinite(row.delivery) ? row.delivery : 0)) : "-";
+    }
+    // 메뉴별 매출 = (홀 + 배달) × 판매가 — 단가 칸 자리에 (단가는 메뉴 이름 옆에 작게)
+    const r = $(`#salesCard [data-rev="${m.menu_id}"]`);
+    if (r) {
+      const n = (Number.isFinite(row.hall) ? row.hall : 0) + (Number.isFinite(row.delivery) ? row.delivery : 0);
+      r.textContent = n > 0 ? won(n * m.price) : "-";   // 0그릇(안 팔림)이면 0원 대신 '-'
+    }
+    $(`#salesCard tr[data-mid="${m.menu_id}"]`)?.classList.toggle("has", row.hall !== null || row.delivery !== null);
+  });
+  const bowls = ch.hall.n + ch.delivery.n, money = ch.hall.won + ch.delivery.won;
+  $("#spMoney").innerHTML = `${num(Math.round(money))}<small>원</small>`;   // 숫자는 크게, '원'은 작게
+  $("#spBowls").innerHTML = `총 <b>${num(bowls)}그릇</b> 판매`;
+  // 홀 / 배달 한 줄: 이름 | 그릇 | 금액 — 세 칸으로 줄 맞춤
+  const line = (label, c, cls = "") => `<div class="${cls}"><dt>${label}</dt><dd>${num(c.n)}<span class="unit">그릇</span></dd><dd class="won">${won(c.won)}</dd></div>`;
+  $("#spChannels").innerHTML = showDeliv() || ch.delivery.n
+    ? line("홀", ch.hall) + line("배달", ch.delivery, "deliv") : line("홀", ch.hall);
+}
+
+// 저장된 값과 다르고 규칙에 맞는 칸만 → [{menu_id, hall, delivery}] (안 바뀐 쪽은 null = 그대로)
+function salesChanges() {
+  const items = {};
+  document.querySelectorAll("#salesCard .sales-in").forEach((el) => {
+    const v = effVal(el);
+    if (v === null || Number.isNaN(v) || v > SALES_MAX || v === savedVal(el)) return;
+    (items[el.dataset.mid] ||= { menu_id: +el.dataset.mid, hall: null, delivery: null })[el.dataset.key] = v;
+  });
+  return Object.values(items);
+}
+const salesPending = () => !!sales.data && sales.open && (salesChanges().length > 0 || !!sales.saving);
+
+// 고친 칸 저장. 저장 중에 또 고치면 끝난 뒤 한 번 더. 끝나면 내일 준비 · 원가율을 잠깐 뒤 한 번만 다시 불러옴
+async function autoSave() {
+  clearTimeout(sales.timer);
+  if (sales.saving) { sales.again = true; return sales.saving; }
+  const items = salesChanges();
+  if (!items.length) return;
+  const date = sales.data.date;
+  salesStatus("saving");
+  sales.saving = salesPut({ date, items }).then((r) => {
+    if (sales.data.date !== date) return;   // 저장 중에 다른 날로 옮김
+    sales.data = r;
+    sales.failed = false;
+    $("#salesBadge").hidden = r.entered || r.date !== sales.today;
+    $("#salesCard .sales-err")?.remove();
+    // 이제 저장된 칸은 비우면 0이 됨 → 흐린 '0'으로 미리 보여 줌
+    document.querySelectorAll("#salesCard .sales-in").forEach((el) => { el.placeholder = savedVal(el) !== null ? "0" : "-"; });
+    sales.savedAt = nowLabel();
+    salesStatus("saved", sales.savedAt);
+    clearTimeout(sales.refresh);
+    sales.refresh = setTimeout(() => { loadDemand(); loadCosts(false); }, 1500);
+  }).catch((e) => {
+    sales.failed = true;
+    salesStatus("failed");
+    salesMsg(e.status === 402 ? `${e.message} (이미 넣은 날짜는 계속 고칠 수 있어요)` : e.message);
+  }).finally(() => {
+    sales.saving = null;
+    if (sales.again && !sales.failed) { sales.again = false; autoSave(); }
+    sales.again = false;
+  });
+  return sales.saving;
+}
+
+// 날짜를 옮기거나 접기 전에: 고친 게 있으면 먼저 저장. 실패하면 넘어갈지 물어봄
+async function salesFlush() {
+  if (!sales.data || !sales.open) return true;
+  await autoSave();
+  if (sales.saving) await sales.saving;
+  return !sales.failed || confirm("저장하지 못한 숫자가 있어요. 저장하지 않고 넘어갈까요?");
+}
+
+function salesMsg(text) {
+  $("#salesCard .sales-err")?.remove();
+  $("#salesCard").insertAdjacentHTML("afterbegin", `<p class="sales-err" role="alert">${esc(text)}</p>`);
+}
+
+// 칸을 벗어날 때: 규칙에 안 맞으면 표시만 하고 저장 안 함 · 저장된 칸을 비웠으면 0으로 채우고 저장
+function salesLeave(el) {
+  const v = salesVal(el);
+  if (Number.isNaN(v) || v > SALES_MAX) {
+    el.classList.add("bad");
+    return salesMsg(`${el.getAttribute("aria-label")}: 0부터 ${SALES_MAX.toLocaleString("ko-KR")} 사이 숫자로 넣어 주세요`);
+  }
+  if (v === null && savedVal(el) !== null) el.value = "0";
+  if (!salesChanges().length) return;
+  salesStatus("saving");
+  clearTimeout(sales.timer);
+  sales.timer = setTimeout(autoSave, 300);   // Enter 로 여러 칸을 빠르게 넘어가도 한 번에 묶어 저장
+}
+
+// [접기] · [펼치기] · 저장 못 했을 때 [다시 시도]
+$("#salesCard").addEventListener("click", async (e) => {
+  const act = e.target.closest("[data-sales]")?.dataset.sales;
+  if (act === "retry") { sales.failed = false; autoSave(); }
+  if (act === "fold" && await salesFlush()) { sales.open = false; renderSales(); $('#salesCard [data-sales="unfold"]')?.focus(); }
+  if (act === "unfold") { sales.open = true; renderSales(); $("#salesCard .sales-in")?.focus(); }
+});
+$("#salesCard").addEventListener("change", async (e) => {
+  if (e.target.classList.contains("sales-in")) return salesLeave(e.target);
+  if (e.target.id === "salesDeliv") {   // 배달 칸 켜고 끄기: 그 전에 고친 숫자부터 저장
+    const on = e.target.checked;
+    if (!(await salesFlush())) { e.target.checked = !on; return; }
+    setDelivOn(on);
+    renderSales();
+    $("#salesDeliv")?.focus();
+    return;
+  }
+  if (e.target.id !== "salesDate") return;
+  const day = e.target.value;
+  if (!day || day === sales.data.date) return;
+  if (day > sales.today || day < dayShift(sales.today, -SALES_BACK_DAYS)) {
+    e.target.value = sales.data.date;
+    return salesMsg(`오늘부터 ${SALES_BACK_DAYS}일 전까지만 넣을 수 있어요`);
+  }
+  if (await salesFlush()) loadSales(day, true); else e.target.value = sales.data.date;
+});
+$("#salesCard").addEventListener("input", (e) => {
+  if (!e.target.classList.contains("sales-in")) return;
+  e.target.value = e.target.value.replace(/[^\d]/g, "");   // 숫자만 (음수 · 소수점 · 글자는 들어가지 않게)
+  e.target.classList.remove("bad");
+  salesTotals();
+});
+$("#salesCard").addEventListener("focusin", (e) => { if (e.target.classList.contains("sales-in")) e.target.select(); });
+// Enter: 다음 칸으로 (홀 → 배달 → 다음 메뉴 홀). 칸을 벗어나면서 저장됨. 마지막 칸이면 칸에서 나감
+$("#salesCard").addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" || !e.target.classList.contains("sales-in")) return;
+  e.preventDefault();
+  const all = [...document.querySelectorAll("#salesCard .sales-in")];
+  const next = all[all.indexOf(e.target) + 1];
+  if (next) next.focus(); else e.target.blur();
+});
+// 칸에 숫자를 넣고 칸을 벗어나기 전에 창을 닫으려 하면 물어봄
+addEventListener("beforeunload", (e) => { if (salesPending()) e.preventDefault(); });
+
+// ---------------------------------------------------------------
 // 우리 가게 내일 준비 (판매 기록 → 예상 그릇 수 → 재료 필요량 · 발주)
 // ---------------------------------------------------------------
 const qty = (v, unit) => (unit === "모" ? `${Math.round(v)}모` : `${(+v).toFixed(1)}${unit}`);
@@ -2622,7 +2907,7 @@ loadExtra();   // 육류 · 수산물: 탭 · 검색 · 재료 페이지(/?item=
 loadProducts();
 loadMyItems();
 if (STORE_VIEW) {
-  const storeReady = Promise.allSettled([loadDemand(), loadCosts()]);
+  const storeReady = Promise.allSettled([loadSales(), loadDemand(), loadCosts()]);
   // 첫 화면 영수증 분석 체험 칸(/?page=store#receipt): 열자마자 영수증 분석 칸으로 이동하고,
   // 위 칸(내일 준비 · 원가율)이 늦게 채워져 길어지는 동안에도 그 자리에 머무름 (사용자가 직접 스크롤하면 멈춤)
   if (location.hash === "#receipt") {
@@ -2632,7 +2917,7 @@ if (STORE_VIEW) {
     ["wheel", "touchstart", "keydown"].forEach((t) => addEventListener(t, stop, { once: true, passive: true }));
     toReceipt();
     const keep = new ResizeObserver(() => { if (follow) toReceipt(); });
-    keep.observe($("#store")); keep.observe($("#costs"));
+    keep.observe($("#sales")); keep.observe($("#store")); keep.observe($("#costs"));
     storeReady.then(() => setTimeout(() => { follow = false; keep.disconnect(); }, 5000));   // 다 그려진 뒤 5초 동안 늦게 바뀌는 칸 크기도 따라감
   }
 } else if (!ITEM && !AUTH_VIEW) {

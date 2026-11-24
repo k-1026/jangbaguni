@@ -1269,8 +1269,8 @@ function renderSales() {
         </div>
         ${d.entered ? `${stat("총 판매량", `${num(d.total)}그릇`)}${stat(isToday ? "오늘 매출" : "매출", won(d.sales_won), "money")}
           ${showDeliv() || deliv ? stat("채널별", `홀 ${num(hall)} · 배달 ${num(deliv)}`) : ""}` : ""}
-        <button class="sales-unfold" type="button" data-sales="unfold" aria-expanded="false" aria-controls="salesCard">
-          ${d.entered ? "펼치기" : "넣기"}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+        <button class="sales-unfold" type="button" data-sales="unfold" aria-expanded="false" aria-controls="salesCard" aria-label="판매 기록 펼치기" title="펼치기">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
       </div>`;
     return;
   }
@@ -1284,8 +1284,8 @@ function renderSales() {
         <input type="date" id="salesDate" value="${d.date}" min="${min}" max="${sales.today}" aria-label="날짜 고르기"></label>
       <div class="sales-bar-right">
         <label class="sales-opt"><input type="checkbox" id="salesDeliv" ${delivOn() ? "checked" : ""}><span class="sales-opt-box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></span>배달</label>
-        <button class="sales-unfold" type="button" data-sales="fold" aria-expanded="true" aria-controls="salesCard">
-          접기<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>
+        <button class="sales-unfold" type="button" data-sales="fold" aria-expanded="true" aria-controls="salesCard" aria-label="판매 기록 접기" title="접기">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>
       </div>
     </div>
     <div class="sales-split">

@@ -1362,7 +1362,7 @@ function salesTotals() {
   // 홀 / 배달 한 줄: 이름 | 그릇 | 금액 — 세 칸으로 줄 맞춤
   const line = (label, c, cls = "") => `<div class="${cls}"><dt>${label}</dt><dd>${num(c.n)}그릇</dd><dd class="won">${won(c.won)}</dd></div>`;
   $("#spChannels").innerHTML = showDeliv() || ch.delivery.n
-    ? line("홀 판매", ch.hall) + line("배달 판매", ch.delivery, "deliv") : line("판매", ch.hall);
+    ? line("홀", ch.hall) + line("배달", ch.delivery, "deliv") : line("홀", ch.hall);
 }
 
 // 저장된 값과 다르고 규칙에 맞는 칸만 → [{menu_id, hall, delivery}] (안 바뀐 쪽은 null = 그대로)

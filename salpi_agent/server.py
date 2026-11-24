@@ -7,6 +7,7 @@ import os
 import base64
 import json
 import threading
+from concurrent.futures import ThreadPoolExecutor
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -145,6 +146,30 @@ def shared(key, fn, ttl=3600, keep=24 * 3600):
         threading.Thread(target=_save_shared, args=(key, time.time(), value), daemon=True).start()
         return value
     return memo(key, compute, ttl)
+
+
+def _peek_shared(key):
+    """보관값이 있으면 꺼내기만 함 (메모리 → 보관함). 없으면 None — 계산은 하지 않음 (다른 계산이 기다리지 않게)."""
+    hit = _memo.get(key)
+    if hit:
+        return hit[1]
+    try:
+        raw = supabase_db.download(CACHE_BUCKET, f"cache/{key}.json")
+        blob = json.loads(raw) if raw else None
+    except Exception:
+        return None
+    if not blob:
+        return None
+    _memo.setdefault(key, (blob["saved_at"], blob["value"]))
+    return blob["value"]
+
+
+# 우리 가게 자료(영수증 · 메뉴 · 판매 · 재고)로 계산한 보관값 — 자료가 바뀌면 _store_changed 가 메모리 · 보관함에서 같이 지움
+STORE_KEYS = ("costs_report", "receipts_recent", "my_items")
+
+
+def _demand_key():
+    return f"demand_{forecast_log.today().isoformat()}"   # 날이 바뀌면 '내일'이 바뀌므로 날짜를 이름에
 
 
 def _overview():
@@ -381,9 +406,15 @@ def context():
 
 
 def _price_outlook():
-    """대시보드 시세 예측이 이미 계산돼 있으면 그대로 씀 (없으면 demand 가 필요한 재료만 계산)."""
-    hit = _memo.get("overview")
-    return {r["item"]: (r.get("forecast") or {}).get("expected_change_pct") for r in hit[1]} if hit else None
+    """대시보드 시세 예측이 이미 계산돼 있으면(메모리 · 보관함) 그대로 씀 (없으면 demand 가 필요한 재료만 계산)."""
+    rows = _peek_shared("overview")
+    return {r["item"]: (r.get("forecast") or {}).get("expected_change_pct") for r in rows} if rows else None
+
+
+def _forecasts():
+    """원가율 계산용: 재료 → 시세 예측 (첫 화면 시세 보관값). 없으면 {} → 원가율이 재료마다 직접 계산."""
+    rows = _peek_shared("overview") or []
+    return {r["item"]: r.get("forecast") for r in rows if r.get("forecast")}
 
 
 def _sales_user(authorization, check=True):
@@ -413,8 +444,11 @@ def demand_forecast(target: str | None = None, authorization: str | None = Heade
         raise HTTPException(400, "날짜는 2026-11-05 형식으로 보내 주세요")
     # 대시보드 시세가 아직 준비 전이면 기다리지 않고 시세 없이 계산 (1분 뒤 다시 계산할 때 시세 반영)
     outlook = _price_outlook()
-    key = f"demand:{day}:{'price' if outlook else 'noprice'}"
-    out = _guard(lambda: memo(key, lambda: demand.forecast(target=day, price_outlook=outlook or {}), ttl=600 if outlook else 60))
+    if day is None and outlook:   # 보통의 경우(내일 · 시세 있음): 보관함에도 둠 → 새로 켜진 서버도 바로 (9초 → 0.5초)
+        out = _guard(lambda: shared(_demand_key(), lambda: demand.forecast(price_outlook=outlook), ttl=600))
+    else:
+        key = f"demand:{day}:{'price' if outlook else 'noprice'}"
+        out = _guard(lambda: memo(key, lambda: demand.forecast(target=day, price_outlook=outlook or {}), ttl=600 if outlook else 60))
     return {**out, "trial": trial._state(user, "sales")} if user else out
 
 
@@ -566,10 +600,8 @@ def receipt_save(body: ReceiptSave):
 def costs(authorization: str | None = Header(None)):
     """메뉴별 원가율 · 남는 돈 (판매율 분석) + 최근 영수증 목록.
     로그인 표를 보내고 판매율 분석 무료 5회를 다 썼으면 원가율 · 마진은 빼고 {locked: true, trial, receipts} 만 (영수증 목록은 그대로 보여 주게).
-    횟수는 /api/demand 에서만 셈 (나의 가게를 열면 둘을 동시에 불러서 두 번 세지 않게)."""
-    # 원가율은 영수증 · 메뉴가 바뀔 때만 달라짐 → 10분 보관, 영수증 저장 · 고치기 · 지우기 · 메뉴 바꾸기 때 비움 (매번 3.5초 → 0.1초)
-    data = _receipt_guard(lambda: memo("costs", lambda: {**receipts.cost_report(supabase_db.DEMO_STORE),
-                                                         "receipts": receipts.recent(supabase_db.DEMO_STORE)}, ttl=600))
+    보는 것은 횟수를 세지 않음 (세는 곳은 PUT /api/sales)."""
+    data = _receipt_guard(_costs_data)
     user = _sales_user(authorization, check=False)
     if user:
         st = trial._state(user, "sales")
@@ -578,10 +610,21 @@ def costs(authorization: str | None = Header(None)):
     return data
 
 
+def _costs_data():
+    """원가율(보관 10분) + 최근 영수증(사진 주소가 1시간이라 보관값은 40분까지만). 둘 다 보관함에도 둠 → 새로 켜진 서버도 바로 (11초 → 0.5초).
+    영수증 저장 · 고치기 · 지우기 · 메뉴 · 판매 · 재고를 바꾸면 _store_changed 가 비움."""
+    with ThreadPoolExecutor(max_workers=2) as pool:   # 보관함 파일 하나 받는 데 0.3~0.8초 → 둘을 동시에
+        f_report = pool.submit(shared, "costs_report", lambda: receipts.cost_report(supabase_db.DEMO_STORE, _forecasts()), 600)
+        f_recent = pool.submit(shared, "receipts_recent", lambda: receipts.recent(supabase_db.DEMO_STORE), 600, 2400)
+        return {**f_report.result(), "receipts": f_recent.result()}
+
+
 def _store_changed(result):
-    """영수증 · 메뉴가 바뀌면 원가율 · 내일 준비 보관값을 비움."""
-    for k in [k for k in _memo if k == "costs" or k.startswith("demand:")]:
+    """가게 자료가 바뀌면 원가율 · 내일 준비 · 영수증 목록 · 내 메뉴 재료 보관값을 메모리와 보관함에서 지움 (다른 서버도 새로 계산)."""
+    keys = [*STORE_KEYS, _demand_key()]
+    for k in [k for k in _memo if k in keys or k.startswith("demand")]:
         _memo.pop(k, None)
+    supabase_db.remove_files(CACHE_BUCKET, [f"cache/{k}.json" for k in keys])
     return result
 
 
@@ -605,7 +648,7 @@ def receipt_edit(purchase_id: int, body: ReceiptEdit):
 @app.get("/api/my-items")
 def my_items():
     """우리 가게 메뉴에 들어가는 재료 (알림 '내 메뉴 재료만'). 메뉴가 자주 바뀌지 않아 10분 보관."""
-    return _receipt_guard(lambda: memo("my_items", lambda: receipts.my_ingredients(supabase_db.DEMO_STORE), ttl=600))
+    return _receipt_guard(lambda: shared("my_items", lambda: receipts.my_ingredients(supabase_db.DEMO_STORE), ttl=600))
 
 
 class MenuIn(BaseModel):
@@ -616,9 +659,8 @@ class MenuIn(BaseModel):
 
 def _menu_changed(result):
     """메뉴를 바꾸면 '내 메뉴 재료' 보관값을 비우고, 화면이 다시 그릴 원가율을 함께 돌려줌."""
-    _memo.pop("my_items", None)
     _store_changed(None)
-    return {**result, **receipts.cost_report(supabase_db.DEMO_STORE), "receipts": receipts.recent(supabase_db.DEMO_STORE)}
+    return {**result, **_costs_data()}
 
 
 @app.get("/api/menus")

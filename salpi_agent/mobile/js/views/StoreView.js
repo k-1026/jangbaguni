@@ -45,7 +45,7 @@ function demandBody(dm) {
     <ul class="m-list">${dm.menus.map((m) => `<li class="m-li"><b>${esc(m.menu)}</b><span>${m.predicted}그릇 <small>${m.range[0]}~${m.range[1]}</small></span></li>`).join("")}</ul>
     <h3 class="m-sub">오늘 주문 (${dm.next_delivery_date ? `${mmdd(dm.next_delivery_date)} 입고까지` : "다음 입고까지"})</h3>
     <ul class="m-list">${dm.items.filter((i) => i.order_qty > 0).slice(0, 8).map((i) =>
-      `<li class="m-li"><b>${esc(i.item)}</b><span>${i.order_qty}${esc(i.unit)} <small>${esc(i.decision)}</small></span></li>`).join("") || "<li class='m-li'>재고로 충분해요</li>"}</ul>`;
+      `<li class="m-li"><b>${esc(i.item)}</b><span>${i.order_qty}${esc(i.unit)} <small>${esc(i.decision === "나눠 사기" ? "조금만 사고 기다리기" : i.decision)}</small></span></li>`).join("") || "<li class='m-li'>재고로 충분해요</li>"}</ul>`;
 }
 
 export function mount(outlet, rest = []) {

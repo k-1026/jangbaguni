@@ -672,7 +672,7 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .modal-box.camera-box { width: fit-content; min-width: min(420px, 100%); max-width: 100%; padding: 14px 16px 16px; }   /* 카메라 창 크기에 맞춤 (아래 공용 .modal-box 폭 860px을 이기도록 두 class) */
 .modal-box.camera-box h3 { margin: 0 40px 6px 0; line-height: 32px; }   /* 제목을 카메라 바로 위에, 닫기 × 와 같은 줄 */
 /* 세로(3:4) 찍기 창 + 오른쪽 대기열 (좁은 화면은 대기열이 아래로 가로 줄) */
-.cam-wrap { display: flex; justify-content: center; gap: 8px; }
+.cam-wrap { position: relative; display: flex; justify-content: center; gap: 8px; }
 .cam-view { position: relative; flex: none; height: min(62vh, 560px); aspect-ratio: 3 / 4; max-width: 100%; border-radius: 12px; overflow: hidden; background: #111; }
 .cam-view video { display: block; width: 100%; height: 100%; object-fit: cover; }
 .cam-frame { position: absolute; inset: 4% 8%; border: 2px dashed rgba(255,255,255,.8); border-radius: 10px; pointer-events: none; }
@@ -684,7 +684,10 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .cam-queue img { display: block; width: 96px; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 8px; border: 1px solid var(--outline-variant); }
 .cam-x { position: absolute; top: 3px; right: 3px; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: rgba(0,0,0,.6); color: #fff; font-size: 15px; line-height: 22px; cursor: pointer; }
 .cam-x:hover, .cam-x:focus-visible { background: rgba(0,0,0,.85); }
-.camera-actions .upload-btn:disabled, .camera-actions .btn:disabled { opacity: .45; cursor: default; }
+/* 대기열 사진 크게 보기: 카메라 창 위를 덮음, 누르면 닫힘 */
+.cam-big { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; padding: 0; border: 0; border-radius: 12px; background: rgba(0,0,0,.88); cursor: zoom-out; }
+.cam-big[hidden] { display: none; }
+.cam-big img { max-width: 100%; max-height: 100%; object-fit: contain; }
 @media (max-width: 560px) {
   .cam-wrap { flex-direction: column; align-items: center; }
   .cam-view { height: auto; width: 100%; }

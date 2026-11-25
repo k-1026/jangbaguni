@@ -2354,6 +2354,7 @@ async function openCamera() {
   $("#cameraBody").innerHTML = `<div class="cam-wrap">
       <div class="cam-view"><video id="camVideo" autoplay playsinline muted></video><i class="cam-frame" aria-hidden="true"></i></div>
       <aside class="cam-queue" aria-label="찍은 사진"><p>찍은 사진 <b id="camCount">0</b>장</p><ul id="camQueue"></ul></aside>
+      <button class="cam-big" id="camBig" type="button" hidden aria-label="크게 보기 닫기"><img alt="찍은 사진 크게 보기"></button>
     </div>
     <p class="muted small">영수증이 길면 위에서부터 나눠 찍어 주세요.</p>
     <div class="camera-actions"><button class="upload-btn" id="camShot" type="button">촬영</button>
@@ -2361,11 +2362,18 @@ async function openCamera() {
   $("#camVideo").srcObject = camStream;
   $("#camShot").onclick = shootCamera;
   $("#camDone").onclick = () => { const pages = camShots.map((s) => s.c); closeCamera(); readReceipt(pages); };
-  $("#camQueue").onclick = (e) => { const x = e.target.closest("[data-cam-del]"); if (x) { camShots.splice(+x.dataset.camDel, 1); camQueue(); } };
+  // 대기열: × = 그 사진 지우기, 사진 = 크게 보기 (크게 본 사진을 누르면 닫힘)
+  $("#camQueue").onclick = (e) => {
+    const x = e.target.closest("[data-cam-del]");
+    if (x) { camShots.splice(+x.dataset.camDel, 1); return camQueue(); }
+    const v = e.target.closest("[data-cam-view]");
+    if (v) { $("#camBig img").src = camShots[+v.dataset.camView].c.toDataURL("image/jpeg", 0.9); $("#camBig").hidden = false; }
+  };
+  $("#camBig").onclick = () => { $("#camBig").hidden = true; };
 }
 // 대기열 다시 그리기: 찍은 순서대로 작은 사진 + × · 장수 · 버튼 켜고 끄기
 function camQueue() {
-  $("#camQueue").innerHTML = camShots.map((s, i) => `<li><img src="${s.url}" alt="${i + 1}번째 사진">
+  $("#camQueue").innerHTML = camShots.map((s, i) => `<li><button type="button" class="cam-thumb" data-cam-view="${i}" aria-label="${i + 1}번째 사진 크게 보기"><img src="${s.url}" alt=""></button>
     <button type="button" class="cam-x" data-cam-del="${i}" aria-label="${i + 1}번째 사진 지우기">×</button></li>`).join("");
   $("#camCount").textContent = camShots.length;
   $("#camDone").hidden = !camShots.length;   // 아무것도 안 찍었으면 [완료]는 숨김

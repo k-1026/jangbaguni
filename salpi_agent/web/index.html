@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ko">
 <head>
   <meta charset="utf-8">
@@ -13,7 +13,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=260">
+  <link rel="stylesheet" href="/static/style.css?v=292">
 </head>
 <body>
 
@@ -270,6 +270,16 @@
     </div>
   </section>
 
+  <!-- 판매 기록 입력: 하루 메뉴별 홀 · 배달 그릇 수 (/api/sales). 펼치면 왼쪽 표 + 오른쪽 요약, 접으면 한 줄 요약 -->
+  <section class="wrap section store-only" id="sales">
+    <div class="section-head">
+      <h2>오늘 판매 기록</h2>
+      <span class="sales-badge" id="salesBadge" hidden>아직 안 넣었어요</span>
+      <p class="muted">팔린 그릇 수를 넣으면 내일 준비량이 바로 바뀌어요</p>
+    </div>
+    <div class="card" id="salesCard"><p class="muted">판매 기록을 불러오는 중이에요</p></div>
+  </section>
+
   <!-- 우리 가게 내일 준비: 판매 기록(Supabase)으로 예상 그릇 수 · 재료 필요량 · 발주 추천 -->
   <section class="wrap section store-only" id="store">
     <div class="section-head">
@@ -440,6 +450,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="/static/app.js?v=197"></script>
+<script src="/static/app.js?v=223"></script>
 </body>
 </html>

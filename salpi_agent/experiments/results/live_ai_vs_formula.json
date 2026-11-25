@@ -14,9 +14,9 @@
    "formula": {
     "n": 25,
     "direction_hit_pct": 52.0,
-    "in_range_pct": 64.0,
+    "in_range_pct": 60.0,
     "opposite_pct": 12.0,
-    "mae_pp": 12.21
+    "mae_pp": 12.16
    }
   },
   "2026-11-17": {
@@ -29,10 +29,10 @@
    },
    "formula": {
     "n": 25,
-    "direction_hit_pct": 60.0,
-    "in_range_pct": 48.0,
-    "opposite_pct": 24.0,
-    "mae_pp": 14.69
+    "direction_hit_pct": 32.0,
+    "in_range_pct": 36.0,
+    "opposite_pct": 28.0,
+    "mae_pp": 16.6
    }
   }
  },
@@ -47,10 +47,10 @@
    },
    "formula": {
     "n": 20,
-    "direction_hit_pct": 50.0,
-    "in_range_pct": 70.0,
+    "direction_hit_pct": 35.0,
+    "in_range_pct": 60.0,
     "opposite_pct": 10.0,
-    "mae_pp": 9.5
+    "mae_pp": 10.71
    }
   },
   "야채": {
@@ -63,10 +63,10 @@
    },
    "formula": {
     "n": 30,
-    "direction_hit_pct": 60.0,
-    "in_range_pct": 46.7,
-    "opposite_pct": 23.3,
-    "mae_pp": 16.09
+    "direction_hit_pct": 46.7,
+    "in_range_pct": 40.0,
+    "opposite_pct": 26.7,
+    "mae_pp": 16.82
    }
   }
  },
@@ -80,10 +80,10 @@
   },
   "formula": {
    "n": 50,
-   "direction_hit_pct": 56.0,
-   "in_range_pct": 56.0,
-   "opposite_pct": 18.0,
-   "mae_pp": 13.45
+   "direction_hit_pct": 42.0,
+   "in_range_pct": 48.0,
+   "opposite_pct": 20.0,
+   "mae_pp": 14.38
   }
  },
  "cases": [
@@ -93,7 +93,7 @@
    "run_date": "2026-11-17",
    "base_date": "2026-11-16",
    "base_price": 1083.0,
-   "recomputed_base_price": 1199,
+   "recomputed_base_price": 1083,
    "actual_date": "2026-11-23",
    "actual_price": 1251,
    "actual_change_pct": 15.51,
@@ -104,9 +104,9 @@
     "version": "ai-veg-20261117"
    },
    "formula": {
-    "change": -1.6,
-    "low": -13.6,
-    "high": 10.4
+    "change": 3.9,
+    "low": -4.5,
+    "high": 12.3
    }
   },
   {
@@ -115,7 +115,7 @@
    "run_date": "2026-11-17",
    "base_date": "2026-11-16",
    "base_price": 1003.0,
-   "recomputed_base_price": 1005,
+   "recomputed_base_price": 1003,
    "actual_date": "2026-11-23",
    "actual_price": 1024,
    "actual_change_pct": 2.09,
@@ -126,9 +126,9 @@
     "version": "ai-veg-20261117"
    },
    "formula": {
-    "change": 3.5,
-    "low": -8.5,
-    "high": 15.5
+    "change": 1.0,
+    "low": -11.0,
+    "high": 13.0
    }
   },
   {
@@ -137,7 +137,7 @@
    "run_date": "2026-11-17",
    "base_date": "2026-11-16",
    "base_price": 435.0,
-   "recomputed_base_price": 428,
+   "recomputed_base_price": 435,
    "actual_date": "2026-11-23",
    "actual_price": 443,
    "actual_change_pct": 1.84,
@@ -148,9 +148,9 @@
     "version": "ai-veg-20261117"
    },
    "formula": {
-    "change": -0.1,
-    "low": -12.1,
-    "high": 11.9
+    "change": 0.4,
+    "low": -11.6,
+    "high": 12.4
    }
   },
   {
@@ -159,7 +159,7 @@
    "run_date": "2026-11-17",
    "base_date": "2026-11-16",
    "base_price": 614.0,
-   "recomputed_base_price": 654,
+   "recomputed_base_price": 614,
    "actual_date": "2026-11-23",
    "actual_price": 538,
    "actual_change_pct": -12.38,
@@ -170,9 +170,9 @@
     "version": "ai-veg-20261117"
    },
    "formula": {
-    "change": 2.9,
-    "low": -9.1,
-    "high": 14.9
+    "change": 6.0,
+    "low": -6.0,
+    "high": 18.0
    }
   },
   {
@@ -181,7 +181,7 @@
    "run_date": "2026-11-17",
    "base_date": "2026-11-16",
    "base_price": 1383.0,
-   "recomputed_base_price": 1365,
+   "recomputed_base_price": 1383,
    "actual_date": "2026-11-23",
    "actual_price": 1317,
    "actual_change_pct": -4.77,
@@ -214,9 +214,9 @@
     "version": "ai-veg-20261117"
    },
    "formula": {
-    "change": 0.5,
-    "low": -11.5,
-    "high": 12.5
+    "change": -0.9,
+    "low": -12.9,
+    "high": 11.1
    }
   },
   {
@@ -225,7 +225,7 @@
    "run_date": "2026-11-17",
    "base_date": "2026-11-16",
    "base_price": 2069.0,
-   "recomputed_base_price": 2079,
+   "recomputed_base_price": 2069,
    "actual_date": "2026-11-23",
    "actual_price": 2062,
    "actual_change_pct": -0.34,
@@ -236,9 +236,9 @@
     "version": "ai-veg-20261117"
    },
    "formula": {
-    "change": 0.4,
-    "low": -11.6,
-    "high": 12.4
+    "change": 0.0,
+    "low": -12.0,
+    "high": 12.0
    }
   },
   {
@@ -247,7 +247,7 @@
    "run_date": "2026-11-17",
    "base_date": "2026-11-16",
    "base_price": 2726.0,
-   "recomputed_base_price": 2737,
+   "recomputed_base_price": 2726,
    "actual_date": "2026-11-23",
    "actual_price": 2547,
    "actual_change_pct": -6.57,
@@ -258,9 +258,9 @@
     "version": "ai-veg-20261117"
    },
    "formula": {
-    "change": -9.2,
-    "low": -21.2,
-    "high": 2.8
+    "change": -9.4,
+    "low": -21.4,
+    "high": 2.6
    }
   },
   {
@@ -269,7 +269,7 @@
    "run_date": "2026-11-17",
    "base_date": "2026-11-16",
    "base_price": 4153.0,
-   "recomputed_base_price": 4170,
+   "recomputed_base_price": 4153,
    "actual_date": "2026-11-23",
    "actual_price": 4367,
    "actual_change_pct": 5.15,
@@ -280,9 +280,9 @@
     "version": "ai-veg-20261117"
    },
    "formula": {
-    "change": 1.3,
-    "low": -10.7,
-    "high": 13.3
+    "change": 0.5,
+    "low": -11.5,
+    "high": 12.5
    }
   },
   {
@@ -291,7 +291,7 @@
    "run_date": "2026-11-17",
    "base_date": "2026-11-16",
    "base_price": 9619.0,
-   "recomputed_base_price": 9758,
+   "recomputed_base_price": 9619,
    "actual_date": "2026-11-23",
    "actual_price": 5560,
    "actual_change_pct": -42.2,
@@ -302,9 +302,9 @@
     "version": "ai-veg-20261117"
    },
    "formula": {
-    "change": -9.0,
-    "low": -21.0,
-    "high": 3.0
+    "change": -7.5,
+    "low": -19.5,
+    "high": 4.5
    }
   },
   {
@@ -313,7 +313,7 @@
    "run_date": "2026-11-17",
    "base_date": "2026-11-16",
    "base_price": 8963.0,
-   "recomputed_base_price": 8885,
+   "recomputed_base_price": 8963,
    "actual_date": "2026-11-23",
    "actual_price": 4334,
    "actual_change_pct": -51.65,
@@ -324,9 +324,9 @@
     "version": "ai-veg-20261117"
    },
    "formula": {
-    "change": -14.4,
-    "low": -26.4,
-    "high": -2.4
+    "change": -15.2,
+    "low": -27.2,
+    "high": -3.2
    }
   },
   {
@@ -335,7 +335,7 @@
    "run_date": "2026-11-17",
    "base_date": "2026-11-16",
    "base_price": 4353.0,
-   "recomputed_base_price": 4304,
+   "recomputed_base_price": 4353,
    "actual_date": "2026-11-23",
    "actual_price": 5285,
    "actual_change_pct": 21.41,
@@ -346,8 +346,8 @@
     "version": "ai-veg-20261117"
    },
    "formula": {
-    "change": -8.9,
-    "low": -20.6,
+    "change": -9.2,
+    "low": -21.2,
     "high": 2.8
    }
   },
@@ -357,7 +357,7 @@
    "run_date": "2026-11-17",
    "base_date": "2026-11-16",
    "base_price": 2027.0,
-   "recomputed_base_price": 2155,
+   "recomputed_base_price": 2027,
    "actual_date": "2026-11-23",
    "actual_price": 1871,
    "actual_change_pct": -7.7,
@@ -368,9 +368,9 @@
     "version": "ai-veg-20261117"
    },
    "formula": {
-    "change": 2.6,
-    "low": -9.4,
-    "high": 14.6
+    "change": 4.8,
+    "low": -7.2,
+    "high": 16.8
    }
   },
   {
@@ -379,7 +379,7 @@
    "run_date": "2026-11-17",
    "base_date": "2026-11-16",
    "base_price": 3019.0,
-   "recomputed_base_price": 3066,
+   "recomputed_base_price": 3019,
    "actual_date": "2026-11-23",
    "actual_price": 3050,
    "actual_change_pct": 1.03,
@@ -390,9 +390,9 @@
     "version": "ai-fruit-20261117"
    },
    "formula": {
-    "change": 2.3,
-    "low": -6.2,
-    "high": 10.8
+    "change": 3.5,
+    "low": -5.6,
+    "high": 12.6
    }
   },
   {
@@ -401,7 +401,7 @@
    "run_date": "2026-11-17",
    "base_date": "2026-11-16",
    "base_price": 2458.0,
-   "recomputed_base_price": 2581,
+   "recomputed_base_price": 2458,
    "actual_date": "2026-11-23",
    "actual_price": 2267,
    "actual_change_pct": -7.77,
@@ -412,9 +412,9 @@
     "version": "ai-fruit-20261117"
    },
    "formula": {
-    "change": -3.8,
-    "low": -15.8,
-    "high": 8.2
+    "change": -1.2,
+    "low": -13.2,
+    "high": 10.8
    }
   },
   {
@@ -423,7 +423,7 @@
    "run_date": "2026-11-17",
    "base_date": "2026-11-16",
    "base_price": 2464.0,
-   "recomputed_base_price": 2493,
+   "recomputed_base_price": 2464,
    "actual_date": "2026-11-23",
    "actual_price": 2486,
    "actual_change_pct": 0.89,
@@ -434,9 +434,9 @@
     "version": "ai-fruit-20261117"
    },
    "formula": {
-    "change": -5.2,
-    "low": -17.2,
-    "high": 6.8
+    "change": -4.4,
+    "low": -16.4,
+    "high": 7.6
    }
   },
   {
@@ -445,7 +445,7 @@
    "run_date": "2026-11-17",
    "base_date": "2026-11-16",
    "base_price": 3352.0,
-   "recomputed_base_price": 3366,
+   "recomputed_base_price": 3352,
    "actual_date": "2026-11-23",
    "actual_price": 3625,
    "actual_change_pct": 8.14,
@@ -456,9 +456,9 @@
     "version": "ai-fruit-20261117"
    },
    "formula": {
-    "change": -1.3,
-    "low": -11.7,
-    "high": 9.1
+    "change": -1.1,
+    "low": -10.8,
+    "high": 8.6
    }
   },
   {
@@ -467,7 +467,7 @@
    "run_date": "2026-11-17",
    "base_date": "2026-11-16",
    "base_price": 1946.0,
-   "recomputed_base_price": 1964,
+   "recomputed_base_price": 1946,
    "actual_date": "2026-11-23",
    "actual_price": 2035,
    "actual_change_pct": 4.57,
@@ -478,9 +478,9 @@
     "version": "ai-fruit-20261117"
    },
    "formula": {
-    "change": 1.8,
-    "low": -10.2,
-    "high": 13.8
+    "change": 2.0,
+    "low": -10.0,
+    "high": 14.0
    }
   },
   {
@@ -489,7 +489,7 @@
    "run_date": "2026-11-17",
    "base_date": "2026-11-16",
    "base_price": 1617.0,
-   "recomputed_base_price": 1695,
+   "recomputed_base_price": 1617,
    "actual_date": "2026-11-23",
    "actual_price": 1561,
    "actual_change_pct": -3.46,
@@ -500,9 +500,9 @@
     "version": "ai-fruit-20261117"
    },
    "formula": {
-    "change": -0.9,
-    "low": -12.9,
-    "high": 11.1
+    "change": 1.5,
+    "low": -10.5,
+    "high": 13.5
    }
   },
   {
@@ -511,7 +511,7 @@
    "run_date": "2026-11-17",
    "base_date": "2026-11-16",
    "base_price": 25155.0,
-   "recomputed_base_price": 25015,
+   "recomputed_base_price": 25155,
    "actual_date": "2026-11-23",
    "actual_price": 25319,
    "actual_change_pct": 0.65,
@@ -533,7 +533,7 @@
    "run_date": "2026-11-17",
    "base_date": "2026-11-16",
    "base_price": 2589.0,
-   "recomputed_base_price": 2527,
+   "recomputed_base_price": 2589,
    "actual_date": "2026-11-23",
    "actual_price": 2165,
    "actual_change_pct": -16.38,
@@ -544,9 +544,9 @@
     "version": "ai-fruit-20261117"
    },
    "formula": {
-    "change": -5.9,
-    "low": -17.9,
-    "high": 6.1
+    "change": -6.9,
+    "low": -18.9,
+    "high": 5.1
    }
   },
   {
@@ -555,7 +555,7 @@
    "run_date": "2026-11-17",
    "base_date": "2026-11-16",
    "base_price": 2574.0,
-   "recomputed_base_price": 2800,
+   "recomputed_base_price": 2574,
    "actual_date": "2026-11-23",
    "actual_price": 3810,
    "actual_change_pct": 48.02,
@@ -566,9 +566,9 @@
     "version": "ai-fruit-20261117"
    },
    "formula": {
-    "change": 4.4,
-    "low": -7.6,
-    "high": 16.4
+    "change": 7.7,
+    "low": -4.3,
+    "high": 19.7
    }
   },
   {
@@ -577,7 +577,7 @@
    "run_date": "2026-11-17",
    "base_date": "2026-11-16",
    "base_price": 2900.0,
-   "recomputed_base_price": 2818,
+   "recomputed_base_price": 2900,
    "actual_date": "2026-11-23",
    "actual_price": 2318,
    "actual_change_pct": -20.07,
@@ -588,9 +588,9 @@
     "version": "ai-fruit-20261117"
    },
    "formula": {
-    "change": -0.7,
-    "low": -12.7,
-    "high": 11.3
+    "change": -1.2,
+    "low": -13.2,
+    "high": 10.8
    }
   },
   {
@@ -599,7 +599,7 @@
    "run_date": "2026-11-17",
    "base_date": "2026-11-16",
    "base_price": 762.0,
-   "recomputed_base_price": 776,
+   "recomputed_base_price": 762,
    "actual_date": "2026-11-23",
    "actual_price": 570,
    "actual_change_pct": -25.2,
@@ -610,9 +610,9 @@
     "version": "ai-veg-20261117"
    },
    "formula": {
-    "change": -7.1,
-    "low": -19.1,
-    "high": 4.9
+    "change": -6.6,
+    "low": -18.6,
+    "high": 5.4
    }
   },
   {
@@ -621,7 +621,7 @@
    "run_date": "2026-11-17",
    "base_date": "2026-11-16",
    "base_price": 4162.0,
-   "recomputed_base_price": 4189,
+   "recomputed_base_price": 4162,
    "actual_date": "2026-11-23",
    "actual_price": 2461,
    "actual_change_pct": -40.87,
@@ -632,9 +632,9 @@
     "version": "ai-veg-20261117"
    },
    "formula": {
-    "change": -13.3,
-    "low": -25.3,
-    "high": -1.3
+    "change": -14.4,
+    "low": -26.4,
+    "high": -2.4
    }
   },
   {
@@ -643,7 +643,7 @@
    "run_date": "2026-11-18",
    "base_date": "2026-11-17",
    "base_price": 798.0,
-   "recomputed_base_price": 798,
+   "recomputed_base_price": 1003,
    "actual_date": "2026-11-24",
    "actual_price": 1363,
    "actual_change_pct": 70.8,
@@ -654,9 +654,9 @@
     "version": "ai-veg-20261117"
    },
    "formula": {
-    "change": 8.2,
-    "low": -3.8,
-    "high": 20.2
+    "change": 0.8,
+    "low": -11.2,
+    "high": 12.8
    }
   },
   {
@@ -665,7 +665,7 @@
    "run_date": "2026-11-18",
    "base_date": "2026-11-17",
    "base_price": 729.0,
-   "recomputed_base_price": 729,
+   "recomputed_base_price": 762,
    "actual_date": "2026-11-24",
    "actual_price": 654,
    "actual_change_pct": -10.29,
@@ -676,9 +676,9 @@
     "version": "ai-veg-20261117"
    },
    "formula": {
-    "change": -4.9,
-    "low": -16.9,
-    "high": 7.1
+    "change": -6.7,
+    "low": -18.7,
+    "high": 5.3
    }
   },
   {
@@ -687,7 +687,7 @@
    "run_date": "2026-11-18",
    "base_date": "2026-11-17",
    "base_price": 442.0,
-   "recomputed_base_price": 442,
+   "recomputed_base_price": 435,
    "actual_date": "2026-11-24",
    "actual_price": 389,
    "actual_change_pct": -11.99,
@@ -698,9 +698,9 @@
     "version": "ai-veg-20261117"
    },
    "formula": {
-    "change": 1.1,
-    "low": -10.9,
-    "high": 13.1
+    "change": -0.4,
+    "low": -12.4,
+    "high": 11.6
    }
   },
   {
@@ -709,7 +709,7 @@
    "run_date": "2026-11-18",
    "base_date": "2026-11-17",
    "base_price": 609.0,
-   "recomputed_base_price": 609,
+   "recomputed_base_price": 614,
    "actual_date": "2026-11-24",
    "actual_price": 527,
    "actual_change_pct": -13.46,
@@ -720,9 +720,9 @@
     "version": "ai-veg-20261117"
    },
    "formula": {
-    "change": 5.7,
-    "low": -6.3,
-    "high": 17.7
+    "change": 5.9,
+    "low": -6.1,
+    "high": 17.9
    }
   },
   {
@@ -731,7 +731,7 @@
    "run_date": "2026-11-18",
    "base_date": "2026-11-17",
    "base_price": 1255.0,
-   "recomputed_base_price": 1255,
+   "recomputed_base_price": 1383,
    "actual_date": "2026-11-24",
    "actual_price": 1322,
    "actual_change_pct": 5.34,
@@ -742,9 +742,9 @@
     "version": "ai-veg-20261117"
    },
    "formula": {
-    "change": 0.4,
-    "low": -11.6,
-    "high": 12.4
+    "change": -3.9,
+    "low": -15.9,
+    "high": 8.1
    }
   },
   {
@@ -753,7 +753,7 @@
    "run_date": "2026-11-18",
    "base_date": "2026-11-17",
    "base_price": 1462.0,
-   "recomputed_base_price": 1462,
+   "recomputed_base_price": 1769,
    "actual_date": "2026-11-24",
    "actual_price": 1678,
    "actual_change_pct": 14.77,
@@ -764,9 +764,9 @@
     "version": "ai-veg-20261117"
    },
    "formula": {
-    "change": 4.4,
-    "low": -7.6,
-    "high": 16.4
+    "change": -0.9,
+    "low": -12.9,
+    "high": 11.1
    }
   },
   {
@@ -775,7 +775,7 @@
    "run_date": "2026-11-18",
    "base_date": "2026-11-17",
    "base_price": 2494.0,
-   "recomputed_base_price": 2494,
+   "recomputed_base_price": 2726,
    "actual_date": "2026-11-24",
    "actual_price": 2864,
    "actual_change_pct": 14.84,
@@ -786,9 +786,9 @@
     "version": "ai-veg-20261117"
    },
    "formula": {
-    "change": -4.4,
-    "low": -16.4,
-    "high": 7.6
+    "change": -8.4,
+    "low": -20.4,
+    "high": 3.6
    }
   },
   {
@@ -797,7 +797,7 @@
    "run_date": "2026-11-18",
    "base_date": "2026-11-17",
    "base_price": 4008.0,
-   "recomputed_base_price": 4008,
+   "recomputed_base_price": 4153,
    "actual_date": "2026-11-24",
    "actual_price": 4486,
    "actual_change_pct": 11.93,
@@ -808,9 +808,9 @@
     "version": "ai-veg-20261117"
    },
    "formula": {
-    "change": 2.5,
-    "low": -9.5,
-    "high": 14.5
+    "change": 0.7,
+    "low": -11.3,
+    "high": 12.7
    }
   },
   {
@@ -819,7 +819,7 @@
    "run_date": "2026-11-18",
    "base_date": "2026-11-17",
    "base_price": 9195.0,
-   "recomputed_base_price": 9195,
+   "recomputed_base_price": 9619,
    "actual_date": "2026-11-24",
    "actual_price": 5541,
    "actual_change_pct": -39.74,
@@ -830,9 +830,9 @@
     "version": "ai-veg-20261117"
    },
    "formula": {
-    "change": -5.8,
-    "low": -17.8,
-    "high": 6.2
+    "change": -6.8,
+    "low": -18.8,
+    "high": 5.2
    }
   },
   {
@@ -841,7 +841,7 @@
    "run_date": "2026-11-18",
    "base_date": "2026-11-17",
    "base_price": 7113.0,
-   "recomputed_base_price": 7113,
+   "recomputed_base_price": 8963,
    "actual_date": "2026-11-24",
    "actual_price": 5451,
    "actual_change_pct": -23.37,
@@ -852,9 +852,9 @@
     "version": "ai-veg-20261117"
    },
    "formula": {
-    "change": -12.9,
-    "low": -24.9,
-    "high": -0.9
+    "change": -15.2,
+    "low": -27.2,
+    "high": -3.2
    }
   },
   {
@@ -863,7 +863,7 @@
    "run_date": "2026-11-18",
    "base_date": "2026-11-17",
    "base_price": 3761.0,
-   "recomputed_base_price": 3761,
+   "recomputed_base_price": 4353,
    "actual_date": "2026-11-24",
    "actual_price": 4895,
    "actual_change_pct": 30.15,
@@ -874,9 +874,9 @@
     "version": "ai-veg-20261117"
    },
    "formula": {
-    "change": -3.1,
-    "low": -15.1,
-    "high": 8.9
+    "change": -8.6,
+    "low": -20.6,
+    "high": 3.4
    }
   },
   {
@@ -885,7 +885,7 @@
    "run_date": "2026-11-18",
    "base_date": "2026-11-17",
    "base_price": 1967.0,
-   "recomputed_base_price": 1967,
+   "recomputed_base_price": 2027,
    "actual_date": "2026-11-24",
    "actual_price": 1816,
    "actual_change_pct": -7.68,
@@ -896,9 +896,9 @@
     "version": "ai-veg-20261117"
    },
    "formula": {
-    "change": 4.4,
-    "low": -7.6,
-    "high": 16.4
+    "change": 5.0,
+    "low": -7.0,
+    "high": 17.0
    }
   },
   {
@@ -907,7 +907,7 @@
    "run_date": "2026-11-18",
    "base_date": "2026-11-17",
    "base_price": 3898.0,
-   "recomputed_base_price": 3898,
+   "recomputed_base_price": 4162,
    "actual_date": "2026-11-24",
    "actual_price": 2701,
    "actual_change_pct": -30.71,
@@ -929,7 +929,7 @@
    "run_date": "2026-11-18",
    "base_date": "2026-11-17",
    "base_price": 2846.0,
-   "recomputed_base_price": 2846,
+   "recomputed_base_price": 3019,
    "actual_date": "2026-11-24",
    "actual_price": 2970,
    "actual_change_pct": 4.36,
@@ -940,9 +940,9 @@
     "version": "ai-fruit-20261117"
    },
    "formula": {
-    "change": 4.2,
-    "low": -4.6,
-    "high": 13.0
+    "change": 3.4,
+    "low": -5.8,
+    "high": 12.6
    }
   },
   {
@@ -951,7 +951,7 @@
    "run_date": "2026-11-18",
    "base_date": "2026-11-17",
    "base_price": 2338.0,
-   "recomputed_base_price": 2338,
+   "recomputed_base_price": 2458,
    "actual_date": "2026-11-24",
    "actual_price": 2706,
    "actual_change_pct": 15.74,
@@ -962,9 +962,9 @@
     "version": "ai-fruit-20261117"
    },
    "formula": {
-    "change": -0.3,
-    "low": -12.3,
-    "high": 11.7
+    "change": -1.0,
+    "low": -13.0,
+    "high": 11.0
    }
   },
   {
@@ -973,7 +973,7 @@
    "run_date": "2026-11-18",
    "base_date": "2026-11-17",
    "base_price": 2348.0,
-   "recomputed_base_price": 2348,
+   "recomputed_base_price": 2464,
    "actual_date": "2026-11-24",
    "actual_price": 2409,
    "actual_change_pct": 2.6,
@@ -984,9 +984,9 @@
     "version": "ai-fruit-20261117"
    },
    "formula": {
-    "change": -3.4,
-    "low": -15.4,
-    "high": 8.6
+    "change": -4.2,
+    "low": -16.2,
+    "high": 7.8
    }
   },
   {
@@ -995,7 +995,7 @@
    "run_date": "2026-11-18",
    "base_date": "2026-11-17",
    "base_price": 3372.0,
-   "recomputed_base_price": 3372,
+   "recomputed_base_price": 3352,
    "actual_date": "2026-11-24",
    "actual_price": 3427,
    "actual_change_pct": 1.63,
@@ -1006,9 +1006,9 @@
     "version": "ai-fruit-20261117"
    },
    "formula": {
-    "change": -0.6,
-    "low": -11.0,
-    "high": 9.8
+    "change": -1.0,
+    "low": -10.9,
+    "high": 8.9
    }
   },
   {
@@ -1017,7 +1017,7 @@
    "run_date": "2026-11-18",
    "base_date": "2026-11-17",
    "base_price": 1537.0,
-   "recomputed_base_price": 1537,
+   "recomputed_base_price": 1617,
    "actual_date": "2026-11-24",
    "actual_price": 1359,
    "actual_change_pct": -11.58,
@@ -1028,9 +1028,9 @@
     "version": "ai-fruit-20261117"
    },
    "formula": {
-    "change": 1.7,
-    "low": -10.3,
-    "high": 13.7
+    "change": 1.4,
+    "low": -10.6,
+    "high": 13.4
    }
   },
   {
@@ -1039,7 +1039,7 @@
    "run_date": "2026-11-18",
    "base_date": "2026-11-17",
    "base_price": 27495.0,
-   "recomputed_base_price": 27495,
+   "recomputed_base_price": 25155,
    "actual_date": "2026-11-24",
    "actual_price": 23348,
    "actual_change_pct": -15.08,
@@ -1050,9 +1050,9 @@
     "version": "ai-fruit-20261117"
    },
    "formula": {
-    "change": -2.6,
-    "low": -14.6,
-    "high": 9.4
+    "change": -0.9,
+    "low": -12.9,
+    "high": 11.1
    }
   },
   {
@@ -1061,7 +1061,7 @@
    "run_date": "2026-11-18",
    "base_date": "2026-11-17",
    "base_price": 2483.0,
-   "recomputed_base_price": 2483,
+   "recomputed_base_price": 2589,
    "actual_date": "2026-11-24",
    "actual_price": 2360,
    "actual_change_pct": -4.95,
@@ -1072,9 +1072,9 @@
     "version": "ai-fruit-20261117"
    },
    "formula": {
-    "change": -4.4,
-    "low": -16.4,
-    "high": 7.6
+    "change": -7.2,
+    "low": -19.2,
+    "high": 4.8
    }
   },
   {
@@ -1083,7 +1083,7 @@
    "run_date": "2026-11-18",
    "base_date": "2026-11-17",
    "base_price": 4366.0,
-   "recomputed_base_price": 4366,
+   "recomputed_base_price": 2574,
    "actual_date": "2026-11-24",
    "actual_price": 3781,
    "actual_change_pct": -13.4,
@@ -1094,9 +1094,9 @@
     "version": "ai-fruit-20261117"
    },
    "formula": {
-    "change": -2.2,
-    "low": -14.2,
-    "high": 9.8
+    "change": 7.4,
+    "low": -4.6,
+    "high": 19.4
    }
   },
   {
@@ -1105,7 +1105,7 @@
    "run_date": "2026-11-18",
    "base_date": "2026-11-17",
    "base_price": 1804.0,
-   "recomputed_base_price": 1804,
+   "recomputed_base_price": 2900,
    "actual_date": "2026-11-24",
    "actual_price": 2031,
    "actual_change_pct": 12.58,
@@ -1116,9 +1116,9 @@
     "version": "ai-fruit-20261117"
    },
    "formula": {
-    "change": 8.0,
-    "low": -4.0,
-    "high": 20.0
+    "change": -1.2,
+    "low": -13.2,
+    "high": 10.8
    }
   },
   {
@@ -1127,7 +1127,7 @@
    "run_date": "2026-11-18",
    "base_date": "2026-11-17",
    "base_price": 1037.0,
-   "recomputed_base_price": 1037,
+   "recomputed_base_price": 1083,
    "actual_date": "2026-11-24",
    "actual_price": 1187,
    "actual_change_pct": 14.46,
@@ -1138,9 +1138,9 @@
     "version": "ai-veg-20261117"
    },
    "formula": {
-    "change": 2.7,
-    "low": -9.3,
-    "high": 14.7
+    "change": 3.8,
+    "low": -4.6,
+    "high": 12.2
    }
   },
   {
@@ -1149,7 +1149,7 @@
    "run_date": "2026-11-18",
    "base_date": "2026-11-17",
    "base_price": 1879.0,
-   "recomputed_base_price": 1879,
+   "recomputed_base_price": 2069,
    "actual_date": "2026-11-24",
    "actual_price": 2233,
    "actual_change_pct": 18.84,
@@ -1160,9 +1160,9 @@
     "version": "ai-veg-20261117"
    },
    "formula": {
-    "change": 2.5,
-    "low": -9.5,
-    "high": 14.5
+    "change": 0.3,
+    "low": -11.7,
+    "high": 12.3
    }
   },
   {
@@ -1171,7 +1171,7 @@
    "run_date": "2026-11-18",
    "base_date": "2026-11-17",
    "base_price": 1967.0,
-   "recomputed_base_price": 1967,
+   "recomputed_base_price": 1946,
    "actual_date": "2026-11-24",
    "actual_price": 1573,
    "actual_change_pct": -20.03,
@@ -1182,9 +1182,9 @@
     "version": "ai-fruit-20261117"
    },
    "formula": {
-    "change": 2.3,
-    "low": -9.7,
-    "high": 14.3
+    "change": 1.8,
+    "low": -10.2,
+    "high": 13.8
    }
   }
  ]

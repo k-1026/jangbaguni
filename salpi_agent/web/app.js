@@ -2321,9 +2321,9 @@ function setTrial(t) {
 if (SIGNED_IN) authCall("/api/receipt/trial", { method: "GET", token: readLogin()?.access_token }).then(setTrial).catch(() => {});
 // ---------------------------------------------------------------
 // 살피 플러스 구독 · 결제 (서버 account/subscription.py)
-// [구독하러 가기] → 결제창 → 결제 완료(이용 기간 · 다음 결제) / 결제 실패(다시 결제하기 · 돌아가기)
-// - 토스 테스트 키가 없으면(mode=mock) 이 창 안의 모의 결제창에서 바로 승인 · 있으면(mode=toss) 토스 결제창에 갔다가
-//   /?page=store&pay=success|fail 로 돌아옴 (아래 파일 끝에서 처리)
+// [월 19,900원으로 구독하기] → 바로 결제 → 결제 완료(이용 기간 · 다음 결제) / 결제 실패(다시 결제하기 · 돌아가기)
+// - 토스 테스트 키가 있으면(mode=toss) 토스 결제창에 갔다가 · 없으면(mode=mock) 결제창 없이 서버가 바로 모의 승인
+//   토스는 /?page=store&pay=success|fail 로 돌아옴 (아래 파일 끝에서 처리)
 // - 결제가 끝난 뒤 창을 닫으면 새로고침해서 잠금(영수증 · 판매율 분석)을 풂
 // ---------------------------------------------------------------
 const PAY_FROM_KEY = "salpi_pay_from";   // 어느 잠금 칸에서 눌렀나 (토스에 갔다 와도 기억)
@@ -2349,12 +2349,7 @@ async function openPay(from) {
   try { o = await authCall("/api/subscribe/checkout", { token: readLogin()?.access_token }); }
   catch (e) { return payFail(e.message); }
   if (o.mode === "toss") return tossPay(o);
-  payShow(`<div class="pay-card">
-      <p class="pay-kicker">살피 플러스 · 1개월</p>
-      <p class="pay-price">${won(o.amount)}<small> / 월</small></p>
-      <ul class="pay-perks"><li>영수증 분석 무제한</li><li>판매율 분석 무제한</li></ul>
-      <button class="pay-btn" type="button" data-pay="mock">${won(o.amount)} 결제하기</button></div>`);
-  $('#payBody [data-pay="mock"]').onclick = () => payConfirm({ order_id: o.order_id, amount: o.amount });
+  payConfirm({ order_id: o.order_id, amount: o.amount });   // 모의 결제: 결제창 없이 바로 승인
 }
 
 // 토스 결제창(테스트 키): 결제가 끝나면 successUrl · failUrl 로 페이지가 바뀌어 돌아옴. 결제창을 닫으면 여기서 실패로

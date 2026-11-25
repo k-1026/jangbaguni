@@ -1798,15 +1798,10 @@ body.login-view .login-only, body.signup-view .signup-only { display: flex; }
 .cp-origin-wrap:hover .cp-tip, .cp-origin-wrap:has(.cp-origin:focus-visible) .cp-tip, .cp-origin-wrap.open .cp-tip { opacity: 1; visibility: visible; }
 @media (max-width: 520px) { .cp-tip { left: auto; right: 0; max-width: min(240px, 70vw); } }   /* 좁은 화면: 오른쪽 끝에 맞춰 화면 밖으로 안 나가게 */
 
-/* 살피 플러스 결제창 · 결제 완료 · 실패 (가운데 정렬 카드, 버튼은 영수증 체험 칸과 같은 노랑) */
+/* 살피 플러스 결제 완료 · 실패 (가운데 정렬 카드, 버튼은 영수증 체험 칸과 같은 노랑) */
 .modal-box.pay-box { width: min(440px, 100%); padding: 32px 24px 22px; }
 .pay-card { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
 .pay-card p { margin: 0; }
-.pay-kicker { font-size: 14px; font-weight: 700; color: var(--muted); }
-.pay-price { font-size: 32px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
-.pay-price small { font-size: 15px; font-weight: 600; color: var(--muted); }
-.pay-perks { list-style: none; margin: 2px 0 6px; padding: 0; display: grid; gap: 4px; font-size: 14px; color: var(--ink); }
-.pay-perks li::before { content: "✓"; margin-right: 6px; color: var(--primary); font-weight: 800; }
 .pay-icon { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; }
 .pay-icon svg { width: 32px; height: 32px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
 .pay-icon.ok { background: #CDEBCF; color: #1E6B2A; }

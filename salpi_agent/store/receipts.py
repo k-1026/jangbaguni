@@ -22,8 +22,8 @@ from store import inventory
 from sources.data_sources import ApiError, ApiKeyMissing
 
 KST = timezone(timedelta(hours=9))
-MODELS = [os.getenv("GEMINI_MODEL", "gemini-3.5-flash")] + [
-    m.strip() for m in os.getenv("GEMINI_FALLBACK_MODELS", "gemini-3-flash-preview,gemini-flash-latest,gemini-3.5-flash-lite").split(",")
+MODELS = [os.getenv("GEMINI_MODEL", "gemini-3.8-flash")] + [
+    m.strip() for m in os.getenv("GEMINI_FALLBACK_MODELS", "gemini-3.7-flash,gemini-3.6-flash,gemini-3.5-flash,gemini-3-flash-preview,gemini-3.5-flash-lite").split(",")
     if m.strip()]
 TARGET_RATIO = 40   # 원가율 기준(%): 자영업자 카페 답(30 · 35 · 40%) 중 가장 보수적 값 · 업계 평균 재료비 비중 40.7%
 # 대체 재료 후보 (값이 오르면 검토해 볼 만한 것만, 판단은 사장님이)

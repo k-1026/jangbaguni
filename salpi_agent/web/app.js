@@ -2524,7 +2524,7 @@ const SCORE_MIN = 3;
 let score = null, scoreKind = "전체", scoreOpen = false;
 const scoreHits = (s) => Math.round((s.n * s.direction_hit_pct) / 100);
 const scoreTier = (p) => (p >= 70 ? "good" : p >= 50 ? "mid" : "low");   // 사장님이 이 품목 예측을 얼마나 믿어도 되는지
-const SCORE_GROUPS = [["good", "믿고 보셔도 돼요 <small>70% 이상</small>"], ["mid", "참고만 하세요 <small>50~70%</small>"], ["low", "아직 어려워요 <small>50% 아래</small>"]];
+const SCORE_GROUPS = [["good", "예측 정확 <small>70% 이상</small>"], ["mid", "예측 안정 <small>50~70%</small>"], ["low", "예측 성장 중 <small>50% 아래</small>"]];
 function scoreDetail() {
   const kinds = [...SCORE_KINDS, ...Object.keys(score.kinds).filter((k) => !SCORE_KINDS.includes(k))].filter((k) => score.kinds[k]?.n);
   if (scoreKind !== "전체" && !kinds.includes(scoreKind)) scoreKind = "전체";

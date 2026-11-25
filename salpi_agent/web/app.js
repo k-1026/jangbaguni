@@ -2070,7 +2070,7 @@ const rcMini = (p) => `<span class="rc-mini" aria-hidden="true">
   ${(p.names || []).slice(0, 3).map((n) => `<i>${esc(n)}</i>`).join("")}${p.items > 3 ? `<i class="more">외 ${p.items - 3}줄</i>` : ""}
   <em>합계 ${won(p.total_amount)}</em></span>`;
 const RC_TRASH = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4.5h6V7M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>`;
-function receiptList(list) {
+function receiptList(list, all = false) {
   const cards = list.map((p) => `<li class="rc-card" data-id="${p.id}">
     <span class="rc-check" aria-hidden="true"></span>
     <button class="rc-open rc-thumb" data-rid="${p.id}" type="button" title="사진과 품목 보기">
@@ -2080,7 +2080,7 @@ function receiptList(list) {
       <b title="${esc(supplierName(p.supplier))}">${esc(supplierName(p.supplier))}</b><span class="rc-price">${won(p.total_amount)}</span></div></li>`).join("");
   return `<div class="rc-head"><h3 class="sub-h">최근 영수증</h3>
       ${list.length ? `<span class="rc-tools">
-        <button class="rc-all" type="button">전체 보기</button>
+        <button class="rc-all" type="button" aria-expanded="${all}">${all ? "접기" : "전체 보기"}</button>
         <button class="rc-trash" type="button" title="여러 장 골라서 지우기" aria-label="여러 장 골라서 지우기">${RC_TRASH}</button>
         <span class="rc-sel-bar"><span class="rc-sel-count">지울 영수증을 골라 주세요</span>
           <button class="rc-remove rc-sel-del" type="button" disabled>지우기</button><button class="rc-sel-cancel" type="button">취소</button></span>
@@ -2103,9 +2103,13 @@ function rcArrows() {
   $("#receiptList .rc-arrow.prev").disabled = s.scrollLeft <= 2;
   $("#receiptList .rc-arrow.next").disabled = s.scrollLeft >= max;
 }
-function showReceiptList(list) {
+// all: [전체 보기]로 모든 날짜를 받아 사진 카드를 여러 줄로 펼침 · 접으면 마지막 최근 목록으로
+let rcRecent = [];
+function showReceiptList(list, all = false) {
+  if (!all) rcRecent = list;
   $("#receiptList").classList.remove("selecting");
-  $("#receiptList").innerHTML = receiptList(list);
+  $("#receiptList").classList.toggle("all", all);
+  $("#receiptList").innerHTML = receiptList(list, all);
   rcArrows();
   document.querySelectorAll("#receiptList .rc-strip img").forEach((i) => i.addEventListener("load", rcArrows, { once: true }));
 }
@@ -2375,7 +2379,10 @@ async function rcDeletePicked() {
   loadCosts(true);   // 원가율 · 사진 줄을 한 번에 새로 (고르기 모드도 풀림)
 }
 $("#receiptList").onclick = async (e) => {
-  if (e.target.closest(".rc-all")) return openMypage("receipts");   // 마이페이지 '나의 영수증' = 전체 목록
+  if (e.target.closest(".rc-all")) {
+    if ($("#receiptList").classList.contains("all")) return showReceiptList(rcRecent);
+    try { return showReceiptList((await getJSON("/api/receipts")).receipts, true); } catch (err) { return alert(err.message); }
+  }
   if (e.target.closest(".rc-trash")) return rcSelectMode(true);
   if (e.target.closest(".rc-sel-cancel")) return rcSelectMode(false);
   if (e.target.closest(".rc-sel-del")) return rcDeletePicked();

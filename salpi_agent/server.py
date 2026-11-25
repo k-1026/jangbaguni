@@ -706,7 +706,8 @@ def inventory_set(body: StockIn):
 
 @app.get("/api/receipts")
 def receipt_list():
-    return _receipt_guard(lambda: {"receipts": receipts.recent(supabase_db.DEMO_STORE, limit=50)})
+    # shortcut: 1000장(Supabase 한 번에 주는 최대)까지, 넘으면 페이지 나눠 받기
+    return _receipt_guard(lambda: {"receipts": receipts.recent(supabase_db.DEMO_STORE, limit=1000)})
 
 
 @app.delete("/api/receipt/{purchase_id}")

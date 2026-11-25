@@ -1202,6 +1202,26 @@ body.chat-open .fab-count { display: none; }
 .my-card h4 { margin: 0 0 10px; font-size: 16px; }
 .my-card h4 + .muted { margin: -4px 0 12px; }   /* 제목 바로 밑 설명: 제목에 붙이고 아래 구분선과는 띄움 */
 .my-card.profile { display: flex; align-items: center; gap: 12px; }
+/* 구독 칸: 왼쪽 상태 한 줄 "제목 (설명)" (넘치면 … ) | 오른쪽 버튼 (구독하기는 노랑, 해지 · 해지 취소는 작은 글씨) */
+.my-plan { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.my-plan > div { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.my-plan b { font-size: 14px; }
+.my-plan small { font-size: 13px; color: var(--muted); }
+.my-plan small::before { content: " ("; }
+.my-plan small::after { content: ")"; }
+.my-plan-buy { flex: none; white-space: nowrap; padding: 9px 12px; border: 1px solid #F2C94C; border-radius: 10px; background: #FFE08A; color: #2E2300; font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; }
+.my-plan-buy:hover { background: #FFD966; }
+.my-plan-link { flex: none; white-space: nowrap; padding: 4px 2px; border: 0; background: none; font: inherit; font-size: 13px; color: var(--muted); text-decoration: underline; cursor: pointer; }
+.my-plan-link:hover { color: var(--ink); }
+.my-plan-link.manage { text-decoration: none; font-weight: 700; color: var(--ink); }
+/* 구독 관리 화면: 정보 줄 · 최근 결제 */
+.my-card .pm-rows { display: grid; grid-template-columns: 1fr; gap: 8px; margin: 0; font-size: 14px; }
+.pm-rows div { display: flex; justify-content: space-between; gap: 12px; }
+.pm-rows dt { color: var(--muted); }
+.pm-rows dd { margin: 0; font-weight: 700; }
+.pm-pays { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 14px; }
+.pm-pays li { display: grid; grid-template-columns: 56px 1fr auto; gap: 8px; }
+
 .my-card.profile img { width: 56px; height: 56px; border-radius: 50%; background: var(--surface-variant); object-fit: cover; }
 .my-card.profile b { display: block; font-size: 17px; } .my-card.profile small { color: var(--muted); }
 /* 프로필 수정: 오른쪽 '수정' → 사진(눌러서 바꾸기) + 이름 칸 + 취소 · 저장 */
@@ -1799,3 +1819,22 @@ body.login-view .login-only, body.signup-view .signup-only { display: flex; }
   opacity: 0; visibility: hidden; transition: opacity .12s; pointer-events: none; }
 .cp-origin-wrap:hover .cp-tip, .cp-origin-wrap:has(.cp-origin:focus-visible) .cp-tip, .cp-origin-wrap.open .cp-tip { opacity: 1; visibility: visible; }
 @media (max-width: 520px) { .cp-tip { left: auto; right: 0; max-width: min(240px, 70vw); } }   /* 좁은 화면: 오른쪽 끝에 맞춰 화면 밖으로 안 나가게 */
+
+/* 살피 플러스 결제 완료 · 실패 (가운데 정렬 카드, 버튼은 영수증 체험 칸과 같은 노랑) */
+.modal-box.pay-box { width: min(440px, 100%); padding: 32px 24px 22px; }
+.pay-card { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+.pay-card p { margin: 0; }
+.pay-icon { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; }
+.pay-icon svg { width: 32px; height: 32px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.pay-icon.ok { background: #CDEBCF; color: #1E6B2A; }
+.pay-icon.fail { background: #F8D4D4; color: #A32222; }
+.pay-result h3 { margin: 4px 0 0; font-size: 20px; font-weight: 800; }
+.pay-sum { width: 100%; margin: 6px 0 0; padding: 12px 14px; display: grid; gap: 6px; border: 1px solid var(--outline-variant); border-radius: 12px; font-size: 14px; }
+.pay-sum div { display: flex; justify-content: space-between; gap: 12px; }
+.pay-sum dt { color: var(--muted); }
+.pay-sum dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+.pay-msg { font-size: 14px; line-height: 1.6; color: var(--muted); word-break: keep-all; }
+.pay-btn { width: 100%; min-height: 48px; margin-top: 12px; font: inherit; font-size: 15px; font-weight: 800; color: #2E2300; background: #FFE08A; border: 1px solid #F2C94C; border-radius: 12px; cursor: pointer; }
+.pay-btn:hover { background: #FFD966; }
+.pay-back { padding: 6px 12px; border: 0; background: none; font: inherit; font-size: 14px; color: var(--muted); cursor: pointer; }
+.pay-back:hover { color: var(--ink); text-decoration: underline; }

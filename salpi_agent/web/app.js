@@ -935,9 +935,9 @@ function renderItemPage() {
   }
   itemDone = true;
   document.title = `${r.item} 시세 · 살피`;
-  const v = salpiSays((r.history || []).map((h) => h.kg_price), r.forecast);
+  // 제목 아래 살피 한마디는 빼고 이름만 (같은 말이 아래 예측 띠에 있음)
   $("#itemHead").innerHTML = `
-    <div><h1>${esc(r.item)}</h1><p class="${v.kind === "flat" ? "" : v.kind}">${esc(v.text)}</p></div>
+    <div><h1>${esc(r.item)}</h1></div>
     <button type="button" class="item-shop" data-buy="${esc(r.item)}" data-fs="${esc(r.foodspring_url || "")}">사러 가기 →</button>`;
   $("#itemBody").hidden = false;
   $("#itemDash").innerHTML = itemSlide(r, 0);
@@ -965,14 +965,13 @@ async function itemScoreLine(name) {
 function renderExtraItemPage(r) {
   document.title = `${r.item} 시세 · 살피`;
   const d = vegShape(r);
-  const v = salpiSays(d.history.map((h) => h.kg_price), d.forecast);
   $("#itemHead").innerHTML = `
-    <div><h1>${esc(r.item)}</h1><p class="${v.kind === "flat" ? "" : v.kind}">${esc(v.text)} · ${esc(r.group)}</p></div>
+    <div><h1>${esc(r.item)}</h1><p class="muted">${esc(r.group)}</p></div>
     <button type="button" class="item-shop" data-buy="${esc(r.item)}" data-fs="${esc(r.foodspring_url || "")}">사러 가기 →</button>`;
   $("#itemBody").hidden = false;
   $("#itemDash").innerHTML = extraSlide(r, 0);
-  itemScoreLine(r.item);
   drawExtraItemChart($("#itemDash canvas"), r);
+  itemScoreLine(r.item);
   boardItem = { item: r.item, history: d.history, label: `${basisName(r)} ${r.unit}당` };
   renderBoard();
   renderForecast(d.forecast, d.history, r.unit);   // 출처는 화면 맨 아래 안내 문구에 있어 따로 적지 않음

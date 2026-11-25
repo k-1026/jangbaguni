@@ -1396,15 +1396,22 @@ main { overflow-x: clip; }   /* 화면 폭 배경이 가로 스크롤을 만들�
 .score-detail { margin-top: 20px; border-top: 1px solid var(--outline-variant); }
 .score-row { display: grid; grid-template-columns: 180px 1fr; gap: 24px; padding: 18px 0; border-bottom: 1px solid var(--outline-variant); }
 /* 왼쪽: 색 선(초록 · 주황 · 회색) + 묶음 이름 · 기준 · 개수 */
-.score-row-head { display: grid; grid-template-columns: 1fr auto; align-content: start; gap: 4px 8px; padding-left: 12px; border-left: 2px solid var(--primary); }
-.score-row-head b { font-size: 14px; } .score-row-head small { grid-row: 2; font-size: 12px; color: var(--muted); }
-.score-row-head span { grid-row: 1; grid-column: 2; font-size: 13px; font-weight: 700; color: var(--primary); }
+.score-row-head { display: flex; flex-direction: column; justify-content: center; gap: 4px; padding-left: 12px; border-left: 2px solid var(--primary); }
+.score-row-head p { display: flex; align-items: baseline; gap: 6px; margin: 0; }
+.score-row-head b { font-size: 15px; } .score-row-head small { font-size: 12px; color: var(--muted); }
+.score-row-head span { font-size: 13px; font-weight: 700; color: var(--primary); }
 .score-row.mid .score-row-head { border-left-color: var(--warn); } .score-row.mid .score-row-head span { color: var(--warn); }
 .score-row.low .score-row-head { border-left-color: var(--outline); } .score-row.low .score-row-head span { color: var(--muted); }
-/* 오른쪽: 재료 이름을 칸 맞춰 늘어놓기 (글자만) */
-.score-names { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px 16px; align-content: start; }
-.score-names a { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; color: var(--ink); text-decoration: none; }
-.score-names a:hover { color: var(--primary); text-decoration: underline; }
+/* 오른쪽: 재료 이름 6칸 줄 맞춤 · 칸마다 밑줄 + 오른쪽 › (누르면 재료 시세) */
+.score-names { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0 20px; align-content: center; }
+.score-names a { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 7px 2px; border-bottom: 1px solid var(--outline-variant);
+  font-size: 14px; color: var(--ink); text-decoration: none; }
+.score-names a span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }   /* 긴 이름은 … */
+.score-names a::after { content: "›"; flex: none; font-size: 14px; color: var(--outline); }
+.score-names a:hover { color: var(--primary); } .score-names a:hover::after { color: var(--primary); }
+.score-names a:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; border-radius: 4px; }
+@media (max-width: 1100px) { .score-names { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .score-names { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .score-foot { margin: 0; padding-top: 14px; font-size: 12px; color: var(--muted); }
 @media (max-width: 720px) {
   .score-more { order: 1; }   /* 좁으면: 1줄 큰 숫자 · 접기, 2줄 설명, 3줄 탭 */

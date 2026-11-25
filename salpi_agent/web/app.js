@@ -2533,9 +2533,9 @@ function scoreDetail(few) {
   const rows = SCORE_GROUPS.map(([tier, name, range]) => {
     const g = shown.filter(([, v]) => scoreTier(v.direction_hit_pct) === tier);
     return g.length ? `<div class="score-row ${tier}">
-      <div class="score-row-head"><b>${name}</b><small>${range}</small><span>${g.length}개</span></div>
+      <div class="score-row-head"><p><b>${name}</b><span>${g.length}개</span></p><small>${range}</small></div>
       <div class="score-names">${g.map(([item, v]) =>
-        `<a href="/?item=${encodeURIComponent(item)}" title="예측률 ${v.direction_hit_pct}% (${v.n}개 중 ${scoreHits(v)}개)">${esc(item)}</a>`).join("")}</div>
+        `<a href="/?item=${encodeURIComponent(item)}" title="예측률 ${v.direction_hit_pct}% (${v.n}개 중 ${scoreHits(v)}개)"><span>${esc(item)}</span></a>`).join("")}</div>
     </div>` : "";
   }).join("");
   return `<div class="score-detail" id="scoreDetail">

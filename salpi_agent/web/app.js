@@ -2,6 +2,9 @@
 const $ = (s) => document.querySelector(s);
 const won = (v) => (v == null ? "-" : `${Math.round(v).toLocaleString("ko-KR")}원`);
 const pct = (v) => (v == null ? "-" : `${v > 0 ? "+" : ""}${v.toFixed(1)}%`);
+// 값 사이 구분: 가운뎃점 대신 얇은 세로선 (style.css .sep)
+const SEP = `<span class="sep" aria-hidden="true"></span>`;
+const arrowPct = (v) => (v == null ? "-" : `${Math.abs(v).toFixed(1)}%${v > 0 ? "↑" : v < 0 ? "↓" : ""}`);   // 예측 띠: 4.6%↑ · 2.0%↓
 const cls = (v, band = 0) => (v == null ? "" : v > band ? "up" : v < -band ? "down" : "");
 const mmdd = (d) => `${d.slice(5, 7)}.${d.slice(8, 10)}`;
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -491,7 +494,7 @@ function plainReason(factors, kind) {
   if (top.factor.startsWith("도매시장")) return `시장에 들어오는 양이 ${sign > 0 ? "줄었어요" : "늘었어요"}`;
   if (top.factor.startsWith("날씨")) return "최근 날씨 영향이 있어요";
   if (top.factor.includes("공휴일")) return "공휴일을 앞두고 있어요";
-  if (top.factor.includes("평균과의 차이")) return `${top.factor.split(" ")[0]} 평균보다 ${sign > 0 ? "싸서 올라올" : "비싸서 내려올"} 수 있어요`;
+  if (top.factor.includes("평균과의 차이")) return `지금이 평소보다 ${sign > 0 ? "싸요" : "비싸요"}`;
   // 아래는 AI 학습 모델의 이유 (forecast_model.GROUPS)
   if (top.factor.startsWith("계절")) return `해마다 이맘때 ${sign > 0 ? "오르는" : "내리는"} 때예요`;
   if (top.factor.includes("명절")) return "설 · 추석을 앞두고 있어요";
@@ -576,6 +579,8 @@ function salpiSays(prices, f, idx = 0) {
     pose: v.kind === "down" ? "alert_down" : `alert_${v.kind === "up" ? "rise" : "flat"}${(idx % 2) + 1}` };
 }
 
+// 예측 띠 한 줄: '다음 주 약 ○원/kg (4.6%↑) | 지금이 평소보다 싸요' (대시보드 · 재료 페이지 같음)
+const fcRange = (mid, unit, change, why) => `다음 주 약 ${won(mid)}/${unit} (${arrowPct(change)})${why ? `${SEP}${why}` : ""}`;
 function itemSlide(r, idx) {
   const f = r.forecast || {};
   const v = salpiSays((r.history || []).map((h) => h.kg_price), f, idx);
@@ -598,7 +603,7 @@ function itemSlide(r, idx) {
   <div class="fc-strip ${v.kind}">
     <div class="fc-text">
       <span class="verdict">${v.text}</span>
-      <span class="range">7일 뒤 ${won(midPrice(f.base_kg_price, f.expected_change_pct))}/kg 안팎 (${pct(f.expected_change_pct)})${why ? ` · ${why}` : ""}</span>
+      <span class="range">${fcRange(midPrice(f.base_kg_price, f.expected_change_pct), "kg", f.expected_change_pct, why)}</span>
     </div>
     <div class="advice" style="${poseVars(pose)}"><span class="say">${say}</span><img class="pose" src="/static/img/${pose}.png" alt=""></div>
   </div>
@@ -730,7 +735,8 @@ function extraSlide(r, idx) {
   const v = salpiSays((r.history || []).map((h) => h.price), f, idx);
   const why = plainReason(f.factors, v.kind);
   const { pose, say } = v;
-  const range = f.expected_price_range ? `7일 뒤 ${won(midPrice(f.base_price, f.expected_change_pct))}/${esc(r.unit || "")} 안팎 (${pct(f.expected_change_pct)})` : "예측할 자료가 부족해요";
+  const range = f.expected_price_range ? fcRange(midPrice(f.base_price, f.expected_change_pct), esc(r.unit || ""), f.expected_change_pct, why)
+    : `예측할 자료가 부족해요${why ? SEP + why : ""}`;
   return `
 <article class="slide card" data-item="${esc(r.item)}">
   <div class="chart-head">
@@ -748,7 +754,7 @@ function extraSlide(r, idx) {
   <div class="fc-strip ${v.kind}">
     <div class="fc-text">
       <span class="verdict">${v.text}</span>
-      <span class="range">${range}${why ? ` · ${why}` : ""}</span>
+      <span class="range">${range}</span>
     </div>
     <div class="advice" style="${poseVars(pose)}"><span class="say">${say}</span><img class="pose" src="/static/img/${pose}.png" alt=""></div>
   </div>
@@ -935,28 +941,43 @@ function renderItemPage() {
   }
   itemDone = true;
   document.title = `${r.item} 시세 · 살피`;
-  const v = salpiSays((r.history || []).map((h) => h.kg_price), r.forecast);
+  // 제목 아래 살피 한마디는 빼고 이름만 (같은 말이 아래 예측 띠에 있음)
   $("#itemHead").innerHTML = `
-    <div><h1>${esc(r.item)}</h1><p class="${v.kind === "flat" ? "" : v.kind}">${esc(v.text)}</p></div>
+    <div><h1>${esc(r.item)}</h1></div>
     <button type="button" class="item-shop" data-buy="${esc(r.item)}" data-fs="${esc(r.foodspring_url || "")}">사러 가기 →</button>`;
   $("#itemBody").hidden = false;
   $("#itemDash").innerHTML = itemSlide(r, 0);
   drawItemChart($("#itemDash canvas"), r);
+  itemScoreLine(r.item);
   renderDetail(r.item);
   renderItemGoods();
+}
+
+// 재료 페이지 맨 위 재료 이름 아래: 이 재료의 지난 4주 살피 예측률 (/api/forecast-score?weeks=4, 첫 화면 칸과 같은 채점)
+// 50% 아래는 숫자만 두지 않고 재료 탓(가격 변동이 큼)으로 설명, 예측 3번 미만은 '채점 중'
+async function itemScoreLine(name) {
+  let s;
+  try { s = (await getJSON("/api/forecast-score?weeks=4")).items?.[name]; } catch (e) { return; }
+  const box = $("#itemHead > div");   // 맨 위 재료 이름 바로 아래 (비어 있던 자리)
+  if (!s || !box) return;
+  const p = s.direction_hit_pct;
+  const text = s.n < SCORE_MIN ? "이 재료 예측은 아직 채점 중이에요"
+    : p < 50 ? `가격 변동이 커서 예측이 어려운 재료예요${SEP}살피 예측률 ${p}%`
+    : `<b>살피 예측률 ${p}%</b>`;
+  box.insertAdjacentHTML("beforeend", `<p class="item-score${s.n < SCORE_MIN || p < 50 ? " muted" : ""}">${text}</p>`);
 }
 
 // 육류 · 수산물 재료 페이지: 대시보드(4주 그래프) · 시세판(조사일별 증감) · 한 달 시세 위치. 예측 칸은 없다는 안내
 function renderExtraItemPage(r) {
   document.title = `${r.item} 시세 · 살피`;
   const d = vegShape(r);
-  const v = salpiSays(d.history.map((h) => h.kg_price), d.forecast);
   $("#itemHead").innerHTML = `
-    <div><h1>${esc(r.item)}</h1><p class="${v.kind === "flat" ? "" : v.kind}">${esc(v.text)} · ${esc(r.group)}</p></div>
+    <div><h1>${esc(r.item)}</h1><p class="muted">${esc(r.group)}</p></div>
     <button type="button" class="item-shop" data-buy="${esc(r.item)}" data-fs="${esc(r.foodspring_url || "")}">사러 가기 →</button>`;
   $("#itemBody").hidden = false;
   $("#itemDash").innerHTML = extraSlide(r, 0);
   drawExtraItemChart($("#itemDash canvas"), r);
+  itemScoreLine(r.item);
   boardItem = { item: r.item, history: d.history, label: `${basisName(r)} ${r.unit}당` };
   renderBoard();
   renderForecast(d.forecast, d.history, r.unit);   // 출처는 화면 맨 아래 안내 문구에 있어 따로 적지 않음
@@ -1248,8 +1269,6 @@ async function loadSales(date, open = true) {
   }
 }
 
-// 값 사이 구분: 가운뎃점 대신 얇은 세로선 (style.css .sep)
-const SEP = `<span class="sep" aria-hidden="true"></span>`;
 function renderSales() {
   const d = sales.data, isToday = d.date === sales.today;
   $("#sales h2").textContent = isToday ? "오늘 판매 기록" : `${dayLabel(d.date)} 판매 기록`;
@@ -2515,6 +2534,76 @@ $("#martAll").onclick = () => {
   $("#mart").scrollIntoView({ block: "start" });
 };
 
+// ---------------------------------------------------------------
+// 살피 예측률: 지난 7일 화면 예측을 7일 뒤 실제 시세와 비교해 맞춘 비율 (/api/forecast-score?weeks=1)
+// 맞춤 = 오를지 · 비슷할지 · 내릴지(±2%) 방향을 맞힘. 품목은 예측 3번 이상만 (적으면 0% · 100%로 들쭉날쭉)
+// ---------------------------------------------------------------
+const SCORE_KINDS = ["과일", "야채", "육류", "수산물"];   // 탭 순서 (그 밖의 종류가 오면 뒤에 붙임)
+const SCORE_MIN = 3;
+let score = null, scoreKind = "전체", scoreOpen = true;   // 처음엔 펼친 채로, 다 본 뒤 접기
+const scoreHits = (s) => Math.round((s.n * s.direction_hit_pct) / 100);
+const scoreTier = (p) => (p >= 70 ? "good" : p >= 50 ? "mid" : "low");   // 사장님이 이 품목 예측을 얼마나 믿어도 되는지
+const SCORE_GROUPS = [["good", "예측 정확", "70% 이상"], ["mid", "예측 안정", "50~70%"], ["low", "예측 성장 중", "50% 아래"]];
+const scoreKinds = () => [...SCORE_KINDS, ...Object.keys(score.kinds).filter((k) => !SCORE_KINDS.includes(k))].filter((k) => score.kinds[k]?.n);
+const scoreFold = new Set(["good", "mid", "low"]);   // 재료 목록을 접은 묶음 — 처음엔 카드만 보이고 누르면 재료 이름
+// 펼치면: 묶음 카드 3개 나란히 (위 = 큰 묶음 이름 · 개수 · 기준, 누르면 그 아래 재료 목록 접기 · 펼치기)
+function scoreDetail(few) {
+  const shown = Object.entries(score.items).filter(([, v]) => (scoreKind === "전체" || v.kind === scoreKind) && v.n >= SCORE_MIN)
+    .sort((a, b) => b[1].direction_hit_pct - a[1].direction_hit_pct || b[1].n - a[1].n || a[0].localeCompare(b[0], "ko"));
+  const cards = SCORE_GROUPS.map(([tier, name, range]) => {
+    const g = shown.filter(([, v]) => scoreTier(v.direction_hit_pct) === tier);
+    const open = !scoreFold.has(tier);
+    // 해당 재료가 없으면 제목만 흐리게 (누를 것 없음)
+    if (!g.length) return `<div class="score-group ${tier} empty"><div class="score-group-head"><b>${name}</b><small>${range}</small></div></div>`;
+    return `<div class="score-group ${tier}">
+      <button type="button" class="score-group-head" data-sfold="${tier}" aria-expanded="${open}" aria-controls="scoreNames-${tier}">
+        <b>${name}</b><span class="score-count">${g.length}개</span><small>${range}</small>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+      ${open ? `<div class="score-names" id="scoreNames-${tier}">${g.map(([item, v]) =>
+        `<a href="/?item=${encodeURIComponent(item)}" title="예측률 ${v.direction_hit_pct}% (${v.n}번 예측해서 ${scoreHits(v)}번 맞혔어요)"><span>${esc(item)}</span></a>`).join("")}</div>` : ""}
+    </div>`;
+  }).join("");
+  return `<div class="score-detail" id="scoreDetail">
+    ${shown.length ? `<div class="score-groups">${cards}</div>` : `<p class="muted small">품목별로 보여 줄 만큼 채점한 예측이 아직 없어요</p>`}
+    ${few ? `<p class="score-foot">예측 ${SCORE_MIN}번 미만 ${few}개는 채점 중</p>` : ""}
+  </div>`;
+}
+function renderScore() {
+  const a = score.all;
+  if (!a?.n) { $("#scoreCard").innerHTML = `<p class="muted">아직 채점한 예측이 없어요. 예측하고 7일이 지나면 채점해요.</p>`; return; }
+  const kinds = scoreKinds();
+  if (scoreKind !== "전체" && !kinds.includes(scoreKind)) scoreKind = "전체";
+  const s = scoreOpen && scoreKind !== "전체" ? score.kinds[scoreKind] : a;   // 큰 숫자 = 고른 탭의 예측률
+  const label = scoreOpen && scoreKind !== "전체" ? scoreKind : "전체";
+  const few = Object.values(score.items).filter((v) => (label === "전체" || v.kind === label) && v.n < SCORE_MIN).length;
+  $("#scoreCard").innerHTML = `<div class="score-top">
+      <p class="score-big"><b>${s.direction_hit_pct}%</b><span>${esc(label)} 예측률</span></p>
+      <p class="score-sub">7일 뒤 가격 방향 적중률<br>${s.n}번 예측해서 ${scoreHits(s)}번 맞혔어요</p>
+      ${scoreOpen ? `<div class="score-tabs" role="group" aria-label="재료 종류">${["전체", ...kinds].map((k) =>
+        `<button type="button" data-skind="${esc(k)}" class="${k === scoreKind ? "active" : ""}" aria-pressed="${k === scoreKind}">${esc(k)}</button>`).join("")}</div>` : ""}
+      <button type="button" class="score-more" data-smore aria-expanded="${scoreOpen}" aria-controls="scoreDetail">${scoreOpen ? "접기" : "상세보기"}
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+    </div>
+    ${scoreOpen ? scoreDetail(few) : ""}`;
+}
+async function loadScore() {
+  try { score = await getJSON("/api/forecast-score?weeks=1"); }
+  catch (e) { $("#scoreCard").innerHTML = `<p class="muted">예측률을 불러오지 못했어요</p>`; return; }
+  renderScore();
+}
+$("#scoreCard").onclick = (e) => {
+  if (e.target.closest("[data-smore]")) { scoreOpen = !scoreOpen; renderScore(); return $("#scoreCard [data-smore]").focus(); }
+  const k = e.target.closest("[data-skind]");
+  if (k) { scoreKind = k.dataset.skind; renderScore(); $(`#scoreCard [data-skind="${CSS.escape(scoreKind)}"]`)?.focus(); }   // 다시 그려도 누른 탭에 그대로
+  const f = e.target.closest("[data-sfold]");
+  if (f) {
+    const t = f.dataset.sfold;
+    scoreFold.has(t) ? scoreFold.delete(t) : scoreFold.add(t);
+    renderScore();
+    $(`#scoreCard [data-sfold="${t}"]`)?.focus();
+  }
+};
+
 async function loadContext() {
   let c;
   try { c = await getJSON("/api/context"); } catch (e) { return; }
@@ -2949,6 +3038,7 @@ if (STORE_VIEW) {
 } else if (!ITEM && !AUTH_VIEW) {
   loadContext();
   loadMart();
+  loadScore();
 }
 if (location.hash === "#chat") openChat();   // 주소 끝에 #chat 을 붙이면 채팅창이 열린 채로 시작
 if (location.hash === "#talk") openTalk();   // 주소 끝에 #talk 을 붙이면 알림톡 시연이 열린 채로 시작

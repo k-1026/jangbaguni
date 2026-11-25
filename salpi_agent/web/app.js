@@ -2906,6 +2906,7 @@ loadOverview();
 loadExtra();   // 육류 · 수산물: 탭 · 검색 · 재료 페이지(/?item=삼겹살)에서 씀
 loadProducts();
 loadMyItems();
+loadCostAlerts();
 if (STORE_VIEW) {
   const storeReady = Promise.allSettled([loadSales(), loadDemand(), loadCosts()]);
   // 첫 화면 영수증 분석 체험 칸(/?page=store#receipt): 열자마자 영수증 분석 칸으로 이동하고,
@@ -3804,6 +3805,19 @@ async function loadMyItems() {
   } catch (e) { myItems = null; }
   if (overview.length) deliverAlerts();
 }
+// 원가율 알림 (서버 store/cost_alert.py, GET /api/cost-alerts): 시세가 바뀌어 다시 계산한 원가율이 40%를 넘거나 넘을 예정 · 오름 · 내려옴
+// → 시세 알림과 같은 종 · 챗봇 · 크롬 알림 목록에 섞어 보여 줌, 누르면 메뉴별 원가율
+let costAlerts = [];
+async function loadCostAlerts() {
+  if (!SIGNED_IN) return;
+  try {
+    const r = await getJSON("/api/cost-alerts", { auth: true });
+    // day = 한국 날짜 (06:00 알림은 UTC로 전날)
+    costAlerts = r.alerts.map((a) => ({ id: `cost|${a.id}`, kind: "원가율", text: `사장님, ${a.message}`,
+      title: a.message.split(". ")[0], item: null, day: new Date(Date.parse(a.sent_at) + 9 * 36e5).toISOString().slice(0, 10), href: "/?page=store#costs" }));
+  } catch (e) { costAlerts = []; }
+  deliverAlerts();
+}
 const menusOf = (item) => myItems?.get(item) || [];
 // 알림 문장 뒤에 붙임: (김치찌개 · 된장찌개에 들어가요)
 const inMenus = (item) => { const m = menusOf(item); return m.length ? ` (${m.join(" · ")}에 들어가요)` : ""; };
@@ -3868,7 +3882,7 @@ function buildAlerts() {
 }
 
 function deliverAlerts() {
-  const list = buildAlerts();
+  const list = [...costAlerts, ...buildAlerts()];
   document.querySelectorAll("#chatBody .msg.alert").forEach((el) => el.remove());
   if (list.length && !body.children.length) addMsg("bot", "사장님, 오늘 대구 시세 살펴왔어요.\n아래 버튼을 누르거나 편하게 물어보세요.");
   const read = new Set(load(ALERT_READ_KEY, []));
@@ -3876,9 +3890,9 @@ function deliverAlerts() {
     const el = addMsg("bot", a.text);
     el.classList.add("alert");
     el.dataset.alertId = a.id;
-    el.insertAdjacentHTML("afterbegin", `<span class="alert-tag">시세 알림${read.has(a.id) ? "" : " · 새 알림"}</span>`);
-    el.insertAdjacentHTML("beforeend", `<span class="alert-more">${a.item ? `${esc(a.item)} 시세 자세히 보기` : "시세 대시보드 보기"} ›</span>`);
-    el.title = "누르면 자세한 시세로 넘어가요";
+    el.insertAdjacentHTML("afterbegin", `<span class="alert-tag">${a.kind || "시세"} 알림${read.has(a.id) ? "" : " · 새 알림"}</span>`);
+    el.insertAdjacentHTML("beforeend", `<span class="alert-more">${a.href ? "메뉴별 원가율 보기" : a.item ? `${esc(a.item)} 시세 자세히 보기` : "시세 대시보드 보기"} ›</span>`);
+    el.title = a.href ? "누르면 메뉴별 원가율로 넘어가요" : "누르면 자세한 시세로 넘어가요";
   }
   delivered = list;
   if (chatEl.classList.contains("open")) markAlertsRead();
@@ -3894,7 +3908,7 @@ function notifyAlerts() {
   const read = new Set(load(ALERT_READ_KEY, [])), shown = new Set(load(ALERT_NOTIFIED_KEY, []));
   const fresh = delivered.filter((a) => !read.has(a.id) && !shown.has(a.id)).slice(0, 3);
   for (const a of fresh) {
-    try { new Notification("살피 시세 알림", { body: a.text.split("\n")[0], icon: "/static/img/salpi_face.png", tag: a.id }); } catch (e) {}
+    try { new Notification(`살피 ${a.kind || "시세"} 알림`, { body: a.text.split("\n")[0], icon: "/static/img/salpi_face.png", tag: a.id }); } catch (e) {}
     shown.add(a.id);
   }
   if (fresh.length) store(ALERT_NOTIFIED_KEY, [...shown].slice(-200));
@@ -3913,7 +3927,7 @@ function markAlertsRead(ids = delivered.map((a) => a.id)) {
 function updateBadges() {
   const n = unreadCount();
   for (const el of [$("#fabCount"), $("#bellCount")]) { el.hidden = !n; el.textContent = n > 99 ? "99+" : n; }
-  $("#fabBubble").textContent = n ? "시세 알림이 있어요" : "살피 챗봇에게 물어보세요";
+  $("#fabBubble").textContent = n ? "새 알림이 있어요" : "살피 챗봇에게 물어보세요";
   $("#fab").classList.toggle("has-alert", n > 0);
   renderBell();
 }
@@ -3922,7 +3936,7 @@ function updateBadges() {
 function renderBell() {
   const read = new Set(load(ALERT_READ_KEY, []));
   $("#bellList").innerHTML = delivered.length ? delivered.map((a) => `<li><button data-aid="${esc(a.id)}" class="${read.has(a.id) ? "" : "unread"}">
-      <img src="/static/img/salpi_face.png" alt=""><span><b>${esc(a.title)}</b><small>${mmdd(a.day)} 시세 · ${a.item ? "누르면 재료 페이지" : "누르면 대시보드"}</small></span></button></li>`).join("")
+      <img src="/static/img/salpi_face.png" alt=""><span><b>${esc(a.title)}</b><small>${mmdd(a.day)} ${a.kind || "시세"} · ${a.href ? "누르면 메뉴별 원가율" : a.item ? "누르면 재료 페이지" : "누르면 대시보드"}</small></span></button></li>`).join("")
     : `<li class="empty">새 알림이 없어요.<br><button data-open-settings>설정에서 알림 종류 켜기 ›</button></li>`;
 }
 function toggleBell(open = $("#bellPanel").hidden) {
@@ -3944,6 +3958,7 @@ function goToAlert(id) {
   const a = delivered.find((x) => x.id === id);
   if (!a) return;
   markAlertsRead([id]);
+  if (a.href) { location.href = a.href; return; }
   if (a.item) { location.href = `/?item=${encodeURIComponent(a.item)}`; return; }
   closeChat();
   if (ITEM) { location.href = "/#dashboard"; return; }

@@ -2336,8 +2336,9 @@ const payWait = (msg) => payShow(`<div class="reading"><div class="spinner"></di
 function payShow(html) { $("#payBody").innerHTML = html; $("#payModal").hidden = false; }
 // 결제가 끝났으면 잠금을 풀려고 새로고침 (누른 칸으로 바로 이동)
 function payClose() {
-  if (!payPaid) { $("#payModal").hidden = true; return; }
-  history.replaceState(null, "", `/?page=store${PAY_GO[payFrom()]?.[1] || ""}`);
+  $("#payModal").hidden = true;   // 새로고침은 새 페이지가 뜰 때까지 몇 초 걸려서, 창부터 바로 닫음
+  if (!payPaid) return;
+  window.history.replaceState(null, "", `/?page=store${PAY_GO[payFrom()]?.[1] || ""}`);
   location.reload();
 }
 
@@ -4273,7 +4274,7 @@ $("#eventCard").onclick = (e) => {
 {
   const q = new URLSearchParams(location.search), back = q.get("pay");
   if (back && SIGNED_IN) {
-    history.replaceState(null, "", "/?page=store");
+    window.history.replaceState(null, "", "/?page=store");
     if (back === "success") payConfirm({ payment_key: q.get("paymentKey"), order_id: q.get("orderId"), amount: +q.get("amount") });
     else payFail(q.get("message"));
   }

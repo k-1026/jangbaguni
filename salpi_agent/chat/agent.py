@@ -15,7 +15,6 @@ import inspect
 import json
 import os
 from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
 
 from google import genai
 from google.genai import errors, types
@@ -34,7 +33,6 @@ from sources import supabase_db
 from chat import number_check, quick
 from sources.data_sources import EXTRA_ITEMS, ITEMS, ApiKeyMissing, daegu_events, holidays
 
-ROOT = Path(__file__).resolve().parents[1]   # salpi_agent 폴더
 MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 # 기본 모델이 바쁘거나(503) 무료 한도를 넘으면(429) 순서대로 갈아탐
 # 챗봇 전용 순서 (11/25: 사장님이 3~5초 안에 답을 받게 가벼운 모델부터 · 자료는 미리 붙여 줘서 가벼운 모델로도 충분)
@@ -143,7 +141,17 @@ def get_item_price_trend(item: str) -> dict:
     Args:
         item: 재료 이름 (예: 양파, 대파, 양배추, 청양고추, 당근, 깻잎)
     """
-    return _safe(analysis.item_trend, _item(item))
+    name = _item(item)
+    r = next((r for r in _overview_rows() or [] if r["item"] == name), None)
+    if r:   # 첫 화면 보관값으로 바로 (11/25: 배포 직후 aT 시세를 처음부터 받느라 53초)
+        return {"item": name,
+                "wholesale": {"source": "aT 정산정보 · 대구 북부도매시장(매천시장)", "date": r["wholesale_date"], "kg_price": r["wholesale_kg"],
+                              "week_change_pct": r["wholesale_change_pct"], "direction": r["direction"],
+                              "volume_kg": (r.get("history") or [{}])[-1].get("volume_kg")},
+                "retail": {"source": "aT 일별 도·소매가(KAMIS 조사) · 대구 소매 평균, 상품", "price": r["retail_price"],
+                           "unit": r["retail_unit"], "week_change_pct": r["retail_change_pct"],
+                           "base_price": r["retail_base_price"], "base_unit": r["retail_base_unit"], "base_how": r["retail_base_how"]}}
+    return _safe(analysis.item_trend, name)
 
 
 @_remember
@@ -357,18 +365,13 @@ TOOLS = list(dict.fromkeys(t for ts in AGENT_TOOLS.values() for t in ts))   # �
 # 살피 성격 (brand/SKILL.md + 기획서 11-3 판단 원칙)
 # ---------------------------------------------------------------
 
-SKILL_URL = "https://raw.githubusercontent.com/k-1026/jangbaguni/main/brand/SKILL.md"
-
-
-def _brand_skill():
-    # 내 컴퓨터는 저장소의 brand/SKILL.md, Vercel은 salpi_agent 폴더만 올라가므로 GitHub에서 읽어 옴
-    path = ROOT.parent / "brand" / "SKILL.md"
-    if path.exists():
-        return path.read_text(encoding="utf-8")
-    try:
-        return requests.get(SKILL_URL, timeout=10).text
-    except requests.RequestException:
-        return ""
+# 브랜드 규칙(brand/SKILL.md)에서 챗봇 답에 필요한 말투 · 금칙어만 (11/25: 파일 전체를 매번 보내 Groq 분당 한도를 빨리 씀.
+# 실제 사이트는 서버가 켜질 때마다 GitHub 에서 받아 왔음). SKILL.md 의 톤 · 금칙어가 바뀌면 여기도 같이 고칠 것
+BRAND_RULES = """살피 말투 (브랜드 규칙)
+- 존댓말 "~해요"체, 한 문장 25자 안팎. 숫자에는 단위(kg, 원, %, 그릇). 경고 뒤에는 행동 제안 1개.
+- 쓰지 않는 말: 무조건 · 100% · 확실히 · 보장(→ "~할 가능성이 높아요"), 최저가 보장 · 제일 싸요,
+  손해 보셨어요 · 잘못 사셨어요(→ "다음엔 이렇게 하면 아낄 수 있어요"), 모델 · 피처 · 분위수 같은 전문 용어,
+  대박 · ㅋㅋ · 이모지, 다른 판매처 비방, 출처 없는 통계."""
 
 
 COMMON_PROMPT = """너는 '살피'다. 대구 외식업 사장님의 식자재 시세 · 원가 비서인 미어캣. 아무것도 팔지 않는다.
@@ -454,7 +457,7 @@ D. "내일 얼마나 준비할까?", 판매량 · 몇 그릇 · 발주량 · 재
 
 
 def _system(kind):
-    return f"{COMMON_PROMPT}\n{AGENT_PROMPTS[kind]}\n아래는 살피 브랜드 규칙이다. 말투와 금칙어를 따른다.\n{_brand_skill()}"
+    return f"{COMMON_PROMPT}\n{AGENT_PROMPTS[kind]}\n{BRAND_RULES}"
 
 
 SYSTEM_PROMPTS = {k: _system(k) for k in AGENT_PROMPTS}
@@ -486,6 +489,7 @@ ROUTER_PROMPT = """식당 사장님 질문을 맡을 담당을 고른다. 담당
 JSON 으로만: {"agents": ["시세" | "원가" | "내일준비", ...]}
 질문: """
 ORDER = ["시세", "원가", "내일준비"]
+_ROUTER_POOL = ThreadPoolExecutor(4)
 
 
 def _keyword_route(message):
@@ -507,6 +511,8 @@ def route(message, client=None, before=()):
     hits = [k for k, pat in KEYWORDS.items() if re.search(pat, text)]
     if len(hits) == 1:   # 낱말로 담당이 하나로 정해지면 AI 를 부르지 않음 (1 ~ 1.7초 절약)
         return hits, "낱말"
+    if len(hits) > 1 and len(_keyword_route(text)) == 1:   # "내일 김치찌개 몇 그릇"처럼 덤으로 걸린 낱말을 빼면 하나
+        return _keyword_route(text), "낱말"
     if not hits and len(text) <= 20:   # "그럼 김치찌개는?" 같은 짧은 이어 묻기 → 바로 앞 질문의 담당 그대로 (11/25: 시세 담당으로 가서 엉뚱한 답)
         # 앞 질문에 낱말이 없으면("내 비빔밥 뭐가 문제야") 살피 답("원가율 21.5%")으로 판단
         turns = [t for t in zip(before[0::2], before[1::2]) if not quick.small_talk(t[0])]   # 소개 · 인사는 건너뜀
@@ -522,9 +528,12 @@ def route(message, client=None, before=()):
     if client is not None and _COOL.get(ROUTER_MODEL, 0) < time.time():
         try:
             prev = "".join(f"앞 질문: {b[:200]}\n" for b in list(before[0::2])[-2:])
-            r = client.models.generate_content(model=ROUTER_MODEL, contents=ROUTER_PROMPT.replace("질문: ", prev + "질문: ") + text[:500],
-                                               config=types.GenerateContentConfig(response_mime_type="application/json",
-                                                                                  temperature=0))
+            # 3초 안에 답이 없으면 버리고 낱말 규칙으로 (11/25: 한도에 걸린 날 10초씩 기다림.
+            # 제미나이는 10초보다 짧은 대기 시간 설정을 거부해서 서버가 직접 3초만 기다림)
+            r = _ROUTER_POOL.submit(client.models.generate_content, model=ROUTER_MODEL,
+                                    contents=ROUTER_PROMPT.replace("질문: ", prev + "질문: ") + text[:500],
+                                    config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0)
+                                    ).result(timeout=3)
             picked = [a for a in dict.fromkeys(json.loads(r.text).get("agents") or []) if a in AGENT_PROMPTS]
             if picked:
                 return picked[:3], "모델"
@@ -605,7 +614,16 @@ def _prefetch(kind, message, on_status=None):
         on_status(TOOL_STATUS.get(calls[0][0], "확인하는 중…"))
     with ThreadPoolExecutor(len(calls)) as pool:
         res = list(pool.map(lambda c: funcs[c[0]](*c[1]), calls))
-    return {f"{n}({', '.join(a)})": _slim(r) for (n, a), r in zip(calls, res)}, only
+    return {f"{n}({', '.join(a)})": _slim(_only_asked(r, text)) for (n, a), r in zip(calls, res)}, only
+
+
+def _only_asked(r, text):
+    """가게 원가표에서 질문에 나온 메뉴만 남김 ("제육은?" → 제육볶음). 메뉴가 안 나오면 전체 (11/25: 5개 전체가 매번 1,800자)."""
+    menus = r.get("menus") if isinstance(r, dict) else None
+    if not menus:
+        return r
+    asked = [m for m in menus if m["menu"] in text] or [m for m in menus if m["menu"][:2] in text]
+    return {**r, "menus": asked} if asked else r
 
 
 # Groq (무료 · 아주 빠름): CHAT_PROVIDER=groq 이고 GROQ_API_KEY 가 있으면 먼저 쓰고, 실패하면 제미나이로

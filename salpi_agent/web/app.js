@@ -2,6 +2,9 @@
 const $ = (s) => document.querySelector(s);
 const won = (v) => (v == null ? "-" : `${Math.round(v).toLocaleString("ko-KR")}원`);
 const pct = (v) => (v == null ? "-" : `${v > 0 ? "+" : ""}${v.toFixed(1)}%`);
+// 값 사이 구분: 가운뎃점 대신 얇은 세로선 (style.css .sep)
+const SEP = `<span class="sep" aria-hidden="true"></span>`;
+const arrowPct = (v) => (v == null ? "-" : `${Math.abs(v).toFixed(1)}%${v > 0 ? "↑" : v < 0 ? "↓" : ""}`);   // 예측 띠: 4.6%↑ · 2.0%↓
 const cls = (v, band = 0) => (v == null ? "" : v > band ? "up" : v < -band ? "down" : "");
 const mmdd = (d) => `${d.slice(5, 7)}.${d.slice(8, 10)}`;
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -494,7 +497,7 @@ function plainReason(factors, kind) {
   if (top.factor.startsWith("도매시장")) return `시장에 들어오는 양이 ${sign > 0 ? "줄었어요" : "늘었어요"}`;
   if (top.factor.startsWith("날씨")) return "최근 날씨 영향이 있어요";
   if (top.factor.includes("공휴일")) return "공휴일을 앞두고 있어요";
-  if (top.factor.includes("평균과의 차이")) return `${top.factor.split(" ")[0]} 평균보다 ${sign > 0 ? "싸서 올라올" : "비싸서 내려올"} 수 있어요`;
+  if (top.factor.includes("평균과의 차이")) return `지금이 평소보다 ${sign > 0 ? "싸요" : "비싸요"}`;
   // 아래는 AI 학습 모델의 이유 (forecast_model.GROUPS)
   if (top.factor.startsWith("계절")) return `해마다 이맘때 ${sign > 0 ? "오르는" : "내리는"} 때예요`;
   if (top.factor.includes("명절")) return "설 · 추석을 앞두고 있어요";
@@ -579,6 +582,9 @@ function salpiSays(prices, f, idx = 0) {
     pose: v.kind === "down" ? "alert_down" : `alert_${v.kind === "up" ? "rise" : "flat"}${(idx % 2) + 1}` };
 }
 
+// 예측 띠 한 줄: '다음 주 약 ○원/kg (4.6%↑) | 지금이 평소보다 싸요' (대시보드 · 재료 페이지 같음)
+// when: 주 평균 모델(11/25~)이면 "다음 주 평균 약" (fcWhen)
+const fcRange = (mid, unit, change, why, when = "다음 주 약") => `${when} ${won(mid)}/${unit} (${arrowPct(change)})${why ? `${SEP}${why}` : ""}`;
 function itemSlide(r, idx) {
   const f = r.forecast || {};
   const v = salpiSays((r.history || []).map((h) => h.kg_price), f, idx);
@@ -601,7 +607,7 @@ function itemSlide(r, idx) {
   <div class="fc-strip ${v.kind}">
     <div class="fc-text">
       <span class="verdict">${v.text}</span>
-      <span class="range">${fcWhen(f)} ${won(midPrice(f.base_kg_price, f.expected_change_pct))}/kg 안팎 (${pct(f.expected_change_pct)})${why ? ` · ${why}` : ""}</span>
+      <span class="range">${fcRange(midPrice(f.base_kg_price, f.expected_change_pct), "kg", f.expected_change_pct, why, `${fcWhen(f) === "다음 주 평균" ? "다음 주 평균" : "다음 주"} 약`)}</span>
     </div>
     <div class="advice" style="${poseVars(pose)}"><span class="say">${say}</span><img class="pose" src="/static/img/${pose}.png" alt=""></div>
   </div>
@@ -733,7 +739,8 @@ function extraSlide(r, idx) {
   const v = salpiSays((r.history || []).map((h) => h.price), f, idx);
   const why = plainReason(f.factors, v.kind);
   const { pose, say } = v;
-  const range = f.expected_price_range ? `7일 뒤 ${won(midPrice(f.base_price, f.expected_change_pct))}/${esc(r.unit || "")} 안팎 (${pct(f.expected_change_pct)})` : "예측할 자료가 부족해요";
+  const range = f.expected_price_range ? fcRange(midPrice(f.base_price, f.expected_change_pct), esc(r.unit || ""), f.expected_change_pct, why)
+    : `예측할 자료가 부족해요${why ? SEP + why : ""}`;
   return `
 <article class="slide card" data-item="${esc(r.item)}">
   <div class="chart-head">
@@ -751,7 +758,7 @@ function extraSlide(r, idx) {
   <div class="fc-strip ${v.kind}">
     <div class="fc-text">
       <span class="verdict">${v.text}</span>
-      <span class="range">${range}${why ? ` · ${why}` : ""}</span>
+      <span class="range">${range}</span>
     </div>
     <div class="advice" style="${poseVars(pose)}"><span class="say">${say}</span><img class="pose" src="/static/img/${pose}.png" alt=""></div>
   </div>
@@ -938,28 +945,43 @@ function renderItemPage() {
   }
   itemDone = true;
   document.title = `${r.item} 시세 · 살피`;
-  const v = salpiSays((r.history || []).map((h) => h.kg_price), r.forecast);
+  // 제목 아래 살피 한마디는 빼고 이름만 (같은 말이 아래 예측 띠에 있음)
   $("#itemHead").innerHTML = `
-    <div><h1>${esc(r.item)}</h1><p class="${v.kind === "flat" ? "" : v.kind}">${esc(v.text)}</p></div>
+    <div><h1>${esc(r.item)}</h1></div>
     <button type="button" class="item-shop" data-buy="${esc(r.item)}" data-fs="${esc(r.foodspring_url || "")}">사러 가기 →</button>`;
   $("#itemBody").hidden = false;
   $("#itemDash").innerHTML = itemSlide(r, 0);
   drawItemChart($("#itemDash canvas"), r);
+  itemScoreLine(r.item);
   renderDetail(r.item);
   renderItemGoods();
+}
+
+// 재료 페이지 맨 위 재료 이름 아래: 이 재료의 지난 4주 살피 예측률 (/api/forecast-score?weeks=4, 첫 화면 칸과 같은 채점)
+// 50% 아래는 숫자만 두지 않고 재료 탓(가격 변동이 큼)으로 설명, 예측 3번 미만은 '채점 중'
+async function itemScoreLine(name) {
+  let s;
+  try { s = (await getJSON("/api/forecast-score?weeks=4")).items?.[name]; } catch (e) { return; }
+  const box = $("#itemHead > div");   // 맨 위 재료 이름 바로 아래 (비어 있던 자리)
+  if (!s || !box) return;
+  const p = s.direction_hit_pct;
+  const text = s.n < SCORE_MIN ? "이 재료 예측은 아직 채점 중이에요"
+    : p < 50 ? `가격 변동이 커서 예측이 어려운 재료예요${SEP}살피 예측률 ${p}%`
+    : `<b>살피 예측률 ${p}%</b>`;
+  box.insertAdjacentHTML("beforeend", `<p class="item-score${s.n < SCORE_MIN || p < 50 ? " muted" : ""}">${text}</p>`);
 }
 
 // 육류 · 수산물 재료 페이지: 대시보드(4주 그래프) · 시세판(조사일별 증감) · 한 달 시세 위치. 예측 칸은 없다는 안내
 function renderExtraItemPage(r) {
   document.title = `${r.item} 시세 · 살피`;
   const d = vegShape(r);
-  const v = salpiSays(d.history.map((h) => h.kg_price), d.forecast);
   $("#itemHead").innerHTML = `
-    <div><h1>${esc(r.item)}</h1><p class="${v.kind === "flat" ? "" : v.kind}">${esc(v.text)} · ${esc(r.group)}</p></div>
+    <div><h1>${esc(r.item)}</h1><p class="muted">${esc(r.group)}</p></div>
     <button type="button" class="item-shop" data-buy="${esc(r.item)}" data-fs="${esc(r.foodspring_url || "")}">사러 가기 →</button>`;
   $("#itemBody").hidden = false;
   $("#itemDash").innerHTML = extraSlide(r, 0);
   drawExtraItemChart($("#itemDash canvas"), r);
+  itemScoreLine(r.item);
   boardItem = { item: r.item, history: d.history, label: `${basisName(r)} ${r.unit}당` };
   renderBoard();
   renderForecast(d.forecast, d.history, r.unit);   // 출처는 화면 맨 아래 안내 문구에 있어 따로 적지 않음
@@ -1212,13 +1234,8 @@ function monthRange(history, now) {
 // 펼치면 왼쪽 표(메뉴가 많으면 표 안에서 스크롤) + 오른쪽 요약(총 매출 · 그릇 · 홀 / 배달 · 저장 상태). [접기]를 누르면 한 줄 요약
 // 빈칸 = 안 넣음, 0 = 안 팔림. 단 이미 저장된 칸을 비우면 0(안 팔림)으로 저장 (흐린 '0'으로 미리 보여 줌)
 // 서버와 같은 규칙(0 이상 정수 · 하루 2000그릇 · 60일 전까지)을 먼저 화면에서 확인
-// '배달'을 끄면 배달 칸을 없애고 메뉴당 칸 하나(홀로 저장) — 이 브라우저에 기억. 예전에 넣은 배달 기록은 지우지 않고 합계에만 넣음
 // ---------------------------------------------------------------
 const SALES_MAX = 2000, SALES_BACK_DAYS = 60;
-const SALES_DELIV_KEY = "salpi_sales_delivery";
-const delivOn = () => { try { return localStorage.getItem(SALES_DELIV_KEY) !== "0"; } catch (e) { return true; } };
-const setDelivOn = (on) => { try { localStorage.setItem(SALES_DELIV_KEY, on ? "1" : "0"); } catch (e) {} };
-const showDeliv = () => delivOn();
 const WEEKDAY = ["일", "월", "화", "수", "목", "금", "토"];
 // saving: 지금 저장 중인 요청(Promise) · again: 저장 중에 또 고쳐서 끝나면 한 번 더 · failed: 마지막 저장이 실패함
 const sales = { today: null, data: null, open: true, saving: null, again: false, failed: false, timer: null, refresh: null, savedAt: null };
@@ -1251,8 +1268,6 @@ async function loadSales(date, open = true) {
   }
 }
 
-// 값 사이 구분: 가운뎃점 대신 얇은 세로선 (style.css .sep)
-const SEP = `<span class="sep" aria-hidden="true"></span>`;
 function renderSales() {
   const d = sales.data, isToday = d.date === sales.today;
   $("#sales h2").textContent = isToday ? "오늘 판매 기록" : `${dayLabel(d.date)} 판매 기록`;
@@ -1273,21 +1288,19 @@ function renderSales() {
           <div><b>${dayName}</b><small>${d.entered ? `저장됨${sales.savedAt ? ` ${SEP} ${sales.savedAt}` : ""} ${SEP} 내일 준비 반영` : "아직 안 넣었어요"}</small></div>
         </div>
         ${d.entered ? `${stat("총 판매량", `${num(d.total)}그릇`)}${stat(isToday ? "오늘 매출" : "매출", won(d.sales_won), "money")}
-          ${showDeliv() || deliv ? stat("판매 방식", `홀 ${num(hall)} ${SEP} 배달 ${num(deliv)}`) : ""}` : ""}
+          ${stat("판매 방식", `홀 ${num(hall)} ${SEP} 배달 ${num(deliv)}`)}` : ""}
         <button class="sales-unfold" type="button" data-sales="unfold" aria-expanded="false" aria-controls="salesCard" aria-label="판매 기록 펼치기" title="펼치기">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
       </div>`;
     return;
   }
   const min = dayShift(sales.today, -SALES_BACK_DAYS);
-  const both = showDeliv();
   const cell = (m, key, label) => `<input class="sales-in" type="text" inputmode="numeric" autocomplete="off" maxlength="4"
-      data-mid="${m.menu_id}" data-key="${key}" value="${m[key] ?? ""}" placeholder="${m[key] != null ? "0" : "-"}" aria-label="${esc(m.name)}${label ? ` ${label}` : ""} 그릇 수">`;
+      data-mid="${m.menu_id}" data-key="${key}" value="${m[key] ?? ""}" placeholder="${m[key] != null ? "0" : "-"}" aria-label="${esc(m.name)} ${label} 그릇 수">`;
   $("#salesCard").innerHTML = `
     <div class="sales-bar">
       <div class="sales-bar-left"><label class="sales-date"><span class="sales-day-label">${isToday ? "오늘" : `${WEEKDAY[new Date(`${d.date}T00:00:00`).getDay()]}요일`}</span>
-        <input type="date" id="salesDate" value="${d.date}" min="${min}" max="${sales.today}" aria-label="날짜 고르기"></label>
-        <label class="sales-opt"><input type="checkbox" id="salesDeliv" ${delivOn() ? "checked" : ""}><span class="sales-opt-box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></span>배달</label></div>
+        <input type="date" id="salesDate" value="${d.date}" min="${min}" max="${sales.today}" aria-label="날짜 고르기"></label></div>
       <div class="sales-bar-right">
         <button class="sales-unfold" type="button" data-sales="fold" aria-expanded="true" aria-controls="salesCard" aria-label="판매 기록 접기" title="접기">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>
@@ -1296,13 +1309,12 @@ function renderSales() {
     <div class="sales-split">
       <div class="sales-left">
         <div class="sales-scroll">
-          <table class="sales-grid${both ? "" : " one"}">
+          <table class="sales-grid">
             <thead><tr><th scope="col">메뉴</th>
-              ${both ? `<th scope="col">홀</th><th scope="col">배달</th><th scope="col" class="num">합계</th>` : `<th scope="col">판매 그릇 수</th>`}<th scope="col" class="num rev">매출</th></tr></thead>
+              <th scope="col">홀 판매</th><th scope="col">배달 판매</th><th scope="col" class="num">합계</th><th scope="col" class="num rev">매출</th></tr></thead>
             <tbody>${d.menus.map((m) => `<tr data-mid="${m.menu_id}">
               <th scope="row">${esc(m.name)}<small>${won(m.price)}</small></th>
-              ${both ? `<td>${cell(m, "hall", "홀")}</td><td>${cell(m, "delivery", "배달")}</td><td class="num sales-sum" data-sum="${m.menu_id}"></td>`
-                : `<td>${cell(m, "hall", "")}<span class="sales-sum" data-sum="${m.menu_id}" hidden></span></td>`}
+              <td>${cell(m, "hall", "홀 판매")}</td><td>${cell(m, "delivery", "배달 판매")}</td><td class="num sales-sum" data-sum="${m.menu_id}"></td>
               <td class="num rev" data-rev="${m.menu_id}"></td>
             </tr>`).join("")}</tbody>
           </table>
@@ -1348,7 +1360,6 @@ function salesTotals() {
     const row = {};
     ["hall", "delivery"].forEach((key) => {
       const el = document.querySelector(`#salesCard .sales-in[data-mid="${m.menu_id}"][data-key="${key}"]`);
-      // 배달 칸을 없앴어도 예전에 넣은 배달 기록은 저장돼 있으니 합계 · 매출에 넣음 (접힌 줄 · 서버 합계와 같게)
       const v = el ? effVal(el) : m[key] ?? null;
       row[key] = v;
       if (Number.isFinite(v)) { ch[key].n += v; ch[key].won += v * m.price; }
@@ -1371,8 +1382,7 @@ function salesTotals() {
   $("#spBowls").innerHTML = `총 <b>${num(bowls)}그릇</b> 판매`;
   // 홀 / 배달 한 줄: 이름 | 그릇 | 금액 — 세 칸으로 줄 맞춤
   const line = (label, c, cls = "") => `<div class="${cls}"><dt>${label}</dt><dd>${num(c.n)}<span class="unit">그릇</span></dd><dd class="won">${won(c.won)}</dd></div>`;
-  $("#spChannels").innerHTML = showDeliv() || ch.delivery.n
-    ? line("홀", ch.hall) + line("배달", ch.delivery, "deliv") : line("홀", ch.hall);
+  $("#spChannels").innerHTML = line("홀", ch.hall) + line("배달", ch.delivery, "deliv");
 }
 
 // 저장된 값과 다르고 규칙에 맞는 칸만 → [{menu_id, hall, delivery}] (안 바뀐 쪽은 null = 그대로)
@@ -1455,14 +1465,6 @@ $("#salesCard").addEventListener("click", async (e) => {
 });
 $("#salesCard").addEventListener("change", async (e) => {
   if (e.target.classList.contains("sales-in")) return salesLeave(e.target);
-  if (e.target.id === "salesDeliv") {   // 배달 칸 켜고 끄기: 그 전에 고친 숫자부터 저장
-    const on = e.target.checked;
-    if (!(await salesFlush())) { e.target.checked = !on; return; }
-    setDelivOn(on);
-    renderSales();
-    $("#salesDeliv")?.focus();
-    return;
-  }
   if (e.target.id !== "salesDate") return;
   const day = e.target.value;
   if (!day || day === sales.data.date) return;
@@ -1610,7 +1612,7 @@ function orderGroups(items) {
   return [
     { key: "first", title: "먼저 사기", note: "시세가 오를 수 있어요", items: items.filter(rising) },
     { key: "normal", title: "평소대로 주문", note: "다음 입고 전에 모자라요", items: items.filter((i) => i.decision === "지금 사기" && !rising(i)) },
-    { key: "split", title: "나눠 사기", note: "시세가 내릴 수 있어요", items: items.filter((i) => i.decision === "나눠 사기") },
+    { key: "split", title: "조금만 사기", note: "시세가 내릴 수 있어요", items: items.filter((i) => i.decision === "나눠 사기") },
     { key: "wait", title: "이번엔 안 사도 돼요", note: "재고가 충분해요", items: items.filter((i) => i.decision === "기다리기") },
   ].filter((g) => g.items.length);
 }
@@ -1814,22 +1816,35 @@ async function pdfToImage(blob) {
     await page.render({ canvasContext: g, viewport: vp }).promise;
     pages.push(c);
   }
+  return { image: stitch(pages), skipped: Math.max(0, doc.numPages - PDF_PAGES) };
+}
+// 그림 여러 장을 위아래로 이어 JPEG 한 장으로 (PDF 여러 쪽 · 카메라로 나눠 찍은 긴 영수증)
+// 이은 높이가 6000px를 넘으면 전체를 줄임 (요청 크기 4.5MB 안으로 · 4장까지는 그대로)
+const STITCH_MAX_H = 6000;
+const STITCH_MAX_B64 = 4_200_000;   // 보낼 사진 글자 수 (서버 4MB · Vercel 요청 4.5MB 안으로)
+function stitch(pages) {
+  const h = pages.reduce((s, c) => s + c.height, 0), k = Math.min(1, STITCH_MAX_H / h);
   const out = document.createElement("canvas");
-  out.width = Math.max(...pages.map((c) => c.width));
-  out.height = pages.reduce((h, c) => h + c.height, 0);
+  out.width = Math.round(Math.max(...pages.map((c) => c.width)) * k);
+  out.height = Math.round(h * k);
   const g = out.getContext("2d");
   g.fillStyle = "#fff"; g.fillRect(0, 0, out.width, out.height);
-  pages.reduce((y, c) => (g.drawImage(c, 0, y), y + c.height), 0);
-  return { image: out.toDataURL("image/jpeg", 0.85), skipped: Math.max(0, doc.numPages - PDF_PAGES) };
+  pages.reduce((y, c) => (g.drawImage(c, 0, y, c.width * k, c.height * k), y + c.height * k), 0);
+  // 너무 크면 화질을 조금씩 낮춤 (글씨는 그대로 읽히는 0.55까지)
+  let q = 0.85, url = out.toDataURL("image/jpeg", q);
+  while (url.length > STITCH_MAX_B64 && q > 0.6) url = out.toDataURL("image/jpeg", q -= 0.1);
+  return url;
 }
 
+// blob: 사진 · PDF 파일, 또는 카메라로 찍은 사진(canvas) 목록 → 이어 붙여 한 장으로
 async function readReceipt(blob) {
   const box = $("#receiptResult");
   $("#receiptStart").hidden = true;
   box.innerHTML = `<div class="reading"><div class="spinner"></div><b>살피가 영수증을 읽는 중이에요</b><p class="muted">10~30초쯤 걸려요</p></div>`;
   try {
     let image, skipped = 0;
-    if (isPdf(blob)) ({ image, skipped } = await pdfToImage(blob));
+    if (Array.isArray(blob)) image = stitch(blob);
+    else if (isPdf(blob)) ({ image, skipped } = await pdfToImage(blob));
     else image = await shrink(blob);
     receipt = { image, mime: "image/jpeg" };
     // 로그인 표를 같이 보내면 서버가 무료 횟수를 셈 (다 썼으면 402 → 영수증 분석 칸을 가림)
@@ -1921,7 +1936,7 @@ function renderReceiptEdit() {
       renderCosts(r, true);
       loadCosts(false);
       praiseIfSaved(r.purchase_id);
-      // 이 영수증에서 찾은 '아낄 곳'(더 낸 돈)을 계정에 모아 둠 → 잠금 화면 '5장으로 n원 아낄 곳을 찾았어요'
+      // 이 영수증에서 찾은 '아낄 곳'(더 낸 돈)을 계정에 모아 둠 → 잠금 화면 '한 달 동안 n원 아낄 곳을 찾았어요'
       const token = readLogin()?.access_token;
       if (token && r.purchase_id) authCall("/api/receipt/trial/found", { token, body: { purchase_id: r.purchase_id } }).then(setTrial).catch(() => {});
     },
@@ -2072,7 +2087,7 @@ const rcMini = (p) => `<span class="rc-mini" aria-hidden="true">
   ${(p.names || []).slice(0, 3).map((n) => `<i>${esc(n)}</i>`).join("")}${p.items > 3 ? `<i class="more">외 ${p.items - 3}줄</i>` : ""}
   <em>합계 ${won(p.total_amount)}</em></span>`;
 const RC_TRASH = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4.5h6V7M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>`;
-function receiptList(list) {
+function receiptList(list, all = false) {
   const cards = list.map((p) => `<li class="rc-card" data-id="${p.id}">
     <span class="rc-check" aria-hidden="true"></span>
     <button class="rc-open rc-thumb" data-rid="${p.id}" type="button" title="사진과 품목 보기">
@@ -2082,6 +2097,7 @@ function receiptList(list) {
       <b title="${esc(supplierName(p.supplier))}">${esc(supplierName(p.supplier))}</b><span class="rc-price">${won(p.total_amount)}</span></div></li>`).join("");
   return `<div class="rc-head"><h3 class="sub-h">최근 영수증</h3>
       ${list.length ? `<span class="rc-tools">
+        <button class="rc-all" type="button" aria-expanded="${all}">${all ? "접기" : "전체 보기"}</button>
         <button class="rc-trash" type="button" title="여러 장 골라서 지우기" aria-label="여러 장 골라서 지우기">${RC_TRASH}</button>
         <span class="rc-sel-bar"><span class="rc-sel-count">지울 영수증을 골라 주세요</span>
           <button class="rc-remove rc-sel-del" type="button" disabled>지우기</button><button class="rc-sel-cancel" type="button">취소</button></span>
@@ -2104,9 +2120,13 @@ function rcArrows() {
   $("#receiptList .rc-arrow.prev").disabled = s.scrollLeft <= 2;
   $("#receiptList .rc-arrow.next").disabled = s.scrollLeft >= max;
 }
-function showReceiptList(list) {
+// all: [전체 보기]로 모든 날짜를 받아 사진 카드를 여러 줄로 펼침 · 접으면 마지막 최근 목록으로
+let rcRecent = [];
+function showReceiptList(list, all = false) {
+  if (!all) rcRecent = list;
   $("#receiptList").classList.remove("selecting");
-  $("#receiptList").innerHTML = receiptList(list);
+  $("#receiptList").classList.toggle("all", all);
+  $("#receiptList").innerHTML = receiptList(list, all);
   rcArrows();
   document.querySelectorAll("#receiptList .rc-strip img").forEach((i) => i.addEventListener("load", rcArrows, { once: true }));
 }
@@ -2286,8 +2306,8 @@ $("#demoReceipts").onclick = async (e) => {
 };
 $("#receiptFile").onchange = (e) => { if (e.target.files[0]) readReceipt(e.target.files[0]); };
 
-// 영수증 분석 무료 5회 (로그인한 사장님마다, 서버 account/trial.py 가 셈)
-// - 첫 화면 체험 버튼: 무료 5회 → … 무료 1회 → → 다 쓰면 구독하기 →
+// 영수증 분석 한 달 무료 (로그인한 사장님마다, 처음 읽은 날부터 30일 — 서버 account/trial.py)
+// - 첫 화면 체험 버튼: 한 달 무료 → (시작 전) · 무료 D-n → · 끝나면 구독하기 →
 // - 다 쓰면 나의 가게 영수증 분석 칸 전체를 흐리게 하고 안내 글을 띄움 (안의 버튼은 눌리지 않게)
 function setTrial(t) {
   const locked = !!t?.locked;
@@ -2296,16 +2316,27 @@ function setTrial(t) {
   ["#receiptStart", "#receiptResult", "#receiptList"].forEach((s) => { $(s).inert = locked; });
   // 잠금 화면 제목 밑 한 줄: 찾은 금액이 있으면 금액, 없으면 '원가율을 살펴봤어요'
   if (t) $("#receiptFound").innerHTML = t.found > 0
-    ? `5장으로 <b>${won(t.found)}</b> 아낄 곳을 찾았어요`
-    : "영수증 5장으로 원가율을 살펴봤어요";
+    ? `한 달 동안 <b>${won(t.found)}</b> 아낄 곳을 찾았어요`
+    : "한 달 동안 영수증으로 원가율을 살펴봤어요";
   const go = $(".receipt-link .receipt-go");
-  if (go && t) go.textContent = t.paid ? "→" : locked ? "구독하기 →" : `무료 ${t.left}회 →`;
+  if (go && t) go.textContent = t.paid ? "→" : locked ? "구독하기 →" : t.since ? `무료 D-${t.left} →` : "한 달 무료 →";
   $(".receipt-link")?.classList.toggle("used-up", locked);   // 다 쓰면 카드는 회색, 구독하기 버튼만 노랑
 }
 if (SIGNED_IN) authCall("/api/receipt/trial", { method: "GET", token: readLogin()?.access_token }).then(setTrial).catch(() => {});
-// 카메라로 찍기: 처음 한 번 브라우저가 카메라 권한을 물어봄 → 찍은 사진을 그대로 영수증 읽기로
+// 카메라로 찍기: 처음 한 번 브라우저가 카메라 권한을 물어봄 → 세로(2:3) 창에 맞춰 찍음
+// 긴 영수증은 여러 번 나눠 찍기: 찍은 사진은 오른쪽 대기열에 작게 쌓이고(× 로 지우기) [다 찍었어요]를 누르면 위아래로 이어 읽음
 // (폰은 뒤 카메라, 노트북은 앞 카메라. https 또는 내 컴퓨터 주소에서만 열림)
-let camStream = null;
+// shortcut: 여러 장을 한 장으로 이어 보냄(길면 stitch 가 줄임 · 요청 4.5MB), 팀원 feat/receipt-multi-photo(images 여러 장)가 dev에 합쳐지면 여러 장으로 보내기
+const CAM_RATIO = 2 / 3;   // 영수증이 길어서 세로로 긴 2:3
+let camStream = null, camShots = [], camSeen = null;   // camShots: [{ c: 자른 사진 canvas, url: 대기열 미리보기 }] · camSeen: 카메라 자리에 보고 있는 사진 번호
+// 카메라 자리에 찍은 사진 보기 (i = null 이면 다시 카메라). 보고 있는 사진은 대기열에서 테두리로 표시
+function camLook(i) {
+  camSeen = i;
+  const still = $("#camStill");
+  if (i !== null) still.src = camShots[i].c.toDataURL("image/jpeg", 0.9);
+  still.hidden = i === null;
+  document.querySelectorAll("#camQueue .cam-thumb").forEach((b) => b.classList.toggle("on", +b.dataset.camView === i));
+}
 const CAM_GUIDE = `<ol class="cam-guide">
     <li><b>컴퓨터(크롬 · 엣지)</b>: 주소창 왼쪽 <b>자물쇠 · 설정 아이콘</b> → <b>카메라</b> → <b>허용</b> → 새로고침</li>
     <li><b>아이폰</b>: 설정 → Safari(또는 쓰는 브라우저) → <b>카메라</b> → <b>허용</b></li>
@@ -2322,7 +2353,7 @@ function camFail(msg, denied) {
   $("#camGallery").onclick = () => closeCamera();
 }
 async function askCamera() {
-  return navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+  return navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 3840 }, height: { ideal: 2160 } }, audio: false });
 }
 async function openCamera() {
   $("#cameraModal").hidden = false;
@@ -2335,25 +2366,59 @@ async function openCamera() {
     return camFail(denied ? "카메라 권한이 꺼져 있어요." : e.name === "NotFoundError" ? "연결된 카메라가 없어요." : "카메라를 열지 못했어요. 다른 앱이 카메라를 쓰고 있는지 확인해 주세요.", denied);
   }
   if ($("#cameraModal").hidden) return stopCamera();   // 여는 사이에 닫았으면
-  $("#cameraBody").innerHTML = `<div class="cam-view"><video id="camVideo" autoplay playsinline muted></video><i class="cam-frame" aria-hidden="true"></i></div>
-    <p class="muted small">영수증이 네모 안에 꽉 차게 맞추고 찍어 주세요</p>
-    <div class="camera-actions"><button class="upload-btn" id="camShot" type="button">찍기</button></div>`;
+  camShots = [];
+  $("#cameraBody").innerHTML = `<div class="cam-wrap">
+      <div class="cam-view"><video id="camVideo" autoplay playsinline muted></video><i class="cam-frame" aria-hidden="true"></i>
+        <img class="cam-still" id="camStill" alt="찍은 사진" hidden></div>
+      <aside class="cam-queue" aria-label="찍은 사진"><p>찍은 사진 <b id="camCount">0</b>장</p><ul id="camQueue"></ul></aside>
+    </div>
+    <p class="muted small">영수증이 길면 위에서부터 나눠 찍어 주세요.</p>
+    <div class="camera-actions"><button class="upload-btn" id="camShot" type="button">촬영</button>
+      <button class="btn primary" id="camDone" type="button" hidden>완료</button></div>`;
   $("#camVideo").srcObject = camStream;
   $("#camShot").onclick = shootCamera;
+  $("#camDone").onclick = () => { const pages = camShots.map((s) => s.c); closeCamera(); readReceipt(pages); };
+  // 대기열: × = 그 사진 지우기, 사진 = 카메라 자리에 그 사진 보기 (같은 사진을 다시 누르면 카메라로)
+  $("#camQueue").onclick = (e) => {
+    const x = e.target.closest("[data-cam-del]");
+    if (x) { camShots.splice(+x.dataset.camDel, 1); camLook(null); return camQueue(); }
+    const v = e.target.closest("[data-cam-view]");
+    if (v) camLook(+v.dataset.camView === camSeen ? null : +v.dataset.camView);
+  };
 }
+// 대기열 다시 그리기: 찍은 순서대로 작은 사진 + × · 장수 · 버튼 켜고 끄기
+function camQueue() {
+  $("#camQueue").innerHTML = camShots.map((s, i) => `<li><button type="button" class="cam-thumb" data-cam-view="${i}" aria-label="${i + 1}번째 사진 크게 보기"><img src="${s.url}" alt=""></button>
+    <button type="button" class="cam-x" data-cam-del="${i}" aria-label="${i + 1}번째 사진 지우기">×</button></li>`).join("");
+  $("#camCount").textContent = camShots.length;
+  $("#camDone").hidden = !camShots.length;   // 아무것도 안 찍었으면 [완료]는 숨김
+  $("#camDone").textContent = `완료 (${camShots.length}장)`;
+}
+// 찍기: 화면에 보이는 세로(2:3) 가운데만 잘라 너비 1000px로
 function shootCamera() {
   const v = $("#camVideo");
+  if (camSeen !== null) return camLook(null);   // 찍은 사진을 보는 중이면 [촬영]은 카메라로 돌아가기
   if (!v.videoWidth) return;
+  const vw = v.videoWidth, vh = v.videoHeight;
+  const sw = vw / vh > CAM_RATIO ? vh * CAM_RATIO : vw, sh = sw / CAM_RATIO;
+  const k = Math.min(1, 1000 / sw);
   const c = document.createElement("canvas");
-  c.width = v.videoWidth; c.height = v.videoHeight;
-  c.getContext("2d").drawImage(v, 0, 0);
-  c.toBlob((b) => { closeCamera(); if (b) readReceipt(b); }, "image/jpeg", 0.92);
+  c.width = Math.round(sw * k); c.height = Math.round(sh * k);
+  c.getContext("2d").drawImage(v, (vw - sw) / 2, (vh - sh) / 2, sw, sh, 0, 0, c.width, c.height);
+  camShots.push({ c, url: c.toDataURL("image/jpeg", 0.5) });
+  camQueue();
+  $("#camQueue").lastElementChild?.scrollIntoView({ block: "nearest" });   // 4장이 넘으면 방금 찍은 사진이 보이게
 }
 function stopCamera() { camStream?.getTracks().forEach((t) => t.stop()); camStream = null; }
-function closeCamera() { stopCamera(); $("#cameraModal").hidden = true; }
+function closeCamera() { stopCamera(); camShots = []; camSeen = null; $("#cameraModal").hidden = true; }
+// 찍은 사진을 보는 중이면 카메라로만 돌아감. 찍어 둔 사진이 있는데 카메라를 닫으려 하면 물어봄
+const cancelCamera = () => {
+  if (camSeen !== null) return camLook(null);
+  if (!camShots.length || confirm(`찍은 사진 ${camShots.length}장을 버릴까요?`)) closeCamera();
+};
 $("#cameraBtn").onclick = openCamera;
-$("#cameraClose").onclick = closeCamera;
-$("#cameraModal").onclick = (e) => { if (e.target.id === "cameraModal") closeCamera(); };
+$("#cameraClose").onclick = cancelCamera;
+$("#cameraModal").onclick = (e) => { if (e.target.id === "cameraModal") cancelCamera(); };
 // 휴지통 → 고르기 모드: 카드 오른쪽 위 체크 칸으로 여러 장 골라 한 번에 지우기
 const rcPicked = () => [...document.querySelectorAll("#receiptList .rc-card.picked")].map((li) => li.dataset.id);
 function rcSelectMode(on) {
@@ -2376,6 +2441,10 @@ async function rcDeletePicked() {
   loadCosts(true);   // 원가율 · 사진 줄을 한 번에 새로 (고르기 모드도 풀림)
 }
 $("#receiptList").onclick = async (e) => {
+  if (e.target.closest(".rc-all")) {
+    if ($("#receiptList").classList.contains("all")) return showReceiptList(rcRecent);
+    try { return showReceiptList((await getJSON("/api/receipts")).receipts, true); } catch (err) { return alert(err.message); }
+  }
   if (e.target.closest(".rc-trash")) return rcSelectMode(true);
   if (e.target.closest(".rc-sel-cancel")) return rcSelectMode(false);
   if (e.target.closest(".rc-sel-del")) return rcDeletePicked();
@@ -2516,6 +2585,76 @@ $("#martAll").onclick = () => {
   martPage = 1;
   renderMart();
   $("#mart").scrollIntoView({ block: "start" });
+};
+
+// ---------------------------------------------------------------
+// 살피 예측률: 지난 7일 화면 예측을 7일 뒤 실제 시세와 비교해 맞춘 비율 (/api/forecast-score?weeks=1)
+// 맞춤 = 오를지 · 비슷할지 · 내릴지(±2%) 방향을 맞힘. 품목은 예측 3번 이상만 (적으면 0% · 100%로 들쭉날쭉)
+// ---------------------------------------------------------------
+const SCORE_KINDS = ["과일", "야채", "육류", "수산물"];   // 탭 순서 (그 밖의 종류가 오면 뒤에 붙임)
+const SCORE_MIN = 3;
+let score = null, scoreKind = "전체", scoreOpen = true;   // 처음엔 펼친 채로, 다 본 뒤 접기
+const scoreHits = (s) => Math.round((s.n * s.direction_hit_pct) / 100);
+const scoreTier = (p) => (p >= 70 ? "good" : p >= 50 ? "mid" : "low");   // 사장님이 이 품목 예측을 얼마나 믿어도 되는지
+const SCORE_GROUPS = [["good", "예측 정확", "70% 이상"], ["mid", "예측 안정", "50~70%"], ["low", "예측 성장 중", "50% 아래"]];
+const scoreKinds = () => [...SCORE_KINDS, ...Object.keys(score.kinds).filter((k) => !SCORE_KINDS.includes(k))].filter((k) => score.kinds[k]?.n);
+const scoreFold = new Set(["good", "mid", "low"]);   // 재료 목록을 접은 묶음 — 처음엔 카드만 보이고 누르면 재료 이름
+// 펼치면: 묶음 카드 3개 나란히 (위 = 큰 묶음 이름 · 개수 · 기준, 누르면 그 아래 재료 목록 접기 · 펼치기)
+function scoreDetail(few) {
+  const shown = Object.entries(score.items).filter(([, v]) => (scoreKind === "전체" || v.kind === scoreKind) && v.n >= SCORE_MIN)
+    .sort((a, b) => b[1].direction_hit_pct - a[1].direction_hit_pct || b[1].n - a[1].n || a[0].localeCompare(b[0], "ko"));
+  const cards = SCORE_GROUPS.map(([tier, name, range]) => {
+    const g = shown.filter(([, v]) => scoreTier(v.direction_hit_pct) === tier);
+    const open = !scoreFold.has(tier);
+    // 해당 재료가 없으면 제목만 흐리게 (누를 것 없음)
+    if (!g.length) return `<div class="score-group ${tier} empty"><div class="score-group-head"><b>${name}</b><small>${range}</small></div></div>`;
+    return `<div class="score-group ${tier}">
+      <button type="button" class="score-group-head" data-sfold="${tier}" aria-expanded="${open}" aria-controls="scoreNames-${tier}">
+        <b>${name}</b><span class="score-count">${g.length}개</span><small>${range}</small>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+      ${open ? `<div class="score-names" id="scoreNames-${tier}">${g.map(([item, v]) =>
+        `<a href="/?item=${encodeURIComponent(item)}" title="예측률 ${v.direction_hit_pct}% (${v.n}번 예측해서 ${scoreHits(v)}번 맞혔어요)"><span>${esc(item)}</span></a>`).join("")}</div>` : ""}
+    </div>`;
+  }).join("");
+  return `<div class="score-detail" id="scoreDetail">
+    ${shown.length ? `<div class="score-groups">${cards}</div>` : `<p class="muted small">품목별로 보여 줄 만큼 채점한 예측이 아직 없어요</p>`}
+    ${few ? `<p class="score-foot">예측 ${SCORE_MIN}번 미만 ${few}개는 채점 중</p>` : ""}
+  </div>`;
+}
+function renderScore() {
+  const a = score.all;
+  if (!a?.n) { $("#scoreCard").innerHTML = `<p class="muted">아직 채점한 예측이 없어요. 예측하고 7일이 지나면 채점해요.</p>`; return; }
+  const kinds = scoreKinds();
+  if (scoreKind !== "전체" && !kinds.includes(scoreKind)) scoreKind = "전체";
+  const s = scoreOpen && scoreKind !== "전체" ? score.kinds[scoreKind] : a;   // 큰 숫자 = 고른 탭의 예측률
+  const label = scoreOpen && scoreKind !== "전체" ? scoreKind : "전체";
+  const few = Object.values(score.items).filter((v) => (label === "전체" || v.kind === label) && v.n < SCORE_MIN).length;
+  $("#scoreCard").innerHTML = `<div class="score-top">
+      <p class="score-big"><b>${s.direction_hit_pct}%</b><span>${esc(label)} 예측률</span></p>
+      <p class="score-sub">7일 뒤 가격 방향 적중률<br>${s.n}번 예측해서 ${scoreHits(s)}번 맞혔어요</p>
+      ${scoreOpen ? `<div class="score-tabs" role="group" aria-label="재료 종류">${["전체", ...kinds].map((k) =>
+        `<button type="button" data-skind="${esc(k)}" class="${k === scoreKind ? "active" : ""}" aria-pressed="${k === scoreKind}">${esc(k)}</button>`).join("")}</div>` : ""}
+      <button type="button" class="score-more" data-smore aria-expanded="${scoreOpen}" aria-controls="scoreDetail">${scoreOpen ? "접기" : "상세보기"}
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+    </div>
+    ${scoreOpen ? scoreDetail(few) : ""}`;
+}
+async function loadScore() {
+  try { score = await getJSON("/api/forecast-score?weeks=1"); }
+  catch (e) { $("#scoreCard").innerHTML = `<p class="muted">예측률을 불러오지 못했어요</p>`; return; }
+  renderScore();
+}
+$("#scoreCard").onclick = (e) => {
+  if (e.target.closest("[data-smore]")) { scoreOpen = !scoreOpen; renderScore(); return $("#scoreCard [data-smore]").focus(); }
+  const k = e.target.closest("[data-skind]");
+  if (k) { scoreKind = k.dataset.skind; renderScore(); $(`#scoreCard [data-skind="${CSS.escape(scoreKind)}"]`)?.focus(); }   // 다시 그려도 누른 탭에 그대로
+  const f = e.target.closest("[data-sfold]");
+  if (f) {
+    const t = f.dataset.sfold;
+    scoreFold.has(t) ? scoreFold.delete(t) : scoreFold.add(t);
+    renderScore();
+    $(`#scoreCard [data-sfold="${t}"]`)?.focus();
+  }
 };
 
 async function loadContext() {
@@ -2952,6 +3091,7 @@ if (STORE_VIEW) {
 } else if (!ITEM && !AUTH_VIEW) {
   loadContext();
   loadMart();
+  loadScore();
 }
 if (location.hash === "#chat") openChat();   // 주소 끝에 #chat 을 붙이면 채팅창이 열린 채로 시작
 if (location.hash === "#talk") openTalk();   // 주소 끝에 #talk 을 붙이면 알림톡 시연이 열린 채로 시작

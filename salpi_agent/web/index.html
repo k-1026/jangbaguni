@@ -13,9 +13,24 @@
   <meta name="mobile-web-app-capable" content="yes">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=297">
+  <link rel="stylesheet" href="/static/style.css?v=318">
 </head>
 <body>
+<script>
+  // 첫 화면을 그리기 전에 로그인 여부 · 페이지 종류를 먼저 정함 (11/25: app.js 를 다 받기 전까지 로그아웃 · 첫 화면 모양이 3초쯤 보였다가 뚝 바뀌던 것)
+  // app.js 의 SIGNED_IN · ITEM · AUTH_VIEW · STORE_VIEW 와 같은 규칙. app.js 는 뒤에서 같은 클래스를 다시 붙임 (그대로 둬도 됨)
+  (function () {
+    var q = new URLSearchParams(location.search), page = q.get("page"), item = q.get("item"), b = document.body, u = null;
+    try { u = JSON.parse(localStorage.getItem("salpi_login") || sessionStorage.getItem("salpi_login") || "null"); } catch (e) {}
+    var signed = !!u, auth = !item && (page === "login" || page === "signup");
+    if (!item && page === "store" && !signed) location.replace("/?page=login&next=" + encodeURIComponent(location.pathname + location.search + location.hash));
+    if (auth && signed) { var n = q.get("next"); location.replace(n && n.charAt(0) === "/" && n.charAt(1) !== "/" ? n : "/"); }
+    b.classList.add(signed ? "signed-in" : "signed-out");
+    if (item) b.classList.add("item-view");
+    if (auth && !signed) b.classList.add("auth-view", page === "login" ? "login-view" : "signup-view");
+    if (!item && signed && page === "store") b.classList.add("store-view");
+  })();
+</script>
 
 <header class="topbar">
   <div class="wrap topbar-inner">
@@ -23,6 +38,7 @@
     <nav class="nav">
       <a href="/#dashboard">시세 대시보드</a>
       <a href="/#mart">대형마트 판매가</a>
+      <a href="/#score">살피 예측률</a>
       <a href="/#context">시세 영향 정보</a>
     </nav>
     <div class="search" role="search">
@@ -72,7 +88,7 @@
         <a class="buy-link receipt-link" href="/?page=store#receipt">
           <img class="receipt-emoji" src="/static/img/receipt_scan.png" alt="" aria-hidden="true">
           <span class="receipt-text"><b>영수증 분석 체험해보기</b><small>메뉴 한 그릇, 얼마 남는지 아세요?<br>영수증 한 장 찍으면 메뉴 원가율이 바로 나와요</small></span>
-          <i class="receipt-go">무료 5회 →</i>
+          <i class="receipt-go">한 달 무료 →</i>
         </a>
       </div>
 
@@ -258,7 +274,7 @@
       </div>
       <div id="receiptResult"></div>
       <div id="receiptList"></div>
-      <!-- 무료 5회를 다 쓰면: 위 내용을 흐리게 가리고 이 글만 보임 -->
+      <!-- 한 달 무료가 끝나면: 위 내용을 흐리게 가리고 이 글만 보임 -->
       <div class="receipt-lock" id="receiptLock" hidden>
         <div class="lock-panel">
           <p class="lock-title">무료 체험이 끝났어요</p>
@@ -316,6 +332,15 @@
       <div class="mart-grid" id="martGrid"><p class="muted">불러오는 중</p></div>
       <button class="order-all mart-all" id="martAll" type="button" hidden>모두 보기</button>
     </div>
+  </section>
+
+  <!-- 살피 예측률: 지난 7일 예측을 실제 시세로 채점한 결과 (/api/forecast-score) · 상세보기 = 종류별 탭 + 품목별 -->
+  <section class="wrap section home-only" id="score">
+    <div class="section-head">
+      <h2>살피 예측률</h2>
+      <p class="muted">지난 7일 동안 한 예측을 실제 시세로 채점했어요</p>
+    </div>
+    <div class="card score-card" id="scoreCard"><p class="muted">불러오는 중</p></div>
   </section>
 
   <!-- 날씨 · 공휴일 · 행사 -->
@@ -450,6 +475,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="/static/app.js?v=227"></script>
+<script src="/static/app.js?v=255"></script>
 </body>
 </html>

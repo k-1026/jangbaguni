@@ -615,24 +615,31 @@ def item_detail(item_name, days=28):
 # 지금 사면 이득인 재료
 # ---------------------------------------------------------------
 
-def buy_now_recommendations():
+def buy_now_recommendations(rows=None):
     """지금 사기 / 지금 싸요 / 기다리기 로 나눔.
     - 다음 7일 오를 가능성 → 지금 사기
     - 1주 새 5% 넘게 내렸고 더 내릴 신호가 없으면 → 지금 싸요
     - 다음 7일 내릴 가능성 → 기다리기"""
     buy, cheap, wait, normal = [], [], [], []
+    ready = {r["item"]: r for r in (rows or []) if r.get("forecast")}   # 첫 화면 보관값이 있으면 다시 계산하지 않음 (챗봇 속도)
     for name in ITEMS:
-        f = forecast_item(name)
-        t = item_trend(name)["wholesale"]
+        if name in ready:
+            r0 = ready[name]
+            f = r0["forecast"]
+            t = {"kg_price": r0.get("wholesale_kg"), "week_change_pct": r0.get("wholesale_change_pct")}
+        else:
+            f = forecast_item(name)
+            t = item_trend(name)["wholesale"]
         row = {"item": name, "kg_price": t["kg_price"], "week_change_pct": t["week_change_pct"],
                "next_week": f.get("direction"), "expected_change_pct": f.get("expected_change_pct"),
                "range_pct": f.get("range_pct"), "confidence": f.get("confidence"),
                "main_reason": max(f.get("factors", []), key=lambda x: abs(x["effect_pct"]), default={}).get("detail"),
                "foodspring_url": foodspring_url(name)}
         exp = f.get("expected_change_pct") or 0
-        if exp >= 2:
+        code = f.get("direction_code") or ("up" if exp >= 2 else "down" if exp <= -2 else "flat")   # 주 평균 모델은 4% 기준
+        if code == "up":
             buy.append(row)
-        elif exp <= -2:
+        elif code == "down":
             wait.append(row)
         elif (t["week_change_pct"] or 0) <= -5:
             cheap.append(row)

@@ -297,8 +297,8 @@ def _gemini_json(prompt):
     from google import genai
     from google.genai import types
     client = genai.Client(api_key=key)
-    models = [os.getenv("GEMINI_MODEL", "gemini-3.5-flash")] + [
-        m.strip() for m in os.getenv("GEMINI_FALLBACK_MODELS", "gemini-3-flash-preview,gemini-flash-latest,gemini-3.5-flash-lite").split(",") if m.strip()]
+    models = [os.getenv("GEMINI_MODEL", "gemini-3.8-flash")] + [
+        m.strip() for m in os.getenv("GEMINI_FALLBACK_MODELS", "gemini-3.7-flash,gemini-3.6-flash,gemini-3.5-flash,gemini-3-flash-preview,gemini-3.5-flash-lite").split(",") if m.strip()]
     for model in models:
         try:
             r = client.models.generate_content(model=model, contents=prompt, config=types.GenerateContentConfig(

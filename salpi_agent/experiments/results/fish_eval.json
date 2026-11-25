@@ -1,0 +1,142 @@
+{
+ "period": [
+  "2025-11-12",
+  "2026-11-11"
+ ],
+ "n_test": 1593,
+ "features": [
+  "item",
+  "dev",
+  "trend",
+  "volat",
+  "chg3",
+  "season",
+  "to_major",
+  "month"
+ ],
+ "n_rounds": 20,
+ "formula": {
+  "n": 1593,
+  "opposite_pct": 0.63,
+  "mae_pp": 1.787,
+  "range_hit_pct": 63.0,
+  "direction_hit_pct": 76.1
+ },
+ "model": {
+  "n": 1593,
+  "opposite_pct": 0.0,
+  "mae_pp": 1.528,
+  "range_hit_pct": 58.1,
+  "direction_hit_pct": 78.7
+ },
+ "no_change_baseline": {
+  "opposite_pct": 0.0,
+  "mae_pp": 1.527,
+  "direction_hit_pct": 78.7
+ },
+ "replace_by_team_rule": true,
+ "rule": "정반대 0.3%p 이상 ↓ 그리고 평균 오차 같거나 ↓",
+ "importance": {
+  "dev": 19,
+  "item": 19,
+  "season": 18,
+  "month": 12,
+  "to_major": 11,
+  "volat": 8,
+  "trend": 6,
+  "chg3": 6
+ },
+ "items": {
+  "갈치": {
+   "n": 243,
+   "formula": {
+    "opposite_pct": 0.0,
+    "mae_pp": 0.9,
+    "direction_hit_pct": 86.0
+   },
+   "model": {
+    "opposite_pct": 0.0,
+    "mae_pp": 0.789,
+    "direction_hit_pct": 86.0
+   }
+  },
+  "고등어": {
+   "n": 243,
+   "formula": {
+    "opposite_pct": 0.0,
+    "mae_pp": 2.024,
+    "direction_hit_pct": 70.4
+   },
+   "model": {
+    "opposite_pct": 0.0,
+    "mae_pp": 1.822,
+    "direction_hit_pct": 72.0
+   }
+  },
+  "굴": {
+   "n": 135,
+   "formula": {
+    "opposite_pct": 2.22,
+    "mae_pp": 3.215,
+    "direction_hit_pct": 51.9
+   },
+   "model": {
+    "opposite_pct": 0.0,
+    "mae_pp": 2.733,
+    "direction_hit_pct": 52.6
+   }
+  },
+  "명태": {
+   "n": 243,
+   "formula": {
+    "opposite_pct": 0.0,
+    "mae_pp": 1.721,
+    "direction_hit_pct": 73.7
+   },
+   "model": {
+    "opposite_pct": 0.0,
+    "mae_pp": 1.521,
+    "direction_hit_pct": 75.3
+   }
+  },
+  "새우": {
+   "n": 243,
+   "formula": {
+    "opposite_pct": 0.0,
+    "mae_pp": 0.087,
+    "direction_hit_pct": 98.4
+   },
+   "model": {
+    "opposite_pct": 0.0,
+    "mae_pp": 0.061,
+    "direction_hit_pct": 98.4
+   }
+  },
+  "새우젓": {
+   "n": 243,
+   "formula": {
+    "opposite_pct": 2.06,
+    "mae_pp": 1.982,
+    "direction_hit_pct": 79.0
+   },
+   "model": {
+    "opposite_pct": 0.0,
+    "mae_pp": 1.478,
+    "direction_hit_pct": 86.0
+   }
+  },
+  "홍합": {
+   "n": 243,
+   "formula": {
+    "opposite_pct": 0.82,
+    "mae_pp": 3.212,
+    "direction_hit_pct": 63.0
+   },
+   "model": {
+    "opposite_pct": 0.0,
+    "mae_pp": 2.827,
+    "direction_hit_pct": 69.1
+   }
+  }
+ }
+}

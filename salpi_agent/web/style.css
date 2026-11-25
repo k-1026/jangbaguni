@@ -190,6 +190,9 @@ button.chip:hover { background: #F7FAF3; }
 .chart-head h3 { margin: 0; font-size: 19px; font-weight: 700; }
 .price-now { margin: 0 0 4px; font-size: 14px; }
 .price-now strong { font-size: 22px; }
+/* 재료 한 장: '상추 시세 5,451원/kg 1주 전보다 -38.6%' 한 줄, 그 아래 줄에 살피 예측률 (재료 페이지) */
+.slide[data-item] .chart-head > div:first-child { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 12px; }
+.slide[data-item] .chart-head .price-now { margin: 0; }
 .legend { display: flex; flex-wrap: wrap; gap: 8px; font-size: 11.5px; color: var(--muted); align-items: center; }
 .lg { display: inline-block; width: 12px; height: 9px; margin-right: 3px; vertical-align: middle; border-radius: 2px; }
 .lg.line { background: var(--line); height: 3px; }
@@ -234,9 +237,9 @@ button.chip:hover { background: #F7FAF3; }
 .fc-strip .verdict { display: block; font-size: 16px; font-weight: 700; }
 .fc-strip.up .verdict { color: var(--up); } .fc-strip.down .verdict { color: var(--down); } .fc-strip.flat .verdict { color: var(--muted); }
 .fc-strip .range { display: block; font-size: 13px; color: var(--muted); }
-.fc-strip .item-score { display: block; margin-top: 4px; font-size: 13px; font-weight: 400; color: var(--primary); }   /* 재료 페이지: 이 재료 살피 예측률 */
-.fc-strip .item-score b { font-weight: 700; }   /* '살피 예측률 ○%'만 굵게, 괄호 설명은 보통 */
-.fc-strip .item-score.muted { color: var(--muted); }   /* 50% 아래 · 채점 중은 연하게 */
+.item-score { flex-basis: 100%; margin: 0 0 4px; font-size: 13px; font-weight: 400; color: var(--primary); }   /* 재료 페이지: 가격 줄 아래 이 재료 살피 예측률 */
+.item-score b { font-weight: 700; }   /* '살피 예측률 ○%'만 굵게, 괄호 설명은 보통 */
+.item-score.muted { color: var(--muted); }   /* 50% 아래 · 채점 중은 연하게 */
 /* 살피 포즈(좌우반전) + 옆 제안 말풍선: 칸 안에 넣지 않고 칸 오른쪽 위에 서서 말함
    칸 위 여백 40px: 살피 머리(경광등 포함)가 그래프 아래 숫자를 가리지 않게 */
 /* --kit: 화면에서 미어캣 키(머리~발). 그림 높이 --h 는 포즈마다 다름, 발끝을 같은 높이에 맞춤 */

@@ -2551,7 +2551,7 @@ function renderScore() {
   if (!a?.n) { $("#scoreCard").innerHTML = `<p class="muted">아직 채점한 예측이 없어요. 예측하고 7일이 지나면 채점해요.</p>`; return; }
   $("#scoreCard").innerHTML = `<div class="score-top">
       <div><p class="score-big"><b>${a.direction_hit_pct}</b>%</p>
-        <p class="muted small">예측 ${a.n}개 중 ${scoreHits(a)}개 맞춤 · 7일 뒤 가격이 오를지 · 비슷할지 · 내릴지 맞힌 비율이에요</p></div>
+        <p class="muted small">7일 뒤 가격 방향 적중률${SEP}${a.n}개 중 ${scoreHits(a)}개</p></div>
       <button type="button" class="score-more" data-smore aria-expanded="${scoreOpen}" aria-controls="scoreDetail">${scoreOpen ? "접기" : "상세보기"}
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
     </div>

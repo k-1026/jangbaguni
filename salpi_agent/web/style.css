@@ -1402,13 +1402,12 @@ main { overflow-x: clip; }   /* 화면 폭 배경이 가로 스크롤을 만들�
 .score-row-head span { font-size: 13px; font-weight: 700; color: var(--primary); }
 .score-row.mid .score-row-head { border-left-color: var(--warn); } .score-row.mid .score-row-head span { color: var(--warn); }
 .score-row.low .score-row-head { border-left-color: var(--outline); } .score-row.low .score-row-head span { color: var(--muted); }
-/* 오른쪽: 재료 이름 6칸 줄 맞춤 · 칸마다 밑줄 + 오른쪽 › (누르면 재료 시세) */
+/* 오른쪽: 재료 이름 6칸 줄 맞춤 · 칸마다 밑줄 (누르면 재료 시세) */
 .score-names { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0 20px; align-content: center; }
 .score-names a { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 7px 2px; border-bottom: 1px solid var(--outline-variant);
   font-size: 14px; color: var(--ink); text-decoration: none; }
 .score-names a span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }   /* 긴 이름은 … */
-.score-names a::after { content: "›"; flex: none; font-size: 14px; color: var(--outline); }
-.score-names a:hover { color: var(--primary); } .score-names a:hover::after { color: var(--primary); }
+.score-names a:hover { color: var(--primary); }
 .score-names a:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; border-radius: 4px; }
 @media (max-width: 1100px) { .score-names { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (max-width: 520px) { .score-names { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

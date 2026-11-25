@@ -1,9 +1,10 @@
-# 살피 기능 명세 (spec.md v1, 11/18)
+# 살피 기능 명세 (spec.md v1, 11/18 · 11/25 상태 갱신)
 
 > 무엇: 살피가 **무엇을 하는지(기능)**, **기능마다 무엇을 받아 무엇을 내놓는지(입력 · 출력 · 기준)**, **데이터가 어떻게 흐르는지**를 한곳에 정리
 > 기준: 11/18 실제 코드 (`salpi_agent/`) · 시연 사이트 https://jangbaguni-ten.vercel.app — **"된다"는 지금 사이트에서 돌아가는 것만**
 > 같이 보는 문서: [As-Is → To-Be](presentation/1118_as_is_to_be.md) · [API 약속](1116_api_contract.md) · [최종 계획](1116_final_sprint_plan.md) · [에이전트 나누기](bm/1118_agent_split.md) · [DB 표](../supabase/schema.sql)
 > 상태: ✅ 됨 · 🟡 일부만 / 시연 데이터 · ⬜ 아직 안 됨
+> 11/25 갱신: 11/18 이후 끝난 것(영수증 정확도 · 재고 입력 · 판매 기록 · 가게 비용 · 구독 · 원가율 알림 · 수산물 채점)만 상태 칸에 고침. 나머지는 11/18 그대로
 > 다음 버전: v2 (11/27, D5) — 11/26 영수증 시험 · 설문 결과 반영
 
 ---
@@ -29,22 +30,22 @@
 
 | ID | 기능 | 화면 | API | 담당 코드 | 상태 |
 |---|---|---|---|---|---|
-| F1 | 영수증 사진 읽기 · 확인 · 저장 | 나의 가게 › 영수증 분석 | `POST /api/receipt/read` · `/save`, `GET·PUT·DELETE /api/receipt/{id}`, `GET /api/receipts` | `receipts.py` | ✅ (정확도 측정 전, PDF ⬜) |
+| F1 | 영수증 사진 읽기 · 확인 · 저장 | 나의 가게 › 영수증 분석 | `POST /api/receipt/read` · `/save`, `GET·PUT·DELETE /api/receipt/{id}`, `GET /api/receipts` | `receipts.py` | ✅ (11/24 정확도 20장: 줄 · 금액 · 재료 · 기준 양 100%, 시연용 가상 영수증 [결과](forecast/1124_ocr_accuracy.md) · PDF ⬜) |
 | F2 | 단위 환산 (kg · L · 모 · 개) | 영수증 · 판매처 비교 안 | — | `units.py` | ✅ |
 | F3 | 메뉴 · 레시피 등록 · 판매 중지 | 나의 가게 › 메뉴 | `GET·POST /api/menus`, `PUT /api/menus/{id}`, `POST …/stop` | `menus.py` | ✅ |
 | F4 | 메뉴별 원가율 · 3가지 제안 | 나의 가게 › 메뉴별 원가율 | `GET /api/costs` | `menu_cost.py` | ✅ |
 | F5 | 영수증 단가 싸게/비싸게 판정 | 영수증 품목마다 | `GET /api/price-judge` | `price_judge.py` | ✅ |
-| F6 | 더 싼 판매처 | 재료 페이지 | `GET /api/cheaper?item=` | `cheaper.py` · `foodspring.py` | 🟡 식봄만 |
+| F6 | 더 싼 판매처 | 재료 페이지 | `GET /api/cheaper?item=` · 사러 가기 6곳 링크 `GET /api/buy-links` | `cheaper.py` · `foodspring.py` | 🟡 식봄만 |
 | F7 | 시세 대시보드 (야채 · 과일 · 수산물 · 육류) | 첫 화면 · 재료 페이지 | `GET /api/overview` · `/api/item/{name}` · `/api/meat-seafood` | `analysis.py` · `data_sources.py` | ✅ |
-| F8 | 다음 7일 시세 예측 + 이유 | 대시보드 · 재료 페이지 | 위와 같음 · `GET /api/model` | `forecast_model.py` · `learner.py` · `gbdt.py` | 🟡 야채 · 과일만 학습 모델, 고기 · 수산물은 고정 공식 |
+| F8 | 다음 7일 시세 예측 + 이유 | 대시보드 · 재료 페이지 | 위와 같음 · `GET /api/model` | `forecast_model.py` · `learner.py` · `gbdt.py` | 🟡 야채 · 과일만 학습 모델, 고기 · 수산물은 고정 공식 (수산물은 11/25 채점해 보류: 모델이 늘 "그대로"만 답함 [결과](forecast/1125_fish_eval.md)) |
 | F9 | 예측 기록 · 7일 뒤 실전 채점 | (관제 화면) | `GET /api/forecast-score` · `POST /api/jobs/daily` | `forecast_log.py` | ✅ (11/18 첫 채점일) |
-| F10 | 내일 판매량 · 발주량 | 나의 가게 › 내일 준비 | `GET /api/demand` | `demand.py` · `demand_model.py` | 🟡 시연 가게 가상 데이터 |
-| F11 | 재고 | 나의 가게 | (약속만: `GET·PUT /api/inventory`) | `demand.py` 가 읽기만 | ⬜ 입력 · 수정 화면 없음 |
+| F10 | 내일 판매량 · 발주량 | 나의 가게 › 내일 준비 | `GET /api/demand` · 판매 기록 입력 `GET·PUT /api/sales` | `demand.py` · `demand_model.py` · `store/sales.py` | 🟡 시연 가게 가상 데이터 (판매 기록 입력 11/24 ✅) |
+| F11 | 재고 | 나의 가게 | `GET·PUT /api/inventory` | `store/inventory.py` · `demand.py` | ✅ 재고 입력 창 (`web/app.js`) |
 | F12 | 살피 챗봇 (안내 + 시세 · 원가 · 내일 준비 담당) | 오른쪽 아래 살피 | `POST /api/chat` | `agent.py` | ✅ |
-| F13 | 아침 알림 (카카오톡 · 앱 알림) | 마이페이지 › 설정 | `/api/kakao/*` · `/api/push/*` · `POST /api/jobs/alerts` | `kakao_alert.py` · `app_push.py` | ✅ |
-| F14 | 로그인 · 가게 정보 | 로그인 · 마이페이지 | `/api/auth/*` | `auth.py` | ✅ (가게 고정비 `/api/store` ⬜) |
+| F13 | 아침 알림 (카카오톡 · 앱 알림) | 마이페이지 › 설정 | `/api/kakao/*` · `/api/push/*` · `POST /api/jobs/alerts` | `kakao_alert.py` · `app_push.py` | ✅ (원가율 알림 `GET /api/cost-alerts` · `POST /api/jobs/cost-alerts` · `store/cost_alert.py` 11/24) |
+| F14 | 로그인 · 가게 정보 | 로그인 · 마이페이지 | `/api/auth/*` | `auth.py` | ✅ (가게 비용 `GET·PUT /api/store/costs` 11/24) |
 | F15 | 대형마트 판매가 · 날씨 · 행사 · 공휴일 | 첫 화면 아래 | `GET /api/mart` · `/api/context` | `mart_price.py` | ✅ |
-| F16 | 유료 잠금 (구독) | — | (약속만: HTTP 402) | — | ⬜ |
+| F16 | 유료 잠금 (구독) | — | `/api/receipt/trial` · `/api/subscribe` (+ `/checkout` · `/confirm` · `/cancel`) | `account/trial.py` · `account/subscription.py` | 🟡 무료 5회 잠금 · 토스 테스트 결제(모의), 실제 결제 없음 |
 
 ---
 
@@ -102,13 +103,12 @@ F5 싸게/비싸게 · F6 더 싼 판매처 (F2 단위 환산)
 
 | 항목 | 지금 | 언제 |
 |---|---|---|
-| 재고 입력 · 수정 | 보기만 (읽기) | 미정 |
 | 영수증 PDF | 사진만 | 미정 |
-| 영수증 읽기 정확도 | 측정 전 | 11/26 (V5) |
-| 고기 · 수산물 학습 모델 | 고정 공식 | 빈 기간 가격 받은 뒤 |
+| 영수증 읽기 정확도 | 시연용 가상 영수증 20장만 측정 (실제 가게 영수증 아님) | 시범 운영 뒤 |
+| 고기 · 수산물 학습 모델 | 고정 공식. 수산물 자료는 2020~2026 이어 붙임(11/25) · 학습 모델은 "그대로"만 답해 교체 보류. 고기는 아직 채점 전 | 팀 결정 · 고기 채점 뒤 |
 | 판매처 비교 | 식봄만 | 쿠팡 · 네이버 수수료율 확인 뒤 |
 | 판매량 예측 | 시연 가게 가상 데이터 | 시범 운영 뒤 |
-| 유료 잠금 · 결제 | 없음 (구독료 19,900원은 가정값) | 설문 11/19~24 뒤 |
+| 유료 잠금 · 결제 | 무료 5회 잠금 + 모의 결제(토스 테스트 키). 실제 결제 없음 (구독료 19,900원은 가정값) | 설문 결과 · 사업자 등록 뒤 |
 
 ---
 
@@ -116,6 +116,6 @@ F5 싸게/비싸게 · F6 더 싼 판매처 (F2 단위 환산)
 
 | 무엇 | 누가 | 메모 |
 |---|---|---|
-| 기능 목록 상태(✅ · 🟡 · ⬜)가 맞는지 | 이하영 · 이성이 | 11/18 코드 기준으로 Claude가 적음 |
+| 기능 목록 상태(✅ · 🟡 · ⬜)가 맞는지 | 이하영 · 이성이 | 11/18 코드 기준으로 Claude가 적음 · 11/25에 11/18 이후 커밋 기준으로 일부 갱신 (확인 필요) |
 | 화면 이름이 실제 메뉴 이름과 같은지 | 이성이 | 3절 "화면" 칸 |
 | 재고 입력 · 유료 잠금을 발표 전 만들지, 한계로 둘지 | 팀 | 7절 |

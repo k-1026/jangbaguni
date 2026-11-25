@@ -10,6 +10,7 @@
 터미널에서 바로 대화: python -m chat.agent
 """
 
+import functools
 import json
 import os
 from concurrent.futures import ThreadPoolExecutor
@@ -250,6 +251,29 @@ AGENT_TOOLS = {
             get_item_price_trend],
     "내일준비": [forecast_store_demand, forecast_item_price, recommend_buy_now, get_weather_summary, get_upcoming_holidays],
 }
+# 도구를 부르는 동안 화면에 보여 줄 말
+TOOL_STATUS = {
+    "list_supported_items": "볼 수 있는 재료를 확인하는 중…", "get_market_overview": "전체 시세를 모으는 중…",
+    "get_item_price_trend": "재료 시세를 확인하는 중…", "forecast_item_price": "다음 주 시세를 계산하는 중…",
+    "recommend_buy_now": "지금 사면 좋은 재료를 고르는 중…", "get_meat_seafood_prices": "고기·생선 시세를 확인하는 중…",
+    "get_weather_summary": "날씨를 확인하는 중…", "get_daegu_events": "대구 행사를 확인하는 중…",
+    "get_upcoming_holidays": "공휴일을 확인하는 중…", "list_standard_menus": "메뉴 목록을 확인하는 중…",
+    "calc_menu_margin": "원가를 계산하는 중…", "forecast_store_demand": "내일 판매량을 계산하는 중…",
+    "get_store_cost_ratio": "우리 가게 원가율을 계산하는 중…", "judge_receipt_prices": "영수증 가격을 비교하는 중…",
+}
+
+
+def _announce(tools, on_status):
+    """도구를 실행하기 직전에 on_status 로 알리는 껍데기 (이름 · 설명 · 인자는 그대로라 모델이 보는 도구는 같음)"""
+    def wrap(fn):
+        @functools.wraps(fn)
+        def inner(*a, **k):
+            on_status(TOOL_STATUS.get(fn.__name__, "확인하는 중…"))
+            return fn(*a, **k)
+        return inner
+    return [wrap(t) for t in tools] if on_status else tools
+
+
 AGENT_NAMES = {"시세": "📈 시세", "원가": "💰 원가 · 마진", "내일준비": "📦 내일 준비"}
 TOOLS = list(dict.fromkeys(t for ts in AGENT_TOOLS.values() for t in ts))   # 모든 도구 (확인용)
 
@@ -425,38 +449,50 @@ class SalpiAgent:
                         for h in (history or [])[-12:] if h.get("text")]
         self.last_tools, self.last_route = [], []
 
-    def _ask_one(self, kind, message):
-        """담당 하나에게 묻기 → (답, 부른 도구, 모델, 도구 결과, 걸린 ms). 무료 API가 바쁘면(503 · 504 · 429) 다음 모델로 갈아탐."""
+    def _ask_one(self, kind, message, on_text=None, on_status=None):
+        """담당 하나에게 묻기 → (답, 부른 도구, 모델, 도구 결과, 걸린 ms). 무료 API가 바쁘면(503 · 504 · 429) 다음 모델로 갈아탐.
+        on_text 가 있으면 답이 써지는 대로 조각조각 넘겨 줌 (화면이 글자를 바로 보여 주도록)."""
         last_error, started = None, time.time()
         for model in self.models:
             chat = self.client.chats.create(
                 model=model, history=list(self.history) or None,
-                config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPTS[kind], tools=AGENT_TOOLS[kind],
+                config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPTS[kind], tools=_announce(AGENT_TOOLS[kind], on_status),
                                                    temperature=0.3))
+            sent = []
             try:
-                text = chat.send_message(message).text or "답을 만들지 못했어요. 다시 물어봐 주세요."
+                for chunk in chat.send_message_stream(message):
+                    if chunk.text:
+                        sent.append(chunk.text)
+                        if on_text:
+                            on_text(chunk.text)
+                text = "".join(sent) or "답을 만들지 못했어요. 다시 물어봐 주세요."
                 hist = chat.get_history(curated=False)
                 tools = [p.function_call.name for c in hist for p in (c.parts or []) if getattr(p, "function_call", None)]
                 outputs = [p.function_response.response for c in hist for p in (c.parts or [])
                            if getattr(p, "function_response", None)]   # 숫자 검사용 (도구가 돌려준 값)
                 return text, tools, model, outputs, round((time.time() - started) * 1000)
             except errors.APIError as e:
+                if sent and on_text:
+                    raise      # 이미 화면에 글자가 나간 뒤라 다른 모델로 다시 쓰면 글이 겹침
                 if 400 <= e.code < 500 and e.code not in (404, 429):
                     raise      # 요청 자체가 잘못된 경우는 갈아타도 같음
                 last_error = e
             except Exception as e:  # 시간 초과·연결 끊김
+                if sent and on_text:
+                    raise
                 last_error = e
         raise last_error
 
-    def ask(self, message: str) -> str:
+    def ask(self, message: str, on_text=None, on_status=None) -> str:
+        """on_text: 답 조각을 받는 함수. 담당이 하나일 때만 글자가 흘러가고, 섞인 질문은 완성된 뒤 한 번에 옴."""
         t0 = time.time()
         kinds, how = route(message, self.client)
         route_ms = round((time.time() - t0) * 1000)
         self.last_route = kinds
         if len(kinds) == 1:
-            jobs = [(kinds[0], message)]
+            jobs = [(kinds[0], message, on_text, on_status)]
         else:   # 섞인 질문: 담당마다 자기 몫만 답하게 하고 동시에 부름 (차례로 부르면 두 배 걸림)
-            jobs = [(k, f"{message}\n\n(이 질문은 여러 담당이 나눠 답한다. 너는 {AGENT_NAMES[k]} 담당 부분만 답하고 다른 부분은 말하지 마라)")
+            jobs = [(k, f"{message}\n\n(이 질문은 여러 담당이 나눠 답한다. 너는 {AGENT_NAMES[k]} 담당 부분만 답하고 다른 부분은 말하지 마라)", None, on_status)
                     for k in kinds]
         with ThreadPoolExecutor(len(jobs)) as pool:
             results = list(pool.map(lambda j: self._ask_one(*j), jobs))

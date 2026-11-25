@@ -2719,12 +2719,37 @@ async function send(text) {
   const typing = addMsg("bot", "살피가 살펴보는 중이에요…");
   typing.classList.add("typing");
   try {
-    const r = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" },
+    const r = await fetch("/api/chat/stream", { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message: text, history, session: chatSession }) });
-    const d = await r.json();
-    typing.remove();
-    addMsg("bot", d.reply);
-    history.push({ role: "user", text }, { role: "bot", text: d.reply });
+    // 답이 한 줄(JSON)씩 옴: {s: 지금 하는 일} {t: 글자 조각} ... {done, reply}. 첫 조각이 오면 "살펴보는 중" 말풍선을 답으로 바꿔 채움
+    const reader = r.body.getReader(), dec = new TextDecoder();
+    let buf = "", shown = "", reply = null;
+    const onLine = (line) => {
+      if (!line.trim()) return;
+      const m = JSON.parse(line);
+      if (m.s && !shown) typing.textContent = m.s;   // 지금 하는 일 (답 글자가 나오기 전까지만)
+      if (m.t) {
+        shown += m.t;
+        typing.classList.remove("typing");
+        typing.innerHTML = md(shown);
+        body.scrollTop = body.scrollHeight;
+      }
+      if (m.done) reply = m.reply;
+    };
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split("\n");
+      buf = lines.pop();
+      lines.forEach(onLine);
+    }
+    onLine(buf);
+    if (reply === null) throw new Error("끊김");
+    typing.classList.remove("typing");
+    typing.innerHTML = md(reply);   // 완성된 답으로 마무리 (섞인 질문 · 오류 문구는 여기서 처음 보임)
+    body.scrollTop = body.scrollHeight;
+    history.push({ role: "user", text }, { role: "bot", text: reply });
   } catch (e) {
     typing.remove();
     addMsg("bot", "연결이 끊겼어요. 잠시 뒤 다시 물어봐 주세요.");

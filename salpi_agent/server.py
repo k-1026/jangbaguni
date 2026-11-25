@@ -5,7 +5,9 @@
 
 import os
 import base64
+import hashlib
 import json
+import queue
 import threading
 from concurrent.futures import ThreadPoolExecutor
 import time
@@ -15,7 +17,7 @@ from pathlib import Path
 from datetime import date
 
 from fastapi import FastAPI, Header, HTTPException, Request
-from fastapi.responses import FileResponse, RedirectResponse, Response
+from fastapi.responses import FileResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -41,7 +43,7 @@ from account import subscription
 from store import inventory
 from store import receipts
 from sources import supabase_db
-from chat.agent import SalpiAgent
+from chat.agent import BUTTON_ROUTES, SalpiAgent
 from sources.data_sources import ITEMS, ApiError, ApiKeyMissing, event_detail, foodspring_url, holidays, month_events, weather_forecast
 
 ROOT = Path(__file__).resolve().parent
@@ -356,7 +358,7 @@ def event(content_id: str):
 @app.get("/api/mart")
 def mart():
     """대형마트 판매가 (한국소비자원 참가격, 음식 재료만). 2주마다 조사돼서 6시간 보관."""
-    return _guard(lambda: shared("mart", mart_price.mart_prices, ttl=6 * 3600, keep=3 * 24 * 3600))
+    return _guard(lambda: shared("mart2", mart_price.mart_prices, ttl=6 * 3600, keep=3 * 24 * 3600))
 
 
 @app.get("/api/buy-links")
@@ -535,7 +537,7 @@ def receipt_read(body: ReceiptIn, authorization: str | None = Header(None)):
     token = _bearer(authorization)
     if not token:   # 로그인 표 없이 부르는 곳(모바일 시연 화면)은 지금처럼 횟수 없이
         return _receipt_guard(lambda: receipts.read(photos))
-    # 로그인한 사장님: 무료 5회를 다 썼으면 402, 읽기에 성공했을 때만 1회 셈 (사진이 여러 장이어도 영수증 하나 = 1회)
+    # 로그인한 사장님: 한 달 무료가 끝났으면 402, 읽기에 성공했을 때만 1회 셈 (첫 성공한 날부터 한 달 · 사진이 여러 장이어도 영수증 하나 = 1회)
     user = _auth(lambda: trial.check(token))
     result = _receipt_guard(lambda: receipts.read(photos))
     return {**result, "trial": _auth(lambda: trial.count(user))}
@@ -715,7 +717,8 @@ def inventory_set(body: StockIn):
 
 @app.get("/api/receipts")
 def receipt_list():
-    return _receipt_guard(lambda: {"receipts": receipts.recent(supabase_db.DEMO_STORE, limit=50)})
+    # shortcut: 1000장(Supabase 한 번에 주는 최대)까지, 넘으면 페이지 나눠 받기
+    return _receipt_guard(lambda: {"receipts": receipts.recent(supabase_db.DEMO_STORE, limit=1000)})
 
 
 @app.delete("/api/receipt/{purchase_id}")
@@ -1033,12 +1036,21 @@ class ChatIn(BaseModel):
     session: str = ""      # 같은 채팅창의 대화 묶음 (화면이 만든 임의 번호, 대화 기록용)
 
 
-@app.post("/api/chat")
-def chat(body: ChatIn):
+def _answer(body, on_text=None, on_status=None):
+    """질문 하나에 답하고 대화 기록까지 남김 → 답 글. (/api/chat 과 /api/chat/stream 이 같이 씀)"""
     question, started, agent, status = body.message.strip()[:1000], time.time(), None, "ok"
     try:
-        agent = SalpiAgent(history=body.history)
-        reply = agent.ask(question)
+        if question in BUTTON_ROUTES:   # 화면 버튼 질문은 답이 정해져 있어 3시간 동안 같은 답을 재사용 (모델 호출 없이 바로)
+            def fresh():
+                nonlocal agent
+                agent = SalpiAgent()   # 버튼 답은 지난 대화와 무관하게 같아야 함
+                return agent.ask(question)
+            reply = shared("chat-" + hashlib.md5(question.encode()).hexdigest()[:8], fresh, ttl=3 * 3600)
+            if agent is None:
+                agent = type("Cached", (), {"last_tools": ["안내:버튼", "저장된 답"], "model": None})()
+        else:
+            agent = SalpiAgent(history=body.history)
+            reply = agent.ask(question, on_text, on_status)
     except ApiKeyMissing as e:
         reply, status = str(e), "nokey"
     except Exception as e:
@@ -1049,7 +1061,33 @@ def chat(body: ChatIn):
     if question:
         chat_log.save(body.session, len(body.history) // 2, question, reply, getattr(agent, "last_tools", []),
                       getattr(agent, "model", None), (time.time() - started) * 1000, status)
-    return {"reply": reply}
+    return reply
+
+
+@app.post("/api/chat")
+def chat(body: ChatIn):
+    return {"reply": _answer(body)}
+
+
+@app.post("/api/chat/stream")
+def chat_stream(body: ChatIn):
+    """답이 써지는 대로 한 줄씩(JSON) 보냄: {"s": 지금 하는 일} · {"t": 글자 조각} ... 마지막에 {"done": true, "reply": 완성된 답}"""
+    pieces: queue.Queue = queue.Queue()
+
+    def work():
+        reply = _answer(body, lambda t: pieces.put({"t": t}), lambda s: pieces.put({"s": s}))
+        pieces.put({"done": True, "reply": reply})
+
+    threading.Thread(target=work, daemon=True).start()
+
+    def lines():
+        while True:
+            item = pieces.get()
+            yield json.dumps(item, ensure_ascii=False) + "\n"
+            if item.get("done"):
+                return
+
+    return StreamingResponse(lines(), media_type="application/x-ndjson", headers={"X-Accel-Buffering": "no"})
 
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=318">
+  <link rel="stylesheet" href="/static/style.css?v=323">
 </head>
 <body>
 <script>
@@ -280,7 +280,7 @@
           <p class="lock-title">무료 체험이 끝났어요</p>
           <p class="lock-found" id="receiptFound"></p>
           <p class="lock-sub">살피 플러스로 영수증 분석을 <b>무제한</b> 써 보세요</p>
-          <button class="lock-btn" type="button" id="receiptSubBtn">구독하러 가기</button>
+          <button class="lock-btn" type="button" id="receiptSubBtn">월 19,900원으로 구독하기</button>
         </div>
       </div>
     </div>
@@ -398,6 +398,14 @@
   </div>
 </div>
 
+<!-- 살피 플러스 결제: 결제창 → 결제 완료 · 실패 (app.js openPay) -->
+<div class="modal" id="payModal" hidden>
+  <div class="modal-box pay-box" role="dialog" aria-modal="true" aria-label="살피 플러스 결제">
+    <button class="modal-close" id="payClose" aria-label="닫기">×</button>
+    <div id="payBody"></div>
+  </div>
+</div>
+
 <!-- 영수증 한 장 자세히 -->
 <div class="modal" id="receiptModal" hidden>
   <div class="modal-box" role="dialog" aria-label="영수증 자세히">
@@ -475,6 +483,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="/static/app.js?v=256"></script>
+<script src="/static/app.js?v=262"></script>
 </body>
 </html>

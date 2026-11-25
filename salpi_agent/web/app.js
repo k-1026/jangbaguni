@@ -377,7 +377,7 @@ async function getJSON(url, { auth = false } = {}) {
 const SALES_LOCK = `<div class="receipt-lock sales-lock"><div class="lock-panel">
     <p class="lock-title">무료 체험이 끝났어요</p>
     <p class="lock-sub">살피 플러스로 판매율 분석을 <b>무제한</b> 써 보세요</p>
-    <button class="lock-btn sales-sub-btn" type="button">구독하러 가기</button></div></div>`;
+    <button class="lock-btn sales-sub-btn" type="button">월 19,900원으로 구독하기</button></div></div>`;
 function showSalesLock() {
   $("#storeBasis").textContent = "";
   $("#menuForecast").innerHTML = SALES_LOCK;
@@ -2323,6 +2323,95 @@ function setTrial(t) {
   $(".receipt-link")?.classList.toggle("used-up", locked);   // 다 쓰면 카드는 회색, 구독하기 버튼만 노랑
 }
 if (SIGNED_IN) authCall("/api/receipt/trial", { method: "GET", token: readLogin()?.access_token }).then(setTrial).catch(() => {});
+// ---------------------------------------------------------------
+// 살피 플러스 구독 · 결제 (서버 account/subscription.py)
+// [월 19,900원으로 구독하기] → 바로 결제 → 결제 완료(결제 금액 · 이용 기간) / 결제 실패(다시 결제하기 · 돌아가기)
+// - 토스 테스트 키가 있으면(mode=toss) 토스 결제창에 갔다가 · 없으면(mode=mock) 결제창 없이 서버가 바로 모의 승인
+//   토스는 /?page=store&pay=success|fail 로 돌아옴 (아래 파일 끝에서 처리)
+// - 결제가 끝난 뒤 창을 닫으면 새로고침해서 잠금(영수증 · 판매율 분석)을 풂
+// ---------------------------------------------------------------
+const PAY_FROM_KEY = "salpi_pay_from";   // 어느 잠금 칸에서 눌렀나 (토스에 갔다 와도 기억)
+const PAY_GO = { receipt: ["영수증 분석하러 가기", "#receipt"], sales: ["판매율 분석 보러 가기", "#sales"], mypage: ["확인", "#my"] };
+const PAY_CHECK = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>`;
+const PAY_X = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17"/></svg>`;
+let payPaid = false;
+const payFrom = () => { try { return sessionStorage.getItem(PAY_FROM_KEY) || "receipt"; } catch (e) { return "receipt"; } };
+const payWait = (msg) => payShow(`<div class="reading"><div class="spinner"></div><b>${msg}</b></div>`);
+function payShow(html) { $("#payBody").innerHTML = html; $("#payModal").hidden = false; }
+// 결제가 끝났으면 잠금을 풀려고 새로고침 (누른 칸으로 바로 이동)
+function payClose() {
+  $("#payModal").hidden = true;   // 새로고침은 새 페이지가 뜰 때까지 몇 초 걸려서, 창부터 바로 닫음
+  if (!payPaid) return;
+  window.history.replaceState(null, "", `/?page=store${PAY_GO[payFrom()]?.[1] || ""}`);
+  location.reload();
+}
+
+async function openPay(from) {
+  if (!SIGNED_IN) return goLogin();
+  try { sessionStorage.setItem(PAY_FROM_KEY, from); } catch (e) {}
+  payWait("결제하는 중이에요");
+  let o;
+  try { o = await authCall("/api/subscribe/checkout", { token: readLogin()?.access_token }); }
+  catch (e) { return payFail(e.message); }
+  if (o.mode === "toss") return tossPay(o);
+  payConfirm({ order_id: o.order_id, amount: o.amount });   // 모의 결제: 결제창 없이 바로 승인
+}
+
+// 토스 결제창(테스트 키): 결제가 끝나면 successUrl · failUrl 로 페이지가 바뀌어 돌아옴. 결제창을 닫으면 여기서 실패로
+async function tossPay(o) {
+  try {
+    if (!window.TossPayments) await new Promise((ok, no) => {
+      const sc = document.createElement("script");
+      sc.src = "https://js.tosspayments.com/v1/payment";
+      sc.onload = ok;
+      sc.onerror = () => no(new Error("결제창을 불러오지 못했어요. 인터넷 연결을 확인해 주세요."));
+      document.head.appendChild(sc);
+    });
+    const back = `${location.origin}/?page=store&pay=`;
+    await window.TossPayments(o.client_key).requestPayment("카드", { amount: o.amount, orderId: o.order_id, orderName: o.order_name,
+      customerName: o.customer_name, successUrl: `${back}success`, failUrl: `${back}fail` });
+  } catch (e) { payFail(e.code === "USER_CANCEL" ? "결제창을 닫았어요." : e.message); }
+}
+
+async function payConfirm(body) {
+  payWait("결제를 확인하는 중이에요");
+  try { payDone(await authCall("/api/subscribe/confirm", { token: readLogin()?.access_token, body })); }
+  catch (e) { payFail(e.message); }
+}
+
+// ① 결제 완료: 결제 금액 · 이용 기간(끝나는 날까지). 자동 결제는 없어서 다음 결제는 안 보여 줌
+function payDone(s) {
+  payPaid = true;
+  const [label] = PAY_GO[payFrom()] || PAY_GO.receipt;
+  payShow(`<div class="pay-card pay-result">
+      <span class="pay-icon ok">${PAY_CHECK}</span>
+      <h3>살피 플러스가 시작됐어요</h3>
+      <dl class="pay-sum">
+        <div><dt>결제 금액</dt><dd>${won(s.approved.amount)}</dd></div>
+        <div><dt>이용 기간</dt><dd>${mmdd(s.until)}까지</dd></div>
+      </dl>
+      <button class="pay-btn" type="button" data-pay="go">${label}</button></div>`);
+  $('#payBody [data-pay="go"]').onclick = payClose;
+}
+
+// ② 결제 실패: 서버가 알려 준 까닭이 있으면 같이
+function payFail(msg) {
+  payShow(`<div class="pay-card pay-result">
+      <span class="pay-icon fail">${PAY_X}</span>
+      <h3>결제가 안 됐어요</h3>
+      <p class="pay-msg">돈은 나가지 않았어요.<br>${esc(msg || "카드 정보를 확인하고 다시 해 주세요.")}</p>
+      <button class="pay-btn" type="button" data-pay="retry">다시 결제하기</button>
+      <button class="pay-back" type="button" data-pay="back">돌아가기</button></div>`);
+  $('#payBody [data-pay="retry"]').onclick = () => openPay(payFrom());
+  $('#payBody [data-pay="back"]').onclick = payClose;
+}
+
+// [월 19,900원으로 구독하기]: 영수증 분석 잠금 · 판매율 분석 잠금(나중에 그려지는 칸이라 문서에서 받음)
+$("#receiptSubBtn").onclick = () => openPay("receipt");
+document.addEventListener("click", (e) => { if (e.target.closest(".sales-sub-btn")) openPay("sales"); });
+$("#payClose").onclick = payClose;
+$("#payModal").onclick = (e) => { if (e.target.id === "payModal") payClose(); };
+
 // 카메라로 찍기: 처음 한 번 브라우저가 카메라 권한을 물어봄 → 세로(2:3) 창에 맞춰 찍음
 // 긴 영수증은 여러 번 나눠 찍기: 찍은 사진은 오른쪽 대기열에 작게 쌓이고(× 로 지우기) [다 찍었어요]를 누르면 위아래로 이어 읽음
 // (폰은 뒤 카메라, 노트북은 앞 카메라. https 또는 내 컴퓨터 주소에서만 열림)
@@ -3289,7 +3378,12 @@ function closeMypage() {
 async function renderMypage(view) {
   const box = $("#mypageBody");
   $("#mypageBack").hidden = view === "home";
-  $("#mypageTitle").textContent = { home: "마이페이지", receipts: "나의 영수증", settings: "알림 설정" }[view];
+  $("#mypageTitle").textContent = { home: "마이페이지", receipts: "나의 영수증", settings: "알림 설정", plan: "구독 관리" }[view];
+  if (view === "plan") {   // 구독 관리: 요금 · 이용 기간 · 최근 결제
+    if (!plan?.s) { box.innerHTML = `<p class="muted">불러오는 중이에요</p>`; await loadPlan(); }
+    box.innerHTML = planManage();
+    return;
+  }
   if (view === "receipts") {
     box.innerHTML = `<p class="muted">불러오는 중이에요</p>`;
     try {
@@ -3345,6 +3439,53 @@ async function renderMypage(view) {
   draw(cached);
   freshProfile().then((me) => { if (JSON.stringify(me) !== JSON.stringify(cached)) draw(me); syncCosts(me); }).catch(() => draw(cached, true));
   loadReceiptMaterial();
+  loadPlan();
+}
+
+// ---------------------------------------------------------------
+// 마이페이지 구독 칸 (프로필 바로 아래): 무료 · 구독 중 (서버 /api/subscribe · 영수증 무료 기간 /api/receipt/trial)
+// shortcut: 자동 결제가 없어 한 번 결제 = 30일, 끝나면 무료로 돌아감 → 다음 결제 · 구독 해지는 안 보여 줌. 토스 빌링(자동결제)을 붙이면 다시 넣기
+// - 무료: 영수증 분석 남은 날 + [플러스 구독하기] (무료 기간 중에도 바로 구독 가능)
+// - 구독 중: 끝나는 날 + [관리 ›] → 구독 관리 화면(요금 · 이용 기간 · 최근 결제)
+// ---------------------------------------------------------------
+let plan = null;   // { s: 구독 상태, t: 영수증 무료 기간 } — 마이페이지를 다시 그려도 바로 보이게 기억
+async function loadPlan() {
+  const token = readLogin()?.access_token;
+  try {
+    const [s, t] = await Promise.all([authCall("/api/subscribe", { method: "GET", token }),
+      authCall("/api/receipt/trial", { method: "GET", token }).catch(() => null)]);
+    plan = { s, t };
+  } catch (e) { plan = { err: e.message }; }
+  const el = $("#myPlan");
+  if (el) el.innerHTML = planCard();
+}
+function planCard() {
+  if (!plan) return `<p class="muted small">구독 정보를 불러오는 중이에요</p>`;
+  if (plan.err) return `<p class="muted small">구독 정보를 불러오지 못했어요. ${esc(plan.err)}</p>`;
+  const { s, t } = plan;
+  if (s.paid) return `<div><b>살피 플러스</b><small>${mmdd(s.until)}까지</small></div>
+    <button class="my-plan-link manage" type="button" data-plan="manage">관리 ›</button>`;
+  const left = !t ? "" : t.locked ? "무료 기간 끝" : t.since ? `영수증 분석 ${t.left}일 남음` : "영수증 분석 한 달 무료";
+  return `<div><b>무료 이용 중</b>${left ? `<small>${left}</small>` : ""}</div>
+    <button class="my-plan-buy" type="button" data-plan="buy">플러스 구독하기</button>`;
+}
+// 구독 관리 화면 (구독 중일 때만 열림)
+function planManage() {
+  const s = plan?.s;
+  if (!s?.paid) return `<p class="muted">지금 구독 중이 아니에요.</p>`;
+  const pays = (s.payments || []).map((p) => `<li><span>${mmdd((p.approved_at || "").slice(0, 10))}</span>
+    <span class="muted">${p.mode === "mock" ? "모의 결제" : esc(p.method || "카드")}</span><b>${won(p.amount)}</b></li>`).join("");
+  return `<section class="my-card">
+      <h4>살피 플러스</h4>
+      <dl class="pm-rows">
+        <div><dt>요금</dt><dd>월 ${won(s.price)}</dd></div>
+        <div><dt>이용 기간</dt><dd>${mmdd(s.until)}까지</dd></div>
+      </dl></section>
+    ${pays ? `<section class="my-card"><h4>최근 결제</h4><ul class="pm-pays">${pays}</ul></section>` : ""}`;
+}
+async function planClick(act) {
+  if (act === "buy") return openPay("mypage");
+  if (act === "manage") return renderMypage("plan");
 }
 
 function myHome(me, offline) {
@@ -3354,6 +3495,7 @@ function myHome(me, offline) {
   costMe = me;
   return `
     <section class="my-card profile${prof ? " editing" : ""}" id="myProfile">${profileCard(me, how)}</section>
+    <section class="my-card my-plan" id="myPlan">${planCard()}</section>
     ${offline ? `<p class="muted small my-offline">서버에 연결하지 못해 기억해 둔 정보만 보여 드려요.</p>` : ""}
     <section class="my-card mc" id="myCost">${costCard()}</section>
     <section class="my-card">
@@ -3881,6 +4023,8 @@ $("#mypageClose").onclick = closeMypage;
 $("#mypageBack").onclick = () => renderMypage("home");
 $("#backdrop").onclick = closeMypage;
 $("#mypageBody").onclick = (e) => {
+  const pl = e.target.closest("[data-plan]");
+  if (pl) return planClick(pl.dataset.plan);
   if (profClick(e)) return;
   if (costClick(e)) return;
   const acc = e.target.closest("[data-account]");
@@ -4188,6 +4332,15 @@ $("#eventCard").onclick = (e) => {
 };
 
 // 시연용 주소: 마이페이지 코드 · 알림 설정 값이 모두 읽힌 뒤에 열어야 해서 파일 맨 끝에 둠
+// 토스 결제창에서 돌아왔을 때 (pay=success · fail): 주소를 지우고 승인 → 결제 완료 · 실패 화면
+{
+  const q = new URLSearchParams(location.search), back = q.get("pay");
+  if (back && SIGNED_IN) {
+    window.history.replaceState(null, "", "/?page=store");
+    if (back === "success") payConfirm({ payment_key: q.get("paymentKey"), order_id: q.get("orderId"), amount: +q.get("amount") });
+    else payFail(q.get("message"));
+  }
+}
 if (location.hash === "#my") openMypage();               // 시연용: 마이페이지가 열린 채로
 if (location.hash === "#settings") openMypage("settings");   // 시연용: 마이페이지 › 설정(알림 · 권한)이 열린 채로
 try { if (sessionStorage.getItem("salpi_kakao_show")) { sessionStorage.removeItem("salpi_kakao_show"); if (SIGNED_IN) openMypage("settings"); } } catch (e) {}   // 카카오톡 연결 결과를 바로 보여 줌

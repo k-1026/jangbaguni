@@ -2540,7 +2540,7 @@ function scoreDetail(few) {
   }).join("");
   return `<div class="score-detail" id="scoreDetail">
     ${rows || `<p class="muted small">품목별로 보여 줄 만큼 채점한 예측이 아직 없어요</p>`}
-    <p class="score-foot">이름을 누르면 그 재료 시세로 가요${few ? `${SEP}예측 ${SCORE_MIN}번 미만 ${few}개는 채점 중` : ""}</p>
+    ${few ? `<p class="score-foot">예측 ${SCORE_MIN}번 미만 ${few}개는 채점 중</p>` : ""}
   </div>`;
 }
 function renderScore() {

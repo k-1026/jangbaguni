@@ -2349,7 +2349,7 @@ function camFail(msg, denied) {
   $("#camGallery").onclick = () => closeCamera();
 }
 async function askCamera() {
-  return navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+  return navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 3840 }, height: { ideal: 2160 } }, audio: false });
 }
 async function openCamera() {
   $("#cameraModal").hidden = false;

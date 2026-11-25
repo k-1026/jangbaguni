@@ -1380,7 +1380,7 @@ main { overflow-x: clip; }   /* 화면 폭 배경이 가로 스크롤을 만들�
 .score-big { display: flex; align-items: baseline; gap: 8px; margin: 0; }
 .score-big b { font-size: 34px; font-weight: 800; line-height: 1; letter-spacing: -.5px; color: var(--primary); font-variant-numeric: tabular-nums; }
 .score-big span { font-size: 14px; font-weight: 700; color: var(--ink); }
-.score-sub { margin: 0; padding-left: 16px; border-left: 1px solid var(--outline-variant); font-size: 13px; color: var(--muted); }
+.score-sub { margin: 0; padding-left: 16px; border-left: 1px solid var(--outline-variant); font-size: 13px; line-height: 1.5; color: var(--muted); }
 .score-tabs { display: flex; gap: 2px; margin-left: auto; padding: 3px; border-radius: 10px; background: var(--surface-variant); }
 .score-tabs button { padding: 6px 12px; border: 0; border-radius: 8px; background: none; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
 .score-tabs button:hover { color: var(--ink); }

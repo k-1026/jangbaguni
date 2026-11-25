@@ -2553,7 +2553,7 @@ function renderScore() {
   const few = Object.values(score.items).filter((v) => (label === "전체" || v.kind === label) && v.n < SCORE_MIN).length;
   $("#scoreCard").innerHTML = `<div class="score-top">
       <p class="score-big"><b>${s.direction_hit_pct}%</b><span>${esc(label)} 예측률</span></p>
-      <p class="score-sub">7일 뒤 가격 방향 적중률${SEP}${s.n}개 중 ${scoreHits(s)}개</p>
+      <p class="score-sub">7일 뒤 가격 방향 적중률<br>${s.n}개 중 ${scoreHits(s)}개</p>
       ${scoreOpen ? `<div class="score-tabs" role="group" aria-label="재료 종류">${["전체", ...kinds].map((k) =>
         `<button type="button" data-skind="${esc(k)}" class="${k === scoreKind ? "active" : ""}" aria-pressed="${k === scoreKind}">${esc(k)}</button>`).join("")}</div>` : ""}
       <button type="button" class="score-more" data-smore aria-expanded="${scoreOpen}" aria-controls="scoreDetail">${scoreOpen ? "접기" : "상세보기"}

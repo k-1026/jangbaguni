@@ -2949,6 +2949,10 @@ async function send(text) {
   try {
     const r = await fetch("/api/chat/stream", { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message: text, history, session: chatSession }) });
+    if (!r.ok) {   // 너무 자주 물으면 429 (악용 막기) → 서버 안내 문구를 그대로 보여 줌
+      const d = await r.json().catch(() => ({}));
+      throw Object.assign(new Error(d.detail || "끊김"), { friendly: !!d.detail });
+    }
     // 답이 한 줄(JSON)씩 옴: {s: 지금 하는 일} {t: 글자 조각} ... {done, reply}. 첫 조각이 오면 "살펴보는 중" 말풍선을 답으로 바꿔 채움
     const reader = r.body.getReader(), dec = new TextDecoder();
     let buf = "", shown = "", reply = null;
@@ -2980,7 +2984,7 @@ async function send(text) {
     history.push({ role: "user", text }, { role: "bot", text: reply });
   } catch (e) {
     typing.remove();
-    addMsg("bot", "연결이 끊겼어요. 잠시 뒤 다시 물어봐 주세요.");
+    addMsg("bot", e.friendly ? e.message : "연결이 끊겼어요. 잠시 뒤 다시 물어봐 주세요.");
   }
   busy = false;
   document.querySelectorAll("#quick button").forEach((b) => (b.disabled = false));

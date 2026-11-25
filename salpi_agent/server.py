@@ -536,6 +536,36 @@ class ReceiptSave(ReceiptIn):
     items: list[dict] = []
 
 
+# ---------------------------------------------------------------
+# 악용 막기: 접속한 곳(IP)마다 AI 를 쓰는 요청 횟수를 셈 (11/25, 배포된 사이트 — Groq · 제미나이 무료 한도가 바닥나면 사장님 챗봇 · 영수증이 멈춤)
+# shortcut: 서버(Vercel 인스턴스)마다 메모리로 셈 → 여러 서버에 나뉘면 그만큼 더 허용됨. 악용이 실제로 보이면 Supabase 표로 옮길 것
+# ---------------------------------------------------------------
+_HITS, _HITS_LOCK = {}, threading.Lock()
+LIMITS = {   # 종류: (1분에, 하루에)
+    "chat": (8, 150), "receipt_anon": (3, 15), "receipt_user": (6, 60), "receipt_save": (6, 60),
+}
+
+
+def _client_ip(request):
+    fwd = request.headers.get("x-forwarded-for") or request.headers.get("x-real-ip") or ""
+    return fwd.split(",")[0].strip() or (request.client.host if request.client else "?")
+
+
+def _limit(request, kind):
+    per_min, per_day = LIMITS[kind]
+    now, key = time.time(), (kind, _client_ip(request))
+    with _HITS_LOCK:
+        q = [t for t in _HITS.get(key, []) if now - t < 86400]
+        if sum(1 for t in q if now - t < 60) >= per_min or len(q) >= per_day:
+            _HITS[key] = q
+            raise HTTPException(429, "요청이 너무 많아요. 잠시 뒤 다시 해 주세요.")
+        q.append(now)
+        _HITS[key] = q
+        if len(_HITS) > 20000:   # 메모리가 끝없이 늘지 않게 오래된 곳부터 정리
+            for k in [k for k, v in _HITS.items() if not v or now - v[-1] > 86400][:10000]:
+                _HITS.pop(k, None)
+
+
 def _receipt_guard(fn):
     try:
         return _guard(fn)
@@ -544,12 +574,13 @@ def _receipt_guard(fn):
 
 
 @app.post("/api/receipt/read")
-def receipt_read(body: ReceiptIn, authorization: str | None = Header(None)):
+def receipt_read(body: ReceiptIn, request: Request, authorization: str | None = Header(None)):
     photos = _photos(body)
     if not photos:
         raise HTTPException(400, "영수증 사진을 골라 주세요")
     token = _bearer(authorization)
-    if not token:   # 로그인 표 없이 부르는 곳(모바일 시연 화면)은 지금처럼 횟수 없이
+    _limit(request, "receipt_user" if token else "receipt_anon")
+    if not token:   # 로그인 표 없이 부르는 곳(모바일 시연 화면): 무료 횟수 대신 접속한 곳마다 하루 15번까지
         return _receipt_guard(lambda: receipts.read(photos))
     # 로그인한 사장님: 한 달 무료가 끝났으면 402, 읽기에 성공했을 때만 1회 셈 (첫 성공한 날부터 한 달 · 사진이 여러 장이어도 영수증 하나 = 1회)
     user = _auth(lambda: trial.check(token))
@@ -619,7 +650,8 @@ def subscribe_cancel(body: CancelIn, authorization: str | None = Header(None)):
 
 
 @app.post("/api/receipt/save")
-def receipt_save(body: ReceiptSave):
+def receipt_save(body: ReceiptSave, request: Request):
+    _limit(request, "receipt_save")
     photos = _photos(body)
     return _receipt_guard(lambda: _store_changed(receipts.save(supabase_db.DEMO_STORE, body.model_dump(), photos)))
 
@@ -1079,14 +1111,22 @@ def _answer(body, on_text=None, on_status=None):
     return reply
 
 
+def _chat_limit(body, request):
+    """버튼 질문은 AI 를 안 써서 세지 않음. 직접 친 질문만 접속한 곳마다 1분 8번 · 하루 150번."""
+    if body.message.strip() not in BUTTON_ROUTES:
+        _limit(request, "chat")
+
+
 @app.post("/api/chat")
-def chat(body: ChatIn):
+def chat(body: ChatIn, request: Request):
+    _chat_limit(body, request)
     return {"reply": _answer(body)}
 
 
 @app.post("/api/chat/stream")
-def chat_stream(body: ChatIn):
+def chat_stream(body: ChatIn, request: Request):
     """답이 써지는 대로 한 줄씩(JSON) 보냄: {"s": 지금 하는 일} · {"t": 글자 조각} ... 마지막에 {"done": true, "reply": 완성된 답}"""
+    _chat_limit(body, request)
     pieces: queue.Queue = queue.Queue()
 
     def work():

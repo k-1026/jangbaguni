@@ -467,6 +467,8 @@ def _with_ai(out, item_name, series):
         return out
     if not ai:
         return out
+    if ai.get("target") == "week" and ai.get("week_avg"):
+        return _with_week_ai(out, ai)
     total, (lo, hi), base = ai["expected_change_pct"], ai["range_pct"], out["base_kg_price"]
     if total >= 2:
         direction, tip = "오를 가능성이 있어요", "필요한 양은 미리 사 두는 편이 나아요"
@@ -481,6 +483,32 @@ def _with_ai(out, item_name, series):
             "confidence": "보통" if hi - lo < 20 else "낮음",
             "method": f"AI 학습 모델(부스팅, 매일 새벽 다시 학습). 최근 1년 시험: 정반대 {m.get('opposite_pct')}% · "
                       f"평균 오차 {m.get('mae_pp')}%p · 범위 적중 {m.get('range_hit_pct')}%",
+            "model": {"version": ai["version"], "metrics": m}}
+
+
+def _with_week_ai(out, ai):
+    """주 평균 모델(11/25~): 다음 주 평균값을 맞히고, 4% 넘게 움직일 때만 "오를 · 내릴" 이라고 말함.
+    - week_change_pct · range_pct: 다음 주 평균 ÷ 이번 주 평균 − 1 (방향 · 채점 기준)
+    - expected_change_pct · expected_kg_price_range: 오늘 값(base_kg_price) 대비 → 화면 '○원 안팎' · 원가 · 알림이 그대로 씀"""
+    w, (lo, hi), wk, base = ai["expected_change_pct"], ai["range_pct"], ai["week_avg"], out["base_kg_price"]
+    sure = ai.get("confident_pct") or 4.0
+    nxt = wk * (1 + w / 100)
+    if w >= sure:
+        code, direction, tip = "up", "다음 주 평균이 오를 가능성이 커요", "필요한 양은 이번 주에 미리 사 두는 편이 나아요"
+    elif w <= -sure:
+        code, direction, tip = "down", "다음 주 평균이 내릴 가능성이 커요", "급하지 않으면 다음 주에 사는 편이 나아요"
+    else:
+        code, direction, tip = "unsure", "다음 주에 크게 바뀌지 않을 것 같아요", "평소대로 사면 돼요"
+    m = ai.get("metrics") or {}
+    return {**out, "horizon": "다음 주 평균 (내일 ~ 7일)",
+            "expected_change_pct": round((nxt / base - 1) * 100, 1) if base else w,
+            "week_change_pct": w, "base_week_avg": round(wk), "range_pct": [lo, hi],
+            "expected_kg_price_range": [round(wk * (1 + lo / 100)), round(wk * (1 + hi / 100))],
+            "direction": direction, "direction_code": code, "suggestion": tip, "factors": ai["factors"], "version": ai["version"],
+            "confidence": "보통" if code != "unsure" else "낮음",
+            "method": f"AI 학습 모델(부스팅, 매일 새벽 다시 학습)이 다음 주 평균값을 예측. 최근 1년 시험: "
+                      f"말한 방향 정답률 {m.get('stated_hit_pct')}% (예측의 {m.get('stated_share_pct')}%에서 방향을 말함) · "
+                      f"정반대 {m.get('opposite_pct')}% · 평균 오차 {m.get('mae_pp')}%p",
             "model": {"version": ai["version"], "metrics": m}}
 
 

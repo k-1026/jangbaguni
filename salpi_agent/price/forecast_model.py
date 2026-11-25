@@ -41,6 +41,27 @@ GROUPS = {
 }
 
 
+CONFIDENT_PCT = 4.0   # 다음 주 평균이 이만큼 넘게 움직일 때만 "오를 · 내릴" 이라고 말함 (11/25 실험: 그때 방향 맞음 야채 70.5 · 과일 71.5%)
+
+
+def week_change(days, prices, i):
+    """학습 목표: 다음 주 평균(기준일 다음 날 ~ 7일) ÷ 이번 주 평균(기준일까지 7일) − 1 (%).
+    하루 경락가는 그날 반입량에 따라 크게 출렁여서, 사장님 장보기 단위(일주일)의 평균을 맞힘. 거래일이 2일 미만이면 None."""
+    asof = days[i]
+    past = [p for d, p in zip(days[max(0, i - 10): i + 1], prices[max(0, i - 10): i + 1]) if d > asof - timedelta(7)]
+    j = bisect_right(days, asof + timedelta(7))
+    nxt = prices[i + 1: j]
+    if len(past) < 2 or len(nxt) < 2 or j >= len(days):   # 다음 주가 다 지나야 (그 뒤 거래일이 있어야) 목표가 확정
+        return None
+    return (statistics.mean(nxt) / statistics.mean(past) - 1) * 100
+
+
+def week_avg(points, asof):
+    """이번 주 평균값 (기준일까지 7일, 화면 · 채점의 기준값)."""
+    v = [p[1] for p in points if asof - timedelta(7) < p[0] <= asof]
+    return statistics.mean(v) if v else None
+
+
 def _pct(a, b):
     return (a / b - 1) * 100 if a and b else math.nan
 
@@ -256,5 +277,9 @@ def forecast(name, kind, points, weather, asof):
     factors = [{"factor": g, "effect_pct": round(v, 1), "detail": _detail(g, f, v)} for g, v in groups.items()]
     factors.sort(key=lambda x: -abs(x["effect_pct"]))
     half = (m.blob.get("range_half_pct") or {}).get(name) or m.blob.get("range_half_pct_all") or 8.0
-    return {"expected_change_pct": round(total, 1), "range_pct": [round(total - half, 1), round(total + half, 1)],
-            "factors": factors, "version": m.blob["version"], "metrics": m.blob.get("metrics")}
+    out = {"expected_change_pct": round(total, 1), "range_pct": [round(total - half, 1), round(total + half, 1)],
+           "factors": factors, "version": m.blob["version"], "metrics": m.blob.get("metrics"), "target": m.blob.get("target", "day")}
+    if out["target"] == "week":   # 위 % 는 '다음 주 평균 ÷ 이번 주 평균' 기준
+        out["week_avg"] = week_avg(points, asof)
+        out["confident_pct"] = m.blob.get("confident_pct", CONFIDENT_PCT)
+    return out

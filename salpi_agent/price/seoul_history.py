@@ -11,9 +11,8 @@ import glob
 import lzma
 import math
 import statistics
-from bisect import bisect_right
 from collections import defaultdict
-from datetime import date, timedelta
+from datetime import date
 
 from price import backtest as B
 from price import forecast_model as FM
@@ -66,11 +65,11 @@ def rows(names, series=None):
         days, prices = [p[0] for p in s], [p[1] for p in s]
         for i in range(30, len(s)):
             asof = days[i]
-            j = bisect_right(days, asof + timedelta(6))
-            if j >= len(s) or days[j] > asof + timedelta(10):
+            y = FM.week_change(days, prices, i)   # 대구 학습과 같은 목표 (다음 주 평균 ÷ 이번 주 평균)
+            if y is None:
                 continue
             f = FM.make_features(name, idx, s[max(0, i - 40): i + 1], {}, asof, FM.season_value(days, prices, asof))
             f["wx"] = math.nan   # 대구 날씨 점수가 없음 (0 이 아니라 빈 값)
             f["src"] = 1.0
-            out.append((asof, idx, f, 0.0, (prices[j] / prices[i] - 1) * 100))
+            out.append((asof, idx, f, 0.0, y))
     return out

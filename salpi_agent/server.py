@@ -5,6 +5,7 @@
 
 import os
 import base64
+import hashlib
 import json
 import queue
 import threading
@@ -42,7 +43,7 @@ from account import subscription
 from store import inventory
 from store import receipts
 from sources import supabase_db
-from chat.agent import SalpiAgent
+from chat.agent import BUTTON_ROUTES, SalpiAgent
 from sources.data_sources import ITEMS, ApiError, ApiKeyMissing, event_detail, foodspring_url, holidays, month_events, weather_forecast
 
 ROOT = Path(__file__).resolve().parent
@@ -1027,8 +1028,17 @@ def _answer(body, on_text=None, on_status=None):
     """질문 하나에 답하고 대화 기록까지 남김 → 답 글. (/api/chat 과 /api/chat/stream 이 같이 씀)"""
     question, started, agent, status = body.message.strip()[:1000], time.time(), None, "ok"
     try:
-        agent = SalpiAgent(history=body.history)
-        reply = agent.ask(question, on_text, on_status)
+        if question in BUTTON_ROUTES:   # 화면 버튼 질문은 답이 정해져 있어 3시간 동안 같은 답을 재사용 (모델 호출 없이 바로)
+            def fresh():
+                nonlocal agent
+                agent = SalpiAgent()   # 버튼 답은 지난 대화와 무관하게 같아야 함
+                return agent.ask(question)
+            reply = shared("chat-" + hashlib.md5(question.encode()).hexdigest()[:8], fresh, ttl=3 * 3600)
+            if agent is None:
+                agent = type("Cached", (), {"last_tools": ["안내:버튼", "저장된 답"], "model": None})()
+        else:
+            agent = SalpiAgent(history=body.history)
+            reply = agent.ask(question, on_text, on_status)
     except ApiKeyMissing as e:
         reply, status = str(e), "nokey"
     except Exception as e:

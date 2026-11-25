@@ -2320,7 +2320,15 @@ if (SIGNED_IN) authCall("/api/receipt/trial", { method: "GET", token: readLogin(
 // (폰은 뒤 카메라, 노트북은 앞 카메라. https 또는 내 컴퓨터 주소에서만 열림)
 // shortcut: 여러 장을 한 장으로 이어 보냄(길면 stitch 가 줄임 · 요청 4.5MB), 팀원 feat/receipt-multi-photo(images 여러 장)가 dev에 합쳐지면 여러 장으로 보내기
 const CAM_RATIO = 3 / 4;
-let camStream = null, camShots = [];   // camShots: [{ c: 자른 사진 canvas, url: 대기열 미리보기 }]
+let camStream = null, camShots = [], camSeen = null;   // camShots: [{ c: 자른 사진 canvas, url: 대기열 미리보기 }] · camSeen: 카메라 자리에 보고 있는 사진 번호
+// 카메라 자리에 찍은 사진 보기 (i = null 이면 다시 카메라). 보고 있는 사진은 대기열에서 테두리로 표시
+function camLook(i) {
+  camSeen = i;
+  const still = $("#camStill");
+  if (i !== null) still.src = camShots[i].c.toDataURL("image/jpeg", 0.9);
+  still.hidden = i === null;
+  document.querySelectorAll("#camQueue .cam-thumb").forEach((b) => b.classList.toggle("on", +b.dataset.camView === i));
+}
 const CAM_GUIDE = `<ol class="cam-guide">
     <li><b>컴퓨터(크롬 · 엣지)</b>: 주소창 왼쪽 <b>자물쇠 · 설정 아이콘</b> → <b>카메라</b> → <b>허용</b> → 새로고침</li>
     <li><b>아이폰</b>: 설정 → Safari(또는 쓰는 브라우저) → <b>카메라</b> → <b>허용</b></li>
@@ -2352,9 +2360,9 @@ async function openCamera() {
   if ($("#cameraModal").hidden) return stopCamera();   // 여는 사이에 닫았으면
   camShots = [];
   $("#cameraBody").innerHTML = `<div class="cam-wrap">
-      <div class="cam-view"><video id="camVideo" autoplay playsinline muted></video><i class="cam-frame" aria-hidden="true"></i></div>
+      <div class="cam-view"><video id="camVideo" autoplay playsinline muted></video><i class="cam-frame" aria-hidden="true"></i>
+        <img class="cam-still" id="camStill" alt="찍은 사진" hidden></div>
       <aside class="cam-queue" aria-label="찍은 사진"><p>찍은 사진 <b id="camCount">0</b>장</p><ul id="camQueue"></ul></aside>
-      <button class="cam-big" id="camBig" type="button" hidden aria-label="크게 보기 닫기"><img alt="찍은 사진 크게 보기"></button>
     </div>
     <p class="muted small">영수증이 길면 위에서부터 나눠 찍어 주세요.</p>
     <div class="camera-actions"><button class="upload-btn" id="camShot" type="button">촬영</button>
@@ -2362,14 +2370,13 @@ async function openCamera() {
   $("#camVideo").srcObject = camStream;
   $("#camShot").onclick = shootCamera;
   $("#camDone").onclick = () => { const pages = camShots.map((s) => s.c); closeCamera(); readReceipt(pages); };
-  // 대기열: × = 그 사진 지우기, 사진 = 크게 보기 (크게 본 사진을 누르면 닫힘)
+  // 대기열: × = 그 사진 지우기, 사진 = 카메라 자리에 그 사진 보기 (같은 사진을 다시 누르면 카메라로)
   $("#camQueue").onclick = (e) => {
     const x = e.target.closest("[data-cam-del]");
-    if (x) { camShots.splice(+x.dataset.camDel, 1); return camQueue(); }
+    if (x) { camShots.splice(+x.dataset.camDel, 1); camLook(null); return camQueue(); }
     const v = e.target.closest("[data-cam-view]");
-    if (v) { $("#camBig img").src = camShots[+v.dataset.camView].c.toDataURL("image/jpeg", 0.9); $("#camBig").hidden = false; }
+    if (v) camLook(+v.dataset.camView === camSeen ? null : +v.dataset.camView);
   };
-  $("#camBig").onclick = () => { $("#camBig").hidden = true; };
 }
 // 대기열 다시 그리기: 찍은 순서대로 작은 사진 + × · 장수 · 버튼 켜고 끄기
 function camQueue() {
@@ -2382,6 +2389,7 @@ function camQueue() {
 // 찍기: 화면에 보이는 세로(3:4) 가운데만 잘라 너비 1000px로
 function shootCamera() {
   const v = $("#camVideo");
+  if (camSeen !== null) return camLook(null);   // 찍은 사진을 보는 중이면 [촬영]은 카메라로 돌아가기
   if (!v.videoWidth) return;
   const vw = v.videoWidth, vh = v.videoHeight;
   const sw = vw / vh > CAM_RATIO ? vh * CAM_RATIO : vw, sh = sw / CAM_RATIO;
@@ -2394,11 +2402,10 @@ function shootCamera() {
   $("#camQueue").lastElementChild?.scrollIntoView({ block: "nearest" });   // 4장이 넘으면 방금 찍은 사진이 보이게
 }
 function stopCamera() { camStream?.getTracks().forEach((t) => t.stop()); camStream = null; }
-function closeCamera() { stopCamera(); camShots = []; $("#cameraModal").hidden = true; }
-// 크게 보는 중이면 크게 보기만 닫음. 찍어 둔 사진이 있는데 카메라를 닫으려 하면 물어봄
+function closeCamera() { stopCamera(); camShots = []; camSeen = null; $("#cameraModal").hidden = true; }
+// 찍은 사진을 보는 중이면 카메라로만 돌아감. 찍어 둔 사진이 있는데 카메라를 닫으려 하면 물어봄
 const cancelCamera = () => {
-  const big = $("#camBig");
-  if (big && !big.hidden) { big.hidden = true; return; }
+  if (camSeen !== null) return camLook(null);
   if (!camShots.length || confirm(`찍은 사진 ${camShots.length}장을 버릴까요?`)) closeCamera();
 };
 $("#cameraBtn").onclick = openCamera;

@@ -2533,11 +2533,13 @@ function scoreDetail(few) {
     .sort((a, b) => b[1].direction_hit_pct - a[1].direction_hit_pct || b[1].n - a[1].n || a[0].localeCompare(b[0], "ko"));
   const cards = SCORE_GROUPS.map(([tier, name, range]) => {
     const g = shown.filter(([, v]) => scoreTier(v.direction_hit_pct) === tier);
-    const open = g.length > 0 && !scoreFold.has(tier);
+    const open = !scoreFold.has(tier);
+    // 해당 재료가 없으면 제목만 흐리게 (누를 것 없음)
+    if (!g.length) return `<div class="score-group ${tier} empty"><div class="score-group-head"><b>${name}</b><small>${range}</small></div></div>`;
     return `<div class="score-group ${tier}">
-      <button type="button" class="score-group-head" data-sfold="${tier}" aria-expanded="${open}" aria-controls="scoreNames-${tier}" ${g.length ? "" : "disabled"}>
+      <button type="button" class="score-group-head" data-sfold="${tier}" aria-expanded="${open}" aria-controls="scoreNames-${tier}">
         <b>${name}</b><span class="score-count">${g.length}개</span><small>${range}</small>
-        ${g.length ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>` : ""}</button>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
       ${open ? `<div class="score-names" id="scoreNames-${tier}">${g.map(([item, v]) =>
         `<a href="/?item=${encodeURIComponent(item)}" title="예측률 ${v.direction_hit_pct}% (${v.n}번 예측해서 ${scoreHits(v)}번 맞혔어요)"><span>${esc(item)}</span></a>`).join("")}</div>` : ""}
     </div>`;

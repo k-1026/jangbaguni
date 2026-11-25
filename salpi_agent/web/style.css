@@ -1400,7 +1400,9 @@ main { overflow-x: clip; }   /* 화면 폭 배경이 가로 스크롤을 만들�
 .score-group.mid { border-top-color: var(--warn); } .score-group.low { border-top-color: var(--outline); }
 .score-group-head { display: grid; grid-template-columns: auto 1fr auto; align-items: baseline; gap: 2px 8px; width: 100%; padding: 16px 18px;
   border: 0; background: none; font: inherit; color: var(--ink); text-align: left; cursor: pointer; }
-.score-group-head:disabled { cursor: default; }
+/* 해당 재료가 없는 카드: 제목만 흐리게 */
+.score-group.empty { opacity: .55; }
+.score-group.empty .score-group-head { cursor: default; }
 .score-group-head b { font-size: 24px; font-weight: 800; line-height: 1.25; letter-spacing: -.3px; }
 .score-count { font-size: 17px; font-weight: 700; color: var(--primary); }
 .score-group.mid .score-count { color: var(--warn); } .score-group.low .score-count { color: var(--muted); }

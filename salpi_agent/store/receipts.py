@@ -5,7 +5,8 @@
 - 사장님이 고친 '영수증 이름 → 재료' 짝은 item_aliases 에 쌓아 다음부터 바로 맞춤
 """
 
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import hashlib
 import json
 import math
 import os
@@ -25,6 +26,13 @@ KST = timezone(timedelta(hours=9))
 MODELS = [os.getenv("GEMINI_MODEL", "gemini-3.5-flash")] + [
     m.strip() for m in os.getenv("GEMINI_FALLBACK_MODELS", "gemini-3-flash-preview,gemini-flash-latest,gemini-3.5-flash-lite").split(",")
     if m.strip()]
+# 영수증 읽기는 사진을 읽는 모델만 · 11/25 붐비는 날 재 본 빠른 순 (3-flash-preview 2.6초, 3.8 · 3.7 은 붐비면 503)
+RECEIPT_MODELS = [m.strip() for m in os.getenv(
+    "RECEIPT_MODELS", "gemini-3-flash-preview,gemini-3.8-flash,gemini-3.7-flash,gemini-3.6-flash,gemini-3.5-flash,gemini-3.5-flash-lite").split(",")
+    if m.strip()]
+# 무료 한도가 바닥났거나(429, flash 는 모델마다 하루 20번) 붐비는(503) 모델은 잠시 건너뜀 → 영수증마다 같은 실패를 기다리지 않음
+_COOL = {}
+_READ = {}   # 같은 사진 → AI 가 읽은 결과 (메모리 · 보관함 models/cache/ocr_*.json) — 시연에서 같은 영수증을 다시 올리면 바로
 TARGET_RATIO = 40   # 원가율 기준(%): 자영업자 카페 답(30 · 35 · 40%) 중 가장 보수적 값 · 업계 평균 재료비 비중 40.7%
 # 대체 재료 후보 (값이 오르면 검토해 볼 만한 것만, 판단은 사장님이)
 # 바꿨을 때 원가 · 마진을 계산할 수 있는 것만 둠: ① 같은 무게로 바꿔 넣을 수 있고 (생채소 ↔ 생채소) ② 가격을 알 수 있음 (도매 시세 or 우리 가게 영수증)
@@ -94,28 +102,76 @@ def read(images):
     if not key:
         raise ApiKeyMissing(".env 의 GEMINI_API_KEY 가 비어 있어요")
     items = _items()
-    client = genai.Client(api_key=key, http_options=types.HttpOptions(timeout=60_000, retry_options=types.HttpRetryOptions(attempts=2)))
-    last = None
-    for model in MODELS:   # 무료 모델이 바쁘면(503 · 429) 다음 모델로
+    data, model = _ai_read(key, images, items)
+    return _rows_from(data, items, model, len(images))
+
+
+def _ai_read(key, images, items):
+    """사진 → AI 가 읽은 원래 답(dict) · 모델. 같은 사진이면 저장해 둔 답을 씀 (재료 짝 맞추기는 늘 새로 함)."""
+    h = hashlib.sha1(b"".join(b for b, _ in images)).hexdigest()[:20]
+    if h in _READ:
+        return _READ[h], "저장된 결과"
+    try:
+        raw = db.download("models", f"cache/ocr_{h}.json")
+        if raw:
+            _READ[h] = json.loads(raw)
+            return _READ[h], "저장된 결과"
+    except Exception:
+        pass
+    # 25초 넘게 답이 없으면 다음 모델로 · 같은 모델 재시도 · 쉬는 시간 없음 (11/25: 예전 60초 × 재시도 2번 + 1초씩 쉬기 → 붐비면 몇 분)
+    # 앞의 두 모델에 동시에 보내고 먼저 온 맞는 답을 씀 (하나가 붐벼 느려도 기다리지 않게)
+    client = genai.Client(api_key=key, http_options=types.HttpOptions(timeout=25_000, retry_options=types.HttpRetryOptions(attempts=1)))
+    contents = [*(types.Part.from_bytes(data=b, mime_type=m) for b, m in images), _prompt(items, len(images))]
+
+    def one(model):
         try:
-            r = client.models.generate_content(
-                model=model, contents=[*(types.Part.from_bytes(data=b, mime_type=m) for b, m in images), _prompt(items, len(images))],
-                config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0))
+            r = client.models.generate_content(model=model, contents=contents,
+                                               config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0))
             data = json.loads(r.text)
             if isinstance(data, list):   # 예비 모델이 품목 목록만 [..] 으로 줄 때가 있음 (11/24 OCR 20장 시험에서 6장)
                 data = {"items": data[0].get("items", data) if len(data) == 1 and isinstance(data[0], dict) and "items" in data[0] else data}
             if not isinstance(data, dict):
                 raise ValueError("영수증 답 모양이 이상해요")
-            break
+            return data, model
         except errors.APIError as e:
-            if 400 <= e.code < 500 and e.code not in (404, 429):
-                raise
-            last = e
-        except Exception as e:   # 시간 초과 · 연결 끊김 · 이상한 답
-            last = e
-        time.sleep(1)
-    else:
-        raise RuntimeError("지금 AI 서버가 바빠서 영수증을 읽지 못했어요. 잠시 뒤 다시 해 주세요.") from last
+            _COOL[model] = time.time() + (1800 if e.code == 429 else 120 if e.code in (503, 504) else 0)
+            raise
+        except Exception:   # 시간 초과 · 연결 끊김 · 이상한 답
+            _COOL[model] = time.time() + 120
+            raise
+
+    now = time.time()
+    order = [m for m in RECEIPT_MODELS if _COOL.get(m, 0) < now] or RECEIPT_MODELS[-1:]
+    last = None
+    for group in (order[:2], order[2:]):
+        if not group:
+            continue
+        pool = ThreadPoolExecutor(len(group))
+        futs = [pool.submit(one, m) for m in group]
+        try:
+            for f in as_completed(futs):
+                try:
+                    data, model = f.result()
+                except errors.APIError as e:
+                    if 400 <= e.code < 500 and e.code not in (404, 429):
+                        raise
+                    last = e
+                    continue
+                except Exception as e:
+                    last = e
+                    continue
+                _READ[h] = data
+                try:
+                    db.upload("models", f"cache/ocr_{h}.json", json.dumps(data, ensure_ascii=False).encode("utf-8"), "application/json")
+                except Exception:
+                    pass   # 저장 실패해도 읽은 결과는 그대로
+                return data, model
+        finally:
+            pool.shutdown(wait=False, cancel_futures=True)   # 늦게 온 쪽은 기다리지 않음
+    raise RuntimeError("지금 AI 서버가 바빠서 영수증을 읽지 못했어요. 잠시 뒤 다시 해 주세요.") from last
+
+
+def _rows_from(data, items, model, n_photos):
 
     # 전에 저장한 '영수증 이름 → 재료' 짝이 있으면 그걸 우선 (사장님이 고친 값)
     by_name = {i["name"]: i for i in items}
@@ -142,7 +198,7 @@ def read(images):
     return {"date": data.get("date"), "supplier": data.get("supplier"), "total": total, "items": rows,
             "items_list": [{"id": i["id"], "name": i["name"], "base_unit": i["base_unit"]} for i in items],
             "total_matches": total is None or abs(total - line_sum) < 1,   # 줄 금액 합 = 합계인지 (틀리면 다시 보라고 안내)
-            "line_sum": line_sum, "model": model, "photos": len(images)}
+            "line_sum": line_sum, "model": model, "photos": n_photos}
 
 
 def _piece_qty(item, raw_name, qty, ai_qty_base):

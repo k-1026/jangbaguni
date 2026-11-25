@@ -1812,22 +1812,31 @@ async function pdfToImage(blob) {
     await page.render({ canvasContext: g, viewport: vp }).promise;
     pages.push(c);
   }
+  return { image: stitch(pages), skipped: Math.max(0, doc.numPages - PDF_PAGES) };
+}
+// 그림 여러 장을 위아래로 이어 JPEG 한 장으로 (PDF 여러 쪽 · 카메라로 나눠 찍은 긴 영수증)
+// 이은 높이가 6000px를 넘으면 전체를 줄임 (요청 크기 4.5MB 안으로 · 4장까지는 그대로)
+const STITCH_MAX_H = 6000;
+function stitch(pages) {
+  const h = pages.reduce((s, c) => s + c.height, 0), k = Math.min(1, STITCH_MAX_H / h);
   const out = document.createElement("canvas");
-  out.width = Math.max(...pages.map((c) => c.width));
-  out.height = pages.reduce((h, c) => h + c.height, 0);
+  out.width = Math.round(Math.max(...pages.map((c) => c.width)) * k);
+  out.height = Math.round(h * k);
   const g = out.getContext("2d");
   g.fillStyle = "#fff"; g.fillRect(0, 0, out.width, out.height);
-  pages.reduce((y, c) => (g.drawImage(c, 0, y), y + c.height), 0);
-  return { image: out.toDataURL("image/jpeg", 0.85), skipped: Math.max(0, doc.numPages - PDF_PAGES) };
+  pages.reduce((y, c) => (g.drawImage(c, 0, y, c.width * k, c.height * k), y + c.height * k), 0);
+  return out.toDataURL("image/jpeg", 0.85);
 }
 
+// blob: 사진 · PDF 파일, 또는 카메라로 찍은 사진(canvas) 목록 → 이어 붙여 한 장으로
 async function readReceipt(blob) {
   const box = $("#receiptResult");
   $("#receiptStart").hidden = true;
   box.innerHTML = `<div class="reading"><div class="spinner"></div><b>살피가 영수증을 읽는 중이에요</b><p class="muted">10~30초쯤 걸려요</p></div>`;
   try {
     let image, skipped = 0;
-    if (isPdf(blob)) ({ image, skipped } = await pdfToImage(blob));
+    if (Array.isArray(blob)) image = stitch(blob);
+    else if (isPdf(blob)) ({ image, skipped } = await pdfToImage(blob));
     else image = await shrink(blob);
     receipt = { image, mime: "image/jpeg" };
     // 로그인 표를 같이 보내면 서버가 무료 횟수를 셈 (다 썼으면 402 → 영수증 분석 칸을 가림)
@@ -2306,9 +2315,12 @@ function setTrial(t) {
   $(".receipt-link")?.classList.toggle("used-up", locked);   // 다 쓰면 카드는 회색, 구독하기 버튼만 노랑
 }
 if (SIGNED_IN) authCall("/api/receipt/trial", { method: "GET", token: readLogin()?.access_token }).then(setTrial).catch(() => {});
-// 카메라로 찍기: 처음 한 번 브라우저가 카메라 권한을 물어봄 → 찍은 사진을 그대로 영수증 읽기로
+// 카메라로 찍기: 처음 한 번 브라우저가 카메라 권한을 물어봄 → 세로(3:4) 창에 맞춰 찍음
+// 긴 영수증은 여러 번 나눠 찍기: 찍은 사진은 오른쪽 대기열에 작게 쌓이고(× 로 지우기) [다 찍었어요]를 누르면 위아래로 이어 읽음
 // (폰은 뒤 카메라, 노트북은 앞 카메라. https 또는 내 컴퓨터 주소에서만 열림)
-let camStream = null;
+// shortcut: 여러 장을 한 장으로 이어 보냄(길면 stitch 가 줄임 · 요청 4.5MB), 팀원 feat/receipt-multi-photo(images 여러 장)가 dev에 합쳐지면 여러 장으로 보내기
+const CAM_RATIO = 3 / 4;
+let camStream = null, camShots = [];   // camShots: [{ c: 자른 사진 canvas, url: 대기열 미리보기 }]
 const CAM_GUIDE = `<ol class="cam-guide">
     <li><b>컴퓨터(크롬 · 엣지)</b>: 주소창 왼쪽 <b>자물쇠 · 설정 아이콘</b> → <b>카메라</b> → <b>허용</b> → 새로고침</li>
     <li><b>아이폰</b>: 설정 → Safari(또는 쓰는 브라우저) → <b>카메라</b> → <b>허용</b></li>

@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>살피 데이터 흐름도</title>
+<style>
+  :root { --accent:#E86A2E; --dark:#12302A; --bg:#F5F3EE; --card:#fff; --line:#C9C2B5; --sub:#3F4A45; --soft:#FBEDE5; --gray:#7C8580; --ai:#2E6FBA; --calc:#2E7D5B; }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--bg); color:var(--dark); font:14px/1.55 Pretendard,"Pretendard Variable","Noto Sans KR","Malgun Gothic",sans-serif; padding:24px 16px 56px; }
+  main { max-width:1280px; margin:0 auto; }
+  h1 { font-size:24px; font-weight:800; } h1 span { color:var(--accent); }
+  .meta { color:var(--sub); font-size:13px; margin:4px 0 14px; }
+  .legend { display:flex; flex-wrap:wrap; gap:8px 18px; font-size:13px; margin-bottom:14px; }
+  .tag { font-size:11px; font-weight:700; color:#fff; border-radius:4px; padding:1px 6px; white-space:nowrap; }
+  .t-ai{background:var(--ai)} .t-calc{background:var(--calc)} .t-user{background:var(--accent)} .t-pub{background:var(--gray)}
+  .stages { display:grid; grid-template-columns:repeat(4,1fr); gap:34px; position:relative; }
+  .stage { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:0 0 12px; position:relative; }
+  .stage:not(:last-child)::after { content:"▶"; position:absolute; right:-27px; top:50%; font-size:20px; color:var(--accent); }
+  .stage header { background:var(--dark); color:#fff; border-radius:11px 11px 0 0; padding:10px 14px; }
+  .stage header b { display:block; font-size:17px; } .stage header small { color:#C9D6D1; font-size:12px; }
+  .node { margin:10px 12px 0; border:1px solid var(--line); border-radius:8px; padding:8px 10px; background:#FFFDF9; }
+  .node b { font-size:14px; } .node p { font-size:12.5px; color:var(--sub); margin-top:2px; }
+  .node .tags { margin-bottom:3px; display:flex; gap:4px; flex-wrap:wrap; }
+  .out { background:var(--soft); border-color:#F08A55; }
+  .down { text-align:center; color:var(--accent); font-size:13px; line-height:1; margin:6px 0 -4px; }
+  .store { margin-top:18px; background:var(--dark); color:#fff; border-radius:12px; padding:12px 16px; display:grid; gap:4px; }
+  .store b { color:#F08A55; }
+  .loop { margin-top:10px; border:2px dashed var(--accent); border-radius:12px; padding:10px 16px; background:var(--soft); }
+  .loop b { color:var(--accent); }
+  h2 { font-size:17px; margin:26px 0 8px; border-left:4px solid var(--accent); padding-left:10px; }
+  table { width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line); font-size:13px; }
+  th,td { padding:7px 10px; border-bottom:1px solid #E6E1D6; text-align:left; vertical-align:top; } th{background:#EEE9DD}
+  .scroll{overflow-x:auto}
+  @media (max-width:980px){ .stages{grid-template-columns:1fr; gap:30px} .stage:not(:last-child)::after{content:"▼"; right:auto; left:50%; top:auto; bottom:-27px} }
+</style>
+</head>
+<body>
+<main>
+  <h1>살피 <span>데이터 흐름도</span> · 입력 → 추천 → 주문 → 수요 예측</h1>
+  <p class="meta">기준: <a href="spec.md">spec.md</a> 3~5절 (11/25) · 번호(F1~F16)는 spec.md 기능 번호 · "된다"는 지금 사이트에서 도는 것만</p>
+  <div class="legend">
+    <span><span class="tag t-user">사장님</span> 사장님이 넣는 것</span>
+    <span><span class="tag t-pub">공공 자료</span> 매일 모으는 시세 · 날씨</span>
+    <span><span class="tag t-calc">계산 · 학습</span> 규칙 · 학습 모델 (숫자는 여기서만)</span>
+    <span><span class="tag t-ai">AI</span> 읽기 · 나누기 · 말하기만</span>
+  </div>
+
+  <div class="stages">
+    <!-- 1 입력 -->
+    <section class="stage">
+      <header><b>① 입력</b><small>사장님 · 공공 자료</small></header>
+      <div class="node"><div class="tags"><span class="tag t-user">사장님</span><span class="tag t-ai">AI</span></div><b>영수증 사진 (F1)</b><p>AI가 품목 · 양 · 금액을 읽고 → 사장님이 확인 · 수정 → 저장</p></div>
+      <div class="node"><div class="tags"><span class="tag t-user">사장님</span></div><b>메뉴 · 레시피(g) · 판매가 (F3)</b><p>메뉴 등록 · 판매 중지</p></div>
+      <div class="node"><div class="tags"><span class="tag t-user">사장님</span></div><b>판매 기록 · 재고 (F10·F11)</b><p>메뉴별 그날 판 그릇 수, 남은 재료</p></div>
+      <div class="node"><div class="tags"><span class="tag t-pub">공공 자료</span></div><b>시세 · 날씨 · 특일 (F7)</b><p>aT 경락가 · 반입량, KAMIS, 축평원, 기상청, 공휴일 · 행사, 소비자원 참가격, 식봄 상품</p></div>
+      <div class="node"><div class="tags"><span class="tag t-calc">계산</span></div><b>단위 환산 (F2)</b><p>kg · L · 모 · 개로 맞춤. 정확 / 약 / 모름 표시</p></div>
+    </section>
+
+    <!-- 2 추천 -->
+    <section class="stage">
+      <header><b>② 추천</b><small>얼마 남나 · 싸게 샀나 · 뭘 바꿀까</small></header>
+      <div class="node"><div class="tags"><span class="tag t-calc">계산</span></div><b>메뉴별 원가율 (F4)</b><p>Σ(레시피 양 × 단가) ÷ 판매가. 단가는 영수증 → 시세 → 참고 단가 순</p></div>
+      <div class="node"><div class="tags"><span class="tag t-calc">계산</span></div><b>싸게 / 비슷 / 비싸게 판정 (F5)</b><p>우리 가게 평소 단가 · 대구 시세와 비교. 10% 안은 "비슷"</p></div>
+      <div class="node"><div class="tags"><span class="tag t-calc">학습</span></div><b>다음 7일 시세 예측 (F8)</b><p>오를 · 비슷 · 내릴 + 범위 + 이유. 야채 · 과일은 학습 모델, 고기 · 수산물은 고정 공식</p></div>
+      <div class="node out"><b>원가율 40% 이상이면 3가지 제안</b><p>① 가격 조정 (40% 아래가 되는 값) ② 대체 재료 (다음 주 안 오르는 것만) ③ 원가율 좋은 다른 메뉴</p></div>
+    </section>
+
+    <!-- 3 주문 -->
+    <section class="stage">
+      <header><b>③ 주문</b><small>어디서 · 얼마나 살까</small></header>
+      <div class="node"><div class="tags"><span class="tag t-calc">계산</span></div><b>더 싼 판매처 (F6)</b><p>판매처 상품을 기준 단위당 가격으로 → 산 값보다 쌀 때만, 싼 순서로. 지금은 식봄만</p></div>
+      <div class="node"><div class="tags"><span class="tag t-calc">계산</span></div><b>사러 가기 링크</b><p>판매처 6곳 링크. 제휴 링크는 "제휴" 표시 · 목록 순서는 가격순 그대로</p></div>
+      <div class="node"><div class="tags"><span class="tag t-calc">계산</span></div><b>재료 발주량 · 사기 / 기다리기 (F10)</b><p>내일 필요한 재료 − 지금 재고. 시세 예측과 함께 "지금 사기" 판단</p></div>
+      <div class="node out"><b>발주 추천 저장</b><p>order_recommendations 표에 저장</p></div>
+    </section>
+
+    <!-- 4 수요 예측 -->
+    <section class="stage">
+      <header><b>④ 수요 예측</b><small>내일 몇 그릇 팔릴까</small></header>
+      <div class="node"><div class="tags"><span class="tag t-pub">공공 자료</span></div><b>날씨 · 공휴일 · 홈경기</b><p>판매량에 영향을 주는 바깥 요인</p></div>
+      <div class="node"><div class="tags"><span class="tag t-calc">학습</span></div><b>판매량 학습 모델 (F10)</b><p>과거 판매 기록 + 바깥 요인으로 학습. 시연 가게만 학습 모델, 나머지는 규칙</p></div>
+      <div class="node out"><b>메뉴별 내일 그릇 수</b><p>menu_forecasts 표에 저장 → ③ 주문의 재료 필요량으로 이어짐</p></div>
+      <div class="node"><div class="tags"><span class="tag t-ai">AI</span></div><b>살피 챗봇 · 아침 알림 (F12·F13)</b><p>위 결과를 살피 말투로 설명 · 카카오톡 · 앱 알림. 숫자는 만들지 않고 도구 결과만 전달</p></div>
+    </section>
+  </div>
+
+  <div class="loop">
+    <b>되돌아오는 길 (정확도 확인):</b>
+    화면에 나간 7일 예측은 <b>forecast_log</b>에 저장 → 7일 뒤 실제 가격과 비교해 <b>방향 적중 · 범위 적중 · 정반대 비율</b>로 채점 (F9, 매일).
+    사장님이 새 영수증 · 판매 기록을 넣으면 ① 입력으로 다시 돌아가 원가율이 새로 계산됩니다.
+  </div>
+
+  <div class="store">
+    <span><b>저장 (Supabase)</b> — 영수증: purchases · purchase_items / 가게: stores · menus · recipe_items · sales_daily · inventory / 시세: wholesale_prices · kamis_prices · weather_daily · special_days / 예측 · 추천: forecast_log · menu_forecasts · order_recommendations / 기록: alerts · chat_logs</span>
+    <span><b>매일 자동</b> — 06:00 학습 모델 다시 학습 (daily-learn.yml) → 서버가 1시간마다 새 모델 읽음 · 평일 17:40 dev → main 자동 배포 (Vercel)</span>
+  </div>
+
+  <h2>단계별 한눈에</h2>
+  <div class="scroll"><table>
+    <tr><th>단계</th><th>들어오는 것</th><th>하는 일</th><th>나가는 것</th><th>다음 단계로</th></tr>
+    <tr><td>① 입력</td><td>영수증 사진 · 메뉴 · 판매 기록 · 재고 · 공공 시세</td><td>읽기(AI) · 확인 · 단위 환산</td><td>품목 줄 · 기준 단위당 가격</td><td>→ ② 원가율 · 판정</td></tr>
+    <tr><td>② 추천</td><td>단가 · 레시피 · 판매가 · 시세</td><td>원가율 · 싸게/비싸게 · 7일 예측</td><td>원가율 · 3가지 제안 · 시세 전망</td><td>→ ③ 대체 재료 · 사기 시점</td></tr>
+    <tr><td>③ 주문</td><td>필요한 재료 · 재고 · 판매처 가격</td><td>더 싼 곳 찾기 · 발주량 계산</td><td>싼 순서 목록 · 발주 추천</td><td>← ④ 내일 그릇 수를 받아 계산</td></tr>
+    <tr><td>④ 수요 예측</td><td>판매 기록 · 날씨 · 공휴일 · 홈경기</td><td>판매량 학습 모델</td><td>메뉴별 내일 그릇 수</td><td>→ ③ 발주량 · 아침 알림</td></tr>
+  </table></div>
+  <p class="meta" style="margin-top:8px">한계: 판매량 예측은 시연 가게 가상 데이터 · 판매처 비교는 식봄만 · 고기 · 수산물 7일 예측은 고정 공식 (spec.md 7절)</p>
+</main>
+</body>
+</html>

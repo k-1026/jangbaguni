@@ -168,7 +168,7 @@ def _peek_shared(key):
 
 
 # 우리 가게 자료(영수증 · 메뉴 · 판매 · 재고)로 계산한 보관값 — 자료가 바뀌면 _store_changed 가 메모리 · 보관함에서 같이 지움
-STORE_KEYS = ("costs_report", "receipts_recent", "my_items")
+STORE_KEYS = ("costs_report", "receipts_recent", "my_items", "receipts_all")
 
 
 def _demand_key():
@@ -718,7 +718,8 @@ def inventory_set(body: StockIn):
 @app.get("/api/receipts")
 def receipt_list():
     # shortcut: 1000장(Supabase 한 번에 주는 최대)까지, 넘으면 페이지 나눠 받기
-    return _receipt_guard(lambda: {"receipts": receipts.recent(supabase_db.DEMO_STORE, limit=1000)})
+    # 보관값 10분 (사진 주소가 1시간이라 보관함 값은 40분까지만) · 영수증 저장 · 고치기 · 지우기면 _store_changed 가 비움 (11/25: 매번 1.5 ~ 2.7초 → 보관값 0.1초)
+    return _receipt_guard(lambda: shared("receipts_all", lambda: {"receipts": receipts.recent(supabase_db.DEMO_STORE, limit=1000)}, 600, 2400))
 
 
 @app.delete("/api/receipt/{purchase_id}")

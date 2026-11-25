@@ -2,6 +2,9 @@
 const $ = (s) => document.querySelector(s);
 const won = (v) => (v == null ? "-" : `${Math.round(v).toLocaleString("ko-KR")}원`);
 const pct = (v) => (v == null ? "-" : `${v > 0 ? "+" : ""}${v.toFixed(1)}%`);
+// 값 사이 구분: 가운뎃점 대신 얇은 세로선 (style.css .sep)
+const SEP = `<span class="sep" aria-hidden="true"></span>`;
+const arrowPct = (v) => (v == null ? "-" : `${Math.abs(v).toFixed(1)}%${v > 0 ? "↑" : v < 0 ? "↓" : ""}`);   // 예측 띠: 4.6%↑ · 2.0%↓
 const cls = (v, band = 0) => (v == null ? "" : v > band ? "up" : v < -band ? "down" : "");
 const mmdd = (d) => `${d.slice(5, 7)}.${d.slice(8, 10)}`;
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -491,7 +494,7 @@ function plainReason(factors, kind) {
   if (top.factor.startsWith("도매시장")) return `시장에 들어오는 양이 ${sign > 0 ? "줄었어요" : "늘었어요"}`;
   if (top.factor.startsWith("날씨")) return "최근 날씨 영향이 있어요";
   if (top.factor.includes("공휴일")) return "공휴일을 앞두고 있어요";
-  if (top.factor.includes("평균과의 차이")) return `${top.factor.split(" ")[0]} 평균보다 ${sign > 0 ? "싸서 올라올" : "비싸서 내려올"} 수 있어요`;
+  if (top.factor.includes("평균과의 차이")) return `지금이 평소보다 ${sign > 0 ? "싸요" : "비싸요"}`;
   // 아래는 AI 학습 모델의 이유 (forecast_model.GROUPS)
   if (top.factor.startsWith("계절")) return `해마다 이맘때 ${sign > 0 ? "오르는" : "내리는"} 때예요`;
   if (top.factor.includes("명절")) return "설 · 추석을 앞두고 있어요";
@@ -576,6 +579,8 @@ function salpiSays(prices, f, idx = 0) {
     pose: v.kind === "down" ? "alert_down" : `alert_${v.kind === "up" ? "rise" : "flat"}${(idx % 2) + 1}` };
 }
 
+// 예측 띠 한 줄: '다음 주 약 ○원/kg (4.6%↑) | 지금이 평소보다 싸요' (대시보드 · 재료 페이지 같음)
+const fcRange = (mid, unit, change, why) => `다음 주 약 ${won(mid)}/${unit} (${arrowPct(change)})${why ? `${SEP}${why}` : ""}`;
 function itemSlide(r, idx) {
   const f = r.forecast || {};
   const v = salpiSays((r.history || []).map((h) => h.kg_price), f, idx);
@@ -598,7 +603,7 @@ function itemSlide(r, idx) {
   <div class="fc-strip ${v.kind}">
     <div class="fc-text">
       <span class="verdict">${v.text}</span>
-      <span class="range">7일 뒤 ${won(midPrice(f.base_kg_price, f.expected_change_pct))}/kg 안팎 (${pct(f.expected_change_pct)})${why ? ` · ${why}` : ""}</span>
+      <span class="range">${fcRange(midPrice(f.base_kg_price, f.expected_change_pct), "kg", f.expected_change_pct, why)}</span>
     </div>
     <div class="advice" style="${poseVars(pose)}"><span class="say">${say}</span><img class="pose" src="/static/img/${pose}.png" alt=""></div>
   </div>
@@ -730,7 +735,8 @@ function extraSlide(r, idx) {
   const v = salpiSays((r.history || []).map((h) => h.price), f, idx);
   const why = plainReason(f.factors, v.kind);
   const { pose, say } = v;
-  const range = f.expected_price_range ? `7일 뒤 ${won(midPrice(f.base_price, f.expected_change_pct))}/${esc(r.unit || "")} 안팎 (${pct(f.expected_change_pct)})` : "예측할 자료가 부족해요";
+  const range = f.expected_price_range ? fcRange(midPrice(f.base_price, f.expected_change_pct), esc(r.unit || ""), f.expected_change_pct, why)
+    : `예측할 자료가 부족해요${why ? SEP + why : ""}`;
   return `
 <article class="slide card" data-item="${esc(r.item)}">
   <div class="chart-head">
@@ -748,7 +754,7 @@ function extraSlide(r, idx) {
   <div class="fc-strip ${v.kind}">
     <div class="fc-text">
       <span class="verdict">${v.text}</span>
-      <span class="range">${range}${why ? ` · ${why}` : ""}</span>
+      <span class="range">${range}</span>
     </div>
     <div class="advice" style="${poseVars(pose)}"><span class="say">${say}</span><img class="pose" src="/static/img/${pose}.png" alt=""></div>
   </div>
@@ -1263,8 +1269,6 @@ async function loadSales(date, open = true) {
   }
 }
 
-// 값 사이 구분: 가운뎃점 대신 얇은 세로선 (style.css .sep)
-const SEP = `<span class="sep" aria-hidden="true"></span>`;
 function renderSales() {
   const d = sales.data, isToday = d.date === sales.today;
   $("#sales h2").textContent = isToday ? "오늘 판매 기록" : `${dayLabel(d.date)} 판매 기록`;

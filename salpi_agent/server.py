@@ -5,6 +5,7 @@
 
 import os
 import base64
+import hashlib
 import json
 import queue
 import threading
@@ -43,7 +44,7 @@ from store import inventory
 from store import receipts
 from sources import supabase_db
 from chat import agent as chat_agent
-from chat.agent import SalpiAgent
+from chat.agent import BUTTON_ROUTES, SalpiAgent
 from sources.data_sources import ITEMS, ApiError, ApiKeyMissing, event_detail, foodspring_url, holidays, month_events, weather_forecast
 
 ROOT = Path(__file__).resolve().parent
@@ -539,7 +540,7 @@ def receipt_read(body: ReceiptIn, authorization: str | None = Header(None)):
     token = _bearer(authorization)
     if not token:   # 로그인 표 없이 부르는 곳(모바일 시연 화면)은 지금처럼 횟수 없이
         return _receipt_guard(lambda: receipts.read(data, mime))
-    # 로그인한 사장님: 무료 5회를 다 썼으면 402, 읽기에 성공했을 때만 1회 셈
+    # 로그인한 사장님: 한 달 무료가 끝났으면 402, 읽기에 성공했을 때만 1회 셈 (첫 성공한 날부터 한 달)
     user = _auth(lambda: trial.check(token))
     result = _receipt_guard(lambda: receipts.read(data, mime))
     return {**result, "trial": _auth(lambda: trial.count(user))}
@@ -719,7 +720,8 @@ def inventory_set(body: StockIn):
 
 @app.get("/api/receipts")
 def receipt_list():
-    return _receipt_guard(lambda: {"receipts": receipts.recent(supabase_db.DEMO_STORE, limit=50)})
+    # shortcut: 1000장(Supabase 한 번에 주는 최대)까지, 넘으면 페이지 나눠 받기
+    return _receipt_guard(lambda: {"receipts": receipts.recent(supabase_db.DEMO_STORE, limit=1000)})
 
 
 @app.delete("/api/receipt/{purchase_id}")
@@ -1041,8 +1043,17 @@ def _answer(body, on_text=None, on_status=None):
     """질문 하나에 답하고 대화 기록까지 남김 → 답 글. (/api/chat 과 /api/chat/stream 이 같이 씀)"""
     question, started, agent, status = body.message.strip()[:1000], time.time(), None, "ok"
     try:
-        agent = SalpiAgent(history=body.history)
-        reply = agent.ask(question, on_text, on_status)
+        if question in BUTTON_ROUTES:   # 화면 버튼 질문은 답이 정해져 있어 3시간 동안 같은 답을 재사용 (모델 호출 없이 바로)
+            def fresh():
+                nonlocal agent
+                agent = SalpiAgent()   # 버튼 답은 지난 대화와 무관하게 같아야 함
+                return agent.ask(question)
+            reply = shared("chat-" + hashlib.md5(question.encode()).hexdigest()[:8], fresh, ttl=3 * 3600)
+            if agent is None:
+                agent = type("Cached", (), {"last_tools": ["안내:버튼", "저장된 답"], "model": None})()
+        else:
+            agent = SalpiAgent(history=body.history)
+            reply = agent.ask(question, on_text, on_status)
     except ApiKeyMissing as e:
         reply, status = str(e), "nokey"
     except Exception as e:

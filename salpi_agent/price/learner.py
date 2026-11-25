@@ -146,7 +146,8 @@ def formula_pred(name, kind, f_points, weather_pct):
 
 
 def build_rows(series, weather, kind):
-    """기준일마다 요인 · 고정 공식 예측 · 7일 뒤 실제 변화(7~10일 안 첫 거래일)."""
+    """기준일마다 요인 · 고정 공식 예측 · 목표 = 다음 주 평균 ÷ 이번 주 평균 − 1 (FM.week_change, 11/25부터).
+    예전 목표(7일 뒤 하루 경락가)보다 덜 출렁여 방향을 더 맞힘 (plan/forecast/1125_direction_accuracy.md 3-4절)."""
     names = sorted(n for n in series if n in ds.ITEMS and ds.kind_of(n) == kind)
     rows = []
     for idx, name in enumerate(names):
@@ -155,13 +156,13 @@ def build_rows(series, weather, kind):
         prices = [p[1] for p in s]
         for i in range(30, len(s)):
             asof = days[i]
-            j = bisect_right(days, asof + timedelta(6))
-            if asof < date(2021, 3, 1) or j >= len(s) or days[j] > asof + timedelta(10):
+            y = FM.week_change(days, prices, i) if asof >= date(2021, 3, 1) else None
+            if y is None:
                 continue
             pts = s[max(0, i - 40): i + 1]
             f = FM.make_features(name, idx, pts, weather, asof, FM.season_value(days, prices, asof))
             win = [p for p in pts if p[0] > asof - timedelta(28)]
-            rows.append((asof, idx, f, formula_pred(name, kind, win, f["wx"]), (prices[j] / prices[i] - 1) * 100))
+            rows.append((asof, idx, f, formula_pred(name, kind, win, f["wx"]), y))
     return names, rows
 
 
@@ -170,12 +171,16 @@ def build_rows(series, weather, kind):
 # ---------------------------------------------------------------
 
 def score(pred, act, half):
-    cls = lambda x: np.where(x >= FM.BAND, 1, np.where(x <= -FM.BAND, -1, 0))
+    cls = lambda x, t=FM.BAND: np.where(x >= t, 1, np.where(x <= -t, -1, 0))
     p, a = cls(pred), cls(act)
+    sure = np.abs(pred) >= FM.CONFIDENT_PCT   # 화면이 "오를 · 내릴" 이라고 말하는 예측
     return {"n": int(len(act)), "opposite_pct": round(float(((p * a) == -1).mean() * 100), 2),
             "mae_pp": round(float(np.abs(pred - act).mean()), 3),
             "range_hit_pct": round(float((np.abs(act - pred) <= half).mean() * 100), 1),
-            "direction_hit_pct": round(float((p == a).mean() * 100), 1)}   # 참고용 (판단에는 안 씀)
+            "direction_hit_pct": round(float((p == a).mean() * 100), 1),   # 참고용 (판단에는 안 씀)
+            # 화면 기준: 확신(±CONFIDENT_PCT) 있을 때만 방향을 말함 → 말한 방향의 정답률 · 말한 비율
+            "stated_hit_pct": round(float((p[sure] == a[sure]).mean() * 100), 1) if sure.any() else None,
+            "stated_share_pct": round(float(sure.mean() * 100), 1)}
 
 
 class Data:
@@ -362,7 +367,8 @@ def deploy_blob(D, kind, cfg, res, formula, series):
                         for k in range(-14, 31) if math.isfinite(v := FM.season_value(days, prices, t + timedelta(k)))}
     m = res["metrics"]
     return {
-        "version": f"ai-{FM.KINDS[kind]}-{t:%Y%m%d}", "kind": kind, "trained_at": datetime.now(KST).isoformat(timespec="seconds"),
+        # ai-week-…: 목표가 '다음 주 평균'인 모델 (forecast_log 가 이 이름을 보고 다음 주 평균으로 채점)
+        "version": f"ai-week-{FM.KINDS[kind]}-{t:%Y%m%d}", "kind": kind, "target": "week", "confident_pct": FM.CONFIDENT_PCT, "trained_at": datetime.now(KST).isoformat(timespec="seconds"),
         "config": cfg, "features": cfg["features"], "n_rounds": res["n_rounds"], "items": D.names,
         "booster": final.export(), "season": season, "range_half_pct": half, "range_half_pct_all": half_all,
         "metrics": m, "formula_metrics": formula, "test_period": D.period, "train_rows": int(len(D.y)),
@@ -414,7 +420,8 @@ def run_kind(kind, series, weather, past_all, upload):
 
 
 def fmt(m):
-    return f"정반대 {m['opposite_pct']:5.1f}% · 평균 오차 {m['mae_pp']:5.2f}%p · 범위 적중 {m['range_hit_pct']:5.1f}%"
+    return (f"정반대 {m['opposite_pct']:5.1f}% · 평균 오차 {m['mae_pp']:5.2f}%p · 범위 적중 {m['range_hit_pct']:5.1f}% · "
+            f"말한 방향 {m.get('stated_hit_pct')}% (예측의 {m.get('stated_share_pct')}%)")
 
 
 def main():

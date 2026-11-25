@@ -1,0 +1,885 @@
+{
+ "data_end": "2026-11-24",
+ "kinds": {
+  "야채": {
+   "test_period": [
+    "2025-11-18",
+    "2026-11-17"
+   ],
+   "n_test": 4481,
+   "chosen_t": 1.75,
+   "고정 공식": {
+    "n": 4481,
+    "direction_hit_pct": 44.6,
+    "opposite_pct": 28.1,
+    "mae_pp": 19.25,
+    "said_flat_pct": 23.5,
+    "actual_flat_pct": 9.0
+   },
+   "그대로 (늘 비슷)": {
+    "n": 4481,
+    "direction_hit_pct": 9.0,
+    "opposite_pct": 0.0,
+    "mae_pp": 19.82,
+    "said_flat_pct": 100.0,
+    "actual_flat_pct": 9.0
+   },
+   "최근 1주 흐름 그대로": {
+    "n": 4481,
+    "direction_hit_pct": 37.4,
+    "opposite_pct": 46.9,
+    "mae_pp": 31.1,
+    "said_flat_pct": 8.9,
+    "actual_flat_pct": 9.0
+   },
+   "AI (지금, ±2%)": {
+    "n": 4481,
+    "direction_hit_pct": 54.0,
+    "opposite_pct": 22.7,
+    "mae_pp": 17.78,
+    "said_flat_pct": 19.3,
+    "actual_flat_pct": 9.0
+   },
+   "AI (기준 ±1.75%)": {
+    "n": 4481,
+    "direction_hit_pct": 54.7,
+    "opposite_pct": 23.5,
+    "mae_pp": 17.78,
+    "said_flat_pct": 17.2,
+    "actual_flat_pct": 9.0
+   },
+   "curve": {
+    "0.0": {
+     "valid": {
+      "n": 4484,
+      "direction_hit_pct": 59.9,
+      "opposite_pct": 32.1,
+      "mae_pp": 17.91,
+      "said_flat_pct": 0.0,
+      "actual_flat_pct": 8.1
+     },
+     "test": {
+      "n": 4481,
+      "direction_hit_pct": 60.4,
+      "opposite_pct": 30.6,
+      "mae_pp": 17.78,
+      "said_flat_pct": 0.0,
+      "actual_flat_pct": 9.0
+     }
+    },
+    "0.25": {
+     "valid": {
+      "n": 4484,
+      "direction_hit_pct": 59.2,
+      "opposite_pct": 30.9,
+      "mae_pp": 17.91,
+      "said_flat_pct": 2.5,
+      "actual_flat_pct": 8.1
+     },
+     "test": {
+      "n": 4481,
+      "direction_hit_pct": 59.7,
+      "opposite_pct": 29.6,
+      "mae_pp": 17.78,
+      "said_flat_pct": 2.3,
+      "actual_flat_pct": 9.0
+     }
+    },
+    "0.5": {
+     "valid": {
+      "n": 4484,
+      "direction_hit_pct": 58.3,
+      "opposite_pct": 29.7,
+      "mae_pp": 17.91,
+      "said_flat_pct": 4.8,
+      "actual_flat_pct": 8.1
+     },
+     "test": {
+      "n": 4481,
+      "direction_hit_pct": 58.8,
+      "opposite_pct": 28.6,
+      "mae_pp": 17.78,
+      "said_flat_pct": 4.8,
+      "actual_flat_pct": 9.0
+     }
+    },
+    "0.75": {
+     "valid": {
+      "n": 4484,
+      "direction_hit_pct": 57.8,
+      "opposite_pct": 28.8,
+      "mae_pp": 17.91,
+      "said_flat_pct": 6.8,
+      "actual_flat_pct": 8.1
+     },
+     "test": {
+      "n": 4481,
+      "direction_hit_pct": 57.9,
+      "opposite_pct": 27.7,
+      "mae_pp": 17.78,
+      "said_flat_pct": 7.0,
+      "actual_flat_pct": 9.0
+     }
+    },
+    "1.0": {
+     "valid": {
+      "n": 4484,
+      "direction_hit_pct": 57.2,
+      "opposite_pct": 28.1,
+      "mae_pp": 17.91,
+      "said_flat_pct": 8.5,
+      "actual_flat_pct": 8.1
+     },
+     "test": {
+      "n": 4481,
+      "direction_hit_pct": 57.3,
+      "opposite_pct": 26.5,
+      "mae_pp": 17.78,
+      "said_flat_pct": 9.6,
+      "actual_flat_pct": 9.0
+     }
+    },
+    "1.25": {
+     "valid": {
+      "n": 4484,
+      "direction_hit_pct": 56.5,
+      "opposite_pct": 27.2,
+      "mae_pp": 17.91,
+      "said_flat_pct": 10.4,
+      "actual_flat_pct": 8.1
+     },
+     "test": {
+      "n": 4481,
+      "direction_hit_pct": 56.3,
+      "opposite_pct": 25.7,
+      "mae_pp": 17.78,
+      "said_flat_pct": 12.0,
+      "actual_flat_pct": 9.0
+     }
+    },
+    "1.5": {
+     "valid": {
+      "n": 4484,
+      "direction_hit_pct": 55.9,
+      "opposite_pct": 26.2,
+      "mae_pp": 17.91,
+      "said_flat_pct": 12.8,
+      "actual_flat_pct": 8.1
+     },
+     "test": {
+      "n": 4481,
+      "direction_hit_pct": 55.4,
+      "opposite_pct": 24.5,
+      "mae_pp": 17.78,
+      "said_flat_pct": 14.7,
+      "actual_flat_pct": 9.0
+     }
+    },
+    "1.75": {
+     "valid": {
+      "n": 4484,
+      "direction_hit_pct": 55.0,
+      "opposite_pct": 25.6,
+      "mae_pp": 17.91,
+      "said_flat_pct": 14.7,
+      "actual_flat_pct": 8.1
+     },
+     "test": {
+      "n": 4481,
+      "direction_hit_pct": 54.7,
+      "opposite_pct": 23.5,
+      "mae_pp": 17.78,
+      "said_flat_pct": 17.2,
+      "actual_flat_pct": 9.0
+     }
+    },
+    "2.0": {
+     "valid": {
+      "n": 4484,
+      "direction_hit_pct": 54.5,
+      "opposite_pct": 25.0,
+      "mae_pp": 17.91,
+      "said_flat_pct": 16.5,
+      "actual_flat_pct": 8.1
+     },
+     "test": {
+      "n": 4481,
+      "direction_hit_pct": 54.0,
+      "opposite_pct": 22.7,
+      "mae_pp": 17.78,
+      "said_flat_pct": 19.3,
+      "actual_flat_pct": 9.0
+     }
+    },
+    "2.25": {
+     "valid": {
+      "n": 4484,
+      "direction_hit_pct": 53.8,
+      "opposite_pct": 24.2,
+      "mae_pp": 17.91,
+      "said_flat_pct": 18.3,
+      "actual_flat_pct": 8.1
+     },
+     "test": {
+      "n": 4481,
+      "direction_hit_pct": 53.0,
+      "opposite_pct": 21.7,
+      "mae_pp": 17.78,
+      "said_flat_pct": 21.9,
+      "actual_flat_pct": 9.0
+     }
+    },
+    "2.5": {
+     "valid": {
+      "n": 4484,
+      "direction_hit_pct": 53.1,
+      "opposite_pct": 23.4,
+      "mae_pp": 17.91,
+      "said_flat_pct": 20.1,
+      "actual_flat_pct": 8.1
+     },
+     "test": {
+      "n": 4481,
+      "direction_hit_pct": 52.4,
+      "opposite_pct": 21.0,
+      "mae_pp": 17.78,
+      "said_flat_pct": 23.6,
+      "actual_flat_pct": 9.0
+     }
+    },
+    "2.75": {
+     "valid": {
+      "n": 4484,
+      "direction_hit_pct": 52.7,
+      "opposite_pct": 22.5,
+      "mae_pp": 17.91,
+      "said_flat_pct": 22.0,
+      "actual_flat_pct": 8.1
+     },
+     "test": {
+      "n": 4481,
+      "direction_hit_pct": 51.5,
+      "opposite_pct": 20.2,
+      "mae_pp": 17.78,
+      "said_flat_pct": 25.6,
+      "actual_flat_pct": 9.0
+     }
+    },
+    "3.0": {
+     "valid": {
+      "n": 4484,
+      "direction_hit_pct": 51.8,
+      "opposite_pct": 21.8,
+      "mae_pp": 17.91,
+      "said_flat_pct": 23.9,
+      "actual_flat_pct": 8.1
+     },
+     "test": {
+      "n": 4481,
+      "direction_hit_pct": 50.7,
+      "opposite_pct": 19.8,
+      "mae_pp": 17.78,
+      "said_flat_pct": 27.2,
+      "actual_flat_pct": 9.0
+     }
+    },
+    "3.25": {
+     "valid": {
+      "n": 4484,
+      "direction_hit_pct": 51.1,
+      "opposite_pct": 20.9,
+      "mae_pp": 17.91,
+      "said_flat_pct": 25.8,
+      "actual_flat_pct": 8.1
+     },
+     "test": {
+      "n": 4481,
+      "direction_hit_pct": 49.9,
+      "opposite_pct": 19.0,
+      "mae_pp": 17.78,
+      "said_flat_pct": 29.2,
+      "actual_flat_pct": 9.0
+     }
+    },
+    "3.5": {
+     "valid": {
+      "n": 4484,
+      "direction_hit_pct": 50.4,
+      "opposite_pct": 20.0,
+      "mae_pp": 17.91,
+      "said_flat_pct": 27.8,
+      "actual_flat_pct": 8.1
+     },
+     "test": {
+      "n": 4481,
+      "direction_hit_pct": 49.3,
+      "opposite_pct": 18.5,
+      "mae_pp": 17.78,
+      "said_flat_pct": 30.9,
+      "actual_flat_pct": 9.0
+     }
+    },
+    "3.75": {
+     "valid": {
+      "n": 4484,
+      "direction_hit_pct": 49.6,
+      "opposite_pct": 19.1,
+      "mae_pp": 17.91,
+      "said_flat_pct": 29.9,
+      "actual_flat_pct": 8.1
+     },
+     "test": {
+      "n": 4481,
+      "direction_hit_pct": 48.6,
+      "opposite_pct": 17.9,
+      "mae_pp": 17.78,
+      "said_flat_pct": 32.8,
+      "actual_flat_pct": 9.0
+     }
+    },
+    "4.0": {
+     "valid": {
+      "n": 4484,
+      "direction_hit_pct": 48.9,
+      "opposite_pct": 18.6,
+      "mae_pp": 17.91,
+      "said_flat_pct": 31.2,
+      "actual_flat_pct": 8.1
+     },
+     "test": {
+      "n": 4481,
+      "direction_hit_pct": 48.0,
+      "opposite_pct": 17.4,
+      "mae_pp": 17.78,
+      "said_flat_pct": 34.3,
+      "actual_flat_pct": 9.0
+     }
+    }
+   },
+   "confident": {
+    "2": {
+     "n": 3618,
+     "direction_hit_pct": 63.8,
+     "opposite_pct": 28.1,
+     "mae_pp": 18.76,
+     "said_flat_pct": 0.0,
+     "actual_flat_pct": 8.0,
+     "share_pct": 80.7
+    },
+    "4": {
+     "n": 2942,
+     "direction_hit_pct": 66.5,
+     "opposite_pct": 26.4,
+     "mae_pp": 19.52,
+     "said_flat_pct": 0.0,
+     "actual_flat_pct": 7.0,
+     "share_pct": 65.7
+    },
+    "6": {
+     "n": 2326,
+     "direction_hit_pct": 68.8,
+     "opposite_pct": 24.4,
+     "mae_pp": 20.32,
+     "said_flat_pct": 0.0,
+     "actual_flat_pct": 6.8,
+     "share_pct": 51.9
+    },
+    "8": {
+     "n": 1835,
+     "direction_hit_pct": 71.6,
+     "opposite_pct": 22.0,
+     "mae_pp": 21.09,
+     "said_flat_pct": 0.0,
+     "actual_flat_pct": 6.5,
+     "share_pct": 41.0
+    }
+   },
+   "same_opposite": {
+    "AI (지금 모델, 기준 다시)": [
+     2.0,
+     {
+      "n": 4481,
+      "direction_hit_pct": 54.0,
+      "opposite_pct": 22.7,
+      "mae_pp": 17.78,
+      "said_flat_pct": 19.3,
+      "actual_flat_pct": 9.0
+     }
+    ],
+    "방향만 배우기 (+1 · 0 · −1)": [
+     0.089,
+     {
+      "n": 4481,
+      "direction_hit_pct": 52.0,
+      "opposite_pct": 23.1,
+      "mae_pp": 19.69,
+      "said_flat_pct": 19.8,
+      "actual_flat_pct": 9.0
+     }
+    ],
+    "변화율 ±5%로 잘라 배우기": [
+     0.424,
+     {
+      "n": 4481,
+      "direction_hit_pct": 52.0,
+      "opposite_pct": 23.5,
+      "mae_pp": 19.27,
+      "said_flat_pct": 19.2,
+      "actual_flat_pct": 9.0
+     }
+    ],
+    "변화율 ±10%로 잘라 배우기": [
+     0.757,
+     {
+      "n": 4481,
+      "direction_hit_pct": 53.3,
+      "opposite_pct": 24.1,
+      "mae_pp": 18.73,
+      "said_flat_pct": 17.1,
+      "actual_flat_pct": 9.0
+     }
+    ]
+   }
+  },
+  "과일": {
+   "test_period": [
+    "2025-11-18",
+    "2026-11-17"
+   ],
+   "n_test": 2906,
+   "chosen_t": 1.75,
+   "고정 공식": {
+    "n": 2906,
+    "direction_hit_pct": 34.0,
+    "opposite_pct": 21.4,
+    "mae_pp": 14.35,
+    "said_flat_pct": 46.0,
+    "actual_flat_pct": 12.6
+   },
+   "그대로 (늘 비슷)": {
+    "n": 2906,
+    "direction_hit_pct": 12.6,
+    "opposite_pct": 0.0,
+    "mae_pp": 14.4,
+    "said_flat_pct": 100.0,
+    "actual_flat_pct": 12.6
+   },
+   "최근 1주 흐름 그대로": {
+    "n": 2906,
+    "direction_hit_pct": 36.9,
+    "opposite_pct": 42.1,
+    "mae_pp": 22.28,
+    "said_flat_pct": 12.9,
+    "actual_flat_pct": 12.6
+   },
+   "AI (지금, ±2%)": {
+    "n": 2906,
+    "direction_hit_pct": 51.7,
+    "opposite_pct": 19.4,
+    "mae_pp": 12.82,
+    "said_flat_pct": 24.6,
+    "actual_flat_pct": 12.6
+   },
+   "AI (기준 ±1.75%)": {
+    "n": 2906,
+    "direction_hit_pct": 52.9,
+    "opposite_pct": 20.5,
+    "mae_pp": 12.82,
+    "said_flat_pct": 21.5,
+    "actual_flat_pct": 12.6
+   },
+   "curve": {
+    "0.0": {
+     "valid": {
+      "n": 2915,
+      "direction_hit_pct": 57.9,
+      "opposite_pct": 30.4,
+      "mae_pp": 13.27,
+      "said_flat_pct": 0.0,
+      "actual_flat_pct": 11.7
+     },
+     "test": {
+      "n": 2906,
+      "direction_hit_pct": 58.3,
+      "opposite_pct": 29.1,
+      "mae_pp": 12.82,
+      "said_flat_pct": 0.0,
+      "actual_flat_pct": 12.6
+     }
+    },
+    "0.25": {
+     "valid": {
+      "n": 2915,
+      "direction_hit_pct": 57.1,
+      "opposite_pct": 29.4,
+      "mae_pp": 13.27,
+      "said_flat_pct": 3.1,
+      "actual_flat_pct": 11.7
+     },
+     "test": {
+      "n": 2906,
+      "direction_hit_pct": 57.4,
+      "opposite_pct": 27.9,
+      "mae_pp": 12.82,
+      "said_flat_pct": 3.0,
+      "actual_flat_pct": 12.6
+     }
+    },
+    "0.5": {
+     "valid": {
+      "n": 2915,
+      "direction_hit_pct": 56.0,
+      "opposite_pct": 27.7,
+      "mae_pp": 13.27,
+      "said_flat_pct": 7.0,
+      "actual_flat_pct": 11.7
+     },
+     "test": {
+      "n": 2906,
+      "direction_hit_pct": 56.7,
+      "opposite_pct": 26.7,
+      "mae_pp": 12.82,
+      "said_flat_pct": 6.1,
+      "actual_flat_pct": 12.6
+     }
+    },
+    "0.75": {
+     "valid": {
+      "n": 2915,
+      "direction_hit_pct": 55.5,
+      "opposite_pct": 26.3,
+      "mae_pp": 13.27,
+      "said_flat_pct": 10.1,
+      "actual_flat_pct": 11.7
+     },
+     "test": {
+      "n": 2906,
+      "direction_hit_pct": 56.3,
+      "opposite_pct": 25.4,
+      "mae_pp": 12.82,
+      "said_flat_pct": 8.7,
+      "actual_flat_pct": 12.6
+     }
+    },
+    "1.0": {
+     "valid": {
+      "n": 2915,
+      "direction_hit_pct": 54.6,
+      "opposite_pct": 25.1,
+      "mae_pp": 13.27,
+      "said_flat_pct": 13.4,
+      "actual_flat_pct": 11.7
+     },
+     "test": {
+      "n": 2906,
+      "direction_hit_pct": 55.6,
+      "opposite_pct": 24.3,
+      "mae_pp": 12.82,
+      "said_flat_pct": 11.4,
+      "actual_flat_pct": 12.6
+     }
+    },
+    "1.25": {
+     "valid": {
+      "n": 2915,
+      "direction_hit_pct": 53.2,
+      "opposite_pct": 23.9,
+      "mae_pp": 13.27,
+      "said_flat_pct": 16.7,
+      "actual_flat_pct": 11.7
+     },
+     "test": {
+      "n": 2906,
+      "direction_hit_pct": 54.8,
+      "opposite_pct": 23.1,
+      "mae_pp": 12.82,
+      "said_flat_pct": 14.7,
+      "actual_flat_pct": 12.6
+     }
+    },
+    "1.5": {
+     "valid": {
+      "n": 2915,
+      "direction_hit_pct": 52.5,
+      "opposite_pct": 22.6,
+      "mae_pp": 13.27,
+      "said_flat_pct": 20.1,
+      "actual_flat_pct": 11.7
+     },
+     "test": {
+      "n": 2906,
+      "direction_hit_pct": 54.0,
+      "opposite_pct": 21.7,
+      "mae_pp": 12.82,
+      "said_flat_pct": 18.1,
+      "actual_flat_pct": 12.6
+     }
+    },
+    "1.75": {
+     "valid": {
+      "n": 2915,
+      "direction_hit_pct": 51.7,
+      "opposite_pct": 21.4,
+      "mae_pp": 13.27,
+      "said_flat_pct": 23.1,
+      "actual_flat_pct": 11.7
+     },
+     "test": {
+      "n": 2906,
+      "direction_hit_pct": 52.9,
+      "opposite_pct": 20.5,
+      "mae_pp": 12.82,
+      "said_flat_pct": 21.5,
+      "actual_flat_pct": 12.6
+     }
+    },
+    "2.0": {
+     "valid": {
+      "n": 2915,
+      "direction_hit_pct": 50.5,
+      "opposite_pct": 20.4,
+      "mae_pp": 13.27,
+      "said_flat_pct": 26.4,
+      "actual_flat_pct": 11.7
+     },
+     "test": {
+      "n": 2906,
+      "direction_hit_pct": 51.7,
+      "opposite_pct": 19.4,
+      "mae_pp": 12.82,
+      "said_flat_pct": 24.6,
+      "actual_flat_pct": 12.6
+     }
+    },
+    "2.25": {
+     "valid": {
+      "n": 2915,
+      "direction_hit_pct": 49.6,
+      "opposite_pct": 19.3,
+      "mae_pp": 13.27,
+      "said_flat_pct": 29.3,
+      "actual_flat_pct": 11.7
+     },
+     "test": {
+      "n": 2906,
+      "direction_hit_pct": 50.5,
+      "opposite_pct": 18.4,
+      "mae_pp": 12.82,
+      "said_flat_pct": 27.5,
+      "actual_flat_pct": 12.6
+     }
+    },
+    "2.5": {
+     "valid": {
+      "n": 2915,
+      "direction_hit_pct": 48.3,
+      "opposite_pct": 18.3,
+      "mae_pp": 13.27,
+      "said_flat_pct": 32.3,
+      "actual_flat_pct": 11.7
+     },
+     "test": {
+      "n": 2906,
+      "direction_hit_pct": 49.2,
+      "opposite_pct": 17.3,
+      "mae_pp": 12.82,
+      "said_flat_pct": 30.6,
+      "actual_flat_pct": 12.6
+     }
+    },
+    "2.75": {
+     "valid": {
+      "n": 2915,
+      "direction_hit_pct": 47.4,
+      "opposite_pct": 17.3,
+      "mae_pp": 13.27,
+      "said_flat_pct": 35.4,
+      "actual_flat_pct": 11.7
+     },
+     "test": {
+      "n": 2906,
+      "direction_hit_pct": 48.1,
+      "opposite_pct": 16.7,
+      "mae_pp": 12.82,
+      "said_flat_pct": 33.0,
+      "actual_flat_pct": 12.6
+     }
+    },
+    "3.0": {
+     "valid": {
+      "n": 2915,
+      "direction_hit_pct": 46.4,
+      "opposite_pct": 16.6,
+      "mae_pp": 13.27,
+      "said_flat_pct": 37.8,
+      "actual_flat_pct": 11.7
+     },
+     "test": {
+      "n": 2906,
+      "direction_hit_pct": 47.1,
+      "opposite_pct": 15.7,
+      "mae_pp": 12.82,
+      "said_flat_pct": 35.6,
+      "actual_flat_pct": 12.6
+     }
+    },
+    "3.25": {
+     "valid": {
+      "n": 2915,
+      "direction_hit_pct": 45.5,
+      "opposite_pct": 15.1,
+      "mae_pp": 13.27,
+      "said_flat_pct": 40.8,
+      "actual_flat_pct": 11.7
+     },
+     "test": {
+      "n": 2906,
+      "direction_hit_pct": 46.1,
+      "opposite_pct": 14.6,
+      "mae_pp": 12.82,
+      "said_flat_pct": 38.7,
+      "actual_flat_pct": 12.6
+     }
+    },
+    "3.5": {
+     "valid": {
+      "n": 2915,
+      "direction_hit_pct": 44.4,
+      "opposite_pct": 14.1,
+      "mae_pp": 13.27,
+      "said_flat_pct": 43.7,
+      "actual_flat_pct": 11.7
+     },
+     "test": {
+      "n": 2906,
+      "direction_hit_pct": 45.1,
+      "opposite_pct": 13.6,
+      "mae_pp": 12.82,
+      "said_flat_pct": 41.9,
+      "actual_flat_pct": 12.6
+     }
+    },
+    "3.75": {
+     "valid": {
+      "n": 2915,
+      "direction_hit_pct": 43.7,
+      "opposite_pct": 13.1,
+      "mae_pp": 13.27,
+      "said_flat_pct": 46.2,
+      "actual_flat_pct": 11.7
+     },
+     "test": {
+      "n": 2906,
+      "direction_hit_pct": 44.0,
+      "opposite_pct": 12.8,
+      "mae_pp": 12.82,
+      "said_flat_pct": 44.7,
+      "actual_flat_pct": 12.6
+     }
+    },
+    "4.0": {
+     "valid": {
+      "n": 2915,
+      "direction_hit_pct": 42.7,
+      "opposite_pct": 12.4,
+      "mae_pp": 13.27,
+      "said_flat_pct": 48.6,
+      "actual_flat_pct": 11.7
+     },
+     "test": {
+      "n": 2906,
+      "direction_hit_pct": 43.4,
+      "opposite_pct": 12.0,
+      "mae_pp": 12.82,
+      "said_flat_pct": 47.1,
+      "actual_flat_pct": 12.6
+     }
+    }
+   },
+   "confident": {
+    "2": {
+     "n": 2190,
+     "direction_hit_pct": 63.1,
+     "opposite_pct": 25.8,
+     "mae_pp": 13.71,
+     "said_flat_pct": 0.0,
+     "actual_flat_pct": 11.1,
+     "share_pct": 75.4
+    },
+    "4": {
+     "n": 1538,
+     "direction_hit_pct": 67.8,
+     "opposite_pct": 22.6,
+     "mae_pp": 14.92,
+     "said_flat_pct": 0.0,
+     "actual_flat_pct": 9.6,
+     "share_pct": 52.9
+    },
+    "6": {
+     "n": 1073,
+     "direction_hit_pct": 71.3,
+     "opposite_pct": 19.2,
+     "mae_pp": 16.09,
+     "said_flat_pct": 0.0,
+     "actual_flat_pct": 9.5,
+     "share_pct": 36.9
+    },
+    "8": {
+     "n": 758,
+     "direction_hit_pct": 75.5,
+     "opposite_pct": 16.9,
+     "mae_pp": 17.47,
+     "said_flat_pct": 0.0,
+     "actual_flat_pct": 7.7,
+     "share_pct": 26.1
+    }
+   },
+   "same_opposite": {
+    "AI (지금 모델, 기준 다시)": [
+     2.0,
+     {
+      "n": 2906,
+      "direction_hit_pct": 51.7,
+      "opposite_pct": 19.4,
+      "mae_pp": 12.82,
+      "said_flat_pct": 24.6,
+      "actual_flat_pct": 12.6
+     }
+    ],
+    "방향만 배우기 (+1 · 0 · −1)": [
+     0.114,
+     {
+      "n": 2906,
+      "direction_hit_pct": 50.4,
+      "opposite_pct": 19.6,
+      "mae_pp": 14.28,
+      "said_flat_pct": 23.3,
+      "actual_flat_pct": 12.6
+     }
+    ],
+    "변화율 ±5%로 잘라 배우기": [
+     0.521,
+     {
+      "n": 2906,
+      "direction_hit_pct": 49.4,
+      "opposite_pct": 19.8,
+      "mae_pp": 13.93,
+      "said_flat_pct": 24.7,
+      "actual_flat_pct": 12.6
+     }
+    ],
+    "변화율 ±10%로 잘라 배우기": [
+     1.141,
+     {
+      "n": 2906,
+      "direction_hit_pct": 51.3,
+      "opposite_pct": 19.4,
+      "mae_pp": 13.43,
+      "said_flat_pct": 24.0,
+      "actual_flat_pct": 12.6
+     }
+    ]
+   }
+  }
+ }
+}

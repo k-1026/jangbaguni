@@ -1817,6 +1817,7 @@ async function pdfToImage(blob) {
 // 그림 여러 장을 위아래로 이어 JPEG 한 장으로 (PDF 여러 쪽 · 카메라로 나눠 찍은 긴 영수증)
 // 이은 높이가 6000px를 넘으면 전체를 줄임 (요청 크기 4.5MB 안으로 · 4장까지는 그대로)
 const STITCH_MAX_H = 6000;
+const STITCH_MAX_B64 = 4_200_000;   // 보낼 사진 글자 수 (서버 4MB · Vercel 요청 4.5MB 안으로)
 function stitch(pages) {
   const h = pages.reduce((s, c) => s + c.height, 0), k = Math.min(1, STITCH_MAX_H / h);
   const out = document.createElement("canvas");
@@ -1825,7 +1826,10 @@ function stitch(pages) {
   const g = out.getContext("2d");
   g.fillStyle = "#fff"; g.fillRect(0, 0, out.width, out.height);
   pages.reduce((y, c) => (g.drawImage(c, 0, y, c.width * k, c.height * k), y + c.height * k), 0);
-  return out.toDataURL("image/jpeg", 0.85);
+  // 너무 크면 화질을 조금씩 낮춤 (글씨는 그대로 읽히는 0.55까지)
+  let q = 0.85, url = out.toDataURL("image/jpeg", q);
+  while (url.length > STITCH_MAX_B64 && q > 0.6) url = out.toDataURL("image/jpeg", q -= 0.1);
+  return url;
 }
 
 // blob: 사진 · PDF 파일, 또는 카메라로 찍은 사진(canvas) 목록 → 이어 붙여 한 장으로

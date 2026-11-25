@@ -2377,6 +2377,7 @@ function camQueue() {
     <button type="button" class="cam-x" data-cam-del="${i}" aria-label="${i + 1}번째 사진 지우기">×</button></li>`).join("");
   $("#camCount").textContent = camShots.length;
   $("#camDone").hidden = !camShots.length;   // 아무것도 안 찍었으면 [완료]는 숨김
+  $("#camDone").textContent = `완료 (${camShots.length}장)`;
 }
 // 찍기: 화면에 보이는 세로(3:4) 가운데만 잘라 너비 1000px로
 function shootCamera() {

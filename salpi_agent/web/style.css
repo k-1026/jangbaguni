@@ -1401,10 +1401,10 @@ main { overflow-x: clip; }   /* 화면 폭 배경이 가로 스크롤을 만들�
 .score-group-head { display: grid; grid-template-columns: auto 1fr auto; align-items: baseline; gap: 2px 8px; width: 100%; padding: 16px 18px;
   border: 0; background: none; font: inherit; color: var(--ink); text-align: left; cursor: pointer; }
 .score-group-head:disabled { cursor: default; }
-.score-group-head b { font-size: 19px; font-weight: 800; }
-.score-count { font-size: 15px; font-weight: 700; color: var(--primary); }
+.score-group-head b { font-size: 24px; font-weight: 800; line-height: 1.25; letter-spacing: -.3px; }
+.score-count { font-size: 17px; font-weight: 700; color: var(--primary); }
 .score-group.mid .score-count { color: var(--warn); } .score-group.low .score-count { color: var(--muted); }
-.score-group-head small { grid-column: 1 / -1; grid-row: 2; font-size: 12px; color: var(--muted); }
+.score-group-head small { grid-column: 1 / -1; grid-row: 2; margin-top: 2px; font-size: 13px; color: var(--muted); }
 .score-group-head svg { grid-column: 3; grid-row: 1; align-self: center; width: 16px; height: 16px; fill: none; stroke: var(--muted); stroke-width: 2;
   stroke-linecap: round; stroke-linejoin: round; transition: transform .15s; }
 .score-group-head[aria-expanded="true"] svg { transform: rotate(180deg); }

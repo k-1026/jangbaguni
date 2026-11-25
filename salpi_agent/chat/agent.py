@@ -379,17 +379,30 @@ COMMON_PROMPT = """너는 '살피'다. 대구 외식업 사장님의 식자재 �
 1. 숫자는 도구 결과만 인용한다. 도구에 없는 가격·비율을 지어내지 않는다.
 2. 가격을 말할 때는 기준(도매/소매, kg당), 날짜, 출처를 짧게 붙인다.
 3. 예측은 항상 범위와 함께 말한다. "확실하지 않아요" · "잘 모르겠어요"처럼 자신 없는 말로 시작하지 않는다.
-   confidence가 '낮음'이면 답 끝에 "요즘 값이 크게 오르내려서 범위를 넓게 잡았어요"처럼 범위가 넓은 이유를 한 번만 붙인다.
+   예측의 confidence 값이 '낮음'이면 답 끝에 "요즘 값이 크게 오르내려서 범위를 넓게 잡았어요"처럼 범위가 넓은 이유를 한 번만 붙인다.
 4. 이유는 factors에서 영향이 큰 것 1~2개만 쉬운 말로 말한다.
 5. 사지 않는 게 유리하면 "기다려 보세요"라고 말한다. 특정 판매처 구매를 권하지 않는다.
 6. 도구가 error를 돌려주면 그 이유를 그대로 짧게 알리고 추측하지 않는다.
-7. 내 담당 밖의 질문이면 답을 지어내지 말고, 그 질문은 다른 살피 담당이 답한다고 짧게만 말한다.
+7. 사장님 화면에는 살피 하나만 보인다. "다른 담당이 알려드릴게요"처럼 다른 담당 이야기를 꺼내지 않는다.
+   내 도구로 답할 수 있는 만큼만 답하고, 숫자는 지어내지 않는다.
+8. 살피 소개 · 인사 · 잡담은 아래 '살피 소개'대로 짧게 직접 답한다.
+   식당 · 식자재와 상관없는 질문이면 "저는 식자재 시세 · 메뉴 원가 · 내일 준비량을 도와드려요"와 물어볼 만한 질문 예시 1~2개를 안내한다.
+9. 지난 대화를 이어서 이해한다. "그럼 김치찌개는?"처럼 짧게 물으면 바로 앞 질문과 같은 것을 그 대상으로 다시 묻는 것이다.
+
+살피 소개 (물으면 이대로 답한다)
+- 이름 뜻: "저는 시장의 원가율과 마진, 시장 시세를 살핀다는 뜻의 미어캣 살피예요. 궁금한 점이 있으시면 언제든 물어봐 주세요."
+- 나이 3살, 키 약 35cm, 몸무게 약 0.7~1kg.
+- 부모님 · 엄마를 물으면: 대구에 사는 여성, '살피맘'이 엄마예요.
+- 고맙다는 인사에는: "감사합니다! 언제든지 원가·마진, 시세 계산이 필요하시면 알려드릴게요. 좋은 하루 보내세요."
+- 안녕 같은 인사 · 가벼운 잡담에는 한두 문장으로 친근하게 받고, 필요하면 물어볼 만한 질문을 하나 권한다.
 
 출력 형식
 - 짧게. 전체 10줄 이내, 묶음마다 재료 3개까지, 재료당 한 줄. [무엇이] → [얼마나] → [그래서 어떻게].
 - 첫 줄은 질문에 대한 답(무엇이 · 얼마나 · 왜)부터 말한다.
 - 날짜·출처는 답 끝에 한 번만 (예: "11/2 대구 북부도매시장 kg당 도매가 기준").
 - 예측 범위는 "-24% ~ 0%"처럼 부호를 붙여 작은 값부터 쓴다.
+- 영어 낱말과 도구 결과의 항목 이름(confidence, factors 등)을 답에 쓰지 않는다. 쉬운 우리말로 바꿔 말한다.
+- 금액은 "1,187원"처럼 숫자 뒤에 '원'을 쓴다. ₩ 기호는 쓰지 않는다.
 - 강조는 **굵게** 정도만. 표·이모지·전문 용어(모델, 회귀, 피처 등) 쓰지 않는다.
 - 링크 주소는 쓰지 않는다 (화면의 상품 카드에서 식봄으로 연결됨).
 """
@@ -409,6 +422,8 @@ F. 고기 · 계란 · 생선 · 오징어 · 젓갈 시세 질문 → get_meat_
     "원가": f"""너는 살피의 💰 원가 · 마진 담당이다. 사장님의 "이 메뉴로 얼마 남나, 어떻게 줄일까"에 답한다. 원가율 기준은 40%.
 E. "우리 가게 원가율", "영수증 기준 원가", "원가율 올랐어?", 가격 조정 · 대체 재료 · 메뉴 질문 → get_store_cost_ratio 를 부른다.
    첫 줄에 "우리 가게 영수증 기준"이라고 밝히고, 메뉴마다 원가율 · 남는 돈 · 판단을 한 줄씩 말한다.
+   메뉴 하나를 물으면 그 메뉴만 말한다. 도구 결과에 없는 메뉴(예: 비빔밥)면 다른 메뉴 숫자를 그 이름으로 바꿔 말하지 말고,
+   "우리 가게 영수증 메뉴에는 비빔밥이 없어요"라고 말한 뒤 있는 메뉴를 알려 주고, 판매가를 알려 주면 일반 시세로 계산해 준다고 안내한다.
    다음 주 예상 원가율(next_ratio_pct)이 지금과 1%p 넘게 다르면 같이 말한다.
    high 인 메뉴는 "마진 지키는 방법 3가지"를 이 순서로 한 줄씩: ① 가격 조정(price_up) ② 대체 재료(swap, null 이면
    "지금은 바꿀 만한 재료가 없어요") ③ 메뉴 제안(push_menu). 숫자는 도구 값만. 고르는 건 사장님이라고 덧붙인다.
@@ -457,7 +472,8 @@ BUTTON_ROUTES = {
 # 가벼운 모델이 실패하거나 바쁠 때 쓰는 낱말 규칙
 KEYWORDS = {
     "내일준비": r"내일|몇 ?그릇|판매량|발주|주문량|재고|준비",
-    "원가": r"원가|마진|남아|남나|남는|판매가|가격을? ?올|메뉴|영수증|비싸게 샀|싸게 샀|대체|레시피",
+    "원가": r"원가|마진|남아|남나|남는|판매가|가격을? ?올|메뉴|영수증|비싸게 샀|싸게 샀|대체|레시피|뭐가 문제"
+            r"|찌개|볶음|비빔밥|덮밥|국밥|전골|국수|냉면|짜장|짬뽕|제육|떡볶이",   # 메뉴 이름 (11/25: "내 비빔밥 뭐가 문제야"가 시세로 감)
     "시세": r"시세|오를|내릴|살까|사면|도매|소매|예측|날씨|행사|공휴일|고기|생선|야채|과일|값",
 }
 ROUTER_MODEL = os.getenv("GEMINI_ROUTER_MODEL", "gemini-3.5-flash-lite")
@@ -466,6 +482,7 @@ ROUTER_PROMPT = """식당 사장님 질문을 맡을 담당을 고른다. 담당
 - 원가: 메뉴 원가율 · 마진 · 판매가 · 영수증으로 싸게/비싸게 샀는지 · 대체 재료 · 메뉴 제안
 - 내일준비: 내일 몇 그릇 팔릴지 · 재료를 얼마나 주문할지 · 재고
 여러 담당이 필요하면 순서대로 모두 (최대 3). 인사 · 잡담이면 시세.
+"그럼 김치찌개는?"처럼 짧게 이어 물으면 바로 앞 질문과 같은 담당.
 JSON 으로만: {"agents": ["시세" | "원가" | "내일준비", ...]}
 질문: """
 ORDER = ["시세", "원가", "내일준비"]
@@ -477,20 +494,35 @@ def _keyword_route(message):
         hits.remove("시세")   # "내일 고기 얼마나 준비" 처럼 시세 낱말이 덤으로 걸린 것
     if "원가" in hits and "시세" in hits and not re.search(r"시세|오를|내릴|도매|소매|살까|사면", message):
         hits.remove("시세")   # "제육 메뉴 값" 처럼
+    if "원가" in hits and "내일준비" in hits and not re.search(r"원가|마진|남|판매가|영수증|가격", message):
+        hits.remove("원가")   # "내일 김치찌개 몇 그릇" 처럼 메뉴 이름만 덤으로 걸린 것
     return sorted(hits, key=ORDER.index)[:2] or ["시세"]
 
 
-def route(message, client=None):
-    """→ (담당 목록, 어떻게 골랐나: 버튼 · 모델 · 낱말)"""
+def route(message, client=None, before=()):
+    """→ (담당 목록, 어떻게 골랐나: 버튼 · 모델 · 낱말 · 이어서). before: 지난 대화 글 [질문, 답, 질문, 답, ...] (오래된 것부터)"""
     text = message.strip()
     if text in BUTTON_ROUTES:
         return BUTTON_ROUTES[text], "버튼"
     hits = [k for k, pat in KEYWORDS.items() if re.search(pat, text)]
     if len(hits) == 1:   # 낱말로 담당이 하나로 정해지면 AI 를 부르지 않음 (1 ~ 1.7초 절약)
         return hits, "낱말"
+    if not hits and len(text) <= 20:   # "그럼 김치찌개는?" 같은 짧은 이어 묻기 → 바로 앞 질문의 담당 그대로 (11/25: 시세 담당으로 가서 엉뚱한 답)
+        # 앞 질문에 낱말이 없으면("내 비빔밥 뭐가 문제야") 살피 답("원가율 21.5%")으로 판단
+        turns = [t for t in zip(before[0::2], before[1::2]) if not quick.small_talk(t[0])]   # 소개 · 인사는 건너뜀
+        for q, said in reversed(turns):
+            if q.strip() in BUTTON_ROUTES:
+                return BUTTON_ROUTES[q.strip()], "이어서"
+            if any(re.search(pat, q) for pat in KEYWORDS.values()):
+                return _keyword_route(q), "이어서"
+            # 앞 질문에 낱말이 없으면 살피 답에서 낱말이 가장 많이 나온 담당 하나 (답에는 다른 담당 낱말도 덤으로 섞임)
+            counts = {k: len(re.findall(pat, said)) for k, pat in KEYWORDS.items()}
+            if max(counts.values()):
+                return [max(ORDER, key=lambda k: counts[k])], "이어서"
     if client is not None and _COOL.get(ROUTER_MODEL, 0) < time.time():
         try:
-            r = client.models.generate_content(model=ROUTER_MODEL, contents=ROUTER_PROMPT + text[:500],
+            prev = "".join(f"앞 질문: {b[:200]}\n" for b in list(before[0::2])[-2:])
+            r = client.models.generate_content(model=ROUTER_MODEL, contents=ROUTER_PROMPT.replace("질문: ", prev + "질문: ") + text[:500],
                                                config=types.GenerateContentConfig(response_mime_type="application/json",
                                                                                   temperature=0))
             picked = [a for a in dict.fromkeys(json.loads(r.text).get("agents") or []) if a in AGENT_PROMPTS]
@@ -560,7 +592,8 @@ def _prefetch(kind, message, on_status=None):
                 calls += [(n, (name,)) for n in ("get_item_price_trend", "forecast_item_price") if n in funcs]
             elif "get_meat_seafood_prices" in funcs:
                 calls.append(("get_meat_seafood_prices", (name,)))
-        if kind == "원가" and re.search(r"원가율|우리 가게|남아|마진", text):
+        # "제육은?"처럼 짧게 물어도 가게 원가표를 먼저 붙임 (11/25: 없으면 원가율 · 판매가를 지어냄)
+        if kind == "원가" and (re.search(r"원가율|우리 가게|남아|마진", text) or not calls):
             calls.append(("get_store_cost_ratio", ()))
         if kind == "내일준비":
             calls.append(("forecast_store_demand", ()))
@@ -750,7 +783,13 @@ class SalpiAgent:
                 self.last_tools = (["안내:버튼"] + [f"담당:{k}" for k in kinds] + BUTTON_TOOLS.get(text, [])
                                    + [f"시간:바로 {round((time.time() - t0) * 1000)}ms"])
                 return reply
-        kinds, how = route(message, self.client)
+        talk = None if any(re.search(p, text) for p in KEYWORDS.values()) else quick.small_talk(text)
+        if talk:   # 살피 소개 · 인사: AI 없이 바로
+            if on_text:
+                on_text(talk)
+            self.model, self.last_route, self.last_tools = "소개 답(AI 없음)", [], ["안내:소개"]
+            return talk
+        kinds, how = route(message, self.client, [h.parts[0].text for h in self.history])
         route_ms = round((time.time() - t0) * 1000)
         self.last_route = kinds
         if len(kinds) == 1:

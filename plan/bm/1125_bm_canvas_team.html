@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>살피 BM 캔버스 (팀 확인용)</title>
+<style>
+  :root { --accent:#E86A2E; --dark:#12302A; --bg:#F5F3EE; --card:#fff; --line:#C9C2B5; --sub:#3F4A45; --soft:#FBEDE5; --gray:#7C8580; }
+  * { box-sizing:border-box; margin:0; }
+  main { word-break:keep-all; overflow-wrap:break-word; }
+  body { background:var(--bg); color:var(--dark); font:15px/1.6 Pretendard,"Pretendard Variable","Noto Sans KR","Malgun Gothic",sans-serif; padding:24px 16px 56px; }
+  main { max-width:1180px; margin:0 auto; }
+  h1 { font-size:26px; font-weight:800; } h1 span { color:var(--accent); }
+  .meta { color:var(--sub); font-size:13px; margin:4px 0 18px; }
+  .one { background:var(--dark); color:#fff; border-radius:12px; padding:14px 18px; font-size:17px; font-weight:700; margin-bottom:8px; }
+  .one small { display:block; font-weight:400; color:#C9D6D1; font-size:13px; margin-top:2px; }
+  h2.sec { font-size:18px; margin:30px 0 10px; border-left:4px solid var(--accent); padding-left:10px; }
+  .grid { display:grid; gap:10px; grid-template-columns:repeat(10,1fr); }
+  .box { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 14px; }
+  .box h3 { font-size:14px; color:var(--accent); margin-bottom:6px; }
+  .box ul { padding-left:16px; } .box li { margin-bottom:3px; font-size:14px; }
+  .hero { background:#FFE3D2; color:var(--dark); border:2px solid var(--accent); } .hero h3 { color:#C4501A; }
+  .money { background:var(--soft); border-color:#F08A55; }
+  .partner{grid-column:span 2} .mid{grid-column:span 2} .value{grid-column:span 2} .cust{grid-column:span 2}
+  .cost{grid-column:span 5} .rev{grid-column:span 5}
+  .stack { display:grid; gap:10px; grid-column:span 2; }
+  .tag { font-size:11px; background:var(--gray); color:#fff; border-radius:4px; padding:1px 6px; font-weight:700; white-space:nowrap; }
+  .tag.ok { background:#2E7D5B; } .tag.warn { background:var(--accent); }
+  table { width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line); border-radius:10px; overflow:hidden; font-size:14px; }
+  th,td { padding:8px 12px; border-bottom:1px solid #E6E1D6; text-align:left; vertical-align:top; }
+  th { background:#EEE9DD; font-size:13px; }
+  tr:last-child td { border-bottom:0; }
+  td.n { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .scroll { overflow-x:auto; }
+  .src { font-size:12px; color:var(--gray); margin-top:6px; }
+  @media (max-width:860px) { .grid{grid-template-columns:1fr} .grid>*,.stack{grid-column:auto} }
+</style>
+</head>
+<body>
+<main>
+  <h1>살피 <span>비즈니스 모델 캔버스</span> · 팀 확인용</h1>
+  <p class="meta">11/25 정리 · 바탕: 11/12 팀 결정안 + 11/17~23에 바뀐 것 · 발표용 한 장은 <a href="1125_bm_canvas_presentation.html">1125_bm_canvas_presentation.html</a> · 글 원본 <a href="1112_bm_canvas.md">1112_bm_canvas.md</a></p>
+
+  <div class="one">"영수증만 찍으면, 내 메뉴가 얼마 남는지 · 재료를 싸게 샀는지 · 다음 주엔 뭘 바꿔야 하는지 살피가 알려 준다."
+    <small>중심은 영수증 → 마진. 시세 예측은 그 마진을 미리 지키는 도구 (VOC 333장: 원가 계산 59% · 남는 게 없다 40% · 언제 살까 7%)</small></div>
+
+  <h2 class="sec">1. 캔버스 9칸</h2>
+  <div class="grid">
+    <section class="box partner"><h3>핵심 파트너</h3><ul>
+      <li>공공 데이터: aT · KAMIS · 축산물품질평가원 · 기상청</li>
+      <li>판매처 제휴: 쿠팡 파트너스 (네이버 쇼핑 커넥트는 채널 심사 · 판매자별 요율 때문에 지금은 안 씀)</li>
+      <li>식자재 유통사: CJ프레시웨이 (식봄 운영사 최대주주)</li></ul></section>
+
+    <div class="stack">
+      <section class="box"><h3>핵심 활동</h3><ul>
+        <li>영수증 읽기 · 원가 계산</li><li>시세 수집 · 7일 예측 · <b>매일 채점</b></li><li>판매처 가격 수집 (식봄 등)</li></ul></section>
+      <section class="box"><h3>핵심 자원</h3><ul>
+        <li>대구 북부도매시장 경락가 · KAMIS 시세 · 축평원 등급별 경락가</li><li>사장님 영수증 · 메뉴 데이터</li><li>예측 채점 기록 (적중률)</li></ul></section>
+    </div>
+
+    <section class="box value hero"><h3>가치 제안</h3><ul>
+      <li>영수증만 찍으면 <b>메뉴별 원가율 · 남는 돈</b> 자동 계산</li>
+      <li>재료값이 바뀌면 <b>원가율 자동 다시 계산</b></li>
+      <li>내가 산 값이 <b>시세보다 비싼지</b> 바로 확인</li>
+      <li>다음 주 오를 재료를 미리 알려 <b>대체 재료 · 가격 조정</b> 판단 (원가율 40% 이상일 때 3가지 제안)</li></ul></section>
+
+    <div class="stack">
+      <section class="box"><h3>고객 관계</h3><ul>
+        <li>살피 캐릭터가 말 걸듯 알려 줌</li><li>잘했을 때 칭찬, 위험할 때만 경고</li><li>판단은 사장님이 (권하지만 강요 안 함)</li></ul></section>
+      <section class="box"><h3>채널</h3><ul>
+        <li>웹앱 · 모바일 앱</li><li>카카오 알림톡 (아침 브리핑 · 원가율 경고)</li><li>자영업자 온라인 카페</li></ul></section>
+    </div>
+
+    <section class="box cust"><h3>고객</h3><ul>
+      <li><b>대구 음식점 사장님</b> — 1~2인 운영, 재료를 직접 삼</li>
+      <li>원가를 영수증 · 메모 · 엑셀로 손계산</li>
+      <li><b>공격적으로 노리는 곳: 한식점 사장님</b> — 쓰는 재료가 많아 원가 관리 부담이 큼 (다른 업종도 쓸 수 있음)</li>
+      <li>첫 시범: <b>동네(작은 상권) 독립 한식 2,698곳</b> — 같은 업태 경쟁 62%로 가장 셈 (11/18 군집)</li></ul></section>
+
+    <section class="box cost"><h3>비용 구조</h3><ul>
+      <li>AI 모델 호출 (영수증 읽기 · 대화)</li><li>서버 (Vercel) · 데이터베이스 (Supabase)</li><li>데이터 수집 유지보수</li></ul></section>
+
+    <section class="box rev money"><h3>수익원</h3><ul>
+      <li><b>① 사장님 월 구독 19,900원</b> <span class="tag warn">설문 진행 중 · 가정값</span> — 영수증 분석 · 원가율 · 대체 재료 · 가격 조정 · 알림. 시세 대시보드 · 7일 예측은 무료(입구)</li>
+      <li>② 제휴 링크 수수료 <span class="tag">추가 가능성 · 계산 제외</span> — 쿠팡 파트너스 약 3%, 1건(17,990원) 약 540원</li>
+      <li>③ 지역 수요 리포트 <span class="tag">확장</span> — 사용자 수십 곳 이상일 때</li></ul></section>
+  </div>
+
+  <h2 class="sec">2. 시장 규모 (구독료만 · 11/18 최종)</h2>
+  <div class="scroll"><table>
+    <tr><th>구분</th><th>대상</th><th class="n">가게 수</th><th class="n">금액</th><th>출처</th></tr>
+    <tr><td>TAM</td><td>전국 한식음식점</td><td class="n">406,075곳</td><td class="n">약 970억 원</td><td>국세청 2025.12</td></tr>
+    <tr><td>SAM</td><td>대구 × 한식음식점</td><td class="n">19,480곳</td><td class="n">약 46.5억 원</td><td>국세청 2025.12</td></tr>
+    <tr><td>SOM 1년차</td><td>SAM × 0.5%</td><td class="n">97곳</td><td class="n">약 0.23억 원</td><td></td></tr>
+    <tr><td>SOM 2년차</td><td>SAM × 1.5%</td><td class="n">292곳</td><td class="n">약 0.70억 원</td><td></td></tr>
+    <tr><td>SOM 3년차</td><td>SAM × 3%</td><td class="n">584곳</td><td class="n">약 1.39억 원</td><td></td></tr>
+  </table></div>
+  <p class="src">계산식: 가게 수 × 월 19,900원 × 12개월. 국세청은 등록 사업자 수라 실제 영업 가게보다 많음 → 보수적으로 보면 SAM 약 35억 ~ 46.5억 원. 자세히: <a href="1118_시장규모_재계산_정리.md">1118_시장규모_재계산_정리.md</a></p>
+
+  <h2 class="sec">3. 제휴 수익 중립성 규칙</h2>
+  <table>
+    <tr><td>1</td><td>실제로 더 쌀 때만 연결 (kg당 가격이 사장님이 산 값보다 낮을 때)</td></tr>
+    <tr><td>2</td><td>판매처 하나만 보여 주지 않고 kg당 가격순으로 같이 보여 줌. 수수료 많은 곳을 위로 올리지 않음</td></tr>
+    <tr><td>3</td><td>링크에 "제휴 링크" · "수수료를 받을 수 있어요" 표시 (공정위 추천 · 보증 심사지침)</td></tr>
+    <tr><td>4</td><td>제휴 없는 곳이 더 싸면 그곳을 먼저 보여 줌</td></tr>
+  </table>
+
+  <h2 class="sec">4. 경쟁 도구와의 차이</h2>
+  <div class="scroll"><table>
+    <tr><th></th><th>무료 도매가 예측 도구</th><th>원가 계산기</th><th>살피</th></tr>
+    <tr><td>시세 예측</td><td>○ (210개 품목)</td><td>×</td><td>○ 대구 도매시장 기준 + 채점 공개</td></tr>
+    <tr><td>메뉴 원가율</td><td>×</td><td>○ 손으로 입력</td><td>○ 영수증 사진으로 자동</td></tr>
+    <tr><td>재료값 바뀌면 자동 갱신</td><td>×</td><td>×</td><td>○</td></tr>
+    <tr><td>싸게 샀는지 비교</td><td>×</td><td>×</td><td>○</td></tr>
+    <tr><td>다음 할 일 (대체 재료 · 가격 조정)</td><td>×</td><td>×</td><td>○</td></tr>
+  </table></div>
+
+  <h2 class="sec">5. 아직 확인 못 한 것 (발표 때 정직하게)</h2>
+  <table>
+    <tr><td><span class="tag ok">진행</span></td><td>사장님이 돈을 낼까, 얼마면 낼까 (월 19,900원은 가정값)</td><td>사장님 설문 진행 중 → 결과로 구독료 수정</td></tr>
+    <tr><td><span class="tag warn">미확인</span></td><td>쿠팡 파트너스 식품 요율 약 3% (공식 요율표는 로그인해야 보여서 캡처 아직)</td><td>파트너스 센터 로그인 뒤 캡처</td></tr>
+    <tr><td><span class="tag warn">결론 + 재검증</span></td><td>식봄 판매가는 도매를 따라 움직이지 않음 — 시차를 검증했더니 일주일 동안 식봄 가격 변동이 없었음</td><td>다음 주 식봄 판매가 검증 한 번 더</td></tr>
+    <tr><td><span class="tag ok">진행</span></td><td>예측이 실제로 맞는지</td><td>7일 뒤 자동 채점 (11/18부터)</td></tr>
+  </table>
+</main>
+</body>
+</html>

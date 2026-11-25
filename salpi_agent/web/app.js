@@ -377,7 +377,7 @@ async function getJSON(url, { auth = false } = {}) {
 const SALES_LOCK = `<div class="receipt-lock sales-lock"><div class="lock-panel">
     <p class="lock-title">무료 체험이 끝났어요</p>
     <p class="lock-sub">살피 플러스로 판매율 분석을 <b>무제한</b> 써 보세요</p>
-    <button class="lock-btn sales-sub-btn" type="button">구독하러 가기</button></div></div>`;
+    <button class="lock-btn sales-sub-btn" type="button">월 19,900원으로 구독하기</button></div></div>`;
 function showSalesLock() {
   $("#storeBasis").textContent = "";
   $("#menuForecast").innerHTML = SALES_LOCK;
@@ -2344,7 +2344,7 @@ function payClose() {
 async function openPay(from) {
   if (!SIGNED_IN) return goLogin();
   try { sessionStorage.setItem(PAY_FROM_KEY, from); } catch (e) {}
-  payWait("결제창을 여는 중이에요");
+  payWait("결제하는 중이에요");
   let o;
   try { o = await authCall("/api/subscribe/checkout", { token: readLogin()?.access_token }); }
   catch (e) { return payFail(e.message); }
@@ -2402,7 +2402,7 @@ function payFail(msg) {
   $('#payBody [data-pay="back"]').onclick = payClose;
 }
 
-// [구독하러 가기]: 영수증 분석 잠금 · 판매율 분석 잠금(나중에 그려지는 칸이라 문서에서 받음)
+// [월 19,900원으로 구독하기]: 영수증 분석 잠금 · 판매율 분석 잠금(나중에 그려지는 칸이라 문서에서 받음)
 $("#receiptSubBtn").onclick = () => openPay("receipt");
 document.addEventListener("click", (e) => { if (e.target.closest(".sales-sub-btn")) openPay("sales"); });
 $("#payClose").onclick = payClose;

@@ -234,6 +234,9 @@ button.chip:hover { background: #F7FAF3; }
 .fc-strip .verdict { display: block; font-size: 16px; font-weight: 700; }
 .fc-strip.up .verdict { color: var(--up); } .fc-strip.down .verdict { color: var(--down); } .fc-strip.flat .verdict { color: var(--muted); }
 .fc-strip .range { display: block; font-size: 13px; color: var(--muted); }
+.fc-strip .item-score { display: block; margin-top: 4px; font-size: 13px; font-weight: 400; color: var(--primary); }   /* 재료 페이지: 이 재료 살피 예측률 */
+.fc-strip .item-score b { font-weight: 700; }   /* '살피 예측률 ○%'만 굵게, 괄호 설명은 보통 */
+.fc-strip .item-score.muted { color: var(--muted); }   /* 50% 아래 · 채점 중은 연하게 */
 /* 살피 포즈(좌우반전) + 옆 제안 말풍선: 칸 안에 넣지 않고 칸 오른쪽 위에 서서 말함
    칸 위 여백 40px: 살피 머리(경광등 포함)가 그래프 아래 숫자를 가리지 않게 */
 /* --kit: 화면에서 미어캣 키(머리~발). 그림 높이 --h 는 포즈마다 다름, 발끝을 같은 높이에 맞춤 */

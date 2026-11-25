@@ -233,7 +233,7 @@ button.chip:hover { background: #F7FAF3; }
 .fc-strip .verdict { display: block; font-size: 16px; font-weight: 700; }
 .fc-strip.up .verdict { color: var(--up); } .fc-strip.down .verdict { color: var(--down); } .fc-strip.flat .verdict { color: var(--muted); }
 .fc-strip .range { display: block; font-size: 13px; color: var(--muted); }
-.item-score { margin-left: 12px; font-size: 13px; font-weight: 400; color: var(--primary); }   /* 재료 페이지: '1주 전보다 ○%' 옆 이 재료 살피 예측률 */
+.item-score { margin: 4px 0 0; font-size: 13px; font-weight: 400; color: var(--primary); }   /* 재료 페이지: 맨 위 재료 이름 아래 이 재료 살피 예측률 */
 .item-score b { font-size: 16px; font-weight: 700; }   /* '살피 예측률 ○%'만 크고 굵게, 괄호 설명은 보통 */
 .item-score.muted { color: var(--muted); }   /* 50% 아래 · 채점 중은 연하게 */
 /* 살피 포즈(좌우반전) + 옆 제안 말풍선: 칸 안에 넣지 않고 칸 오른쪽 위에 서서 말함

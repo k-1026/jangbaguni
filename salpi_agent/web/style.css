@@ -1375,28 +1375,43 @@ main { overflow-x: clip; }   /* 화면 폭 배경이 가로 스크롤을 만들�
 .pattern-zone { position: relative; isolation: isolate; padding-bottom: 40px; }
 .pattern-zone::before { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 100vw; margin-left: -50vw; z-index: -1;
   background: var(--bg) url("/static/img/mart_pattern.svg?v=3") 0 0 / 240px; }   /* 페이지 바탕색 그대로 + 무늬만 은은하게 */
-/* 살피 예측률: 큰 숫자 하나 + 상세보기(종류 탭 · 품목별 막대) */
-.score-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.score-big { margin: 0 0 4px; font-size: 18px; font-weight: 700; color: var(--primary); }
-.score-big b { font-size: 44px; font-weight: 900; line-height: 1; letter-spacing: -1px; }
-.score-more { display: inline-flex; align-items: center; gap: 2px; flex: none; padding: 6px 8px; border: 0; border-radius: 8px; background: none;
-  color: var(--primary); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
-.score-more svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .15s; }
+/* 살피 예측률: 윗줄 = 큰 숫자 · 설명 | 종류 탭 · 접기, 펼치면 묶음마다 한 줄 (도형 없이 글자 · 얇은 선만) */
+.score-top { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; }
+.score-big { display: flex; align-items: baseline; gap: 8px; margin: 0; }
+.score-big b { font-size: 34px; font-weight: 800; line-height: 1; letter-spacing: -.5px; color: var(--primary); font-variant-numeric: tabular-nums; }
+.score-big span { font-size: 14px; font-weight: 700; color: var(--ink); }
+.score-sub { margin: 0; padding-left: 16px; border-left: 1px solid var(--outline-variant); font-size: 13px; color: var(--muted); }
+.score-tabs { display: flex; gap: 2px; margin-left: auto; padding: 3px; border-radius: 10px; background: var(--surface-variant); }
+.score-tabs button { padding: 6px 12px; border: 0; border-radius: 8px; background: none; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.score-tabs button:hover { color: var(--ink); }
+.score-tabs button.active { background: var(--surface); color: var(--primary); font-weight: 700; box-shadow: 0 1px 2px rgba(0, 0, 0, .08); }
+.score-tabs button:focus-visible { outline: 2px solid var(--primary); }
+.score-more { display: inline-flex; align-items: center; gap: 2px; flex: none; margin-left: auto; padding: 6px 4px; border: 0; background: none;
+  color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.score-tabs + .score-more { margin-left: 0; }
+.score-more:hover { color: var(--primary); }
+.score-more svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .15s; }
 .score-more[aria-expanded="true"] svg { transform: rotate(180deg); }
-.score-more:focus-visible { outline: 2px solid var(--primary); }
-.score-detail { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--outline-variant); display: grid; gap: 12px; }
-.score-kind { margin: 0; font-size: 15px; } .score-kind b { color: var(--primary); }
-/* 믿음 3묶음: 그래프 없이 묶음 제목 + 재료 이름 칩 (70%+ 초록 · 50~70% 주황 · 50% 아래 회색) */
-.score-group h4 { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; font-size: 14px; font-weight: 700; }
-.score-group h4::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--primary); }
-.score-group h4 small { font-size: 12px; font-weight: 500; color: var(--muted); }
-.score-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.score-chips a { padding: 5px 12px; border-radius: 999px; background: var(--primary-container); color: var(--on-primary-container); font-size: 14px; text-decoration: none; }
-.score-chips a:hover { text-decoration: underline; }
-.score-group.mid h4::before { background: var(--warn); }
-.score-group.mid .score-chips a { background: #FFF1DC; color: #6B4000; }
-.score-group.low h4::before { background: var(--outline); }
-.score-group.low .score-chips a { background: var(--surface-variant); color: var(--muted); }
+.score-more:focus-visible { outline: 2px solid var(--primary); border-radius: 6px; }
+.score-detail { margin-top: 20px; border-top: 1px solid var(--outline-variant); }
+.score-row { display: grid; grid-template-columns: 180px 1fr; gap: 24px; padding: 18px 0; border-bottom: 1px solid var(--outline-variant); }
+/* 왼쪽: 색 선(초록 · 주황 · 회색) + 묶음 이름 · 기준 · 개수 */
+.score-row-head { display: grid; grid-template-columns: 1fr auto; align-content: start; gap: 4px 8px; padding-left: 12px; border-left: 2px solid var(--primary); }
+.score-row-head b { font-size: 14px; } .score-row-head small { grid-row: 2; font-size: 12px; color: var(--muted); }
+.score-row-head span { grid-row: 1; grid-column: 2; font-size: 13px; font-weight: 700; color: var(--primary); }
+.score-row.mid .score-row-head { border-left-color: var(--warn); } .score-row.mid .score-row-head span { color: var(--warn); }
+.score-row.low .score-row-head { border-left-color: var(--outline); } .score-row.low .score-row-head span { color: var(--muted); }
+/* 오른쪽: 재료 이름을 칸 맞춰 늘어놓기 (글자만) */
+.score-names { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px 16px; align-content: start; }
+.score-names a { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; color: var(--ink); text-decoration: none; }
+.score-names a:hover { color: var(--primary); text-decoration: underline; }
+.score-foot { margin: 0; padding-top: 14px; font-size: 12px; color: var(--muted); }
+@media (max-width: 720px) {
+  .score-more { order: 1; }   /* 좁으면: 1줄 큰 숫자 · 접기, 2줄 설명, 3줄 탭 */
+  .score-sub { order: 2; flex-basis: 100%; padding-left: 0; border-left: 0; }
+  .score-tabs { order: 3; flex-basis: 100%; margin-left: 0; overflow-x: auto; }
+  .score-row { grid-template-columns: 1fr; gap: 12px; }
+}
 .mart-card { background: none; box-shadow: none; padding: 0; border-radius: 0; }
 .mart-item { box-shadow: 0 1px 4px rgba(31, 74, 0, .06), 0 1px 2px rgba(31, 74, 0, .04); }
 .mart-filter button { background: var(--surface); }

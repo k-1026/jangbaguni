@@ -2524,38 +2524,42 @@ const SCORE_MIN = 3;
 let score = null, scoreKind = "전체", scoreOpen = false;
 const scoreHits = (s) => Math.round((s.n * s.direction_hit_pct) / 100);
 const scoreTier = (p) => (p >= 70 ? "good" : p >= 50 ? "mid" : "low");   // 사장님이 이 품목 예측을 얼마나 믿어도 되는지
-const SCORE_GROUPS = [["good", "예측 정확 <small>70% 이상</small>"], ["mid", "예측 안정 <small>50~70%</small>"], ["low", "예측 성장 중 <small>50% 아래</small>"]];
-function scoreDetail() {
-  const kinds = [...SCORE_KINDS, ...Object.keys(score.kinds).filter((k) => !SCORE_KINDS.includes(k))].filter((k) => score.kinds[k]?.n);
-  if (scoreKind !== "전체" && !kinds.includes(scoreKind)) scoreKind = "전체";
-  const s = scoreKind === "전체" ? score.all : score.kinds[scoreKind];
-  const items = Object.entries(score.items).filter(([, v]) => scoreKind === "전체" || v.kind === scoreKind);
-  const shown = items.filter(([, v]) => v.n >= SCORE_MIN)
+const SCORE_GROUPS = [["good", "예측 정확", "70% 이상"], ["mid", "예측 안정", "50~70%"], ["low", "예측 성장 중", "50% 아래"]];
+const scoreKinds = () => [...SCORE_KINDS, ...Object.keys(score.kinds).filter((k) => !SCORE_KINDS.includes(k))].filter((k) => score.kinds[k]?.n);
+// 펼치면: 묶음마다 한 줄 (왼쪽 색 선 + 묶음 이름 · 기준 · 개수 | 오른쪽 재료 이름 칸 맞춤)
+function scoreDetail(few) {
+  const shown = Object.entries(score.items).filter(([, v]) => (scoreKind === "전체" || v.kind === scoreKind) && v.n >= SCORE_MIN)
     .sort((a, b) => b[1].direction_hit_pct - a[1].direction_hit_pct || b[1].n - a[1].n || a[0].localeCompare(b[0], "ko"));
-  const few = items.length - shown.length;
+  const rows = SCORE_GROUPS.map(([tier, name, range]) => {
+    const g = shown.filter(([, v]) => scoreTier(v.direction_hit_pct) === tier);
+    return g.length ? `<div class="score-row ${tier}">
+      <div class="score-row-head"><b>${name}</b><small>${range}</small><span>${g.length}개</span></div>
+      <div class="score-names">${g.map(([item, v]) =>
+        `<a href="/?item=${encodeURIComponent(item)}" title="예측률 ${v.direction_hit_pct}% (${v.n}개 중 ${scoreHits(v)}개)">${esc(item)}</a>`).join("")}</div>
+    </div>` : "";
+  }).join("");
   return `<div class="score-detail" id="scoreDetail">
-    <div class="filter score-tabs" role="group" aria-label="재료 종류">${["전체", ...kinds].map((k) =>
-      `<button type="button" data-skind="${esc(k)}" class="${k === scoreKind ? "active" : ""}" aria-pressed="${k === scoreKind}">${esc(k)}</button>`).join("")}</div>
-    <p class="score-kind">${esc(scoreKind)} 예측률 <b>${s.direction_hit_pct}%</b> <span class="muted">(${s.n}개 중 ${scoreHits(s)}개 맞춤)</span></p>
-    ${shown.length ? SCORE_GROUPS.map(([tier, title]) => {
-      const g = shown.filter(([, v]) => scoreTier(v.direction_hit_pct) === tier);
-      return g.length ? `<div class="score-group ${tier}"><h4>${title}</h4><div class="score-chips">${g.map(([name, v]) =>
-        `<a href="/?item=${encodeURIComponent(name)}" title="${esc(name)} 예측률 ${v.direction_hit_pct}% (${v.n}개 중 ${scoreHits(v)}개) · 눌러서 시세 보기">${esc(name)}</a>`).join("")}</div></div>` : "";
-    }).join("") + `<p class="muted small">이름을 누르면 그 재료 시세로 가요</p>`
-      : `<p class="muted small">품목별로 보여 줄 만큼 채점한 예측이 아직 없어요</p>`}
-    ${few ? `<p class="muted small">예측이 ${SCORE_MIN}번이 안 된 품목 ${few}개는 아직 채점 중이라 뺐어요</p>` : ""}
+    ${rows || `<p class="muted small">품목별로 보여 줄 만큼 채점한 예측이 아직 없어요</p>`}
+    <p class="score-foot">이름을 누르면 그 재료 시세로 가요${few ? `${SEP}예측 ${SCORE_MIN}번 미만 ${few}개는 채점 중` : ""}</p>
   </div>`;
 }
 function renderScore() {
   const a = score.all;
   if (!a?.n) { $("#scoreCard").innerHTML = `<p class="muted">아직 채점한 예측이 없어요. 예측하고 7일이 지나면 채점해요.</p>`; return; }
+  const kinds = scoreKinds();
+  if (scoreKind !== "전체" && !kinds.includes(scoreKind)) scoreKind = "전체";
+  const s = scoreOpen && scoreKind !== "전체" ? score.kinds[scoreKind] : a;   // 큰 숫자 = 고른 탭의 예측률
+  const label = scoreOpen && scoreKind !== "전체" ? scoreKind : "전체";
+  const few = Object.values(score.items).filter((v) => (label === "전체" || v.kind === label) && v.n < SCORE_MIN).length;
   $("#scoreCard").innerHTML = `<div class="score-top">
-      <div><p class="score-big"><b>${a.direction_hit_pct}</b>%</p>
-        <p class="muted small">7일 뒤 가격 방향 적중률${SEP}${a.n}개 중 ${scoreHits(a)}개</p></div>
+      <p class="score-big"><b>${s.direction_hit_pct}%</b><span>${esc(label)} 예측률</span></p>
+      <p class="score-sub">7일 뒤 가격 방향 적중률${SEP}${s.n}개 중 ${scoreHits(s)}개</p>
+      ${scoreOpen ? `<div class="score-tabs" role="group" aria-label="재료 종류">${["전체", ...kinds].map((k) =>
+        `<button type="button" data-skind="${esc(k)}" class="${k === scoreKind ? "active" : ""}" aria-pressed="${k === scoreKind}">${esc(k)}</button>`).join("")}</div>` : ""}
       <button type="button" class="score-more" data-smore aria-expanded="${scoreOpen}" aria-controls="scoreDetail">${scoreOpen ? "접기" : "상세보기"}
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
     </div>
-    ${scoreOpen ? scoreDetail() : ""}`;
+    ${scoreOpen ? scoreDetail(few) : ""}`;
 }
 async function loadScore() {
   try { score = await getJSON("/api/forecast-score?weeks=1"); }

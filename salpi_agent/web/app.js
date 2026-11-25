@@ -3197,6 +3197,7 @@ function myHome(me, offline) {
 // 사진은 화면에서 가운데를 정사각으로 잘라 512px JPEG 로 줄여 보냄
 // ---------------------------------------------------------------
 const OWNER_FACE = "/static/img/owner_face.png";
+const CAMERA = `<svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>`;
 let prof = null;   // 수정 중일 때만: { name, photo(새 사진 data URL), reset(원래 사진으로), saving, err }
 const profHow = (me) => {
   const loginId = me.login_id || (me.provider !== "kakao" ? readLogin()?.id : null);
@@ -3208,8 +3209,8 @@ function profileCard(me, how = profHow(me)) {
     <div class="pf-text"><b>${me.name ? `${esc(me.name)} 사장님` : "사장님"}</b>${how ? `<small>${esc(how)}</small>` : ""}</div>
     <button type="button" class="pf-edit" data-prof="edit" aria-label="이름 · 사진 수정">${PEN}<span>수정</span></button>`;
   const shown = prof.photo || (prof.reset ? me.base_avatar : me.avatar);   // 되돌리기: 카카오 사진(없으면 기본 그림)
-  return `<label class="pf-photo" title="사진 바꾸기">${face(shown)}<span class="pf-cam">사진 변경</span>
-      <input type="file" accept="image/jpeg,image/png,image/webp" data-prof-photo hidden></label>
+  return `<label class="pf-photo" title="사진 바꾸기">${face(shown)}<span class="pf-cam" aria-hidden="true">${CAMERA}</span>
+      <input type="file" accept="image/jpeg,image/png,image/webp" data-prof-photo aria-label="사진 바꾸기" class="sr-only"></label>
     <div class="pf-form">
       <label class="pf-label">이름<input type="text" data-prof-name maxlength="20" value="${esc(prof.name)}" placeholder="이름" autocomplete="name"></label>
       ${me.custom_photo && !prof.reset && !prof.photo ? `<button type="button" class="pf-reset" data-prof="reset">${me.provider === "kakao" ? "카카오 사진으로 되돌리기" : "기본 사진으로 되돌리기"}</button>` : ""}

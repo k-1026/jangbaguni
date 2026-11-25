@@ -1188,9 +1188,12 @@ body.chat-open .fab-count { display: none; }
 .pf-edit:hover { color: var(--primary); border-color: var(--primary); }
 .pf-edit svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .my-card.profile.editing { align-items: flex-start; gap: 16px; }
-.pf-photo { position: relative; flex: none; display: grid; justify-items: center; gap: 6px; cursor: pointer; }
-.my-card.profile .pf-photo img { width: 72px; height: 72px; box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--primary-container, #E4F2D4); }
-.pf-cam { font-size: 12px; font-weight: 700; color: var(--primary); }
+.pf-photo { position: relative; flex: none; display: block; cursor: pointer; }
+.my-card.profile .pf-photo img { display: block; width: 72px; height: 72px; box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--primary-container, #E4F2D4); }
+/* 사진 오른쪽 아래 카메라 동그라미 (SNS처럼) */
+.pf-cam { position: absolute; right: -4px; bottom: -4px; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%;
+  background: var(--primary); box-shadow: 0 0 0 2px var(--surface); }
+.pf-cam svg { width: 14px; height: 14px; fill: none; stroke: #fff; stroke-width: 2; stroke-linejoin: round; }
 .pf-photo:hover img { filter: brightness(.92); }
 .pf-photo:focus-within img { outline: 2px solid var(--primary); outline-offset: 3px; }
 .pf-form { flex: 1; min-width: 0; display: grid; gap: 8px; }

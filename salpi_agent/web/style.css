@@ -672,13 +672,14 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .modal-box.camera-box { width: fit-content; min-width: min(420px, 100%); max-width: 100%; padding: 14px 16px 16px; }   /* 카메라 창 크기에 맞춤 (아래 공용 .modal-box 폭 860px을 이기도록 두 class) */
 .modal-box.camera-box h3 { margin: 0 40px 6px 0; line-height: 32px; }   /* 제목을 카메라 바로 위에, 닫기 × 와 같은 줄 */
 /* 세로(3:4) 찍기 창 + 오른쪽 대기열 (좁은 화면은 대기열이 아래로 가로 줄) */
-.cam-wrap { position: relative; display: flex; justify-content: center; gap: 8px; }
-.cam-view { position: relative; flex: none; height: min(62vh, 560px); aspect-ratio: 3 / 4; max-width: 100%; border-radius: 12px; overflow: hidden; background: #111; }
+/* --cam-h: 카메라 창 높이 = 화면 높이 - (창 바깥 여백 · 제목 · 안내 · 버튼) → 흰색 창 안에 다 들어가 스크롤바 · 각진 모서리가 안 생김 */
+.cam-wrap { --cam-h: min(calc(100vh - 240px), 560px); position: relative; display: flex; justify-content: center; gap: 10px; padding: 0 2px; }
+.cam-view { position: relative; flex: none; height: var(--cam-h); aspect-ratio: 3 / 4; max-width: 100%; border-radius: 12px; overflow: hidden; background: #111; }
 .cam-view video { display: block; width: 100%; height: 100%; object-fit: cover; }
 .cam-frame { position: absolute; inset: 4% 8%; border: 2px dashed rgba(255,255,255,.8); border-radius: 10px; pointer-events: none; }
-.cam-queue { flex: none; width: 96px; display: flex; flex-direction: column; min-height: 0; }
+.cam-queue { flex: none; width: auto; display: flex; flex-direction: column; min-height: 0; }
 .cam-queue p { margin: 0 0 4px; font-size: 11px; color: var(--muted); white-space: nowrap; }
-.cam-queue ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; max-height: calc(4 * 128px + 3 * 6px); }   /* 4장까지 보이고 넘으면 스크롤 */
+.cam-queue ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; overflow: hidden auto; scrollbar-gutter: stable; scrollbar-width: thin; max-height: calc(var(--cam-h) - 20px); }   /* 카메라 창 높이까지 보이고 넘으면 스크롤 (위 "찍은 사진" 글 한 줄만큼 뺌) */
 .cam-queue li { position: relative; flex: none; }
 .cam-thumb { display: block; padding: 0; border: 0; background: none; cursor: zoom-in; }
 .cam-queue img { display: block; width: 120px; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 8px; border: 1px solid var(--outline-variant); }

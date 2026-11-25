@@ -2526,20 +2526,24 @@ const scoreHits = (s) => Math.round((s.n * s.direction_hit_pct) / 100);
 const scoreTier = (p) => (p >= 70 ? "good" : p >= 50 ? "mid" : "low");   // 사장님이 이 품목 예측을 얼마나 믿어도 되는지
 const SCORE_GROUPS = [["good", "예측 정확", "70% 이상"], ["mid", "예측 안정", "50~70%"], ["low", "예측 성장 중", "50% 아래"]];
 const scoreKinds = () => [...SCORE_KINDS, ...Object.keys(score.kinds).filter((k) => !SCORE_KINDS.includes(k))].filter((k) => score.kinds[k]?.n);
-// 펼치면: 묶음마다 한 줄 (왼쪽 색 선 + 묶음 이름 · 기준 · 개수 | 오른쪽 재료 이름 칸 맞춤)
+const scoreFold = new Set();   // 재료 목록을 접은 묶음 (good · mid · low)
+// 펼치면: 묶음 카드 3개 나란히 (위 = 큰 묶음 이름 · 개수 · 기준, 누르면 그 아래 재료 목록 접기 · 펼치기)
 function scoreDetail(few) {
   const shown = Object.entries(score.items).filter(([, v]) => (scoreKind === "전체" || v.kind === scoreKind) && v.n >= SCORE_MIN)
     .sort((a, b) => b[1].direction_hit_pct - a[1].direction_hit_pct || b[1].n - a[1].n || a[0].localeCompare(b[0], "ko"));
-  const rows = SCORE_GROUPS.map(([tier, name, range]) => {
+  const cards = SCORE_GROUPS.map(([tier, name, range]) => {
     const g = shown.filter(([, v]) => scoreTier(v.direction_hit_pct) === tier);
-    return g.length ? `<div class="score-row ${tier}">
-      <div class="score-row-head"><p><b>${name}</b><span>${g.length}개</span></p><small>${range}</small></div>
-      <div class="score-names">${g.map(([item, v]) =>
-        `<a href="/?item=${encodeURIComponent(item)}" title="예측률 ${v.direction_hit_pct}% (${v.n}번 예측해서 ${scoreHits(v)}번 맞혔어요)"><span>${esc(item)}</span></a>`).join("")}</div>
-    </div>` : "";
+    const open = g.length > 0 && !scoreFold.has(tier);
+    return `<div class="score-group ${tier}">
+      <button type="button" class="score-group-head" data-sfold="${tier}" aria-expanded="${open}" aria-controls="scoreNames-${tier}" ${g.length ? "" : "disabled"}>
+        <b>${name}</b><span class="score-count">${g.length}개</span><small>${range}</small>
+        ${g.length ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>` : ""}</button>
+      ${open ? `<div class="score-names" id="scoreNames-${tier}">${g.map(([item, v]) =>
+        `<a href="/?item=${encodeURIComponent(item)}" title="예측률 ${v.direction_hit_pct}% (${v.n}번 예측해서 ${scoreHits(v)}번 맞혔어요)"><span>${esc(item)}</span></a>`).join("")}</div>` : ""}
+    </div>`;
   }).join("");
   return `<div class="score-detail" id="scoreDetail">
-    ${rows || `<p class="muted small">품목별로 보여 줄 만큼 채점한 예측이 아직 없어요</p>`}
+    ${shown.length ? `<div class="score-groups">${cards}</div>` : `<p class="muted small">품목별로 보여 줄 만큼 채점한 예측이 아직 없어요</p>`}
     ${few ? `<p class="score-foot">예측 ${SCORE_MIN}번 미만 ${few}개는 채점 중</p>` : ""}
   </div>`;
 }
@@ -2570,6 +2574,13 @@ $("#scoreCard").onclick = (e) => {
   if (e.target.closest("[data-smore]")) { scoreOpen = !scoreOpen; renderScore(); return $("#scoreCard [data-smore]").focus(); }
   const k = e.target.closest("[data-skind]");
   if (k) { scoreKind = k.dataset.skind; renderScore(); $(`#scoreCard [data-skind="${CSS.escape(scoreKind)}"]`)?.focus(); }   // 다시 그려도 누른 탭에 그대로
+  const f = e.target.closest("[data-sfold]");
+  if (f) {
+    const t = f.dataset.sfold;
+    scoreFold.has(t) ? scoreFold.delete(t) : scoreFold.add(t);
+    renderScore();
+    $(`#scoreCard [data-sfold="${t}"]`)?.focus();
+  }
 };
 
 async function loadContext() {

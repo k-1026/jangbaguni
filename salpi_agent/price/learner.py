@@ -36,6 +36,7 @@ from sources import data_sources as ds
 from price import forecast_model as FM
 from price.analysis import FRUIT_REVERSION, FRUIT_VOLUME, VEG_REVERSION, VEG_VOLUME, reversion_factor, volume_factor
 from price.gbdt import GBDT
+from price import seoul_history as SH
 
 KST = timezone(timedelta(hours=9))
 BUCKET = "models"
@@ -53,7 +54,7 @@ LOCKED = {"item", "dev"}     # 늘 쓰는 요인 (빼지 않음)
 FEATURE_KO = {"item": "품목", "dev": "4주 평균과의 차이", "trend": "2주 기울기", "vchg": "반입량 변화", "vlevel": "반입량 수준",
               "wx": "날씨 점수", "rain": "비", "cold": "한파 일수", "hot": "폭염 일수", "volat": "변동성",
               "chg3": "최근 3거래일 변화", "chg7": "1주 전 대비", "season": "지난 해 같은 때", "to_major": "명절까지 남은 날",
-              "month": "월", "dow": "요일"}
+              "month": "월", "dow": "요일", "src": "서울 · 대구 구분"}
 PARAM_KO = {"learning_rate": "학습 속도", "max_depth": "나무 깊이", "min_leaf": "잎 최소 건수", "objective": "오차 기준", "l2": "규제 세기"}
 
 
@@ -178,8 +179,12 @@ def score(pred, act, half):
 
 
 class Data:
-    def __init__(self, names, rows):
+    def __init__(self, names, rows, extra=()):
+        """rows: 대구 줄 (시험 · 검증 · 범위는 이것만). extra: 학습에만 더하는 서울 줄 (설정 "seoul" 이 켜졌을 때)."""
         self.names = names
+        self.ex_asof = np.array([r[0] for r in extra])
+        self.ex_y = np.array([r[4] for r in extra])
+        self.ex_cols = {k: np.array([r[2][k] for r in extra], dtype=float) for k in FM.ALL_FEATURES}
         self.asof = np.array([r[0] for r in rows])
         self.item = np.array([r[1] for r in rows])
         self.cols = {k: np.array([r[2][k] for r in rows], dtype=float) for k in FM.ALL_FEATURES}
@@ -195,6 +200,15 @@ class Data:
 
     def X(self, feats):
         return np.column_stack([self.cols[k] for k in feats])
+
+    def train(self, mask, cfg):
+        """학습 자료: mask 대구 줄 + (설정이 서울을 쓰면) mask 마지막 날까지의 서울 줄."""
+        X, y = self.X(cfg["features"])[mask], self.y[mask]
+        if cfg.get("seoul") and len(self.ex_y):
+            k = self.ex_asof <= self.asof[mask].max()
+            X = np.vstack([X, np.column_stack([self.ex_cols[f] for f in cfg["features"]])[k]])
+            y = np.concatenate([y, self.ex_y[k]])
+        return X, y
 
     def half_by_item(self, resid_abs, mask):
         """품목별 예상 범위 반폭 = 오차의 70% 지점 (건수가 적으면 전체)."""
@@ -214,9 +228,9 @@ def evaluate(D, cfg):
     """시험 전 자료로 학습 → 최근 1년 시험. 예상 범위 폭은 시험 전 1년(검증) 오차로 정함 (시험 답을 보지 않음)."""
     t = time.time()
     X = D.X(cfg["features"])
-    probe = _gbdt(cfg).fit(X[D.fit], D.y[D.fit], X[D.val], D.y[D.val])
+    probe = _gbdt(cfg).fit(*D.train(D.fit, cfg), X[D.val], D.y[D.val])
     n = max(probe.best_iteration, 20)
-    m = _gbdt(cfg, n).fit(X[D.pre], D.y[D.pre])
+    m = _gbdt(cfg, n).fit(*D.train(D.pre, cfg))
     half_val, half_all = D.half_by_item(np.abs(D.y[D.val] - probe.predict(X[D.val])), D.val)
     pred = m.predict(X[D.test])
     half = np.array([half_val[D.names[i]] for i in D.item[D.test]])
@@ -249,14 +263,20 @@ def better(a, b):
 # 3. AI 판단: 오늘 해 볼 실험 고르기 (정해진 목록 안에서만)
 # ---------------------------------------------------------------
 
-def menu(cfg):
-    """챔피언 설정에서 한 가지만 바꾼 실험 목록 → [(id, 설명, 바꾼 설정)]"""
+def menu(cfg, seoul_ok=False):
+    """챔피언 설정에서 한 가지만 바꾼 실험 목록 → [(id, 설명, 바꾼 설정)]. seoul_ok: 서울 10년 자료를 쓸 수 있는 종류(야채)"""
     out = []
+    if seoul_ok and not cfg.get("seoul"):
+        out.append(("add:seoul", "서울 10년 자료 + 서울 · 대구 구분 넣기",
+                    {**cfg, "seoul": True, "features": [f for f in cfg["features"] if f != "src"] + ["src"]}))
+    if cfg.get("seoul"):
+        out.append(("drop:seoul", "서울 10년 자료 빼기",
+                    {**cfg, "seoul": False, "features": [f for f in cfg["features"] if f != "src"]}))
     for f in cfg["features"]:
-        if f not in LOCKED:
+        if f not in LOCKED and f != "src":   # src 는 서울 자료와 같이만 넣고 뺌
             out.append((f"drop:{f}", f"'{FEATURE_KO[f]}' 요인 빼기", {**cfg, "features": [x for x in cfg["features"] if x != f]}))
     for f in FM.ALL_FEATURES:
-        if f not in cfg["features"]:
+        if f not in cfg["features"] and f != "src":
             out.append((f"add:{f}", f"'{FEATURE_KO[f]}' 요인 넣기", {**cfg, "features": cfg["features"] + [f]}))
     for p, values in PARAM_GRID.items():
         for v in values:
@@ -286,7 +306,7 @@ def _gemini_json(prompt):
 
 def choose_experiments(kind, cfg, champ, formula, past):
     """AI가 실험을 고름. AI를 못 쓰면 최근 2주 안 해 본 것부터 차례로."""
-    options = menu(cfg)
+    options = menu(cfg, seoul_ok=kind == "야채")
     ids = [o[0] for o in options]
     tried = [e["id"] for h in past for e in h.get("experiments", [])]
     worst = sorted(champ["items"].items(), key=lambda kv: -kv[1]["opposite_pct"])[:5]
@@ -316,8 +336,13 @@ diagnosis 와 why 는 쉬운 한국어로, 위에 주어진 숫자만 인용하�
             break
         if i not in tried and i not in [p["id"] for p in picked]:
             picked.append({"id": i, "why": "최근 2주 안 해 본 실험 (차례대로)", "by": "규칙"})
+    picked = picked[:EXPERIMENTS_PER_DAY]
+    # 11/25 따로 한 실험에서 시험 세 해 모두 나아짐 → 최근 2주 안 해 봤으면 AI 선택과 별개로 꼭 시험 (바꿀지는 교체 기준이 정함)
+    if "add:seoul" in ids and "add:seoul" not in tried and "add:seoul" not in [p["id"] for p in picked]:
+        picked.append({"id": "add:seoul", "by": "규칙",
+                       "why": "따로 한 실험(plan/forecast/1125_train_length_10y.md)에서 시험 세 해 모두 나아짐 → 매일 학습에서 확인"})
     cfgs = {o[0]: (o[1], o[2]) for o in options}
-    return [{**p, "label": cfgs[p["id"]][0], "config": cfgs[p["id"]][1]} for p in picked[:EXPERIMENTS_PER_DAY]], \
+    return [{**p, "label": cfgs[p["id"]][0], "config": cfgs[p["id"]][1]} for p in picked], \
         str(ai.get("diagnosis") or "")[:600]
 
 
@@ -326,8 +351,7 @@ diagnosis 와 why 는 쉬운 한국어로, 위에 주어진 숫자만 인용하�
 # ---------------------------------------------------------------
 
 def deploy_blob(D, kind, cfg, res, formula, series):
-    X = D.X(cfg["features"])
-    final = _gbdt(cfg, res["n_rounds"]).fit(X, D.y)
+    final = _gbdt(cfg, res["n_rounds"]).fit(*D.train(np.ones(len(D.y), bool), cfg))
     half, half_all = D.half_by_item(res["test_abs_resid"], D.test)
     t = today()
     season = {}
@@ -351,7 +375,9 @@ def run_kind(kind, series, weather, past_all, upload):
     key = FM.KINDS[kind]
     print(f"\n===== {kind} =====")
     names, rows = build_rows(series, weather, kind)
-    D = Data(names, rows)
+    D = Data(names, rows, SH.rows(names) if kind == "야채" else ())
+    if len(D.ex_y):
+        print(f"서울 10년 학습 자료 {len(D.ex_y):,}줄 (설정 'seoul' 이 켜졌을 때만 학습에 씀)")
     print(f"기준일 {len(D.y):,}건 (학습 {D.pre.sum():,} / 시험 {D.test.sum():,}, 시험 기간 {D.period[0]} ~ {D.period[1]})")
     prev = load_json(f"forecast/{key}.json", None) if upload else None
     cfg = (prev or {}).get("config") or DEFAULT_CONFIG

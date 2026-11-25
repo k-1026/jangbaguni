@@ -6,6 +6,7 @@
 import os
 import base64
 import json
+import queue
 import threading
 from concurrent.futures import ThreadPoolExecutor
 import time
@@ -15,7 +16,7 @@ from pathlib import Path
 from datetime import date
 
 from fastapi import FastAPI, Header, HTTPException, Request
-from fastapi.responses import FileResponse, RedirectResponse, Response
+from fastapi.responses import FileResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -356,7 +357,7 @@ def event(content_id: str):
 @app.get("/api/mart")
 def mart():
     """대형마트 판매가 (한국소비자원 참가격, 음식 재료만). 2주마다 조사돼서 6시간 보관."""
-    return _guard(lambda: shared("mart", mart_price.mart_prices, ttl=6 * 3600, keep=3 * 24 * 3600))
+    return _guard(lambda: shared("mart2", mart_price.mart_prices, ttl=6 * 3600, keep=3 * 24 * 3600))
 
 
 @app.get("/api/buy-links")
@@ -1022,12 +1023,12 @@ class ChatIn(BaseModel):
     session: str = ""      # 같은 채팅창의 대화 묶음 (화면이 만든 임의 번호, 대화 기록용)
 
 
-@app.post("/api/chat")
-def chat(body: ChatIn):
+def _answer(body, on_text=None, on_status=None):
+    """질문 하나에 답하고 대화 기록까지 남김 → 답 글. (/api/chat 과 /api/chat/stream 이 같이 씀)"""
     question, started, agent, status = body.message.strip()[:1000], time.time(), None, "ok"
     try:
         agent = SalpiAgent(history=body.history)
-        reply = agent.ask(question)
+        reply = agent.ask(question, on_text, on_status)
     except ApiKeyMissing as e:
         reply, status = str(e), "nokey"
     except Exception as e:
@@ -1038,7 +1039,33 @@ def chat(body: ChatIn):
     if question:
         chat_log.save(body.session, len(body.history) // 2, question, reply, getattr(agent, "last_tools", []),
                       getattr(agent, "model", None), (time.time() - started) * 1000, status)
-    return {"reply": reply}
+    return reply
+
+
+@app.post("/api/chat")
+def chat(body: ChatIn):
+    return {"reply": _answer(body)}
+
+
+@app.post("/api/chat/stream")
+def chat_stream(body: ChatIn):
+    """답이 써지는 대로 한 줄씩(JSON) 보냄: {"s": 지금 하는 일} · {"t": 글자 조각} ... 마지막에 {"done": true, "reply": 완성된 답}"""
+    pieces: queue.Queue = queue.Queue()
+
+    def work():
+        reply = _answer(body, lambda t: pieces.put({"t": t}), lambda s: pieces.put({"s": s}))
+        pieces.put({"done": True, "reply": reply})
+
+    threading.Thread(target=work, daemon=True).start()
+
+    def lines():
+        while True:
+            item = pieces.get()
+            yield json.dumps(item, ensure_ascii=False) + "\n"
+            if item.get("done"):
+                return
+
+    return StreamingResponse(lines(), media_type="application/x-ndjson", headers={"X-Accel-Buffering": "no"})
 
 
 if __name__ == "__main__":

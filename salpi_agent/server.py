@@ -501,6 +501,17 @@ def _image(b64, mime):
 class ReceiptIn(BaseModel):
     image: str = ""
     mime: str = "image/jpeg"
+    # 긴 영수증을 나눠 찍은 사진들 (위에서부터 차례로, 최대 receipts.MAX_PHOTOS 장). 'data:image/png;base64,…' 면 그 형식, 아니면 mime
+    images: list[str] = []
+
+
+def _photos(body):
+    """image(한 장, 예전 화면) + images(여러 장) → [(bytes, mime)]."""
+    raw = ([body.image] if body.image else []) + [x for x in body.images if x]
+    if len(raw) > receipts.MAX_PHOTOS:
+        raise HTTPException(400, f"사진은 한 번에 {receipts.MAX_PHOTOS}장까지 올릴 수 있어요")
+    mime_of = lambda x: x[5:x.index(";")] if x.startswith("data:") and ";" in x[:40] else body.mime   # 'data:image/png;base64,…' → image/png
+    return [_image(x, mime_of(x)) for x in raw]
 
 
 class ReceiptSave(ReceiptIn):
@@ -518,15 +529,15 @@ def _receipt_guard(fn):
 
 @app.post("/api/receipt/read")
 def receipt_read(body: ReceiptIn, authorization: str | None = Header(None)):
-    data, mime = _image(body.image, body.mime)
-    if not data:
+    photos = _photos(body)
+    if not photos:
         raise HTTPException(400, "영수증 사진을 골라 주세요")
     token = _bearer(authorization)
     if not token:   # 로그인 표 없이 부르는 곳(모바일 시연 화면)은 지금처럼 횟수 없이
-        return _receipt_guard(lambda: receipts.read(data, mime))
-    # 로그인한 사장님: 무료 5회를 다 썼으면 402, 읽기에 성공했을 때만 1회 셈
+        return _receipt_guard(lambda: receipts.read(photos))
+    # 로그인한 사장님: 무료 5회를 다 썼으면 402, 읽기에 성공했을 때만 1회 셈 (사진이 여러 장이어도 영수증 하나 = 1회)
     user = _auth(lambda: trial.check(token))
-    result = _receipt_guard(lambda: receipts.read(data, mime))
+    result = _receipt_guard(lambda: receipts.read(photos))
     return {**result, "trial": _auth(lambda: trial.count(user))}
 
 
@@ -593,8 +604,8 @@ def subscribe_cancel(body: CancelIn, authorization: str | None = Header(None)):
 
 @app.post("/api/receipt/save")
 def receipt_save(body: ReceiptSave):
-    data, mime = _image(body.image, body.mime)
-    return _receipt_guard(lambda: _store_changed(receipts.save(supabase_db.DEMO_STORE, body.model_dump(), data, mime)))
+    photos = _photos(body)
+    return _receipt_guard(lambda: _store_changed(receipts.save(supabase_db.DEMO_STORE, body.model_dump(), photos)))
 
 
 @app.get("/api/costs")

@@ -38,6 +38,13 @@ SUBSTITUTES = {"양파": ["양배추"], "대파": ["양파"], "애호박": ["감
 # 국내산 안에서 부위만 바꾸는 건 표시가 그대로라 안내하지 않음
 IMPORTED_ORIGIN_NOTICE = "원산지 표시 변경 필요: 수입산은 메뉴판 · 원산지 게시판에 나라 이름까지 적어야 해요"
 SWAP_SHARE = 0.5   # 오른 재료의 절반을 바꿨을 때로 계산 (전부 바꾸면 맛이 달라짐)
+MAX_PHOTOS = 5     # 긴 영수증을 나눠 찍을 때 한 번에 받는 사진 수 (많을수록 느리고 무료 AI 한도를 빨리 씀)
+PATH_SEP = "|"     # 사진 여러 장의 보관 위치를 purchases.image_path 한 칸에 이어 둠 (표를 바꾸지 않으려고)
+
+
+def photo_paths(image_path):
+    """purchases.image_path → 사진 보관 위치 목록 (한 장이면 [그 위치], 없으면 [])."""
+    return [x for x in str(image_path or "").split(PATH_SEP) if x]
 
 
 def _norm(s):
@@ -61,9 +68,11 @@ def _items():
 # 1) 읽기: 사진 → 품목 목록 (아직 저장하지 않음)
 # ---------------------------------------------------------------
 
-def _prompt(items):
+def _prompt(items, n_photos=1):
     names = ", ".join(f"{i['name']}({i['base_unit']})" for i in items)
-    return f"""식당 식자재 영수증(거래명세서 · 마트 영수증 · 손글씨 간이영수증) 사진이다. 적힌 내용만 읽어서 JSON으로만 답한다.
+    many = (f"\n사진 {n_photos}장은 긴 영수증 한 장을 위에서부터 차례로 나눠 찍은 것이다. 모든 사진을 이어서 영수증 하나로 읽고, "
+            "사진끼리 겹쳐 찍혀 두 번 보이는 줄은 한 번만 넣는다. 날짜 · 판매처 · 합계도 영수증 하나 것으로 한 번만 답한다.") if n_photos > 1 else ""
+    return f"""식당 식자재 영수증(거래명세서 · 마트 영수증 · 손글씨 간이영수증) 사진이다. 적힌 내용만 읽어서 JSON으로만 답한다.{many}
 {{"date": "YYYY-MM-DD 또는 null", "supplier": "판매처 이름 또는 null", "total": 합계 금액(숫자) 또는 null,
  "items": [{{"raw_name": "영수증에 적힌 품목 이름 그대로", "qty": 수량(숫자), "amount": 그 줄의 금액(원, 숫자),
             "item": "아래 재료 목록 중 같은 재료 이름 또는 null", "qty_base": 그 재료 기준 단위로 바꾼 전체 양(숫자) 또는 null}}]}}
@@ -75,7 +84,12 @@ def _prompt(items):
 - 읽을 수 없는 글자는 추측하지 말고 null. 할인 · 부가세 · 합계 줄은 items 에 넣지 않는다."""
 
 
-def read(image, mime):
+def read(images):
+    """images: [(사진 bytes, mime)] — 1장이면 지금처럼, 여러 장(긴 영수증을 나눠 찍음)이면 AI 한 번에 같이 넣어 영수증 하나로 읽음."""
+    if not images:
+        raise ValueError("영수증 사진을 골라 주세요")
+    if len(images) > MAX_PHOTOS:
+        raise ValueError(f"사진은 한 번에 {MAX_PHOTOS}장까지 올릴 수 있어요")
     key = os.getenv("GEMINI_API_KEY", "").strip()
     if not key:
         raise ApiKeyMissing(".env 의 GEMINI_API_KEY 가 비어 있어요")
@@ -85,7 +99,7 @@ def read(image, mime):
     for model in MODELS:   # 무료 모델이 바쁘면(503 · 429) 다음 모델로
         try:
             r = client.models.generate_content(
-                model=model, contents=[types.Part.from_bytes(data=image, mime_type=mime), _prompt(items)],
+                model=model, contents=[*(types.Part.from_bytes(data=b, mime_type=m) for b, m in images), _prompt(items, len(images))],
                 config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0))
             data = json.loads(r.text)
             if isinstance(data, list):   # 예비 모델이 품목 목록만 [..] 으로 줄 때가 있음 (11/24 OCR 20장 시험에서 6장)
@@ -128,7 +142,7 @@ def read(image, mime):
     return {"date": data.get("date"), "supplier": data.get("supplier"), "total": total, "items": rows,
             "items_list": [{"id": i["id"], "name": i["name"], "base_unit": i["base_unit"]} for i in items],
             "total_matches": total is None or abs(total - line_sum) < 1,   # 줄 금액 합 = 합계인지 (틀리면 다시 보라고 안내)
-            "line_sum": line_sum, "model": model}
+            "line_sum": line_sum, "model": model, "photos": len(images)}
 
 
 def _piece_qty(item, raw_name, qty, ai_qty_base):
@@ -192,15 +206,20 @@ def _restock(store_id, delta):
         print(f"재고 반영 실패: {e}")
 
 
-def save(store_id, data, image=None, mime=None):
+def save(store_id, data, images=()):
+    """images: [(사진 bytes, mime)] — 여러 장이면 모두 보관하고 위치를 image_path 한 칸에 '|'로 이어 둠."""
     rows = _checked_rows(data)
+    if len(images) > MAX_PHOTOS:
+        raise ValueError(f"사진은 한 번에 {MAX_PHOTOS}장까지 올릴 수 있어요")
     day = data.get("date") or str(datetime.now(KST).date())
     before = {m["menu_id"]: m for m in cost_report(store_id)["menus"]}
 
-    path = None
-    if image:
-        ext = {"image/png": "png", "image/webp": "webp"}.get(mime, "jpg")
-        path = db.upload("receipts", f"{store_id}/{day}_{uuid.uuid4().hex[:8]}.{ext}", image, mime or "image/jpeg")
+    base = f"{store_id}/{day}_{uuid.uuid4().hex[:8]}"
+    saved = []
+    for k, (b, m) in enumerate(images):   # 첫 장은 예전과 같은 이름, 둘째 장부터 _2 · _3 …
+        ext = {"image/png": "png", "image/webp": "webp"}.get(m, "jpg")
+        saved.append(db.upload("receipts", f"{base}{f'_{k + 1}' if k else ''}.{ext}", b, m or "image/jpeg"))
+    path = PATH_SEP.join(saved) or None
     p = db.insert("purchases", [{"store_id": store_id, "purchased_on": day, "supplier": data.get("supplier"),
                                  "total_amount": int(sum(float(r["amount"]) for r in rows)), "source": "ocr", "image_path": path}])[0]
     lines = _item_rows(p["id"], rows)
@@ -215,7 +234,7 @@ def save(store_id, data, image=None, mime=None):
     db.upsert("item_aliases", list(pairs.values()), "alias")
 
     after = _with_change(store_id, before)
-    return {"purchase_id": p["id"], "date": day, "saved_items": len(rows), "image_saved": bool(path), **after}
+    return {"purchase_id": p["id"], "date": day, "saved_items": len(rows), "image_saved": bool(path), "photos_saved": len(images), **after}
 
 
 def edit(store_id, purchase_id, data):
@@ -449,8 +468,9 @@ def recent(store_id, limit=8):
     for r in db.select("purchase_items", purchase_id=f"in.({','.join(str(p['id']) for p in ps) or 0})", select="purchase_id,raw_name", order="id"):
         counts[r["purchase_id"]] = counts.get(r["purchase_id"], 0) + 1
         names.setdefault(r["purchase_id"], []).append(r["raw_name"])
-    urls = db.signed_urls([p["image_path"] for p in ps if p["image_path"]], seconds=3600)   # 사진 줄 미리보기 (한 번에, 1시간)
+    urls = db.signed_urls([photo_paths(p["image_path"])[0] for p in ps if p["image_path"]], seconds=3600)   # 사진 줄 미리보기는 첫 장 (한 번에, 1시간)
     return [{**p, "items": counts.get(p["id"], 0), "image_path": bool(p["image_path"]), "image_url": _image_url(p, urls),
+             "photos": len(photo_paths(p["image_path"])),
              "names": names.get(p["id"], [])[:4]} for p in ps]   # 사진 없는 영수증은 품목 몇 줄로 작은 영수증을 그림
 
 
@@ -461,7 +481,7 @@ DEMO_IMAGES = {"2026-10-12": "receipt_1012_statement", "2026-10-19": "receipt_10
 
 def _image_url(p, urls):
     if p["image_path"]:
-        return urls.get(p["image_path"])
+        return urls.get(photo_paths(p["image_path"])[0])
     if p["source"] == "demo" and p["purchased_on"] in DEMO_IMAGES:
         return f"/receipts_demo/{DEMO_IMAGES[p['purchased_on']]}.png"
     return None
@@ -476,13 +496,11 @@ def detail(store_id, purchase_id):
     p = ps[0]
     rows = db.select("purchase_items", purchase_id=f"eq.{purchase_id}", order="id",
                      select="raw_name,item_id,qty_base,amount,unit_price_base,items(name,base_unit)")
-    if p["image_path"]:
-        image = db.signed_url(p["image_path"])
-    elif p["source"] == "demo" and p["purchased_on"] in DEMO_IMAGES:
-        image = f"/receipts_demo/{DEMO_IMAGES[p['purchased_on']]}.png"
-    else:
-        image = None
-    return {**p, "image_url": image, "image_path": None,
+    images = [db.signed_url(x) for x in photo_paths(p["image_path"])]
+    if not images and p["source"] == "demo" and p["purchased_on"] in DEMO_IMAGES:
+        images = [f"/receipts_demo/{DEMO_IMAGES[p['purchased_on']]}.png"]
+    # image_url = 첫 장 (지금 화면) · image_urls = 나눠 찍은 사진 전부 (위에서부터 차례로)
+    return {**p, "image_url": images[0] if images else None, "image_urls": images, "image_path": None,
             "items_list": [{"id": i["id"], "name": i["name"], "base_unit": i["base_unit"]} for i in _items()],
             "items": [{"raw_name": r["raw_name"], "item_id": r["item_id"], "item": (r["items"] or {}).get("name"), "unit": (r["items"] or {}).get("base_unit"),
                        "qty_base": float(r["qty_base"]), "amount": r["amount"],
@@ -496,6 +514,6 @@ def remove(store_id, purchase_id):
         raise ValueError("영수증을 찾지 못했어요")
     _restock(store_id, {i: -q for i, q in inventory.qty_by_item(lines).items()})   # 지운 영수증만큼 재고 줄이기
     for g in gone:
-        if g.get("image_path"):
-            db.remove_file(g["image_path"])
+        for x in photo_paths(g.get("image_path")):
+            db.remove_file(x)
     return cost_report(store_id)

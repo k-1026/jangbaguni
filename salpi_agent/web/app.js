@@ -2521,7 +2521,7 @@ $("#martAll").onclick = () => {
 // ---------------------------------------------------------------
 const SCORE_KINDS = ["과일", "야채", "육류", "수산물"];   // 탭 순서 (그 밖의 종류가 오면 뒤에 붙임)
 const SCORE_MIN = 3;
-let score = null, scoreKind = "전체", scoreOpen = false;
+let score = null, scoreKind = "전체", scoreOpen = true;   // 처음엔 펼친 채로, 다 본 뒤 접기
 const scoreHits = (s) => Math.round((s.n * s.direction_hit_pct) / 100);
 const scoreTier = (p) => (p >= 70 ? "good" : p >= 50 ? "mid" : "low");   // 사장님이 이 품목 예측을 얼마나 믿어도 되는지
 const SCORE_GROUPS = [["good", "예측 정확", "70% 이상"], ["mid", "예측 안정", "50~70%"], ["low", "예측 성장 중", "50% 아래"]];

@@ -2395,8 +2395,12 @@ function shootCamera() {
 }
 function stopCamera() { camStream?.getTracks().forEach((t) => t.stop()); camStream = null; }
 function closeCamera() { stopCamera(); camShots = []; $("#cameraModal").hidden = true; }
-// 찍어 둔 사진이 있는데 닫으려 하면 물어봄
-const cancelCamera = () => { if (!camShots.length || confirm(`찍은 사진 ${camShots.length}장을 버릴까요?`)) closeCamera(); };
+// 크게 보는 중이면 크게 보기만 닫음. 찍어 둔 사진이 있는데 카메라를 닫으려 하면 물어봄
+const cancelCamera = () => {
+  const big = $("#camBig");
+  if (big && !big.hidden) { big.hidden = true; return; }
+  if (!camShots.length || confirm(`찍은 사진 ${camShots.length}장을 버릴까요?`)) closeCamera();
+};
 $("#cameraBtn").onclick = openCamera;
 $("#cameraClose").onclick = cancelCamera;
 $("#cameraModal").onclick = (e) => { if (e.target.id === "cameraModal") cancelCamera(); };

@@ -15,7 +15,7 @@ from pathlib import Path
 from datetime import date
 
 from fastapi import FastAPI, Header, HTTPException, Request
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -975,6 +975,27 @@ def store_costs_get(authorization: str | None = Header(None)):
 def store_costs_put(body: CostsIn, authorization: str | None = Header(None)):
     """가게 비용 저장 (계정 정보에 → 다른 기기에서도 같은 값). 모양이 틀린 칸은 버리고 저장한 값을 돌려줌."""
     return _auth(lambda: store_costs.save(_bearer(authorization), body.costs))
+
+
+class ProfileEditIn(BaseModel):
+    name: str = ""
+    photo: str = ""            # base64 사진 (바꿀 때만)
+    reset_photo: bool = False  # 내가 올린 사진을 지우고 원래 사진(카카오 사진 · 기본 그림)으로
+
+
+@app.patch("/api/auth/profile")
+def auth_profile_edit(body: ProfileEditIn, authorization: str | None = Header(None)):
+    """마이페이지에서 사장님 이름 · 프로필 사진 바꾸기 (카카오로 로그인해도 같음)."""
+    return _auth(lambda: auth.update_profile(_bearer(authorization), body.model_dump()))
+
+
+@app.get("/api/auth/photo/{user_id}")
+def auth_photo(user_id: str):
+    """프로필 사진. 주소에 v(바꾼 번호)가 붙어 있어 사진이 바뀌면 주소도 바뀜 → 오래 기억해도 됨."""
+    data, kind = _auth(lambda: auth.photo(user_id))
+    if not data:
+        raise HTTPException(404, "사진이 없어요")
+    return Response(data, media_type=kind, headers={"Cache-Control": "private, max-age=2592000, immutable"})
 
 
 @app.post("/api/auth/logout")

@@ -2906,6 +2906,7 @@ loadOverview();
 loadExtra();   // 육류 · 수산물: 탭 · 검색 · 재료 페이지(/?item=삼겹살)에서 씀
 loadProducts();
 loadMyItems();
+loadCostAlerts();
 if (STORE_VIEW) {
   const storeReady = Promise.allSettled([loadSales(), loadDemand(), loadCosts()]);
   // 첫 화면 영수증 분석 체험 칸(/?page=store#receipt): 열자마자 영수증 분석 칸으로 이동하고,
@@ -3168,7 +3169,7 @@ async function renderMypage(view) {
   }
   const draw = (me, offline) => { if ($("#mypage").classList.contains("open") && $("#mypageTitle").textContent === "마이페이지") box.innerHTML = myHome(me, offline); };
   const cached = cachedProfile();
-  costEdit = false; costAdding = false; addSec = "fixed"; storeDraft = null; storeErr = ""; costFold = new Set(["fixed", "sale", "delivery"]);   // 처음 들어오면 비용 칸은 모두 접힌 채로
+  prof = null; costEdit = false; costAdding = false; addSec = "fixed"; storeDraft = null; storeErr = ""; costFold = new Set(["fixed", "sale", "delivery"]);   // 처음 들어오면 비용 칸은 모두 접힌 채로
   draw(cached);
   freshProfile().then((me) => { if (JSON.stringify(me) !== JSON.stringify(cached)) draw(me); syncCosts(me); }).catch(() => draw(cached, true));
   loadReceiptMaterial();
@@ -3180,10 +3181,7 @@ function myHome(me, offline) {
   const how = me.email || (loginId ? `아이디 ${loginId}` : me.provider === "kakao" ? "카카오 로그인" : "");
   costMe = me;
   return `
-    <section class="my-card profile">
-      <img src="${esc(me.avatar || "/static/img/owner_face.png")}" alt="" referrerpolicy="no-referrer" onerror="this.src='/static/img/owner_face.png'">
-      <div><b>${me.name ? `${esc(me.name)} 사장님` : "사장님"}</b>${how ? `<small>${esc(how)}</small>` : ""}</div>
-    </section>
+    <section class="my-card profile${prof ? " editing" : ""}" id="myProfile">${profileCard(me, how)}</section>
     ${offline ? `<p class="muted small my-offline">서버에 연결하지 못해 기억해 둔 정보만 보여 드려요.</p>` : ""}
     <section class="my-card mc" id="myCost">${costCard()}</section>
     <section class="my-card">
@@ -3193,6 +3191,83 @@ function myHome(me, offline) {
       <button class="my-link" type="button" data-account="logout"><span>로그아웃</span><i>›</i></button>
       <button class="my-link danger" type="button" data-account="leave"><span>회원탈퇴</span><i>›</i></button>
     </section>`;
+}
+
+// ---------------------------------------------------------------
+// 프로필 수정: 사장님 이름 · 사진 (아이디 · 카카오 로그인 모두 같음, 서버 /api/auth/profile)
+// 사진은 화면에서 가운데를 정사각으로 잘라 512px JPEG 로 줄여 보냄
+// ---------------------------------------------------------------
+const OWNER_FACE = "/static/img/owner_face.png";
+const CAMERA = `<svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>`;
+let prof = null;   // 수정 중일 때만: { name, photo(새 사진 data URL), reset(원래 사진으로), saving, err }
+const profHow = (me) => {
+  const loginId = me.login_id || (me.provider !== "kakao" ? readLogin()?.id : null);
+  return me.email || (loginId ? `아이디 ${loginId}` : me.provider === "kakao" ? "카카오 로그인" : "");
+};
+function profileCard(me, how = profHow(me)) {
+  const face = (src) => `<img src="${esc(src || OWNER_FACE)}" alt="" referrerpolicy="no-referrer" onerror="this.src='${OWNER_FACE}'">`;
+  if (!prof) return `${face(me.avatar)}
+    <div class="pf-text"><b>${me.name ? `${esc(me.name)} 사장님` : "사장님"}</b>${how ? `<small>${esc(how)}</small>` : ""}</div>
+    <button type="button" class="pf-edit" data-prof="edit" aria-label="이름 · 사진 수정">${PEN}<span>수정</span></button>`;
+  const shown = prof.photo || (prof.reset ? me.base_avatar : me.avatar);   // 되돌리기: 카카오 사진(없으면 기본 그림)
+  return `<label class="pf-photo" title="사진 바꾸기">${face(shown)}<span class="pf-cam" aria-hidden="true">${CAMERA}</span>
+      <input type="file" accept="image/jpeg,image/png,image/webp" data-prof-photo aria-label="사진 바꾸기" class="sr-only"></label>
+    <div class="pf-form">
+      <div class="pf-head"><label class="pf-label" for="pfName">이름</label>
+        <div class="pf-btns"><button type="button" class="pf-cancel" data-prof="cancel">취소</button>
+        <button type="button" class="pf-save" data-prof="save" ${prof.saving ? "disabled" : ""}>${prof.saving ? "저장하는 중" : "저장"}</button></div></div>
+      <input type="text" id="pfName" class="pf-input" data-prof-name maxlength="20" value="${esc(prof.name)}" placeholder="이름" autocomplete="name">
+      ${me.custom_photo && !prof.reset && !prof.photo ? `<button type="button" class="pf-reset" data-prof="reset">${me.provider === "kakao" ? "카카오 사진으로 되돌리기" : "기본 사진으로 되돌리기"}</button>` : ""}
+      ${prof.err ? `<p class="pf-err">${esc(prof.err)}</p>` : ""}
+    </div>`;
+}
+const drawProfile = (focus) => {
+  const box = $("#myProfile");
+  if (!box || !costMe) return;
+  box.classList.toggle("editing", !!prof);
+  box.innerHTML = profileCard(costMe);
+  if (focus) box.querySelector(focus)?.focus();
+};
+// 사진 → 가운데 정사각 512px JPEG (data URL)
+async function squarePhoto(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((ok, bad) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => bad(new Error("사진을 열지 못했어요. 다른 사진으로 해 주세요.")); i.src = url; });
+    const s = Math.min(img.naturalWidth, img.naturalHeight), out = Math.min(512, s);
+    const c = Object.assign(document.createElement("canvas"), { width: out, height: out });
+    c.getContext("2d").drawImage(img, (img.naturalWidth - s) / 2, (img.naturalHeight - s) / 2, s, s, 0, 0, out, out);
+    return c.toDataURL("image/jpeg", 0.85);
+  } finally { URL.revokeObjectURL(url); }
+}
+async function saveProfile() {
+  if (prof.saving) return;
+  if (!prof.name.trim()) { prof.err = "이름을 입력해 주세요."; return drawProfile("[data-prof-name]"); }
+  prof.saving = true; prof.err = ""; drawProfile();
+  try {
+    const u = readLogin();
+    const me = await authCall("/api/auth/profile", { method: "PATCH", token: u?.access_token,
+      body: { name: prof.name.trim(), photo: prof.photo || "", reset_photo: !!prof.reset } });
+    costMe = me; prof = null;
+    try { saveLogin({ ...u, profile: me, name: me.name, store: me.store_name }, !!localStorage.getItem(LOGIN_KEY)); } catch (e) {}
+    drawProfile();
+  } catch (e) { prof.saving = false; prof.err = e.message; drawProfile(); }
+}
+function profClick(e) {
+  const b = e.target.closest("[data-prof]");
+  if (!b) return false;
+  const act = b.dataset.prof;
+  if (act === "edit") { prof = { name: costMe?.name || "", photo: null, reset: false, saving: false, err: "" }; drawProfile("[data-prof-name]"); }
+  else if (act === "cancel") { prof = null; drawProfile(); }
+  else if (act === "reset") { prof.reset = true; prof.photo = null; drawProfile(); }
+  else if (act === "save") saveProfile();
+  return true;
+}
+async function profPhoto(input) {
+  const f = input.files?.[0];
+  if (!f || !prof) return;
+  try { prof.photo = await squarePhoto(f); prof.reset = false; prof.err = ""; }
+  catch (err) { prof.err = err.message; }
+  drawProfile();
 }
 
 // ---------------------------------------------------------------
@@ -3634,6 +3709,7 @@ $("#mypageClose").onclick = closeMypage;
 $("#mypageBack").onclick = () => renderMypage("home");
 $("#backdrop").onclick = closeMypage;
 $("#mypageBody").onclick = (e) => {
+  if (profClick(e)) return;
   if (costClick(e)) return;
   const acc = e.target.closest("[data-account]");
   if (acc?.dataset.account === "logout") return logout();
@@ -3645,6 +3721,7 @@ $("#mypageBody").onclick = (e) => {
 };
 // 비용 칸: 치는 대로 기억하고, 본전 요약 · 칸별 합계만 바로 고침 (입력칸은 다시 그리지 않아 커서가 그대로)
 $("#mypageBody").oninput = (e) => {
+  if (e.target.matches("[data-prof-name]") && prof) { prof.name = e.target.value; return; }
   const sf = e.target.dataset.sf;
   if (sf && storeDraft) { storeDraft[sf] = e.target.value; return; }   // 가게 이름 · 구는 '완료' 때 서버에 저장
   const p = e.target.dataset.k;
@@ -3655,9 +3732,11 @@ $("#mypageBody").oninput = (e) => {
   for (const [key, v] of [["fixed", k.fixed], ["sale", k.sale], ["delivery", k.deliv]]) { const t = $(`#myCost [data-total="${key}"]`); if (t) t.textContent = man(v); }
 };
 $("#mypageBody").addEventListener("keydown", (e) => {   // 비용 칸에서 Enter = 다 했어요
+  if (e.key === "Enter" && e.target.matches("[data-prof-name]")) { e.preventDefault(); return saveProfile(); }   // 이름 칸 Enter = 저장
   if (e.key === "Enter" && (e.target.dataset.k || e.target.dataset.sf === "store")) { e.preventDefault(); $("#myCost [data-cdone]")?.click(); }
 });
 $("#mypageBody").onchange = (e) => {
+  if (e.target.matches("[data-prof-photo]")) return profPhoto(e.target);
   const k = e.target.dataset.pref;
   if (!k) return;
   const prefs = alertPrefs();
@@ -3726,6 +3805,19 @@ async function loadMyItems() {
   } catch (e) { myItems = null; }
   if (overview.length) deliverAlerts();
 }
+// 원가율 알림 (서버 store/cost_alert.py, GET /api/cost-alerts): 시세가 바뀌어 다시 계산한 원가율이 40%를 넘거나 넘을 예정 · 오름 · 내려옴
+// → 시세 알림과 같은 종 · 챗봇 · 크롬 알림 목록에 섞어 보여 줌, 누르면 메뉴별 원가율
+let costAlerts = [];
+async function loadCostAlerts() {
+  if (!SIGNED_IN) return;
+  try {
+    const r = await getJSON("/api/cost-alerts", { auth: true });
+    // day = 한국 날짜 (06:00 알림은 UTC로 전날)
+    costAlerts = r.alerts.map((a) => ({ id: `cost|${a.id}`, kind: "원가율", text: `사장님, ${a.message}`,
+      title: a.message.split(". ")[0], item: null, day: new Date(Date.parse(a.sent_at) + 9 * 36e5).toISOString().slice(0, 10), href: "/?page=store#costs" }));
+  } catch (e) { costAlerts = []; }
+  deliverAlerts();
+}
 const menusOf = (item) => myItems?.get(item) || [];
 // 알림 문장 뒤에 붙임: (김치찌개 · 된장찌개에 들어가요)
 const inMenus = (item) => { const m = menusOf(item); return m.length ? ` (${m.join(" · ")}에 들어가요)` : ""; };
@@ -3790,7 +3882,7 @@ function buildAlerts() {
 }
 
 function deliverAlerts() {
-  const list = buildAlerts();
+  const list = [...costAlerts, ...buildAlerts()];
   document.querySelectorAll("#chatBody .msg.alert").forEach((el) => el.remove());
   if (list.length && !body.children.length) addMsg("bot", "사장님, 오늘 대구 시세 살펴왔어요.\n아래 버튼을 누르거나 편하게 물어보세요.");
   const read = new Set(load(ALERT_READ_KEY, []));
@@ -3798,9 +3890,9 @@ function deliverAlerts() {
     const el = addMsg("bot", a.text);
     el.classList.add("alert");
     el.dataset.alertId = a.id;
-    el.insertAdjacentHTML("afterbegin", `<span class="alert-tag">시세 알림${read.has(a.id) ? "" : " · 새 알림"}</span>`);
-    el.insertAdjacentHTML("beforeend", `<span class="alert-more">${a.item ? `${esc(a.item)} 시세 자세히 보기` : "시세 대시보드 보기"} ›</span>`);
-    el.title = "누르면 자세한 시세로 넘어가요";
+    el.insertAdjacentHTML("afterbegin", `<span class="alert-tag">${a.kind || "시세"} 알림${read.has(a.id) ? "" : " · 새 알림"}</span>`);
+    el.insertAdjacentHTML("beforeend", `<span class="alert-more">${a.href ? "메뉴별 원가율 보기" : a.item ? `${esc(a.item)} 시세 자세히 보기` : "시세 대시보드 보기"} ›</span>`);
+    el.title = a.href ? "누르면 메뉴별 원가율로 넘어가요" : "누르면 자세한 시세로 넘어가요";
   }
   delivered = list;
   if (chatEl.classList.contains("open")) markAlertsRead();
@@ -3816,7 +3908,7 @@ function notifyAlerts() {
   const read = new Set(load(ALERT_READ_KEY, [])), shown = new Set(load(ALERT_NOTIFIED_KEY, []));
   const fresh = delivered.filter((a) => !read.has(a.id) && !shown.has(a.id)).slice(0, 3);
   for (const a of fresh) {
-    try { new Notification("살피 시세 알림", { body: a.text.split("\n")[0], icon: "/static/img/salpi_face.png", tag: a.id }); } catch (e) {}
+    try { new Notification(`살피 ${a.kind || "시세"} 알림`, { body: a.text.split("\n")[0], icon: "/static/img/salpi_face.png", tag: a.id }); } catch (e) {}
     shown.add(a.id);
   }
   if (fresh.length) store(ALERT_NOTIFIED_KEY, [...shown].slice(-200));
@@ -3835,7 +3927,7 @@ function markAlertsRead(ids = delivered.map((a) => a.id)) {
 function updateBadges() {
   const n = unreadCount();
   for (const el of [$("#fabCount"), $("#bellCount")]) { el.hidden = !n; el.textContent = n > 99 ? "99+" : n; }
-  $("#fabBubble").textContent = n ? "시세 알림이 있어요" : "살피 챗봇에게 물어보세요";
+  $("#fabBubble").textContent = n ? "새 알림이 있어요" : "살피 챗봇에게 물어보세요";
   $("#fab").classList.toggle("has-alert", n > 0);
   renderBell();
 }
@@ -3844,7 +3936,7 @@ function updateBadges() {
 function renderBell() {
   const read = new Set(load(ALERT_READ_KEY, []));
   $("#bellList").innerHTML = delivered.length ? delivered.map((a) => `<li><button data-aid="${esc(a.id)}" class="${read.has(a.id) ? "" : "unread"}">
-      <img src="/static/img/salpi_face.png" alt=""><span><b>${esc(a.title)}</b><small>${mmdd(a.day)} 시세 · ${a.item ? "누르면 재료 페이지" : "누르면 대시보드"}</small></span></button></li>`).join("")
+      <img src="/static/img/salpi_face.png" alt=""><span><b>${esc(a.title)}</b><small>${mmdd(a.day)} ${a.kind || "시세"} · ${a.href ? "누르면 메뉴별 원가율" : a.item ? "누르면 재료 페이지" : "누르면 대시보드"}</small></span></button></li>`).join("")
     : `<li class="empty">새 알림이 없어요.<br><button data-open-settings>설정에서 알림 종류 켜기 ›</button></li>`;
 }
 function toggleBell(open = $("#bellPanel").hidden) {
@@ -3866,6 +3958,7 @@ function goToAlert(id) {
   const a = delivered.find((x) => x.id === id);
   if (!a) return;
   markAlertsRead([id]);
+  if (a.href) { location.href = a.href; return; }
   if (a.item) { location.href = `/?item=${encodeURIComponent(a.item)}`; return; }
   closeChat();
   if (ITEM) { location.href = "/#dashboard"; return; }

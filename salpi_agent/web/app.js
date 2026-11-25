@@ -2290,7 +2290,7 @@ $("#demoReceipts").onclick = async (e) => {
 $("#receiptFile").onchange = (e) => { if (e.target.files[0]) readReceipt(e.target.files[0]); };
 
 // 영수증 분석 한 달 무료 (로그인한 사장님마다, 처음 읽은 날부터 30일 — 서버 account/trial.py)
-// - 첫 화면 체험 버튼: 한 달 무료 → (시작 전) · 무료 n일 남음 → · 끝나면 구독하기 →
+// - 첫 화면 체험 버튼: 한 달 무료 → (시작 전) · 무료 D-n → · 끝나면 구독하기 →
 // - 다 쓰면 나의 가게 영수증 분석 칸 전체를 흐리게 하고 안내 글을 띄움 (안의 버튼은 눌리지 않게)
 function setTrial(t) {
   const locked = !!t?.locked;
@@ -2302,7 +2302,7 @@ function setTrial(t) {
     ? `한 달 동안 <b>${won(t.found)}</b> 아낄 곳을 찾았어요`
     : "한 달 동안 영수증으로 원가율을 살펴봤어요";
   const go = $(".receipt-link .receipt-go");
-  if (go && t) go.textContent = t.paid ? "→" : locked ? "구독하기 →" : t.since ? `무료 ${t.left}일 남음 →` : "한 달 무료 →";
+  if (go && t) go.textContent = t.paid ? "→" : locked ? "구독하기 →" : t.since ? `무료 D-${t.left} →` : "한 달 무료 →";
   $(".receipt-link")?.classList.toggle("used-up", locked);   // 다 쓰면 카드는 회색, 구독하기 버튼만 노랑
 }
 if (SIGNED_IN) authCall("/api/receipt/trial", { method: "GET", token: readLogin()?.access_token }).then(setTrial).catch(() => {});

@@ -43,7 +43,7 @@ DAEGU_STORES = {"이마트만촌점", "이마트반야월점", "이마트성서�
 
 
 # 회사 → 그 회사 온라인 장보기몰의 검색 결과 주소 (2026-11 실제로 열어 확인)
-# 현대백화점 · GS더프레시 · 편의점은 맞는 온라인 장보기몰이 없어 뺌 → 몰이 있는 회사 중 가장 싼 곳으로 연결
+# 현대백화점 · GS더프레시 · 편의점은 맞는 온라인 장보기몰이 없어 가격 비교에서도 뺌 (최저가 = 바로가기 몰)
 SHOPS = {
     "이마트": ("이마트몰", "https://emart.ssg.com/search.ssg?query={q}"),
     "신세계백화점": ("SSG.COM", "https://www.ssg.com/search.ssg?query={q}"),
@@ -100,7 +100,7 @@ def _summary(rows):
     by_item = {}
     for r in rows:
         cat = category(r["상품명"] or "")
-        if cat and r.get("판매가격"):
+        if cat and r.get("판매가격") and chain(r["판매업소"]) in SHOPS:   # 온라인몰이 있는 회사만 비교 (최저가 = 바로가기 몰)
             by_item.setdefault(r["상품명"], {"cat": cat, "rows": []})["rows"].append(r)
 
     items = []
@@ -133,6 +133,6 @@ def _summary(rows):
 def mart_prices():
     """가장 최근 파일의 음식 재료 판매가 (파일마다 한 번만 계산해 보관)."""
     f = kca_latest_file()
-    data = _cached(f"kca_{f['uddi']}", None, lambda: _summary(kca_rows(f["uddi"])))
+    data = _cached(f"kca2_{f['uddi']}", None, lambda: _summary(kca_rows(f["uddi"])))
     items = [{**x, "shop": shop_link(x)} for x in data["items"]]   # 링크는 보관한 계산 결과 위에 매번 붙임 (주소를 바꿔도 바로 반영)
     return {**data, "items": items, "file_date": f["date"], "source": "한국소비자원 생필품 가격 정보(참가격)"}

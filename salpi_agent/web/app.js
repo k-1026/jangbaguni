@@ -2545,7 +2545,7 @@ const scoreHits = (s) => Math.round((s.n * s.direction_hit_pct) / 100);
 const scoreTier = (p) => (p >= 70 ? "good" : p >= 50 ? "mid" : "low");   // 사장님이 이 품목 예측을 얼마나 믿어도 되는지
 const SCORE_GROUPS = [["good", "예측 정확", "70% 이상"], ["mid", "예측 안정", "50~70%"], ["low", "예측 성장 중", "50% 아래"]];
 const scoreKinds = () => [...SCORE_KINDS, ...Object.keys(score.kinds).filter((k) => !SCORE_KINDS.includes(k))].filter((k) => score.kinds[k]?.n);
-const scoreFold = new Set();   // 재료 목록을 접은 묶음 (good · mid · low)
+const scoreFold = new Set(["good", "mid", "low"]);   // 재료 목록을 접은 묶음 — 처음엔 카드만 보이고 누르면 재료 이름
 // 펼치면: 묶음 카드 3개 나란히 (위 = 큰 묶음 이름 · 개수 · 기준, 누르면 그 아래 재료 목록 접기 · 펼치기)
 function scoreDetail(few) {
   const shown = Object.entries(score.items).filter(([, v]) => (scoreKind === "전체" || v.kind === scoreKind) && v.n >= SCORE_MIN)

@@ -1375,6 +1375,28 @@ main { overflow-x: clip; }   /* 화면 폭 배경이 가로 스크롤을 만들�
 .pattern-zone { position: relative; isolation: isolate; padding-bottom: 40px; }
 .pattern-zone::before { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 100vw; margin-left: -50vw; z-index: -1;
   background: var(--bg) url("/static/img/mart_pattern.svg?v=3") 0 0 / 240px; }   /* 페이지 바탕색 그대로 + 무늬만 은은하게 */
+/* 살피 예측률: 큰 숫자 하나 + 상세보기(종류 탭 · 품목별 막대) */
+.score-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.score-big { margin: 0 0 4px; font-size: 18px; font-weight: 700; color: var(--primary); }
+.score-big b { font-size: 44px; font-weight: 900; line-height: 1; letter-spacing: -1px; }
+.score-more { display: inline-flex; align-items: center; gap: 2px; flex: none; padding: 6px 8px; border: 0; border-radius: 8px; background: none;
+  color: var(--primary); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.score-more svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .15s; }
+.score-more[aria-expanded="true"] svg { transform: rotate(180deg); }
+.score-more:focus-visible { outline: 2px solid var(--primary); }
+.score-detail { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--outline-variant); display: grid; gap: 12px; }
+.score-kind { margin: 0; font-size: 15px; } .score-kind b { color: var(--primary); }
+/* 믿음 3묶음: 그래프 없이 묶음 제목 + 재료 이름 칩 (70%+ 초록 · 50~70% 주황 · 50% 아래 회색) */
+.score-group h4 { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; font-size: 14px; font-weight: 700; }
+.score-group h4::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--primary); }
+.score-group h4 small { font-size: 12px; font-weight: 500; color: var(--muted); }
+.score-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.score-chips a { padding: 5px 12px; border-radius: 999px; background: var(--primary-container); color: var(--on-primary-container); font-size: 14px; text-decoration: none; }
+.score-chips a:hover { text-decoration: underline; }
+.score-group.mid h4::before { background: var(--warn); }
+.score-group.mid .score-chips a { background: #FFF1DC; color: #6B4000; }
+.score-group.low h4::before { background: var(--outline); }
+.score-group.low .score-chips a { background: var(--surface-variant); color: var(--muted); }
 .mart-card { background: none; box-shadow: none; padding: 0; border-radius: 0; }
 .mart-item { box-shadow: 0 1px 4px rgba(31, 74, 0, .06), 0 1px 2px rgba(31, 74, 0, .04); }
 .mart-filter button { background: var(--surface); }

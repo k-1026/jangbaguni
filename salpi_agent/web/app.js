@@ -2515,6 +2515,59 @@ $("#martAll").onclick = () => {
   $("#mart").scrollIntoView({ block: "start" });
 };
 
+// ---------------------------------------------------------------
+// 살피 예측률: 지난 7일 화면 예측을 7일 뒤 실제 시세와 비교해 맞춘 비율 (/api/forecast-score?weeks=1)
+// 맞춤 = 오를지 · 비슷할지 · 내릴지(±2%) 방향을 맞힘. 품목은 예측 3번 이상만 (적으면 0% · 100%로 들쭉날쭉)
+// ---------------------------------------------------------------
+const SCORE_KINDS = ["과일", "야채", "육류", "수산물"];   // 탭 순서 (그 밖의 종류가 오면 뒤에 붙임)
+const SCORE_MIN = 3;
+let score = null, scoreKind = "전체", scoreOpen = false;
+const scoreHits = (s) => Math.round((s.n * s.direction_hit_pct) / 100);
+const scoreTier = (p) => (p >= 70 ? "good" : p >= 50 ? "mid" : "low");   // 사장님이 이 품목 예측을 얼마나 믿어도 되는지
+const SCORE_GROUPS = [["good", "믿고 보셔도 돼요 <small>70% 이상</small>"], ["mid", "참고만 하세요 <small>50~70%</small>"], ["low", "아직 어려워요 <small>50% 아래</small>"]];
+function scoreDetail() {
+  const kinds = [...SCORE_KINDS, ...Object.keys(score.kinds).filter((k) => !SCORE_KINDS.includes(k))].filter((k) => score.kinds[k]?.n);
+  if (scoreKind !== "전체" && !kinds.includes(scoreKind)) scoreKind = "전체";
+  const s = scoreKind === "전체" ? score.all : score.kinds[scoreKind];
+  const items = Object.entries(score.items).filter(([, v]) => scoreKind === "전체" || v.kind === scoreKind);
+  const shown = items.filter(([, v]) => v.n >= SCORE_MIN)
+    .sort((a, b) => b[1].direction_hit_pct - a[1].direction_hit_pct || b[1].n - a[1].n || a[0].localeCompare(b[0], "ko"));
+  const few = items.length - shown.length;
+  return `<div class="score-detail" id="scoreDetail">
+    <div class="filter score-tabs" role="group" aria-label="재료 종류">${["전체", ...kinds].map((k) =>
+      `<button type="button" data-skind="${esc(k)}" class="${k === scoreKind ? "active" : ""}" aria-pressed="${k === scoreKind}">${esc(k)}</button>`).join("")}</div>
+    <p class="score-kind">${esc(scoreKind)} 예측률 <b>${s.direction_hit_pct}%</b> <span class="muted">(${s.n}개 중 ${scoreHits(s)}개 맞춤)</span></p>
+    ${shown.length ? SCORE_GROUPS.map(([tier, title]) => {
+      const g = shown.filter(([, v]) => scoreTier(v.direction_hit_pct) === tier);
+      return g.length ? `<div class="score-group ${tier}"><h4>${title}</h4><div class="score-chips">${g.map(([name, v]) =>
+        `<a href="/?item=${encodeURIComponent(name)}" title="${esc(name)} 예측률 ${v.direction_hit_pct}% (${v.n}개 중 ${scoreHits(v)}개) · 눌러서 시세 보기">${esc(name)}</a>`).join("")}</div></div>` : "";
+    }).join("") + `<p class="muted small">이름을 누르면 그 재료 시세로 가요</p>`
+      : `<p class="muted small">품목별로 보여 줄 만큼 채점한 예측이 아직 없어요</p>`}
+    ${few ? `<p class="muted small">예측이 ${SCORE_MIN}번이 안 된 품목 ${few}개는 아직 채점 중이라 뺐어요</p>` : ""}
+  </div>`;
+}
+function renderScore() {
+  const a = score.all;
+  if (!a?.n) { $("#scoreCard").innerHTML = `<p class="muted">아직 채점한 예측이 없어요. 예측하고 7일이 지나면 채점해요.</p>`; return; }
+  $("#scoreCard").innerHTML = `<div class="score-top">
+      <div><p class="score-big"><b>${a.direction_hit_pct}</b>%</p>
+        <p class="muted small">예측 ${a.n}개 중 ${scoreHits(a)}개 맞춤 · 7일 뒤 가격이 오를지 · 비슷할지 · 내릴지 맞힌 비율이에요</p></div>
+      <button type="button" class="score-more" data-smore aria-expanded="${scoreOpen}" aria-controls="scoreDetail">${scoreOpen ? "접기" : "상세보기"}
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+    </div>
+    ${scoreOpen ? scoreDetail() : ""}`;
+}
+async function loadScore() {
+  try { score = await getJSON("/api/forecast-score?weeks=1"); }
+  catch (e) { $("#scoreCard").innerHTML = `<p class="muted">예측률을 불러오지 못했어요</p>`; return; }
+  renderScore();
+}
+$("#scoreCard").onclick = (e) => {
+  if (e.target.closest("[data-smore]")) { scoreOpen = !scoreOpen; renderScore(); return $("#scoreCard [data-smore]").focus(); }
+  const k = e.target.closest("[data-skind]");
+  if (k) { scoreKind = k.dataset.skind; renderScore(); $(`#scoreCard [data-skind="${CSS.escape(scoreKind)}"]`)?.focus(); }   // 다시 그려도 누른 탭에 그대로
+};
+
 async function loadContext() {
   let c;
   try { c = await getJSON("/api/context"); } catch (e) { return; }
@@ -2923,6 +2976,7 @@ if (STORE_VIEW) {
 } else if (!ITEM && !AUTH_VIEW) {
   loadContext();
   loadMart();
+  loadScore();
 }
 if (location.hash === "#chat") openChat();   // 주소 끝에 #chat 을 붙이면 채팅창이 열린 채로 시작
 if (location.hash === "#talk") openTalk();   // 주소 끝에 #talk 을 붙이면 알림톡 시연이 열린 채로 시작

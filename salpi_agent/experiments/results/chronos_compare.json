@@ -1,0 +1,65 @@
+{
+ "model": "amazon/chronos-bolt-small",
+ "kinds": {
+  "야채": {
+   "period": [
+    "2025-11-18",
+    "2026-11-17"
+   ],
+   "Chronos (값만)": {
+    "n": 4481,
+    "direction_hit_pct": 45.8,
+    "opposite_pct": 27.5,
+    "mae_pp": 19.13
+   },
+   "우리 AI": {
+    "n": 4481,
+    "direction_hit_pct": 54.0,
+    "opposite_pct": 22.7,
+    "mae_pp": 17.78
+   },
+   "고정 공식": {
+    "n": 4481,
+    "direction_hit_pct": 44.6,
+    "opposite_pct": 28.1,
+    "mae_pp": 19.25
+   },
+   "Chronos + AI 평균": {
+    "n": 4481,
+    "direction_hit_pct": 51.4,
+    "opposite_pct": 21.7,
+    "mae_pp": 17.89
+   }
+  },
+  "과일": {
+   "period": [
+    "2025-11-18",
+    "2026-11-17"
+   ],
+   "Chronos (값만)": {
+    "n": 2906,
+    "direction_hit_pct": 43.5,
+    "opposite_pct": 24.4,
+    "mae_pp": 14.09
+   },
+   "우리 AI": {
+    "n": 2906,
+    "direction_hit_pct": 51.7,
+    "opposite_pct": 19.4,
+    "mae_pp": 12.82
+   },
+   "고정 공식": {
+    "n": 2906,
+    "direction_hit_pct": 34.0,
+    "opposite_pct": 21.4,
+    "mae_pp": 14.35
+   },
+   "Chronos + AI 평균": {
+    "n": 2906,
+    "direction_hit_pct": 50.0,
+    "opposite_pct": 19.6,
+    "mae_pp": 13.11
+   }
+  }
+ }
+}

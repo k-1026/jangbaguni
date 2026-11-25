@@ -599,7 +599,7 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 @supports not selector(::-webkit-scrollbar) {   /* 파이어폭스: 표준 속성으로 얇게 */
   .stock-list { scrollbar-width: thin; scrollbar-color: rgba(0, 0, 0, .22) transparent; }
 }
-/* 묶음마다 투명한 연한 바탕색 + 같은 색 계열의 진한 제목 (먼저 사기 주황 · 평소대로 초록 · 나눠 사기 노랑 · 안 사도 됨 민트) */
+/* 묶음마다 투명한 연한 바탕색 + 같은 색 계열의 진한 제목 (먼저 사기 주황 · 평소대로 초록 · 조금만 사기 노랑 · 안 사도 됨 민트) */
 .stock-col { --tone: #2F5A0C; --tint: rgba(150, 205, 60, .2); padding: 14px 14px 4px; border-radius: 14px; background: var(--tint); }
 .stock-col.first { --tone: #9A3412; --tint: rgba(255, 140, 70, .22); }
 .stock-col.split { --tone: #6B4E00; --tint: rgba(255, 205, 40, .3); }
@@ -794,14 +794,6 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .sales-unfold svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
 .sales-unfold:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 /* 배달 체크박스형 버튼 (진짜 checkbox 위에 그린 모양 — 키보드 · 화면 읽기 그대로). 켜면 초록 테두리 · 연초록 바탕 · 체크 */
-.sales-opt { position: relative; display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 16px 0 12px; border: 1px solid var(--outline); border-radius: 12px; background: var(--surface); font-size: 14px; color: var(--ink); cursor: pointer; transition: background .15s, border-color .15s; }
-.sales-opt input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-.sales-opt-box { display: grid; place-items: center; width: 18px; height: 18px; box-sizing: border-box; border: 2px solid #9AA39C; border-radius: 4px; background: var(--surface); }
-.sales-opt-box svg { width: 14px; height: 14px; fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; opacity: 0; }
-.sales-opt:has(input:checked) { border: 2px solid var(--primary); background: var(--primary-container); color: var(--on-primary-container); font-weight: 700; padding: 0 15px 0 11px; }
-.sales-opt input:checked + .sales-opt-box { border-color: var(--primary); background: var(--primary); }
-.sales-opt input:checked + .sales-opt-box svg { opacity: 1; }
-.sales-opt input:focus-visible + .sales-opt-box { outline: 2px solid var(--primary); outline-offset: 2px; }
 
 /* 펼친 상태: 왼쪽 표 | 오른쪽 요약 (좁으면 위아래) */
 .sales-split { display: grid; grid-template-columns: minmax(0, 1fr) 330px; }
@@ -819,7 +811,6 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .sales-grid tbody th small { margin-left: 8px; font-size: 13px; font-weight: 400; color: var(--muted); white-space: nowrap; }   /* 단가는 메뉴 이름 옆에 작게 (한 줄) */
 .sales-grid td.rev { width: 104px; padding-left: 12px; font-size: 15px; font-weight: 700; color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; }   /* 메뉴별 매출 */
 .sales-grid td:has(.sales-in) { width: 96px; }
-.sales-grid.one td:has(.sales-in) { width: 140px; }
 .sales-sum { font-size: 16px; font-weight: 700; width: 56px; }
 .sales-grid tbody tr.has th, .sales-grid tbody tr.has td { background: #F4FAEE; }   /* 넣은 메뉴는 옅은 초록 */
 .sales-grid tbody tr:focus-within th, .sales-grid tbody tr:focus-within td { background: var(--primary-container); }   /* 지금 넣는 줄 */
@@ -986,6 +977,9 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .rc-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 16px 0 6px; }
 .rc-head .sub-h { margin: 0; }
 .rc-tools { display: flex; align-items: center; margin-right: calc(32px + 8px + 4px); }   /* 오른쪽 화살표 칸 + 사이 + 줄 안쪽 여백 → 사진 줄 오른쪽 끝에 맞춤 */
+.rc-all { border: 0; background: none; padding: 4px 8px; font-size: 13px; color: var(--muted); cursor: pointer; }
+.rc-all:hover { color: var(--ink); text-decoration: underline; }
+.selecting .rc-all { display: none; }
 .rc-trash { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; background: none; color: var(--muted); cursor: pointer; }
 .rc-trash svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .rc-trash:hover { color: var(--up); }
@@ -1010,6 +1004,9 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .rc-strip-wrap { display: grid; grid-template-columns: 32px minmax(0, 1fr) 32px; gap: 8px; align-items: start; }   /* 화살표 | 사진 줄 | 화살표 */
 .rc-strip { display: flex; gap: 12px; margin: 0; padding: 4px 4px 8px; list-style: none; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding: 0 4px; scrollbar-width: none; }
 .rc-strip::-webkit-scrollbar { display: none; }
+/* [전체 보기]: 가로 넘기기 대신 여러 줄로 쭉 펼침 */
+#receiptList.all .rc-strip { flex-wrap: wrap; overflow: visible; scroll-snap-type: none; }
+#receiptList.all .rc-arrow { visibility: hidden; }
 .rc-card { flex: 0 0 150px; display: flex; flex-direction: column; gap: 6px; scroll-snap-align: start; font-size: 12.5px; }
 .rc-strip .rc-thumb { display: block; width: 100%; aspect-ratio: 1 / 1; padding: 0; overflow: hidden; border: 1px solid var(--outline-variant); border-radius: 12px; background: #F6F6F6; cursor: pointer; }
 .rc-thumb img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; transition: transform .2s; }

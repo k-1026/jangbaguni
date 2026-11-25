@@ -526,7 +526,7 @@ def receipt_read(body: ReceiptIn, authorization: str | None = Header(None)):
     token = _bearer(authorization)
     if not token:   # 로그인 표 없이 부르는 곳(모바일 시연 화면)은 지금처럼 횟수 없이
         return _receipt_guard(lambda: receipts.read(data, mime))
-    # 로그인한 사장님: 무료 5회를 다 썼으면 402, 읽기에 성공했을 때만 1회 셈
+    # 로그인한 사장님: 한 달 무료가 끝났으면 402, 읽기에 성공했을 때만 1회 셈 (첫 성공한 날부터 한 달)
     user = _auth(lambda: trial.check(token))
     result = _receipt_guard(lambda: receipts.read(data, mime))
     return {**result, "trial": _auth(lambda: trial.count(user))}
@@ -706,7 +706,8 @@ def inventory_set(body: StockIn):
 
 @app.get("/api/receipts")
 def receipt_list():
-    return _receipt_guard(lambda: {"receipts": receipts.recent(supabase_db.DEMO_STORE, limit=50)})
+    # shortcut: 1000장(Supabase 한 번에 주는 최대)까지, 넘으면 페이지 나눠 받기
+    return _receipt_guard(lambda: {"receipts": receipts.recent(supabase_db.DEMO_STORE, limit=1000)})
 
 
 @app.delete("/api/receipt/{purchase_id}")

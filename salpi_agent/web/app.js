@@ -2356,8 +2356,8 @@ async function openCamera() {
       <aside class="cam-queue" aria-label="찍은 사진"><p>찍은 사진 <b id="camCount">0</b>장</p><ul id="camQueue"></ul></aside>
     </div>
     <p class="muted small">영수증이 길면 위에서부터 나눠 찍어 주세요.</p>
-    <div class="camera-actions"><button class="upload-btn" id="camShot" type="button">찍기</button>
-      <button class="btn primary" id="camDone" type="button" disabled>다 찍었어요</button></div>`;
+    <div class="camera-actions"><button class="upload-btn" id="camShot" type="button">촬영</button>
+      <button class="btn primary" id="camDone" type="button" hidden>완료</button></div>`;
   $("#camVideo").srcObject = camStream;
   $("#camShot").onclick = shootCamera;
   $("#camDone").onclick = () => { const pages = camShots.map((s) => s.c); closeCamera(); readReceipt(pages); };
@@ -2368,8 +2368,7 @@ function camQueue() {
   $("#camQueue").innerHTML = camShots.map((s, i) => `<li><img src="${s.url}" alt="${i + 1}번째 사진">
     <button type="button" class="cam-x" data-cam-del="${i}" aria-label="${i + 1}번째 사진 지우기">×</button></li>`).join("");
   $("#camCount").textContent = camShots.length;
-  $("#camDone").disabled = !camShots.length;
-  $("#camDone").textContent = camShots.length ? `다 찍었어요 (${camShots.length}장)` : "다 찍었어요";
+  $("#camDone").hidden = !camShots.length;   // 아무것도 안 찍었으면 [완료]는 숨김
 }
 // 찍기: 화면에 보이는 세로(3:4) 가운데만 잘라 너비 1000px로
 function shootCamera() {

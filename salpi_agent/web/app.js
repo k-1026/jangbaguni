@@ -3212,11 +3212,12 @@ function profileCard(me, how = profHow(me)) {
   return `<label class="pf-photo" title="사진 바꾸기">${face(shown)}<span class="pf-cam" aria-hidden="true">${CAMERA}</span>
       <input type="file" accept="image/jpeg,image/png,image/webp" data-prof-photo aria-label="사진 바꾸기" class="sr-only"></label>
     <div class="pf-form">
-      <label class="pf-label">이름<input type="text" data-prof-name maxlength="20" value="${esc(prof.name)}" placeholder="이름" autocomplete="name"></label>
+      <div class="pf-head"><label class="pf-label" for="pfName">이름</label>
+        <div class="pf-btns"><button type="button" class="pf-cancel" data-prof="cancel">취소</button>
+        <button type="button" class="pf-save" data-prof="save" ${prof.saving ? "disabled" : ""}>${prof.saving ? "저장하는 중" : "저장"}</button></div></div>
+      <input type="text" id="pfName" class="pf-input" data-prof-name maxlength="20" value="${esc(prof.name)}" placeholder="이름" autocomplete="name">
       ${me.custom_photo && !prof.reset && !prof.photo ? `<button type="button" class="pf-reset" data-prof="reset">${me.provider === "kakao" ? "카카오 사진으로 되돌리기" : "기본 사진으로 되돌리기"}</button>` : ""}
       ${prof.err ? `<p class="pf-err">${esc(prof.err)}</p>` : ""}
-      <div class="pf-btns"><button type="button" class="pf-cancel" data-prof="cancel">취소</button>
-        <button type="button" class="pf-save" data-prof="save" ${prof.saving ? "disabled" : ""}>${prof.saving ? "저장하는 중" : "저장"}</button></div>
     </div>`;
 }
 const drawProfile = (focus) => {

@@ -953,18 +953,18 @@ function renderItemPage() {
   renderItemGoods();
 }
 
-// 재료 페이지 가격 줄 아래: 이 재료의 지난 4주 살피 예측률 (/api/forecast-score?weeks=4, 첫 화면 칸과 같은 채점)
+// 재료 페이지 가격 줄('1주 전보다 ○%') 옆: 이 재료의 지난 4주 살피 예측률 (/api/forecast-score?weeks=4, 첫 화면 칸과 같은 채점)
 // 50% 아래는 숫자만 두지 않고 재료 탓(가격 변동이 큼)으로 설명, 예측 3번 미만은 '채점 중'
 async function itemScoreLine(name) {
   let s;
   try { s = (await getJSON("/api/forecast-score?weeks=4")).items?.[name]; } catch (e) { return; }
-  const box = $("#itemDash .chart-head > div");   // 가격 줄 바로 아래
+  const box = $("#itemDash .chart-head .price-now");   // '1주 전보다 -38.6%' 바로 옆
   if (!s || !box) return;
   const p = s.direction_hit_pct;
   const text = s.n < SCORE_MIN ? "이 재료 예측은 아직 채점 중이에요"
     : p < 50 ? `가격 변동이 커서 예측이 어려운 재료예요${SEP}살피 예측률 ${p}%`
-    : `<b>살피 예측률 ${p}%</b> (지난 4주 ${s.n}번 예측해서 ${scoreHits(s)}번 맞혔어요)`;
-  box.insertAdjacentHTML("beforeend", `<p class="item-score${s.n < SCORE_MIN || p < 50 ? " muted" : ""}">${text}</p>`);
+    : `<b>살피 예측률 ${p}%</b>`;
+  box.insertAdjacentHTML("beforeend", `<span class="item-score${s.n < SCORE_MIN || p < 50 ? " muted" : ""}">${text}</span>`);
 }
 
 // 육류 · 수산물 재료 페이지: 대시보드(4주 그래프) · 시세판(조사일별 증감) · 한 달 시세 위치. 예측 칸은 없다는 안내

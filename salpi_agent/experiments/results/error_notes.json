@@ -1,0 +1,439 @@
+{
+ "data_end": "2026-11-24",
+ "kinds": {
+  "야채": {
+   "notes": {
+    "n": 13515,
+    "wrong_pct": 47.8,
+    "tags": {
+     "큰 움직임 (±15% 넘게)": {
+      "share_pct": 47.0,
+      "wrong_pct": 36.3
+     },
+     "급등락 직후 (1주 ±15%)": {
+      "share_pct": 47.2,
+      "wrong_pct": 44.4
+     },
+     "4주 평균보다 크게 위 · 아래 (±20%)": {
+      "share_pct": 33.8,
+      "wrong_pct": 40.8
+     },
+     "명절 3주 안": {
+      "share_pct": 11.1,
+      "wrong_pct": 43.4
+     },
+     "반입량 급변 (±30%)": {
+      "share_pct": 24.7,
+      "wrong_pct": 46.9
+     },
+     "궂은 날씨 (비 30mm · 한파 · 폭염)": {
+      "share_pct": 54.8,
+      "wrong_pct": 45.6
+     },
+     "작년 이맘때와 반대로 예측": {
+      "share_pct": 23.5,
+      "wrong_pct": 40.9
+     }
+    },
+    "items": {
+     "가지": {
+      "n": 905,
+      "wrong_pct": 43.2,
+      "opposite_pct": 25.2
+     },
+     "감자": {
+      "n": 904,
+      "wrong_pct": 48.2,
+      "opposite_pct": 16.6
+     },
+     "깻잎": {
+      "n": 907,
+      "wrong_pct": 40.6,
+      "opposite_pct": 25.8
+     },
+     "당근": {
+      "n": 868,
+      "wrong_pct": 52.1,
+      "opposite_pct": 30.1
+     },
+     "대파": {
+      "n": 906,
+      "wrong_pct": 48.8,
+      "opposite_pct": 18.8
+     },
+     "무": {
+      "n": 907,
+      "wrong_pct": 51.3,
+      "opposite_pct": 23.5
+     },
+     "배추": {
+      "n": 905,
+      "wrong_pct": 49.1,
+      "opposite_pct": 26.6
+     },
+     "상추": {
+      "n": 907,
+      "wrong_pct": 42.4,
+      "opposite_pct": 29.5
+     },
+     "시금치": {
+      "n": 876,
+      "wrong_pct": 46.9,
+      "opposite_pct": 26.6
+     },
+     "애호박": {
+      "n": 904,
+      "wrong_pct": 43.7,
+      "opposite_pct": 25.3
+     },
+     "양배추": {
+      "n": 910,
+      "wrong_pct": 58.9,
+      "opposite_pct": 27.4
+     },
+     "양파": {
+      "n": 902,
+      "wrong_pct": 57.2,
+      "opposite_pct": 14.7
+     },
+     "오이": {
+      "n": 907,
+      "wrong_pct": 42.1,
+      "opposite_pct": 26.1
+     },
+     "청양고추": {
+      "n": 907,
+      "wrong_pct": 46.6,
+      "opposite_pct": 24.7
+     },
+     "토마토": {
+      "n": 900,
+      "wrong_pct": 45.4,
+      "opposite_pct": 23.9
+     }
+    },
+    "months": {
+     "1": {
+      "n": 1070,
+      "wrong_pct": 47.2,
+      "opposite_pct": 23.3
+     },
+     "10": {
+      "n": 1137,
+      "wrong_pct": 50.8,
+      "opposite_pct": 26.3
+     },
+     "11": {
+      "n": 1151,
+      "wrong_pct": 52.7,
+      "opposite_pct": 26.8
+     },
+     "12": {
+      "n": 1170,
+      "wrong_pct": 46.6,
+      "opposite_pct": 21.2
+     },
+     "2": {
+      "n": 955,
+      "wrong_pct": 45.3,
+      "opposite_pct": 21.3
+     },
+     "3": {
+      "n": 1169,
+      "wrong_pct": 46.4,
+      "opposite_pct": 22.4
+     },
+     "4": {
+      "n": 1169,
+      "wrong_pct": 49.4,
+      "opposite_pct": 23.2
+     },
+     "5": {
+      "n": 1200,
+      "wrong_pct": 54.0,
+      "opposite_pct": 25.4
+     },
+     "6": {
+      "n": 1138,
+      "wrong_pct": 50.4,
+      "opposite_pct": 26.2
+     },
+     "7": {
+      "n": 1204,
+      "wrong_pct": 41.9,
+      "opposite_pct": 25.2
+     },
+     "8": {
+      "n": 1120,
+      "wrong_pct": 43.2,
+      "opposite_pct": 26.3
+     },
+     "9": {
+      "n": 1032,
+      "wrong_pct": 44.1,
+      "opposite_pct": 23.6
+     }
+    },
+    "pred_size": {
+     "0~2%": {
+      "n": 2597,
+      "wrong_pct": 89.6,
+      "opposite_pct": 0.0
+     },
+     "10%+": {
+      "n": 4008,
+      "wrong_pct": 25.1,
+      "opposite_pct": 19.8
+     },
+     "2~5%": {
+      "n": 3267,
+      "wrong_pct": 49.1,
+      "opposite_pct": 39.2
+     },
+     "5~10%": {
+      "n": 3643,
+      "wrong_pct": 41.6,
+      "opposite_pct": 33.3
+     }
+    },
+    "kinds_of_wrong": {
+     "비슷이라 했는데 움직임": 17.2,
+     "정반대": 24.3
+    }
+   },
+   "fixes": {
+    "AI (지금)": {
+     "n": 4496,
+     "direction_hit_pct": 54.5,
+     "opposite_pct": 22.2,
+     "mae_pp": 17.59
+    },
+    "① 오답노트로 다시 예측 (쌓기)": {
+     "n": 4496,
+     "direction_hit_pct": 50.8,
+     "opposite_pct": 22.4,
+     "mae_pp": 17.87
+    },
+    "② 오답노트로 방향 직접 고르기": {
+     "n": 4496,
+     "direction_hit_pct": 58.5,
+     "opposite_pct": 32.7,
+     "mae_pp": null
+    },
+    "③ 품목 · 방향별 치우침 빼기": {
+     "n": 4496,
+     "direction_hit_pct": 55.7,
+     "opposite_pct": 24.0,
+     "mae_pp": 17.68
+    }
+   }
+  },
+  "과일": {
+   "notes": {
+    "n": 8734,
+    "wrong_pct": 50.6,
+    "tags": {
+     "큰 움직임 (±15% 넘게)": {
+      "share_pct": 33.6,
+      "wrong_pct": 35.2
+     },
+     "급등락 직후 (1주 ±15%)": {
+      "share_pct": 33.5,
+      "wrong_pct": 45.9
+     },
+     "4주 평균보다 크게 위 · 아래 (±20%)": {
+      "share_pct": 23.5,
+      "wrong_pct": 41.7
+     },
+     "명절 3주 안": {
+      "share_pct": 10.8,
+      "wrong_pct": 41.2
+     },
+     "반입량 급변 (±30%)": {
+      "share_pct": 38.7,
+      "wrong_pct": 47.4
+     },
+     "궂은 날씨 (비 30mm · 한파 · 폭염)": {
+      "share_pct": 54.1,
+      "wrong_pct": 49.8
+     },
+     "작년 이맘때와 반대로 예측": {
+      "share_pct": 16.8,
+      "wrong_pct": 41.3
+     }
+    },
+    "items": {
+     "감귤": {
+      "n": 894,
+      "wrong_pct": 54.8,
+      "opposite_pct": 20.2
+     },
+     "단감": {
+      "n": 537,
+      "wrong_pct": 55.7,
+      "opposite_pct": 20.3
+     },
+     "딸기": {
+      "n": 535,
+      "wrong_pct": 39.6,
+      "opposite_pct": 20.0
+     },
+     "레몬": {
+      "n": 898,
+      "wrong_pct": 56.6,
+      "opposite_pct": 21.4
+     },
+     "바나나": {
+      "n": 900,
+      "wrong_pct": 57.3,
+      "opposite_pct": 7.7
+     },
+     "배": {
+      "n": 885,
+      "wrong_pct": 53.2,
+      "opposite_pct": 25.0
+     },
+     "사과": {
+      "n": 896,
+      "wrong_pct": 53.1,
+      "opposite_pct": 19.5
+     },
+     "수박": {
+      "n": 895,
+      "wrong_pct": 45.0,
+      "opposite_pct": 22.0
+     },
+     "참외": {
+      "n": 617,
+      "wrong_pct": 46.7,
+      "opposite_pct": 25.1
+     },
+     "키위": {
+      "n": 900,
+      "wrong_pct": 41.7,
+      "opposite_pct": 19.9
+     },
+     "포도": {
+      "n": 777,
+      "wrong_pct": 48.8,
+      "opposite_pct": 19.3
+     }
+    },
+    "months": {
+     "1": {
+      "n": 704,
+      "wrong_pct": 45.0,
+      "opposite_pct": 21.3
+     },
+     "10": {
+      "n": 720,
+      "wrong_pct": 48.9,
+      "opposite_pct": 21.8
+     },
+     "11": {
+      "n": 776,
+      "wrong_pct": 54.3,
+      "opposite_pct": 21.0
+     },
+     "12": {
+      "n": 790,
+      "wrong_pct": 51.6,
+      "opposite_pct": 17.0
+     },
+     "2": {
+      "n": 636,
+      "wrong_pct": 51.9,
+      "opposite_pct": 20.9
+     },
+     "3": {
+      "n": 854,
+      "wrong_pct": 57.3,
+      "opposite_pct": 20.1
+     },
+     "4": {
+      "n": 808,
+      "wrong_pct": 51.1,
+      "opposite_pct": 19.9
+     },
+     "5": {
+      "n": 736,
+      "wrong_pct": 52.0,
+      "opposite_pct": 19.2
+     },
+     "6": {
+      "n": 642,
+      "wrong_pct": 48.3,
+      "opposite_pct": 19.0
+     },
+     "7": {
+      "n": 727,
+      "wrong_pct": 50.1,
+      "opposite_pct": 18.7
+     },
+     "8": {
+      "n": 684,
+      "wrong_pct": 48.8,
+      "opposite_pct": 19.9
+     },
+     "9": {
+      "n": 657,
+      "wrong_pct": 45.1,
+      "opposite_pct": 19.8
+     }
+    },
+    "pred_size": {
+     "0~2%": {
+      "n": 2290,
+      "wrong_pct": 84.7,
+      "opposite_pct": 0.0
+     },
+     "10%+": {
+      "n": 1344,
+      "wrong_pct": 23.8,
+      "opposite_pct": 17.7
+     },
+     "2~5%": {
+      "n": 2802,
+      "wrong_pct": 47.6,
+      "opposite_pct": 32.2
+     },
+     "5~10%": {
+      "n": 2298,
+      "wrong_pct": 35.9,
+      "opposite_pct": 25.9
+     }
+    },
+    "kinds_of_wrong": {
+     "비슷이라 했는데 움직임": 22.2,
+     "정반대": 19.9
+    }
+   },
+   "fixes": {
+    "AI (지금)": {
+     "n": 2918,
+     "direction_hit_pct": 50.1,
+     "opposite_pct": 20.0,
+     "mae_pp": 12.98
+    },
+    "① 오답노트로 다시 예측 (쌓기)": {
+     "n": 2918,
+     "direction_hit_pct": 49.0,
+     "opposite_pct": 19.7,
+     "mae_pp": 13.17
+    },
+    "② 오답노트로 방향 직접 고르기": {
+     "n": 2918,
+     "direction_hit_pct": 56.5,
+     "opposite_pct": 30.9,
+     "mae_pp": null
+    },
+    "③ 품목 · 방향별 치우침 빼기": {
+     "n": 2918,
+     "direction_hit_pct": 48.5,
+     "opposite_pct": 19.3,
+     "mae_pp": 13.08
+    }
+   }
+  }
+ }
+}

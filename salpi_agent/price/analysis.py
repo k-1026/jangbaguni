@@ -467,6 +467,8 @@ def _with_ai(out, item_name, series):
         return out
     if not ai:
         return out
+    if ai.get("target") == "week" and ai.get("week_avg"):
+        return _with_week_ai(out, ai)
     total, (lo, hi), base = ai["expected_change_pct"], ai["range_pct"], out["base_kg_price"]
     if total >= 2:
         direction, tip = "오를 가능성이 있어요", "필요한 양은 미리 사 두는 편이 나아요"
@@ -481,6 +483,32 @@ def _with_ai(out, item_name, series):
             "confidence": "보통" if hi - lo < 20 else "낮음",
             "method": f"AI 학습 모델(부스팅, 매일 새벽 다시 학습). 최근 1년 시험: 정반대 {m.get('opposite_pct')}% · "
                       f"평균 오차 {m.get('mae_pp')}%p · 범위 적중 {m.get('range_hit_pct')}%",
+            "model": {"version": ai["version"], "metrics": m}}
+
+
+def _with_week_ai(out, ai):
+    """주 평균 모델(11/25~): 다음 주 평균값을 맞히고, 4% 넘게 움직일 때만 "오를 · 내릴" 이라고 말함.
+    - week_change_pct · range_pct: 다음 주 평균 ÷ 이번 주 평균 − 1 (방향 · 채점 기준)
+    - expected_change_pct · expected_kg_price_range: 오늘 값(base_kg_price) 대비 → 화면 '○원 안팎' · 원가 · 알림이 그대로 씀"""
+    w, (lo, hi), wk, base = ai["expected_change_pct"], ai["range_pct"], ai["week_avg"], out["base_kg_price"]
+    sure = ai.get("confident_pct") or 4.0
+    nxt = wk * (1 + w / 100)
+    if w >= sure:
+        code, direction, tip = "up", "다음 주 평균이 오를 가능성이 커요", "필요한 양은 이번 주에 미리 사 두는 편이 나아요"
+    elif w <= -sure:
+        code, direction, tip = "down", "다음 주 평균이 내릴 가능성이 커요", "급하지 않으면 다음 주에 사는 편이 나아요"
+    else:
+        code, direction, tip = "unsure", "다음 주에 크게 바뀌지 않을 것 같아요", "평소대로 사면 돼요"
+    m = ai.get("metrics") or {}
+    return {**out, "horizon": "다음 주 평균 (내일 ~ 7일)",
+            "expected_change_pct": round((nxt / base - 1) * 100, 1) if base else w,
+            "week_change_pct": w, "base_week_avg": round(wk), "range_pct": [lo, hi],
+            "expected_kg_price_range": [round(wk * (1 + lo / 100)), round(wk * (1 + hi / 100))],
+            "direction": direction, "direction_code": code, "suggestion": tip, "factors": ai["factors"], "version": ai["version"],
+            "confidence": "보통" if code != "unsure" else "낮음",
+            "method": f"AI 학습 모델(부스팅, 매일 새벽 다시 학습)이 다음 주 평균값을 예측. 최근 1년 시험: "
+                      f"말한 방향 정답률 {m.get('stated_hit_pct')}% (예측의 {m.get('stated_share_pct')}%에서 방향을 말함) · "
+                      f"정반대 {m.get('opposite_pct')}% · 평균 오차 {m.get('mae_pp')}%p",
             "model": {"version": ai["version"], "metrics": m}}
 
 
@@ -587,24 +615,31 @@ def item_detail(item_name, days=28):
 # 지금 사면 이득인 재료
 # ---------------------------------------------------------------
 
-def buy_now_recommendations():
+def buy_now_recommendations(rows=None):
     """지금 사기 / 지금 싸요 / 기다리기 로 나눔.
     - 다음 7일 오를 가능성 → 지금 사기
     - 1주 새 5% 넘게 내렸고 더 내릴 신호가 없으면 → 지금 싸요
     - 다음 7일 내릴 가능성 → 기다리기"""
     buy, cheap, wait, normal = [], [], [], []
+    ready = {r["item"]: r for r in (rows or []) if r.get("forecast")}   # 첫 화면 보관값이 있으면 다시 계산하지 않음 (챗봇 속도)
     for name in ITEMS:
-        f = forecast_item(name)
-        t = item_trend(name)["wholesale"]
+        if name in ready:
+            r0 = ready[name]
+            f = r0["forecast"]
+            t = {"kg_price": r0.get("wholesale_kg"), "week_change_pct": r0.get("wholesale_change_pct")}
+        else:
+            f = forecast_item(name)
+            t = item_trend(name)["wholesale"]
         row = {"item": name, "kg_price": t["kg_price"], "week_change_pct": t["week_change_pct"],
                "next_week": f.get("direction"), "expected_change_pct": f.get("expected_change_pct"),
                "range_pct": f.get("range_pct"), "confidence": f.get("confidence"),
                "main_reason": max(f.get("factors", []), key=lambda x: abs(x["effect_pct"]), default={}).get("detail"),
                "foodspring_url": foodspring_url(name)}
         exp = f.get("expected_change_pct") or 0
-        if exp >= 2:
+        code = f.get("direction_code") or ("up" if exp >= 2 else "down" if exp <= -2 else "flat")   # 주 평균 모델은 4% 기준
+        if code == "up":
             buy.append(row)
-        elif exp <= -2:
+        elif code == "down":
             wait.append(row)
         elif (t["week_change_pct"] or 0) <= -5:
             cheap.append(row)

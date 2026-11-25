@@ -394,8 +394,11 @@ const factorName = (name) => { const n = name.replace(/\s*\(.*\)/, ""); return F
 const isReason = (x) => !x.factor.startsWith("품목 특성");
 // 7일 뒤 가운데 예상값 (10원 단위). 예상 범위(±20%대)는 넓어서 숫자로는 보여 주지 않고 그래프 부채꼴로만
 const midPrice = (base, exp) => (base ? Math.round((base * (1 + (exp || 0) / 100)) / 10) * 10 : null);
-// 예측 한마디: 오를 / 떨어질 / 유지될
+// 예측이 무엇을 맞히나: 주 평균 모델(11/25~)은 '다음 주 평균', 예전 · 고정 공식은 '7일 뒤'
+const fcWhen = (f) => (f?.week_change_pct != null ? "다음 주 평균" : "7일 뒤");
+// 예측 한마디: 오를 / 떨어질 / 유지될 — 주 평균 모델은 4% 넘게 움직일 때만 방향을 말함 (direction_code: up · down · unsure)
 function verdict(f) {
+  if (f?.direction_code) return { kind: { up: "up", down: "down" }[f.direction_code] || "flat", text: f.direction };
   const e = f?.expected_change_pct ?? 0;
   if (e >= 2) return { kind: "up", text: "다음 주 오를 가능성이 있어요" };
   if (e <= -2) return { kind: "down", text: "다음 주 떨어질 가능성이 있어요" };
@@ -580,7 +583,8 @@ function salpiSays(prices, f, idx = 0) {
 }
 
 // 예측 띠 한 줄: '다음 주 약 ○원/kg (4.6%↑) | 지금이 평소보다 싸요' (대시보드 · 재료 페이지 같음)
-const fcRange = (mid, unit, change, why) => `다음 주 약 ${won(mid)}/${unit} (${arrowPct(change)})${why ? `${SEP}${why}` : ""}`;
+// when: 주 평균 모델(11/25~)이면 "다음 주 평균 약" (fcWhen)
+const fcRange = (mid, unit, change, why, when = "다음 주 약") => `${when} ${won(mid)}/${unit} (${arrowPct(change)})${why ? `${SEP}${why}` : ""}`;
 function itemSlide(r, idx) {
   const f = r.forecast || {};
   const v = salpiSays((r.history || []).map((h) => h.kg_price), f, idx);
@@ -603,7 +607,7 @@ function itemSlide(r, idx) {
   <div class="fc-strip ${v.kind}">
     <div class="fc-text">
       <span class="verdict">${v.text}</span>
-      <span class="range">${fcRange(midPrice(f.base_kg_price, f.expected_change_pct), "kg", f.expected_change_pct, why)}</span>
+      <span class="range">${fcRange(midPrice(f.base_kg_price, f.expected_change_pct), "kg", f.expected_change_pct, why, `${fcWhen(f) === "다음 주 평균" ? "다음 주 평균" : "다음 주"} 약`)}</span>
     </div>
     <div class="advice" style="${poseVars(pose)}"><span class="say">${say}</span><img class="pose" src="/static/img/${pose}.png" alt=""></div>
   </div>
@@ -905,7 +909,7 @@ function drawItemChart(canvas, d, label = "도매 kg당") {
             label: (c) => c.dataset.label === "강수량(mm)" ? ` 비 ${c.raw}mm` : ` ${c.dataset.label} ${won(c.raw)}`,
             afterBody: (items) => {
               const r = h[items[0].dataIndex];
-              if (!r) return f && !f.error ? [`7일 뒤 ${won(midPrice(f.base_kg_price, f.expected_change_pct))} 안팎`] : [];
+              if (!r) return f && !f.error ? [`${fcWhen(f)} ${won(midPrice(f.base_kg_price, f.expected_change_pct))} 안팎`] : [];
               const out = [];
               if (r.max_temp != null) out.push(`기온 ${r.min_temp}~${r.max_temp}℃`);
               if (r.holiday) out.push(`공휴일: ${r.holiday}`);
@@ -1162,7 +1166,7 @@ function renderForecast(f, history = [], unit = "kg") {
       <div class="fc-range">
         <div><small>지금 (${esc(unit)}당)</small><b>${won(f.base_kg_price)}</b></div>
         <i aria-hidden="true">→</i>
-        <div><small>7일 뒤 예상</small><b>${won(mid)} 안팎</b></div>
+        <div><small>${fcWhen(f)} 예상</small><b>${won(mid)} 안팎</b></div>
       </div>
     </div>
     <div class="fc-reasons">

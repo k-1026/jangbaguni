@@ -16,6 +16,21 @@
   <link rel="stylesheet" href="/static/style.css?v=323">
 </head>
 <body>
+<script>
+  // 첫 화면을 그리기 전에 로그인 여부 · 페이지 종류를 먼저 정함 (11/25: app.js 를 다 받기 전까지 로그아웃 · 첫 화면 모양이 3초쯤 보였다가 뚝 바뀌던 것)
+  // app.js 의 SIGNED_IN · ITEM · AUTH_VIEW · STORE_VIEW 와 같은 규칙. app.js 는 뒤에서 같은 클래스를 다시 붙임 (그대로 둬도 됨)
+  (function () {
+    var q = new URLSearchParams(location.search), page = q.get("page"), item = q.get("item"), b = document.body, u = null;
+    try { u = JSON.parse(localStorage.getItem("salpi_login") || sessionStorage.getItem("salpi_login") || "null"); } catch (e) {}
+    var signed = !!u, auth = !item && (page === "login" || page === "signup");
+    if (!item && page === "store" && !signed) location.replace("/?page=login&next=" + encodeURIComponent(location.pathname + location.search + location.hash));
+    if (auth && signed) { var n = q.get("next"); location.replace(n && n.charAt(0) === "/" && n.charAt(1) !== "/" ? n : "/"); }
+    b.classList.add(signed ? "signed-in" : "signed-out");
+    if (item) b.classList.add("item-view");
+    if (auth && !signed) b.classList.add("auth-view", page === "login" ? "login-view" : "signup-view");
+    if (!item && signed && page === "store") b.classList.add("store-view");
+  })();
+</script>
 
 <header class="topbar">
   <div class="wrap topbar-inner">

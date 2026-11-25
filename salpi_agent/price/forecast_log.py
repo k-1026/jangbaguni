@@ -7,6 +7,9 @@
 
 모두 서버가 이미 계산한 대시보드 결과(/api/overview · /api/meat-seafood)를 받아 씀 → 시세 API를 더 부르지 않음.
 채점 기준은 backtest.py 와 같음: 방향 ±2%, 실제 = 기준 날짜 + 7일 이후 첫 시세 날짜(3일 안).
+주 평균 모델(formula_version 'ai-week-…', 11/25~): 실제 = 기준 날짜 다음 날 ~ 7일 시세 평균, 기준 값 = 이번 주 평균.
+  확신이 없어 방향을 말하지 않은 예측(화면 'unsure', 표에는 direction 'flat' 으로 저장 — 표의 check 제약 때문)은
+  방향 채점에서 빼고, 말한 비율을 따로 셈
 """
 
 from datetime import date, datetime, timedelta, timezone
@@ -27,6 +30,11 @@ def _direction(pct):
     return "up" if pct >= BAND else "down" if pct <= -BAND else "flat"
 
 
+def _unstated(row):
+    """주 평균 모델이 방향을 말하지 않은 예측 (화면 '크게 바뀌지 않을 것 같아요')."""
+    return str(row.get("formula_version") or "").startswith("ai-week") and row["direction"] == "flat"
+
+
 def _rows_for_log(veg_rows, extra_rows):
     """대시보드 결과 → forecast_log 줄. 제철이 아니라 거래가 적은 과일(화면에서 숨김)은 빼고 저장."""
     run, out = today().isoformat(), []
@@ -35,9 +43,13 @@ def _rows_for_log(veg_rows, extra_rows):
         if f.get("error") or not f.get("base_kg_price") or len(r.get("history") or []) < 8:
             continue
         lo, hi = f.get("expected_kg_price_range") or (None, None)
+        week = f.get("week_change_pct") is not None   # 주 평균 모델: 기준 = 이번 주 평균, % = 다음 주 평균 ÷ 이번 주 평균
         out.append({"run_date": run, "item": r["item"], "kind": r.get("kind", "야채"), "base_date": f["base_date"],
-                    "base_price": f["base_kg_price"], "unit": "kg", "expected_change_pct": f["expected_change_pct"],
-                    "range_low": lo, "range_high": hi, "direction": _direction(f["expected_change_pct"]),
+                    "base_price": f["base_week_avg"] if week else f["base_kg_price"], "unit": "kg",
+                    "expected_change_pct": f["week_change_pct"] if week else f["expected_change_pct"],
+                    "range_low": lo, "range_high": hi,
+                    "direction": ("flat" if f["direction_code"] == "unsure" else f["direction_code"]) if week
+                                 else _direction(f["expected_change_pct"]),
                     "factors": [{"factor": x["factor"], "effect_pct": x["effect_pct"]} for x in f.get("factors", [])],
                     "formula_version": f.get("version") or FORMULA_VERSION})
     for r in extra_rows or []:
@@ -79,10 +91,19 @@ def score(veg_rows, extra_rows):
     oldest = min(starts) - timedelta(7)
     due = supabase_db.select("forecast_log", actual_price="is.null",
                              **{"and": f"(base_date.gte.{oldest.isoformat()},base_date.lte.{(today() - timedelta(7)).isoformat()})"},
-                             select="run_date,item,base_date,base_price,range_low,range_high,direction")
+                             select="run_date,item,base_date,base_price,range_low,range_high,direction,formula_version")
     for row in due:
-        target = date.fromisoformat(row["base_date"]) + timedelta(7)
-        hit = next(((d, p) for d, p in hist.get(row["item"], []) if target <= date.fromisoformat(d) <= target + timedelta(LOOK_AHEAD)), None)
+        base_day = date.fromisoformat(row["base_date"])
+        target = base_day + timedelta(7)
+        if str(row.get("formula_version") or "").startswith("ai-week"):
+            # 주 평균: 다음 날 ~ 7일 시세 평균 (7일이 지나고 그 뒤 시세가 하나라도 올라와야 확정)
+            pts = [(d, p) for d, p in hist.get(row["item"], []) if base_day < date.fromisoformat(d) <= target]
+            later = any(date.fromisoformat(d) > target for d, _ in hist.get(row["item"], []))
+            if len(pts) < 2 or not later:
+                continue
+            hit = (pts[-1][0], round(sum(p for _, p in pts) / len(pts)))
+        else:
+            hit = next(((d, p) for d, p in hist.get(row["item"], []) if target <= date.fromisoformat(d) <= target + timedelta(LOOK_AHEAD)), None)
         if not hit:
             continue   # 아직 시세가 안 올라왔거나 그날 거래가 없음 → 다음에 다시
         d, p = hit
@@ -91,7 +112,7 @@ def score(veg_rows, extra_rows):
         supabase_db.update("forecast_log", {
             "actual_date": d, "actual_price": p, "actual_change_pct": round(change, 2),
             "in_range": (float(lo) <= p <= float(hi)) if lo is not None and hi is not None else None,
-            "direction_hit": _direction(change) == row["direction"],
+            "direction_hit": None if _unstated(row) else _direction(change) == row["direction"],
             "scored_at": datetime.now(timezone.utc).isoformat(),
         }, run_date=f"eq.{row['run_date']}", item=f"eq.{row['item']}")
         done += 1
@@ -114,7 +135,7 @@ def snapshot_shop(shop):
 def scorecard(weeks=4):
     """최근 weeks주 동안 채점된 예측 요약: 종류별 · 품목별 방향 적중 · 범위 적중 · 정반대 비율."""
     since = (today() - timedelta(weeks * 7)).isoformat()
-    rows = supabase_db.select("forecast_log", actual_date=f"gte.{since}", direction_hit="not.is.null",
+    rows = supabase_db.select("forecast_log", actual_date=f"gte.{since}", actual_price="not.is.null",
                               select="item,kind,base_date,run_date,direction,actual_change_pct,direction_hit,in_range,formula_version")
     # 주말 · 휴장일에는 같은 기준 날짜로 만든 예측이 여러 날 저장됨 → 품목 · 기준 날짜마다 처음 저장한 것 하나만 셈
     first = {}
@@ -123,15 +144,18 @@ def scorecard(weeks=4):
     rows = list(first.values())
 
     def summary(group):
-        n = len(group)
-        if not n:
+        if not group:
             return {"n": 0}
-        opp = sum(1 for r in group if {r["direction"], _direction(float(r["actual_change_pct"]))} == {"up", "down"})
+        said = [r for r in group if not _unstated(r)]   # 방향을 말한 예측만 방향 채점 (주 평균 모델의 '크게 안 바뀔 듯'은 뺌)
+        n = len(said)
+        opp = sum(1 for r in said if {r["direction"], _direction(float(r["actual_change_pct"]))} == {"up", "down"})
         ranged = [r for r in group if r["in_range"] is not None]
-        return {"n": n, "direction_hit_pct": round(sum(r["direction_hit"] for r in group) / n * 100, 1),
+        return {"n": n, "direction_hit_pct": round(sum(bool(r["direction_hit"]) for r in said) / n * 100, 1) if n else None,
                 "in_range_pct": round(sum(r["in_range"] for r in ranged) / len(ranged) * 100, 1) if ranged else None,
-                "opposite_pct": round(opp / n * 100, 1)}
+                "opposite_pct": round(opp / n * 100, 1) if n else None,
+                "stated_share_pct": round(n / len(group) * 100, 1), "scored": len(group)}
 
+    weekly = summary([r for r in rows if str(r.get("formula_version") or "").startswith("ai-week")])
     by_kind, by_item = {}, {}
     for r in rows:
         by_kind.setdefault(r["kind"], []).append(r)
@@ -139,4 +163,6 @@ def scorecard(weeks=4):
     return {"weeks": weeks, "since": since, "formula_version": FORMULA_VERSION, "all": summary(rows),
             "kinds": {k: summary(v) for k, v in by_kind.items()},
             "items": {k: {**summary(v), "kind": v[0]["kind"]} for k, v in by_item.items()},
-            "note": "채점은 기준 날짜 + 7일 이후 첫 시세와 비교. 방향은 ±2% 기준 (오를 · 유지 · 내릴)"}
+            "week_model": weekly,
+            "note": "채점은 기준 날짜 + 7일 이후 첫 시세와 비교. 방향은 ±2% 기준 (오를 · 유지 · 내릴). "
+                    "주 평균 모델(ai-week)은 다음 주 평균과 비교하고, 방향을 말한 예측만 방향을 채점 (stated_share_pct = 말한 비율)"}

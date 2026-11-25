@@ -283,6 +283,8 @@ button.chip:hover { background: #F7FAF3; }
 body.item-view .home-only, body.store-view .home-only { display: none; }
 /* 나의 가게 페이지에서만 보이는 칸 (내일 준비 · 영수증 분석 · 메뉴별 원가율) */
 .store-only { display: none; }
+/* 로그인 전에는 처음부터 나의 가게 · 알림 · 마이페이지 버튼을 그리지 않음 (index.html 맨 앞 코드가 signed-out 을 붙임, 11/25) */
+body.signed-out #storeBtn, body.signed-out #bellBtn, body.signed-out #meBtn { display: none; }
 body.store-view .store-only { display: block; }
 .store-only { scroll-margin-top: 64px; }   /* 위쪽 메뉴에서 바로 갈 때 고정 메뉴줄에 제목이 가리지 않게 */
 .store-head h1 { margin: 6px 0 4px; font-size: 28px; }

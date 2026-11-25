@@ -43,6 +43,7 @@ from account import subscription
 from store import inventory
 from store import receipts
 from sources import supabase_db
+from chat import agent as chat_agent
 from chat.agent import BUTTON_ROUTES, SalpiAgent
 from sources.data_sources import ITEMS, ApiError, ApiKeyMissing, event_detail, foodspring_url, holidays, month_events, weather_forecast
 
@@ -61,6 +62,11 @@ async def lifespan(_app):
             _daily("forecast")
         except Exception:
             pass   # 키가 없거나 API 장애면 화면에서 안내
+        for name in ("demand", "costs"):   # 챗봇 버튼 · 도구가 바로 답하도록 내일 준비 · 원가율도 미리 (11/25 속도)
+            try:
+                chat_agent.CACHED[name]()
+            except Exception:
+                pass
     threading.Thread(target=warm, daemon=True).start()
     yield
 
@@ -168,7 +174,7 @@ def _peek_shared(key):
 
 
 # 우리 가게 자료(영수증 · 메뉴 · 판매 · 재고)로 계산한 보관값 — 자료가 바뀌면 _store_changed 가 메모리 · 보관함에서 같이 지움
-STORE_KEYS = ("costs_report", "receipts_recent", "my_items")
+STORE_KEYS = ("costs_report", "receipts_recent", "my_items", "receipts_all")
 
 
 def _demand_key():
@@ -420,6 +426,14 @@ def _forecasts():
     return {r["item"]: r.get("forecast") for r in rows if r.get("forecast")}
 
 
+# 챗봇 도구가 화면과 같은 보관값을 씀 → 처음 부르는 도구도 다시 계산하지 않음 (11/25: 7 ~ 9초 → 보관값이면 1초 안)
+chat_agent.CACHED.update({
+    "overview": lambda: shared("overview", _overview),
+    "demand": lambda: shared(_demand_key(), lambda: demand.forecast(price_outlook=_price_outlook()), ttl=600) if _price_outlook() else None,
+    "costs": lambda: shared("costs_report", lambda: receipts.cost_report(supabase_db.DEMO_STORE, _forecasts()), 600),
+})
+
+
 def _sales_user(authorization, check=True):
     """판매율 분석: 로그인 표 → 계정 (다 썼으면 check=True 일 때 402). 표가 없거나 만료면 None = 횟수 없이 보여 줌
     (표 없이 부르는 모바일 시연 화면과 같게 · 로그인이 끝난 화면이 오류로 깨지지 않게)."""
@@ -503,6 +517,17 @@ def _image(b64, mime):
 class ReceiptIn(BaseModel):
     image: str = ""
     mime: str = "image/jpeg"
+    # 긴 영수증을 나눠 찍은 사진들 (위에서부터 차례로, 최대 receipts.MAX_PHOTOS 장). 'data:image/png;base64,…' 면 그 형식, 아니면 mime
+    images: list[str] = []
+
+
+def _photos(body):
+    """image(한 장, 예전 화면) + images(여러 장) → [(bytes, mime)]."""
+    raw = ([body.image] if body.image else []) + [x for x in body.images if x]
+    if len(raw) > receipts.MAX_PHOTOS:
+        raise HTTPException(400, f"사진은 한 번에 {receipts.MAX_PHOTOS}장까지 올릴 수 있어요")
+    mime_of = lambda x: x[5:x.index(";")] if x.startswith("data:") and ";" in x[:40] else body.mime   # 'data:image/png;base64,…' → image/png
+    return [_image(x, mime_of(x)) for x in raw]
 
 
 class ReceiptSave(ReceiptIn):
@@ -520,15 +545,15 @@ def _receipt_guard(fn):
 
 @app.post("/api/receipt/read")
 def receipt_read(body: ReceiptIn, authorization: str | None = Header(None)):
-    data, mime = _image(body.image, body.mime)
-    if not data:
+    photos = _photos(body)
+    if not photos:
         raise HTTPException(400, "영수증 사진을 골라 주세요")
     token = _bearer(authorization)
     if not token:   # 로그인 표 없이 부르는 곳(모바일 시연 화면)은 지금처럼 횟수 없이
-        return _receipt_guard(lambda: receipts.read(data, mime))
-    # 로그인한 사장님: 한 달 무료가 끝났으면 402, 읽기에 성공했을 때만 1회 셈 (첫 성공한 날부터 한 달)
+        return _receipt_guard(lambda: receipts.read(photos))
+    # 로그인한 사장님: 한 달 무료가 끝났으면 402, 읽기에 성공했을 때만 1회 셈 (첫 성공한 날부터 한 달 · 사진이 여러 장이어도 영수증 하나 = 1회)
     user = _auth(lambda: trial.check(token))
-    result = _receipt_guard(lambda: receipts.read(data, mime))
+    result = _receipt_guard(lambda: receipts.read(photos))
     return {**result, "trial": _auth(lambda: trial.count(user))}
 
 
@@ -595,8 +620,8 @@ def subscribe_cancel(body: CancelIn, authorization: str | None = Header(None)):
 
 @app.post("/api/receipt/save")
 def receipt_save(body: ReceiptSave):
-    data, mime = _image(body.image, body.mime)
-    return _receipt_guard(lambda: _store_changed(receipts.save(supabase_db.DEMO_STORE, body.model_dump(), data, mime)))
+    photos = _photos(body)
+    return _receipt_guard(lambda: _store_changed(receipts.save(supabase_db.DEMO_STORE, body.model_dump(), photos)))
 
 
 @app.get("/api/costs")
@@ -707,7 +732,8 @@ def inventory_set(body: StockIn):
 @app.get("/api/receipts")
 def receipt_list():
     # shortcut: 1000장(Supabase 한 번에 주는 최대)까지, 넘으면 페이지 나눠 받기
-    return _receipt_guard(lambda: {"receipts": receipts.recent(supabase_db.DEMO_STORE, limit=1000)})
+    # 보관값 10분 (사진 주소가 1시간이라 보관함 값은 40분까지만) · 영수증 저장 · 고치기 · 지우기면 _store_changed 가 비움 (11/25: 매번 1.5 ~ 2.7초 → 보관값 0.1초)
+    return _receipt_guard(lambda: shared("receipts_all", lambda: {"receipts": receipts.recent(supabase_db.DEMO_STORE, limit=1000)}, 600, 2400))
 
 
 @app.delete("/api/receipt/{purchase_id}")

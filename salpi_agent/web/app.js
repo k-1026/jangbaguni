@@ -1812,22 +1812,35 @@ async function pdfToImage(blob) {
     await page.render({ canvasContext: g, viewport: vp }).promise;
     pages.push(c);
   }
+  return { image: stitch(pages), skipped: Math.max(0, doc.numPages - PDF_PAGES) };
+}
+// 그림 여러 장을 위아래로 이어 JPEG 한 장으로 (PDF 여러 쪽 · 카메라로 나눠 찍은 긴 영수증)
+// 이은 높이가 6000px를 넘으면 전체를 줄임 (요청 크기 4.5MB 안으로 · 4장까지는 그대로)
+const STITCH_MAX_H = 6000;
+const STITCH_MAX_B64 = 4_200_000;   // 보낼 사진 글자 수 (서버 4MB · Vercel 요청 4.5MB 안으로)
+function stitch(pages) {
+  const h = pages.reduce((s, c) => s + c.height, 0), k = Math.min(1, STITCH_MAX_H / h);
   const out = document.createElement("canvas");
-  out.width = Math.max(...pages.map((c) => c.width));
-  out.height = pages.reduce((h, c) => h + c.height, 0);
+  out.width = Math.round(Math.max(...pages.map((c) => c.width)) * k);
+  out.height = Math.round(h * k);
   const g = out.getContext("2d");
   g.fillStyle = "#fff"; g.fillRect(0, 0, out.width, out.height);
-  pages.reduce((y, c) => (g.drawImage(c, 0, y), y + c.height), 0);
-  return { image: out.toDataURL("image/jpeg", 0.85), skipped: Math.max(0, doc.numPages - PDF_PAGES) };
+  pages.reduce((y, c) => (g.drawImage(c, 0, y, c.width * k, c.height * k), y + c.height * k), 0);
+  // 너무 크면 화질을 조금씩 낮춤 (글씨는 그대로 읽히는 0.55까지)
+  let q = 0.85, url = out.toDataURL("image/jpeg", q);
+  while (url.length > STITCH_MAX_B64 && q > 0.6) url = out.toDataURL("image/jpeg", q -= 0.1);
+  return url;
 }
 
+// blob: 사진 · PDF 파일, 또는 카메라로 찍은 사진(canvas) 목록 → 이어 붙여 한 장으로
 async function readReceipt(blob) {
   const box = $("#receiptResult");
   $("#receiptStart").hidden = true;
   box.innerHTML = `<div class="reading"><div class="spinner"></div><b>살피가 영수증을 읽는 중이에요</b><p class="muted">10~30초쯤 걸려요</p></div>`;
   try {
     let image, skipped = 0;
-    if (isPdf(blob)) ({ image, skipped } = await pdfToImage(blob));
+    if (Array.isArray(blob)) image = stitch(blob);
+    else if (isPdf(blob)) ({ image, skipped } = await pdfToImage(blob));
     else image = await shrink(blob);
     receipt = { image, mime: "image/jpeg" };
     // 로그인 표를 같이 보내면 서버가 무료 횟수를 셈 (다 썼으면 402 → 영수증 분석 칸을 가림)
@@ -2306,9 +2319,20 @@ function setTrial(t) {
   $(".receipt-link")?.classList.toggle("used-up", locked);   // 다 쓰면 카드는 회색, 구독하기 버튼만 노랑
 }
 if (SIGNED_IN) authCall("/api/receipt/trial", { method: "GET", token: readLogin()?.access_token }).then(setTrial).catch(() => {});
-// 카메라로 찍기: 처음 한 번 브라우저가 카메라 권한을 물어봄 → 찍은 사진을 그대로 영수증 읽기로
+// 카메라로 찍기: 처음 한 번 브라우저가 카메라 권한을 물어봄 → 세로(2:3) 창에 맞춰 찍음
+// 긴 영수증은 여러 번 나눠 찍기: 찍은 사진은 오른쪽 대기열에 작게 쌓이고(× 로 지우기) [다 찍었어요]를 누르면 위아래로 이어 읽음
 // (폰은 뒤 카메라, 노트북은 앞 카메라. https 또는 내 컴퓨터 주소에서만 열림)
-let camStream = null;
+// shortcut: 여러 장을 한 장으로 이어 보냄(길면 stitch 가 줄임 · 요청 4.5MB), 팀원 feat/receipt-multi-photo(images 여러 장)가 dev에 합쳐지면 여러 장으로 보내기
+const CAM_RATIO = 2 / 3;   // 영수증이 길어서 세로로 긴 2:3
+let camStream = null, camShots = [], camSeen = null;   // camShots: [{ c: 자른 사진 canvas, url: 대기열 미리보기 }] · camSeen: 카메라 자리에 보고 있는 사진 번호
+// 카메라 자리에 찍은 사진 보기 (i = null 이면 다시 카메라). 보고 있는 사진은 대기열에서 테두리로 표시
+function camLook(i) {
+  camSeen = i;
+  const still = $("#camStill");
+  if (i !== null) still.src = camShots[i].c.toDataURL("image/jpeg", 0.9);
+  still.hidden = i === null;
+  document.querySelectorAll("#camQueue .cam-thumb").forEach((b) => b.classList.toggle("on", +b.dataset.camView === i));
+}
 const CAM_GUIDE = `<ol class="cam-guide">
     <li><b>컴퓨터(크롬 · 엣지)</b>: 주소창 왼쪽 <b>자물쇠 · 설정 아이콘</b> → <b>카메라</b> → <b>허용</b> → 새로고침</li>
     <li><b>아이폰</b>: 설정 → Safari(또는 쓰는 브라우저) → <b>카메라</b> → <b>허용</b></li>
@@ -2325,7 +2349,7 @@ function camFail(msg, denied) {
   $("#camGallery").onclick = () => closeCamera();
 }
 async function askCamera() {
-  return navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+  return navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 3840 }, height: { ideal: 2160 } }, audio: false });
 }
 async function openCamera() {
   $("#cameraModal").hidden = false;
@@ -2338,25 +2362,59 @@ async function openCamera() {
     return camFail(denied ? "카메라 권한이 꺼져 있어요." : e.name === "NotFoundError" ? "연결된 카메라가 없어요." : "카메라를 열지 못했어요. 다른 앱이 카메라를 쓰고 있는지 확인해 주세요.", denied);
   }
   if ($("#cameraModal").hidden) return stopCamera();   // 여는 사이에 닫았으면
-  $("#cameraBody").innerHTML = `<div class="cam-view"><video id="camVideo" autoplay playsinline muted></video><i class="cam-frame" aria-hidden="true"></i></div>
-    <p class="muted small">영수증이 네모 안에 꽉 차게 맞추고 찍어 주세요</p>
-    <div class="camera-actions"><button class="upload-btn" id="camShot" type="button">찍기</button></div>`;
+  camShots = [];
+  $("#cameraBody").innerHTML = `<div class="cam-wrap">
+      <div class="cam-view"><video id="camVideo" autoplay playsinline muted></video><i class="cam-frame" aria-hidden="true"></i>
+        <img class="cam-still" id="camStill" alt="찍은 사진" hidden></div>
+      <aside class="cam-queue" aria-label="찍은 사진"><p>찍은 사진 <b id="camCount">0</b>장</p><ul id="camQueue"></ul></aside>
+    </div>
+    <p class="muted small">영수증이 길면 위에서부터 나눠 찍어 주세요.</p>
+    <div class="camera-actions"><button class="upload-btn" id="camShot" type="button">촬영</button>
+      <button class="btn primary" id="camDone" type="button" hidden>완료</button></div>`;
   $("#camVideo").srcObject = camStream;
   $("#camShot").onclick = shootCamera;
+  $("#camDone").onclick = () => { const pages = camShots.map((s) => s.c); closeCamera(); readReceipt(pages); };
+  // 대기열: × = 그 사진 지우기, 사진 = 카메라 자리에 그 사진 보기 (같은 사진을 다시 누르면 카메라로)
+  $("#camQueue").onclick = (e) => {
+    const x = e.target.closest("[data-cam-del]");
+    if (x) { camShots.splice(+x.dataset.camDel, 1); camLook(null); return camQueue(); }
+    const v = e.target.closest("[data-cam-view]");
+    if (v) camLook(+v.dataset.camView === camSeen ? null : +v.dataset.camView);
+  };
 }
+// 대기열 다시 그리기: 찍은 순서대로 작은 사진 + × · 장수 · 버튼 켜고 끄기
+function camQueue() {
+  $("#camQueue").innerHTML = camShots.map((s, i) => `<li><button type="button" class="cam-thumb" data-cam-view="${i}" aria-label="${i + 1}번째 사진 크게 보기"><img src="${s.url}" alt=""></button>
+    <button type="button" class="cam-x" data-cam-del="${i}" aria-label="${i + 1}번째 사진 지우기">×</button></li>`).join("");
+  $("#camCount").textContent = camShots.length;
+  $("#camDone").hidden = !camShots.length;   // 아무것도 안 찍었으면 [완료]는 숨김
+  $("#camDone").textContent = `완료 (${camShots.length}장)`;
+}
+// 찍기: 화면에 보이는 세로(2:3) 가운데만 잘라 너비 1000px로
 function shootCamera() {
   const v = $("#camVideo");
+  if (camSeen !== null) return camLook(null);   // 찍은 사진을 보는 중이면 [촬영]은 카메라로 돌아가기
   if (!v.videoWidth) return;
+  const vw = v.videoWidth, vh = v.videoHeight;
+  const sw = vw / vh > CAM_RATIO ? vh * CAM_RATIO : vw, sh = sw / CAM_RATIO;
+  const k = Math.min(1, 1000 / sw);
   const c = document.createElement("canvas");
-  c.width = v.videoWidth; c.height = v.videoHeight;
-  c.getContext("2d").drawImage(v, 0, 0);
-  c.toBlob((b) => { closeCamera(); if (b) readReceipt(b); }, "image/jpeg", 0.92);
+  c.width = Math.round(sw * k); c.height = Math.round(sh * k);
+  c.getContext("2d").drawImage(v, (vw - sw) / 2, (vh - sh) / 2, sw, sh, 0, 0, c.width, c.height);
+  camShots.push({ c, url: c.toDataURL("image/jpeg", 0.5) });
+  camQueue();
+  $("#camQueue").lastElementChild?.scrollIntoView({ block: "nearest" });   // 4장이 넘으면 방금 찍은 사진이 보이게
 }
 function stopCamera() { camStream?.getTracks().forEach((t) => t.stop()); camStream = null; }
-function closeCamera() { stopCamera(); $("#cameraModal").hidden = true; }
+function closeCamera() { stopCamera(); camShots = []; camSeen = null; $("#cameraModal").hidden = true; }
+// 찍은 사진을 보는 중이면 카메라로만 돌아감. 찍어 둔 사진이 있는데 카메라를 닫으려 하면 물어봄
+const cancelCamera = () => {
+  if (camSeen !== null) return camLook(null);
+  if (!camShots.length || confirm(`찍은 사진 ${camShots.length}장을 버릴까요?`)) closeCamera();
+};
 $("#cameraBtn").onclick = openCamera;
-$("#cameraClose").onclick = closeCamera;
-$("#cameraModal").onclick = (e) => { if (e.target.id === "cameraModal") closeCamera(); };
+$("#cameraClose").onclick = cancelCamera;
+$("#cameraModal").onclick = (e) => { if (e.target.id === "cameraModal") cancelCamera(); };
 // 휴지통 → 고르기 모드: 카드 오른쪽 위 체크 칸으로 여러 장 골라 한 번에 지우기
 const rcPicked = () => [...document.querySelectorAll("#receiptList .rc-card.picked")].map((li) => li.dataset.id);
 function rcSelectMode(on) {

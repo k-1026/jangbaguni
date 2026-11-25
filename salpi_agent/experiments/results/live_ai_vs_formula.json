@@ -1,5 +1,5 @@
 {
- "made": "2026-11-24",
+ "made": "2026-11-25",
  "band_pct": 2.0,
  "note": "AI = 화면에 나간 예측(forecast_log), 고정 공식 = 같은 기준 날짜로 다시 계산. 실제 = 기준 날짜 + 7일 이후 사흘 안 첫 시세",
  "by_base_date": {
@@ -7,67 +7,83 @@
    "ai": {
     "n": 25,
     "direction_hit_pct": 52.0,
-    "in_range_pct": 84.0,
-    "opposite_pct": 20.0,
-    "mae_pp": 10.84
+    "in_range_pct": 80.0,
+    "opposite_pct": 16.0,
+    "mae_pp": 10.88
    },
    "formula": {
     "n": 25,
-    "direction_hit_pct": 48.0,
-    "in_range_pct": 68.0,
+    "direction_hit_pct": 52.0,
+    "in_range_pct": 64.0,
     "opposite_pct": 12.0,
-    "mae_pp": 12.06
+    "mae_pp": 12.21
+   }
+  },
+  "2026-11-17": {
+   "ai": {
+    "n": 25,
+    "direction_hit_pct": 44.0,
+    "in_range_pct": 68.0,
+    "opposite_pct": 24.0,
+    "mae_pp": 15.09
+   },
+   "formula": {
+    "n": 25,
+    "direction_hit_pct": 60.0,
+    "in_range_pct": 48.0,
+    "opposite_pct": 24.0,
+    "mae_pp": 14.69
    }
   }
  },
  "by_kind": {
   "과일": {
    "ai": {
-    "n": 10,
-    "direction_hit_pct": 60.0,
-    "in_range_pct": 100.0,
-    "opposite_pct": 10.0,
-    "mae_pp": 5.48
+    "n": 20,
+    "direction_hit_pct": 45.0,
+    "in_range_pct": 85.0,
+    "opposite_pct": 15.0,
+    "mae_pp": 7.24
    },
    "formula": {
-    "n": 10,
-    "direction_hit_pct": 40.0,
-    "in_range_pct": 80.0,
-    "opposite_pct": 0.0,
-    "mae_pp": 10.11
+    "n": 20,
+    "direction_hit_pct": 50.0,
+    "in_range_pct": 70.0,
+    "opposite_pct": 10.0,
+    "mae_pp": 9.5
    }
   },
   "야채": {
    "ai": {
-    "n": 15,
-    "direction_hit_pct": 46.7,
-    "in_range_pct": 73.3,
-    "opposite_pct": 26.7,
-    "mae_pp": 14.4
+    "n": 30,
+    "direction_hit_pct": 50.0,
+    "in_range_pct": 66.7,
+    "opposite_pct": 23.3,
+    "mae_pp": 16.81
    },
    "formula": {
-    "n": 15,
-    "direction_hit_pct": 53.3,
-    "in_range_pct": 60.0,
-    "opposite_pct": 20.0,
-    "mae_pp": 13.35
+    "n": 30,
+    "direction_hit_pct": 60.0,
+    "in_range_pct": 46.7,
+    "opposite_pct": 23.3,
+    "mae_pp": 16.09
    }
   }
  },
  "all": {
   "ai": {
-   "n": 25,
-   "direction_hit_pct": 52.0,
-   "in_range_pct": 84.0,
+   "n": 50,
+   "direction_hit_pct": 48.0,
+   "in_range_pct": 74.0,
    "opposite_pct": 20.0,
-   "mae_pp": 10.84
+   "mae_pp": 12.98
   },
   "formula": {
-   "n": 25,
-   "direction_hit_pct": 48.0,
-   "in_range_pct": 68.0,
-   "opposite_pct": 12.0,
-   "mae_pp": 12.06
+   "n": 50,
+   "direction_hit_pct": 56.0,
+   "in_range_pct": 56.0,
+   "opposite_pct": 18.0,
+   "mae_pp": 13.45
   }
  },
  "cases": [
@@ -79,8 +95,8 @@
    "base_price": 1083.0,
    "recomputed_base_price": 1199,
    "actual_date": "2026-11-23",
-   "actual_price": 1244,
-   "actual_change_pct": 14.87,
+   "actual_price": 1251,
+   "actual_change_pct": 15.51,
    "ai": {
     "change": 1.0,
     "low": -9.8,
@@ -101,8 +117,8 @@
    "base_price": 1003.0,
    "recomputed_base_price": 1005,
    "actual_date": "2026-11-23",
-   "actual_price": 1034,
-   "actual_change_pct": 3.09,
+   "actual_price": 1024,
+   "actual_change_pct": 2.09,
    "ai": {
     "change": -1.1,
     "low": -19.0,
@@ -123,8 +139,8 @@
    "base_price": 435.0,
    "recomputed_base_price": 428,
    "actual_date": "2026-11-23",
-   "actual_price": 469,
-   "actual_change_pct": 7.82,
+   "actual_price": 443,
+   "actual_change_pct": 1.84,
    "ai": {
     "change": -3.3,
     "low": -17.9,
@@ -145,8 +161,8 @@
    "base_price": 614.0,
    "recomputed_base_price": 654,
    "actual_date": "2026-11-23",
-   "actual_price": 565,
-   "actual_change_pct": -7.98,
+   "actual_price": 538,
+   "actual_change_pct": -12.38,
    "ai": {
     "change": 5.5,
     "low": -12.4,
@@ -211,8 +227,8 @@
    "base_price": 2069.0,
    "recomputed_base_price": 2079,
    "actual_date": "2026-11-23",
-   "actual_price": 2070,
-   "actual_change_pct": 0.05,
+   "actual_price": 2062,
+   "actual_change_pct": -0.34,
    "ai": {
     "change": -3.6,
     "low": -25.1,
@@ -233,8 +249,8 @@
    "base_price": 2726.0,
    "recomputed_base_price": 2737,
    "actual_date": "2026-11-23",
-   "actual_price": 2545,
-   "actual_change_pct": -6.64,
+   "actual_price": 2547,
+   "actual_change_pct": -6.57,
    "ai": {
     "change": -7.0,
     "low": -33.0,
@@ -255,8 +271,8 @@
    "base_price": 4153.0,
    "recomputed_base_price": 4170,
    "actual_date": "2026-11-23",
-   "actual_price": 4371,
-   "actual_change_pct": 5.25,
+   "actual_price": 4367,
+   "actual_change_pct": 5.15,
    "ai": {
     "change": -3.0,
     "low": -21.2,
@@ -277,8 +293,8 @@
    "base_price": 9619.0,
    "recomputed_base_price": 9758,
    "actual_date": "2026-11-23",
-   "actual_price": 5557,
-   "actual_change_pct": -42.23,
+   "actual_price": 5560,
+   "actual_change_pct": -42.2,
    "ai": {
     "change": -8.4,
     "low": -36.7,
@@ -299,8 +315,8 @@
    "base_price": 8963.0,
    "recomputed_base_price": 8885,
    "actual_date": "2026-11-23",
-   "actual_price": 4252,
-   "actual_change_pct": -52.56,
+   "actual_price": 4334,
+   "actual_change_pct": -51.65,
    "ai": {
     "change": -10.0,
     "low": -46.8,
@@ -321,8 +337,8 @@
    "base_price": 4353.0,
    "recomputed_base_price": 4304,
    "actual_date": "2026-11-23",
-   "actual_price": 4950,
-   "actual_change_pct": 13.71,
+   "actual_price": 5285,
+   "actual_change_pct": 21.41,
    "ai": {
     "change": -8.7,
     "low": -31.4,
@@ -585,8 +601,8 @@
    "base_price": 762.0,
    "recomputed_base_price": 776,
    "actual_date": "2026-11-23",
-   "actual_price": 545,
-   "actual_change_pct": -28.48,
+   "actual_price": 570,
+   "actual_change_pct": -25.2,
    "ai": {
     "change": -13.1,
     "low": -31.6,
@@ -619,6 +635,556 @@
     "change": -13.3,
     "low": -25.3,
     "high": -1.3
+   }
+  },
+  {
+   "item": "대파",
+   "kind": "야채",
+   "run_date": "2026-11-18",
+   "base_date": "2026-11-17",
+   "base_price": 798.0,
+   "recomputed_base_price": 798,
+   "actual_date": "2026-11-24",
+   "actual_price": 1363,
+   "actual_change_pct": 70.8,
+   "ai": {
+    "change": 1.5,
+    "low": -16.4,
+    "high": 19.4,
+    "version": "ai-veg-20261117"
+   },
+   "formula": {
+    "change": 8.2,
+    "low": -3.8,
+    "high": 20.2
+   }
+  },
+  {
+   "item": "배추",
+   "kind": "야채",
+   "run_date": "2026-11-18",
+   "base_date": "2026-11-17",
+   "base_price": 729.0,
+   "recomputed_base_price": 729,
+   "actual_date": "2026-11-24",
+   "actual_price": 654,
+   "actual_change_pct": -10.29,
+   "ai": {
+    "change": -8.6,
+    "low": -27.2,
+    "high": 9.9,
+    "version": "ai-veg-20261117"
+   },
+   "formula": {
+    "change": -4.9,
+    "low": -16.9,
+    "high": 7.1
+   }
+  },
+  {
+   "item": "무",
+   "kind": "야채",
+   "run_date": "2026-11-18",
+   "base_date": "2026-11-17",
+   "base_price": 442.0,
+   "recomputed_base_price": 442,
+   "actual_date": "2026-11-24",
+   "actual_price": 389,
+   "actual_change_pct": -11.99,
+   "ai": {
+    "change": -3.9,
+    "low": -18.6,
+    "high": 10.9,
+    "version": "ai-veg-20261117"
+   },
+   "formula": {
+    "change": 1.1,
+    "low": -10.9,
+    "high": 13.1
+   }
+  },
+  {
+   "item": "양배추",
+   "kind": "야채",
+   "run_date": "2026-11-18",
+   "base_date": "2026-11-17",
+   "base_price": 609.0,
+   "recomputed_base_price": 609,
+   "actual_date": "2026-11-24",
+   "actual_price": 527,
+   "actual_change_pct": -13.46,
+   "ai": {
+    "change": 2.7,
+    "low": -15.1,
+    "high": 20.5,
+    "version": "ai-veg-20261117"
+   },
+   "formula": {
+    "change": 5.7,
+    "low": -6.3,
+    "high": 17.7
+   }
+  },
+  {
+   "item": "감자",
+   "kind": "야채",
+   "run_date": "2026-11-18",
+   "base_date": "2026-11-17",
+   "base_price": 1255.0,
+   "recomputed_base_price": 1255,
+   "actual_date": "2026-11-24",
+   "actual_price": 1322,
+   "actual_change_pct": 5.34,
+   "ai": {
+    "change": 2.3,
+    "low": -9.4,
+    "high": 14.0,
+    "version": "ai-veg-20261117"
+   },
+   "formula": {
+    "change": 0.4,
+    "low": -11.6,
+    "high": 12.4
+   }
+  },
+  {
+   "item": "당근",
+   "kind": "야채",
+   "run_date": "2026-11-18",
+   "base_date": "2026-11-17",
+   "base_price": 1462.0,
+   "recomputed_base_price": 1462,
+   "actual_date": "2026-11-24",
+   "actual_price": 1678,
+   "actual_change_pct": 14.77,
+   "ai": {
+    "change": 3.1,
+    "low": -13.9,
+    "high": 20.2,
+    "version": "ai-veg-20261117"
+   },
+   "formula": {
+    "change": 4.4,
+    "low": -7.6,
+    "high": 16.4
+   }
+  },
+  {
+   "item": "오이",
+   "kind": "야채",
+   "run_date": "2026-11-18",
+   "base_date": "2026-11-17",
+   "base_price": 2494.0,
+   "recomputed_base_price": 2494,
+   "actual_date": "2026-11-24",
+   "actual_price": 2864,
+   "actual_change_pct": 14.84,
+   "ai": {
+    "change": -1.3,
+    "low": -27.3,
+    "high": 24.7,
+    "version": "ai-veg-20261117"
+   },
+   "formula": {
+    "change": -4.4,
+    "low": -16.4,
+    "high": 7.6
+   }
+  },
+  {
+   "item": "청양고추",
+   "kind": "야채",
+   "run_date": "2026-11-18",
+   "base_date": "2026-11-17",
+   "base_price": 4008.0,
+   "recomputed_base_price": 4008,
+   "actual_date": "2026-11-24",
+   "actual_price": 4486,
+   "actual_change_pct": 11.93,
+   "ai": {
+    "change": -2.5,
+    "low": -20.7,
+    "high": 15.7,
+    "version": "ai-veg-20261117"
+   },
+   "formula": {
+    "change": 2.5,
+    "low": -9.5,
+    "high": 14.5
+   }
+  },
+  {
+   "item": "깻잎",
+   "kind": "야채",
+   "run_date": "2026-11-18",
+   "base_date": "2026-11-17",
+   "base_price": 9195.0,
+   "recomputed_base_price": 9195,
+   "actual_date": "2026-11-24",
+   "actual_price": 5541,
+   "actual_change_pct": -39.74,
+   "ai": {
+    "change": -6.3,
+    "low": -34.7,
+    "high": 22.0,
+    "version": "ai-veg-20261117"
+   },
+   "formula": {
+    "change": -5.8,
+    "low": -17.8,
+    "high": 6.2
+   }
+  },
+  {
+   "item": "상추",
+   "kind": "야채",
+   "run_date": "2026-11-18",
+   "base_date": "2026-11-17",
+   "base_price": 7113.0,
+   "recomputed_base_price": 7113,
+   "actual_date": "2026-11-24",
+   "actual_price": 5451,
+   "actual_change_pct": -23.37,
+   "ai": {
+    "change": -9.7,
+    "low": -46.5,
+    "high": 27.0,
+    "version": "ai-veg-20261117"
+   },
+   "formula": {
+    "change": -12.9,
+    "low": -24.9,
+    "high": -0.9
+   }
+  },
+  {
+   "item": "시금치",
+   "kind": "야채",
+   "run_date": "2026-11-18",
+   "base_date": "2026-11-17",
+   "base_price": 3761.0,
+   "recomputed_base_price": 3761,
+   "actual_date": "2026-11-24",
+   "actual_price": 4895,
+   "actual_change_pct": 30.15,
+   "ai": {
+    "change": -3.0,
+    "low": -25.7,
+    "high": 19.7,
+    "version": "ai-veg-20261117"
+   },
+   "formula": {
+    "change": -3.1,
+    "low": -15.1,
+    "high": 8.9
+   }
+  },
+  {
+   "item": "토마토",
+   "kind": "야채",
+   "run_date": "2026-11-18",
+   "base_date": "2026-11-17",
+   "base_price": 1967.0,
+   "recomputed_base_price": 1967,
+   "actual_date": "2026-11-24",
+   "actual_price": 1816,
+   "actual_change_pct": -7.68,
+   "ai": {
+    "change": -3.6,
+    "low": -21.9,
+    "high": 14.6,
+    "version": "ai-veg-20261117"
+   },
+   "formula": {
+    "change": 4.4,
+    "low": -7.6,
+    "high": 16.4
+   }
+  },
+  {
+   "item": "가지",
+   "kind": "야채",
+   "run_date": "2026-11-18",
+   "base_date": "2026-11-17",
+   "base_price": 3898.0,
+   "recomputed_base_price": 3898,
+   "actual_date": "2026-11-24",
+   "actual_price": 2701,
+   "actual_change_pct": -30.71,
+   "ai": {
+    "change": -4.7,
+    "low": -30.9,
+    "high": 21.6,
+    "version": "ai-veg-20261117"
+   },
+   "formula": {
+    "change": -14.4,
+    "low": -26.4,
+    "high": -2.4
+   }
+  },
+  {
+   "item": "사과",
+   "kind": "과일",
+   "run_date": "2026-11-18",
+   "base_date": "2026-11-17",
+   "base_price": 2846.0,
+   "recomputed_base_price": 2846,
+   "actual_date": "2026-11-24",
+   "actual_price": 2970,
+   "actual_change_pct": 4.36,
+   "ai": {
+    "change": 5.8,
+    "low": -7.0,
+    "high": 18.7,
+    "version": "ai-fruit-20261117"
+   },
+   "formula": {
+    "change": 4.2,
+    "low": -4.6,
+    "high": 13.0
+   }
+  },
+  {
+   "item": "배",
+   "kind": "과일",
+   "run_date": "2026-11-18",
+   "base_date": "2026-11-17",
+   "base_price": 2338.0,
+   "recomputed_base_price": 2338,
+   "actual_date": "2026-11-24",
+   "actual_price": 2706,
+   "actual_change_pct": 15.74,
+   "ai": {
+    "change": 11.6,
+    "low": -5.9,
+    "high": 29.1,
+    "version": "ai-fruit-20261117"
+   },
+   "formula": {
+    "change": -0.3,
+    "low": -12.3,
+    "high": 11.7
+   }
+  },
+  {
+   "item": "감귤",
+   "kind": "과일",
+   "run_date": "2026-11-18",
+   "base_date": "2026-11-17",
+   "base_price": 2348.0,
+   "recomputed_base_price": 2348,
+   "actual_date": "2026-11-24",
+   "actual_price": 2409,
+   "actual_change_pct": 2.6,
+   "ai": {
+    "change": 1.2,
+    "low": -13.1,
+    "high": 15.5,
+    "version": "ai-fruit-20261117"
+   },
+   "formula": {
+    "change": -3.4,
+    "low": -15.4,
+    "high": 8.6
+   }
+  },
+  {
+   "item": "포도",
+   "kind": "과일",
+   "run_date": "2026-11-18",
+   "base_date": "2026-11-17",
+   "base_price": 3372.0,
+   "recomputed_base_price": 3372,
+   "actual_date": "2026-11-24",
+   "actual_price": 3427,
+   "actual_change_pct": 1.63,
+   "ai": {
+    "change": 7.2,
+    "low": -4.9,
+    "high": 19.3,
+    "version": "ai-fruit-20261117"
+   },
+   "formula": {
+    "change": -0.6,
+    "low": -11.0,
+    "high": 9.8
+   }
+  },
+  {
+   "item": "바나나",
+   "kind": "과일",
+   "run_date": "2026-11-18",
+   "base_date": "2026-11-17",
+   "base_price": 1537.0,
+   "recomputed_base_price": 1537,
+   "actual_date": "2026-11-24",
+   "actual_price": 1359,
+   "actual_change_pct": -11.58,
+   "ai": {
+    "change": -1.8,
+    "low": -7.5,
+    "high": 3.9,
+    "version": "ai-fruit-20261117"
+   },
+   "formula": {
+    "change": 1.7,
+    "low": -10.3,
+    "high": 13.7
+   }
+  },
+  {
+   "item": "딸기",
+   "kind": "과일",
+   "run_date": "2026-11-18",
+   "base_date": "2026-11-17",
+   "base_price": 27495.0,
+   "recomputed_base_price": 27495,
+   "actual_date": "2026-11-24",
+   "actual_price": 23348,
+   "actual_change_pct": -15.08,
+   "ai": {
+    "change": 2.5,
+    "low": -13.4,
+    "high": 18.4,
+    "version": "ai-fruit-20261117"
+   },
+   "formula": {
+    "change": -2.6,
+    "low": -14.6,
+    "high": 9.4
+   }
+  },
+  {
+   "item": "수박",
+   "kind": "과일",
+   "run_date": "2026-11-18",
+   "base_date": "2026-11-17",
+   "base_price": 2483.0,
+   "recomputed_base_price": 2483,
+   "actual_date": "2026-11-24",
+   "actual_price": 2360,
+   "actual_change_pct": -4.95,
+   "ai": {
+    "change": -1.4,
+    "low": -18.4,
+    "high": 15.6,
+    "version": "ai-fruit-20261117"
+   },
+   "formula": {
+    "change": -4.4,
+    "low": -16.4,
+    "high": 7.6
+   }
+  },
+  {
+   "item": "키위",
+   "kind": "과일",
+   "run_date": "2026-11-18",
+   "base_date": "2026-11-17",
+   "base_price": 4366.0,
+   "recomputed_base_price": 4366,
+   "actual_date": "2026-11-24",
+   "actual_price": 3781,
+   "actual_change_pct": -13.4,
+   "ai": {
+    "change": 0.4,
+    "low": -18.6,
+    "high": 19.3,
+    "version": "ai-fruit-20261117"
+   },
+   "formula": {
+    "change": -2.2,
+    "low": -14.2,
+    "high": 9.8
+   }
+  },
+  {
+   "item": "레몬",
+   "kind": "과일",
+   "run_date": "2026-11-18",
+   "base_date": "2026-11-17",
+   "base_price": 1804.0,
+   "recomputed_base_price": 1804,
+   "actual_date": "2026-11-24",
+   "actual_price": 2031,
+   "actual_change_pct": 12.58,
+   "ai": {
+    "change": 2.9,
+    "low": -9.7,
+    "high": 15.6,
+    "version": "ai-fruit-20261117"
+   },
+   "formula": {
+    "change": 8.0,
+    "low": -4.0,
+    "high": 20.0
+   }
+  },
+  {
+   "item": "양파",
+   "kind": "야채",
+   "run_date": "2026-11-18",
+   "base_date": "2026-11-17",
+   "base_price": 1037.0,
+   "recomputed_base_price": 1037,
+   "actual_date": "2026-11-24",
+   "actual_price": 1187,
+   "actual_change_pct": 14.46,
+   "ai": {
+    "change": 1.8,
+    "low": -9.0,
+    "high": 12.7,
+    "version": "ai-veg-20261117"
+   },
+   "formula": {
+    "change": 2.7,
+    "low": -9.3,
+    "high": 14.7
+   }
+  },
+  {
+   "item": "애호박",
+   "kind": "야채",
+   "run_date": "2026-11-18",
+   "base_date": "2026-11-17",
+   "base_price": 1879.0,
+   "recomputed_base_price": 1879,
+   "actual_date": "2026-11-24",
+   "actual_price": 2233,
+   "actual_change_pct": 18.84,
+   "ai": {
+    "change": -4.8,
+    "low": -26.3,
+    "high": 16.7,
+    "version": "ai-veg-20261117"
+   },
+   "formula": {
+    "change": 2.5,
+    "low": -9.5,
+    "high": 14.5
+   }
+  },
+  {
+   "item": "단감",
+   "kind": "과일",
+   "run_date": "2026-11-18",
+   "base_date": "2026-11-17",
+   "base_price": 1967.0,
+   "recomputed_base_price": 1967,
+   "actual_date": "2026-11-24",
+   "actual_price": 1573,
+   "actual_change_pct": -20.03,
+   "ai": {
+    "change": 3.0,
+    "low": -13.8,
+    "high": 19.8,
+    "version": "ai-fruit-20261117"
+   },
+   "formula": {
+    "change": 2.3,
+    "low": -9.7,
+    "high": 14.3
    }
   }
  ]

@@ -1181,6 +1181,36 @@ body.chat-open .fab-count { display: none; }
 .my-card.profile { display: flex; align-items: center; gap: 12px; }
 .my-card.profile img { width: 56px; height: 56px; border-radius: 50%; background: var(--surface-variant); object-fit: cover; }
 .my-card.profile b { display: block; font-size: 17px; } .my-card.profile small { color: var(--muted); }
+/* 프로필 수정: 오른쪽 '수정' → 사진(눌러서 바꾸기) + 이름 칸 + 취소 · 저장 */
+.my-card.profile .pf-text { flex: 1; min-width: 0; }
+.pf-edit { display: inline-flex; align-items: center; gap: 3px; flex: none; align-self: flex-start; padding: 4px 6px; border: 0; border-radius: 8px;
+  background: none; color: var(--muted); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.pf-edit:hover { color: var(--primary); }
+.pf-edit:focus-visible { outline: 2px solid var(--primary); }
+.pf-edit svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.my-card.profile.editing { align-items: center; gap: 16px; }
+.pf-photo { position: relative; flex: none; display: block; cursor: pointer; }
+.my-card.profile .pf-photo img { display: block; width: 72px; height: 72px; box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--primary-container, #E4F2D4); }
+/* 사진 오른쪽 아래 카메라 동그라미 (SNS처럼) */
+.pf-cam { position: absolute; right: -4px; bottom: -4px; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%;
+  background: var(--primary); box-shadow: 0 0 0 2px var(--surface); }
+.pf-cam svg { width: 14px; height: 14px; fill: none; stroke: #fff; stroke-width: 2; stroke-linejoin: round; }
+.pf-photo:hover img { filter: brightness(.92); }
+.pf-photo:focus-within img { outline: 2px solid var(--primary); outline-offset: 3px; }
+.pf-form { flex: 1; min-width: 0; display: grid; gap: 6px; }
+/* 위 줄: 왼쪽 '이름' · 오른쪽 취소 · 저장(글자 버튼), 아래 줄: 이름 칸 */
+.pf-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.pf-label { font-size: 13px; font-weight: 600; color: var(--muted); }
+.pf-input { width: 100%; padding: 8px 12px; border: 1px solid var(--outline, #E3E8E0); border-radius: 10px; font: inherit; font-size: 15px; color: var(--ink); background: var(--surface); }
+.pf-input:focus { outline: 2px solid var(--primary); outline-offset: -1px; border-color: transparent; }
+.pf-reset { justify-self: start; padding: 0; border: 0; background: none; font: inherit; font-size: 13px; color: var(--muted); text-decoration: underline; cursor: pointer; }
+.pf-err { margin: 0; font-size: 13px; color: var(--up, #D93A30); }
+.pf-btns { display: flex; flex: none; gap: 2px; }
+.pf-btns button { padding: 3px 6px; border: 0; border-radius: 6px; background: none; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.pf-btns button:focus-visible { outline: 2px solid var(--primary); }
+.pf-cancel { color: var(--muted); }
+.pf-save { color: var(--primary); }
+.pf-save:disabled { opacity: .6; cursor: default; }
 .my-card dl { display: grid; grid-template-columns: 56px 1fr; gap: 6px 10px; margin: 0 0 12px; font-size: 14px; }
 .my-card dt { color: var(--muted); } .my-card dd { margin: 0; }
 .my-link { width: 100%; display: flex; justify-content: space-between; align-items: center; border: 0; border-top: 1px solid var(--outline-variant); background: none;

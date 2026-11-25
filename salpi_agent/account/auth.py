@@ -336,8 +336,9 @@ def withdraw(token):
     user = user_of(token)
     for s in db.select("stores", owner_id=f"eq.{user['id']}", select="id"):
         for p in db.select("purchases", store_id=f"eq.{s['id']}", select="image_path"):
-            if p.get("image_path"):
-                db.remove_file(p["image_path"])
+            for x in str(p.get("image_path") or "").split("|"):   # 긴 영수증은 사진 여러 장 (store.receipts.PATH_SEP)
+                if x:
+                    db.remove_file(x)
     r = _call("DELETE", f"admin/users/{user['id']}", admin=True)
     if not r.ok:
         raise ApiError(f"탈퇴하지 못했어요 ({r.status_code})")

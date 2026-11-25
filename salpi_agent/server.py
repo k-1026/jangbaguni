@@ -356,7 +356,7 @@ def event(content_id: str):
 @app.get("/api/mart")
 def mart():
     """대형마트 판매가 (한국소비자원 참가격, 음식 재료만). 2주마다 조사돼서 6시간 보관."""
-    return _guard(lambda: shared("mart", mart_price.mart_prices, ttl=6 * 3600, keep=3 * 24 * 3600))
+    return _guard(lambda: shared("mart2", mart_price.mart_prices, ttl=6 * 3600, keep=3 * 24 * 3600))
 
 
 @app.get("/api/buy-links")

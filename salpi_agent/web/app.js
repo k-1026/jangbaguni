@@ -2350,25 +2350,48 @@ async function openCamera() {
     return camFail(denied ? "카메라 권한이 꺼져 있어요." : e.name === "NotFoundError" ? "연결된 카메라가 없어요." : "카메라를 열지 못했어요. 다른 앱이 카메라를 쓰고 있는지 확인해 주세요.", denied);
   }
   if ($("#cameraModal").hidden) return stopCamera();   // 여는 사이에 닫았으면
-  $("#cameraBody").innerHTML = `<div class="cam-view"><video id="camVideo" autoplay playsinline muted></video><i class="cam-frame" aria-hidden="true"></i></div>
-    <p class="muted small">영수증이 네모 안에 꽉 차게 맞추고 찍어 주세요</p>
-    <div class="camera-actions"><button class="upload-btn" id="camShot" type="button">찍기</button></div>`;
+  camShots = [];
+  $("#cameraBody").innerHTML = `<div class="cam-wrap">
+      <div class="cam-view"><video id="camVideo" autoplay playsinline muted></video><i class="cam-frame" aria-hidden="true"></i></div>
+      <aside class="cam-queue" aria-label="찍은 사진"><p>찍은 사진 <b id="camCount">0</b>장</p><ul id="camQueue"></ul></aside>
+    </div>
+    <p class="muted small">영수증이 길면 위에서부터 나눠 찍어 주세요.</p>
+    <div class="camera-actions"><button class="upload-btn" id="camShot" type="button">찍기</button>
+      <button class="btn primary" id="camDone" type="button" disabled>다 찍었어요</button></div>`;
   $("#camVideo").srcObject = camStream;
   $("#camShot").onclick = shootCamera;
+  $("#camDone").onclick = () => { const pages = camShots.map((s) => s.c); closeCamera(); readReceipt(pages); };
+  $("#camQueue").onclick = (e) => { const x = e.target.closest("[data-cam-del]"); if (x) { camShots.splice(+x.dataset.camDel, 1); camQueue(); } };
 }
+// 대기열 다시 그리기: 찍은 순서대로 작은 사진 + × · 장수 · 버튼 켜고 끄기
+function camQueue() {
+  $("#camQueue").innerHTML = camShots.map((s, i) => `<li><img src="${s.url}" alt="${i + 1}번째 사진">
+    <button type="button" class="cam-x" data-cam-del="${i}" aria-label="${i + 1}번째 사진 지우기">×</button></li>`).join("");
+  $("#camCount").textContent = camShots.length;
+  $("#camDone").disabled = !camShots.length;
+  $("#camDone").textContent = camShots.length ? `다 찍었어요 (${camShots.length}장)` : "다 찍었어요";
+}
+// 찍기: 화면에 보이는 세로(3:4) 가운데만 잘라 너비 1000px로
 function shootCamera() {
   const v = $("#camVideo");
   if (!v.videoWidth) return;
+  const vw = v.videoWidth, vh = v.videoHeight;
+  const sw = vw / vh > CAM_RATIO ? vh * CAM_RATIO : vw, sh = sw / CAM_RATIO;
+  const k = Math.min(1, 1000 / sw);
   const c = document.createElement("canvas");
-  c.width = v.videoWidth; c.height = v.videoHeight;
-  c.getContext("2d").drawImage(v, 0, 0);
-  c.toBlob((b) => { closeCamera(); if (b) readReceipt(b); }, "image/jpeg", 0.92);
+  c.width = Math.round(sw * k); c.height = Math.round(sh * k);
+  c.getContext("2d").drawImage(v, (vw - sw) / 2, (vh - sh) / 2, sw, sh, 0, 0, c.width, c.height);
+  camShots.push({ c, url: c.toDataURL("image/jpeg", 0.5) });
+  camQueue();
+  $("#camQueue").lastElementChild?.scrollIntoView({ block: "nearest" });   // 4장이 넘으면 방금 찍은 사진이 보이게
 }
 function stopCamera() { camStream?.getTracks().forEach((t) => t.stop()); camStream = null; }
-function closeCamera() { stopCamera(); $("#cameraModal").hidden = true; }
+function closeCamera() { stopCamera(); camShots = []; $("#cameraModal").hidden = true; }
+// 찍어 둔 사진이 있는데 닫으려 하면 물어봄
+const cancelCamera = () => { if (!camShots.length || confirm(`찍은 사진 ${camShots.length}장을 버릴까요?`)) closeCamera(); };
 $("#cameraBtn").onclick = openCamera;
-$("#cameraClose").onclick = closeCamera;
-$("#cameraModal").onclick = (e) => { if (e.target.id === "cameraModal") closeCamera(); };
+$("#cameraClose").onclick = cancelCamera;
+$("#cameraModal").onclick = (e) => { if (e.target.id === "cameraModal") cancelCamera(); };
 // 휴지통 → 고르기 모드: 카드 오른쪽 위 체크 칸으로 여러 장 골라 한 번에 지우기
 const rcPicked = () => [...document.querySelectorAll("#receiptList .rc-card.picked")].map((li) => li.dataset.id);
 function rcSelectMode(on) {

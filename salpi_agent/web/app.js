@@ -2321,13 +2321,13 @@ function setTrial(t) {
 if (SIGNED_IN) authCall("/api/receipt/trial", { method: "GET", token: readLogin()?.access_token }).then(setTrial).catch(() => {});
 // ---------------------------------------------------------------
 // 살피 플러스 구독 · 결제 (서버 account/subscription.py)
-// [월 19,900원으로 구독하기] → 바로 결제 → 결제 완료(이용 기간 · 다음 결제) / 결제 실패(다시 결제하기 · 돌아가기)
+// [월 19,900원으로 구독하기] → 바로 결제 → 결제 완료(결제 금액 · 이용 기간) / 결제 실패(다시 결제하기 · 돌아가기)
 // - 토스 테스트 키가 있으면(mode=toss) 토스 결제창에 갔다가 · 없으면(mode=mock) 결제창 없이 서버가 바로 모의 승인
 //   토스는 /?page=store&pay=success|fail 로 돌아옴 (아래 파일 끝에서 처리)
 // - 결제가 끝난 뒤 창을 닫으면 새로고침해서 잠금(영수증 · 판매율 분석)을 풂
 // ---------------------------------------------------------------
 const PAY_FROM_KEY = "salpi_pay_from";   // 어느 잠금 칸에서 눌렀나 (토스에 갔다 와도 기억)
-const PAY_GO = { receipt: ["영수증 분석하러 가기", "#receipt"], sales: ["판매율 분석 보러 가기", "#sales"] };
+const PAY_GO = { receipt: ["영수증 분석하러 가기", "#receipt"], sales: ["판매율 분석 보러 가기", "#sales"], mypage: ["확인", "#my"] };
 const PAY_CHECK = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>`;
 const PAY_X = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17"/></svg>`;
 let payPaid = false;
@@ -2375,7 +2375,7 @@ async function payConfirm(body) {
   catch (e) { payFail(e.message); }
 }
 
-// ① 결제 완료: 결제 금액 · 이용 기간(끝나는 날까지) · 다음 결제(끝난 다음 날)
+// ① 결제 완료: 결제 금액 · 이용 기간(끝나는 날까지). 자동 결제는 없어서 다음 결제는 안 보여 줌
 function payDone(s) {
   payPaid = true;
   const [label] = PAY_GO[payFrom()] || PAY_GO.receipt;
@@ -2384,8 +2384,7 @@ function payDone(s) {
       <h3>살피 플러스가 시작됐어요</h3>
       <dl class="pay-sum">
         <div><dt>결제 금액</dt><dd>${won(s.approved.amount)}</dd></div>
-        <div><dt>이용 기간</dt><dd>~ ${mmdd(s.until)}</dd></div>
-        <div><dt>다음 결제</dt><dd>${mmdd(dayShift(s.until, 1))}</dd></div>
+        <div><dt>이용 기간</dt><dd>${mmdd(s.until)}까지</dd></div>
       </dl>
       <button class="pay-btn" type="button" data-pay="go">${label}</button></div>`);
   $('#payBody [data-pay="go"]').onclick = payClose;
@@ -3371,7 +3370,12 @@ function closeMypage() {
 async function renderMypage(view) {
   const box = $("#mypageBody");
   $("#mypageBack").hidden = view === "home";
-  $("#mypageTitle").textContent = { home: "마이페이지", receipts: "나의 영수증", settings: "알림 설정" }[view];
+  $("#mypageTitle").textContent = { home: "마이페이지", receipts: "나의 영수증", settings: "알림 설정", plan: "구독 관리" }[view];
+  if (view === "plan") {   // 구독 관리: 요금 · 이용 기간 · 최근 결제
+    if (!plan?.s) { box.innerHTML = `<p class="muted">불러오는 중이에요</p>`; await loadPlan(); }
+    box.innerHTML = planManage();
+    return;
+  }
   if (view === "receipts") {
     box.innerHTML = `<p class="muted">불러오는 중이에요</p>`;
     try {
@@ -3427,6 +3431,53 @@ async function renderMypage(view) {
   draw(cached);
   freshProfile().then((me) => { if (JSON.stringify(me) !== JSON.stringify(cached)) draw(me); syncCosts(me); }).catch(() => draw(cached, true));
   loadReceiptMaterial();
+  loadPlan();
+}
+
+// ---------------------------------------------------------------
+// 마이페이지 구독 칸 (프로필 바로 아래): 무료 · 구독 중 (서버 /api/subscribe · 영수증 무료 기간 /api/receipt/trial)
+// shortcut: 자동 결제가 없어 한 번 결제 = 30일, 끝나면 무료로 돌아감 → 다음 결제 · 구독 해지는 안 보여 줌. 토스 빌링(자동결제)을 붙이면 다시 넣기
+// - 무료: 영수증 분석 남은 날 + [플러스 구독하기] (무료 기간 중에도 바로 구독 가능)
+// - 구독 중: 끝나는 날 + [관리 ›] → 구독 관리 화면(요금 · 이용 기간 · 최근 결제)
+// ---------------------------------------------------------------
+let plan = null;   // { s: 구독 상태, t: 영수증 무료 기간 } — 마이페이지를 다시 그려도 바로 보이게 기억
+async function loadPlan() {
+  const token = readLogin()?.access_token;
+  try {
+    const [s, t] = await Promise.all([authCall("/api/subscribe", { method: "GET", token }),
+      authCall("/api/receipt/trial", { method: "GET", token }).catch(() => null)]);
+    plan = { s, t };
+  } catch (e) { plan = { err: e.message }; }
+  const el = $("#myPlan");
+  if (el) el.innerHTML = planCard();
+}
+function planCard() {
+  if (!plan) return `<p class="muted small">구독 정보를 불러오는 중이에요</p>`;
+  if (plan.err) return `<p class="muted small">구독 정보를 불러오지 못했어요. ${esc(plan.err)}</p>`;
+  const { s, t } = plan;
+  if (s.paid) return `<div><b>살피 플러스</b><small>${mmdd(s.until)}까지</small></div>
+    <button class="my-plan-link manage" type="button" data-plan="manage">관리 ›</button>`;
+  const left = !t ? "" : t.locked ? "무료 기간 끝" : t.since ? `영수증 분석 ${t.left}일 남음` : "영수증 분석 한 달 무료";
+  return `<div><b>무료 이용 중</b>${left ? `<small>${left}</small>` : ""}</div>
+    <button class="my-plan-buy" type="button" data-plan="buy">플러스 구독하기</button>`;
+}
+// 구독 관리 화면 (구독 중일 때만 열림)
+function planManage() {
+  const s = plan?.s;
+  if (!s?.paid) return `<p class="muted">지금 구독 중이 아니에요.</p>`;
+  const pays = (s.payments || []).map((p) => `<li><span>${mmdd((p.approved_at || "").slice(0, 10))}</span>
+    <span class="muted">${p.mode === "mock" ? "모의 결제" : esc(p.method || "카드")}</span><b>${won(p.amount)}</b></li>`).join("");
+  return `<section class="my-card">
+      <h4>살피 플러스</h4>
+      <dl class="pm-rows">
+        <div><dt>요금</dt><dd>월 ${won(s.price)}</dd></div>
+        <div><dt>이용 기간</dt><dd>${mmdd(s.until)}까지</dd></div>
+      </dl></section>
+    ${pays ? `<section class="my-card"><h4>최근 결제</h4><ul class="pm-pays">${pays}</ul></section>` : ""}`;
+}
+async function planClick(act) {
+  if (act === "buy") return openPay("mypage");
+  if (act === "manage") return renderMypage("plan");
 }
 
 function myHome(me, offline) {
@@ -3436,6 +3487,7 @@ function myHome(me, offline) {
   costMe = me;
   return `
     <section class="my-card profile${prof ? " editing" : ""}" id="myProfile">${profileCard(me, how)}</section>
+    <section class="my-card my-plan" id="myPlan">${planCard()}</section>
     ${offline ? `<p class="muted small my-offline">서버에 연결하지 못해 기억해 둔 정보만 보여 드려요.</p>` : ""}
     <section class="my-card mc" id="myCost">${costCard()}</section>
     <section class="my-card">
@@ -3963,6 +4015,8 @@ $("#mypageClose").onclick = closeMypage;
 $("#mypageBack").onclick = () => renderMypage("home");
 $("#backdrop").onclick = closeMypage;
 $("#mypageBody").onclick = (e) => {
+  const pl = e.target.closest("[data-plan]");
+  if (pl) return planClick(pl.dataset.plan);
   if (profClick(e)) return;
   if (costClick(e)) return;
   const acc = e.target.closest("[data-account]");

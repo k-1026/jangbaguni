@@ -1200,6 +1200,26 @@ body.chat-open .fab-count { display: none; }
 .my-card h4 { margin: 0 0 10px; font-size: 16px; }
 .my-card h4 + .muted { margin: -4px 0 12px; }   /* 제목 바로 밑 설명: 제목에 붙이고 아래 구분선과는 띄움 */
 .my-card.profile { display: flex; align-items: center; gap: 12px; }
+/* 구독 칸: 왼쪽 상태 한 줄 "제목 (설명)" (넘치면 … ) | 오른쪽 버튼 (구독하기는 노랑, 해지 · 해지 취소는 작은 글씨) */
+.my-plan { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.my-plan > div { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.my-plan b { font-size: 14px; }
+.my-plan small { font-size: 13px; color: var(--muted); }
+.my-plan small::before { content: " ("; }
+.my-plan small::after { content: ")"; }
+.my-plan-buy { flex: none; white-space: nowrap; padding: 9px 12px; border: 1px solid #F2C94C; border-radius: 10px; background: #FFE08A; color: #2E2300; font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; }
+.my-plan-buy:hover { background: #FFD966; }
+.my-plan-link { flex: none; white-space: nowrap; padding: 4px 2px; border: 0; background: none; font: inherit; font-size: 13px; color: var(--muted); text-decoration: underline; cursor: pointer; }
+.my-plan-link:hover { color: var(--ink); }
+.my-plan-link.manage { text-decoration: none; font-weight: 700; color: var(--ink); }
+/* 구독 관리 화면: 정보 줄 · 최근 결제 */
+.my-card .pm-rows { display: grid; grid-template-columns: 1fr; gap: 8px; margin: 0; font-size: 14px; }
+.pm-rows div { display: flex; justify-content: space-between; gap: 12px; }
+.pm-rows dt { color: var(--muted); }
+.pm-rows dd { margin: 0; font-weight: 700; }
+.pm-pays { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 14px; }
+.pm-pays li { display: grid; grid-template-columns: 56px 1fr auto; gap: 8px; }
+
 .my-card.profile img { width: 56px; height: 56px; border-radius: 50%; background: var(--surface-variant); object-fit: cover; }
 .my-card.profile b { display: block; font-size: 17px; } .my-card.profile small { color: var(--muted); }
 /* 프로필 수정: 오른쪽 '수정' → 사진(눌러서 바꾸기) + 이름 칸 + 취소 · 저장 */

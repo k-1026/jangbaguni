@@ -1,0 +1,186 @@
+{
+ "period": [
+  "2025-11-18",
+  "2026-11-17"
+ ],
+ "n_test": 3285,
+ "features": [
+  "item",
+  "dev",
+  "trend",
+  "volat",
+  "chg3",
+  "season",
+  "to_major",
+  "month"
+ ],
+ "n_rounds": 162,
+ "formula": {
+  "n": 3285,
+  "opposite_pct": 0.91,
+  "mae_pp": 4.576,
+  "range_hit_pct": 74.2,
+  "direction_hit_pct": 44.0
+ },
+ "model": {
+  "n": 3285,
+  "opposite_pct": 3.17,
+  "mae_pp": 4.491,
+  "range_hit_pct": 73.4,
+  "direction_hit_pct": 48.8
+ },
+ "no_change_baseline": {
+  "opposite_pct": 0.0,
+  "mae_pp": 4.744,
+  "direction_hit_pct": 41.7
+ },
+ "replace_by_team_rule": false,
+ "rule": "정반대 0.3%p 이상 ↓ 그리고 평균 오차 같거나 ↓",
+ "importance": {
+  "item": 19,
+  "volat": 16,
+  "to_major": 15,
+  "dev": 13,
+  "season": 12,
+  "month": 11,
+  "trend": 9,
+  "chg3": 5
+ },
+ "items": {
+  "계란": {
+   "n": 365,
+   "formula": {
+    "opposite_pct": 1.64,
+    "mae_pp": 5.819,
+    "direction_hit_pct": 37.8
+   },
+   "model": {
+    "opposite_pct": 5.75,
+    "mae_pp": 6.078,
+    "direction_hit_pct": 40.8
+   },
+   "actual_flat_pct": 25,
+   "actual_move2_pct": 62
+  },
+  "닭고기": {
+   "n": 365,
+   "formula": {
+    "opposite_pct": 5.75,
+    "mae_pp": 10.428,
+    "direction_hit_pct": 39.2
+   },
+   "model": {
+    "opposite_pct": 9.32,
+    "mae_pp": 10.32,
+    "direction_hit_pct": 46.6
+   },
+   "actual_flat_pct": 10,
+   "actual_move2_pct": 76
+  },
+  "돼지고기 목심": {
+   "n": 365,
+   "formula": {
+    "opposite_pct": 0.0,
+    "mae_pp": 3.119,
+    "direction_hit_pct": 45.8
+   },
+   "model": {
+    "opposite_pct": 0.55,
+    "mae_pp": 2.807,
+    "direction_hit_pct": 55.9
+   },
+   "actual_flat_pct": 1,
+   "actual_move2_pct": 56
+  },
+  "돼지고기 삼겹살": {
+   "n": 365,
+   "formula": {
+    "opposite_pct": 0.0,
+    "mae_pp": 2.943,
+    "direction_hit_pct": 40.8
+   },
+   "model": {
+    "opposite_pct": 0.55,
+    "mae_pp": 2.724,
+    "direction_hit_pct": 45.5
+   },
+   "actual_flat_pct": 1,
+   "actual_move2_pct": 60
+  },
+  "돼지고기 앞다리": {
+   "n": 365,
+   "formula": {
+    "opposite_pct": 0.0,
+    "mae_pp": 2.55,
+    "direction_hit_pct": 54.2
+   },
+   "model": {
+    "opposite_pct": 0.27,
+    "mae_pp": 2.458,
+    "direction_hit_pct": 58.1
+   },
+   "actual_flat_pct": 1,
+   "actual_move2_pct": 46
+  },
+  "수입 돼지고기 삼겹살": {
+   "n": 365,
+   "formula": {
+    "opposite_pct": 0.0,
+    "mae_pp": 3.488,
+    "direction_hit_pct": 51.0
+   },
+   "model": {
+    "opposite_pct": 0.55,
+    "mae_pp": 3.37,
+    "direction_hit_pct": 53.7
+   },
+   "actual_flat_pct": 18,
+   "actual_move2_pct": 51
+  },
+  "수입 소고기 갈비살": {
+   "n": 365,
+   "formula": {
+    "opposite_pct": 0.82,
+    "mae_pp": 4.691,
+    "direction_hit_pct": 56.4
+   },
+   "model": {
+    "opposite_pct": 0.82,
+    "mae_pp": 4.86,
+    "direction_hit_pct": 49.9
+   },
+   "actual_flat_pct": 34,
+   "actual_move2_pct": 41
+  },
+  "한우 등심": {
+   "n": 365,
+   "formula": {
+    "opposite_pct": 0.0,
+    "mae_pp": 3.955,
+    "direction_hit_pct": 41.4
+   },
+   "model": {
+    "opposite_pct": 4.66,
+    "mae_pp": 3.844,
+    "direction_hit_pct": 45.8
+   },
+   "actual_flat_pct": 0,
+   "actual_move2_pct": 62
+  },
+  "한우 양지": {
+   "n": 365,
+   "formula": {
+    "opposite_pct": 0.0,
+    "mae_pp": 4.194,
+    "direction_hit_pct": 29.3
+   },
+   "model": {
+    "opposite_pct": 6.03,
+    "mae_pp": 3.961,
+    "direction_hit_pct": 43.3
+   },
+   "actual_flat_pct": 1,
+   "actual_move2_pct": 72
+  }
+ }
+}

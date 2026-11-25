@@ -42,6 +42,7 @@ from account import subscription
 from store import inventory
 from store import receipts
 from sources import supabase_db
+from chat import agent as chat_agent
 from chat.agent import SalpiAgent
 from sources.data_sources import ITEMS, ApiError, ApiKeyMissing, event_detail, foodspring_url, holidays, month_events, weather_forecast
 
@@ -60,6 +61,11 @@ async def lifespan(_app):
             _daily("forecast")
         except Exception:
             pass   # 키가 없거나 API 장애면 화면에서 안내
+        for name in ("demand", "costs"):   # 챗봇 버튼 · 도구가 바로 답하도록 내일 준비 · 원가율도 미리 (11/25 속도)
+            try:
+                chat_agent.CACHED[name]()
+            except Exception:
+                pass
     threading.Thread(target=warm, daemon=True).start()
     yield
 
@@ -417,6 +423,14 @@ def _forecasts():
     """원가율 계산용: 재료 → 시세 예측 (첫 화면 시세 보관값). 없으면 {} → 원가율이 재료마다 직접 계산."""
     rows = _peek_shared("overview") or []
     return {r["item"]: r.get("forecast") for r in rows if r.get("forecast")}
+
+
+# 챗봇 도구가 화면과 같은 보관값을 씀 → 처음 부르는 도구도 다시 계산하지 않음 (11/25: 7 ~ 9초 → 보관값이면 1초 안)
+chat_agent.CACHED.update({
+    "overview": lambda: shared("overview", _overview),
+    "demand": lambda: shared(_demand_key(), lambda: demand.forecast(price_outlook=_price_outlook()), ttl=600) if _price_outlook() else None,
+    "costs": lambda: shared("costs_report", lambda: receipts.cost_report(supabase_db.DEMO_STORE, _forecasts()), 600),
+})
 
 
 def _sales_user(authorization, check=True):

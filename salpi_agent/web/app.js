@@ -2315,11 +2315,11 @@ function setTrial(t) {
   $(".receipt-link")?.classList.toggle("used-up", locked);   // 다 쓰면 카드는 회색, 구독하기 버튼만 노랑
 }
 if (SIGNED_IN) authCall("/api/receipt/trial", { method: "GET", token: readLogin()?.access_token }).then(setTrial).catch(() => {});
-// 카메라로 찍기: 처음 한 번 브라우저가 카메라 권한을 물어봄 → 세로(3:4) 창에 맞춰 찍음
+// 카메라로 찍기: 처음 한 번 브라우저가 카메라 권한을 물어봄 → 세로(2:3) 창에 맞춰 찍음
 // 긴 영수증은 여러 번 나눠 찍기: 찍은 사진은 오른쪽 대기열에 작게 쌓이고(× 로 지우기) [다 찍었어요]를 누르면 위아래로 이어 읽음
 // (폰은 뒤 카메라, 노트북은 앞 카메라. https 또는 내 컴퓨터 주소에서만 열림)
 // shortcut: 여러 장을 한 장으로 이어 보냄(길면 stitch 가 줄임 · 요청 4.5MB), 팀원 feat/receipt-multi-photo(images 여러 장)가 dev에 합쳐지면 여러 장으로 보내기
-const CAM_RATIO = 3 / 4;
+const CAM_RATIO = 2 / 3;   // 영수증이 길어서 세로로 긴 2:3
 let camStream = null, camShots = [], camSeen = null;   // camShots: [{ c: 자른 사진 canvas, url: 대기열 미리보기 }] · camSeen: 카메라 자리에 보고 있는 사진 번호
 // 카메라 자리에 찍은 사진 보기 (i = null 이면 다시 카메라). 보고 있는 사진은 대기열에서 테두리로 표시
 function camLook(i) {
@@ -2386,7 +2386,7 @@ function camQueue() {
   $("#camDone").hidden = !camShots.length;   // 아무것도 안 찍었으면 [완료]는 숨김
   $("#camDone").textContent = `완료 (${camShots.length}장)`;
 }
-// 찍기: 화면에 보이는 세로(3:4) 가운데만 잘라 너비 1000px로
+// 찍기: 화면에 보이는 세로(2:3) 가운데만 잘라 너비 1000px로
 function shootCamera() {
   const v = $("#camVideo");
   if (camSeen !== null) return camLook(null);   // 찍은 사진을 보는 중이면 [촬영]은 카메라로 돌아가기

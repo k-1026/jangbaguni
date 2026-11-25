@@ -6,6 +6,7 @@
 """
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import base64
 import hashlib
 import json
 import math
@@ -15,6 +16,7 @@ import time
 import uuid
 from datetime import datetime, timedelta, timezone
 
+import requests
 from google import genai
 from google.genai import errors, types
 
@@ -106,6 +108,57 @@ def read(images):
     return _rows_from(data, items, model, len(images))
 
 
+# 영수증을 먼저 Groq 무료 사진 모델로 읽음 (11/25: 마트 영수증 1.5초 · 제미나이 8 ~ 20초, 제미나이 무료 한도와 따로 하루 1,000번)
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_VISION_MODEL = os.getenv("GROQ_VISION_MODEL", "qwen/qwen3.8-27b").strip()
+
+
+def _as_dict(data):
+    if isinstance(data, list):   # 품목 목록만 [..] 으로 줄 때가 있음 (11/24 OCR 20장 시험에서 6장)
+        data = {"items": data[0].get("items", data) if len(data) == 1 and isinstance(data[0], dict) and "items" in data[0] else data}
+    if not isinstance(data, dict):
+        raise ValueError("영수증 답 모양이 이상해요")
+    return data
+
+
+def _groq_read(images, items):
+    """Groq 사진 모델로 읽기 → dict, 못 읽으면 None (그러면 제미나이로). 키가 없거나 한도에 걸려 쉬는 중이면 바로 None."""
+    key = os.getenv("GROQ_API_KEY", "").strip()
+    if not key or _COOL.get("groq", 0) > time.time():
+        return None
+    content = [{"type": "text", "text": _prompt(items, len(images))}] + [
+        {"type": "image_url", "image_url": {"url": f"data:{m or 'image/jpeg'};base64,{base64.b64encode(b).decode()}"}} for b, m in images]
+    body = {"model": GROQ_VISION_MODEL, "messages": [{"role": "user", "content": content}], "temperature": 0,
+            "max_tokens": 1500,   # 요청한 최대 길이도 분당 토큰 한도에 잡혀서 줄임
+            "reasoning_effort": "none", "response_format": {"type": "json_object"}}
+    try:
+        for _ in range(2):
+            r = requests.post(GROQ_URL, timeout=20, headers={"Authorization": f"Bearer {key}"}, json=body)
+            wait = float(r.headers.get("retry-after") or 20) if r.status_code == 429 else 0
+            if not wait or wait > 6:
+                break
+            time.sleep(wait)   # 분당 토큰 한도: 몇 초만 기다리면 풀리면 기다렸다 다시 (제미나이는 무료 한도가 금방 바닥남)
+        if r.status_code == 429:
+            _COOL["groq"] = time.time() + min(float(r.headers.get("retry-after") or 20), 600)
+            return None
+        r.raise_for_status()
+        text = r.json()["choices"][0]["message"]["content"].strip()
+        data = _as_dict(json.loads(re.sub(r"^```(?:json)?\s*|\s*```$", "", text)))
+        return data if data.get("items") else None
+    except Exception as e:   # 시간 초과 · 이상한 답 · 장애 → 제미나이로
+        print(f"[영수증 Groq] 실패, 제미나이로: {type(e).__name__}: {str(e)[:120]}", flush=True)
+        _COOL["groq"] = time.time() + 30
+        return None
+
+
+def _keep(h, data):
+    _READ[h] = data
+    try:
+        db.upload("models", f"cache/ocr_{h}.json", json.dumps(data, ensure_ascii=False).encode("utf-8"), "application/json")
+    except Exception:
+        pass   # 저장 실패해도 읽은 결과는 그대로
+
+
 def _ai_read(key, images, items):
     """사진 → AI 가 읽은 원래 답(dict) · 모델. 같은 사진이면 저장해 둔 답을 씀 (재료 짝 맞추기는 늘 새로 함)."""
     h = hashlib.sha1(b"".join(b for b, _ in images)).hexdigest()[:20]
@@ -118,6 +171,10 @@ def _ai_read(key, images, items):
             return _READ[h], "저장된 결과"
     except Exception:
         pass
+    data = _groq_read(images, items)
+    if data:
+        _keep(h, data)
+        return data, f"groq:{GROQ_VISION_MODEL}"
     # 25초 넘게 답이 없으면 다음 모델로 · 같은 모델 재시도 · 쉬는 시간 없음 (11/25: 예전 60초 × 재시도 2번 + 1초씩 쉬기 → 붐비면 몇 분)
     # 앞의 두 모델에 동시에 보내고 먼저 온 맞는 답을 씀 (하나가 붐벼 느려도 기다리지 않게)
     client = genai.Client(api_key=key, http_options=types.HttpOptions(timeout=25_000, retry_options=types.HttpRetryOptions(attempts=1)))

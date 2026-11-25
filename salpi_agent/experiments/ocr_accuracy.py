@@ -123,7 +123,7 @@ def main():
             continue
         t = time.time()
         try:
-            res = receipts.read((DEMO / f"{name}.png").read_bytes(), "image/png")
+            res = receipts.read([((DEMO / f"{name}.png").read_bytes(), "image/png")])
         except Exception as e:
             print(f"{name}: 읽기 실패 {e}")
             res = {"items": [], "error": str(e)}

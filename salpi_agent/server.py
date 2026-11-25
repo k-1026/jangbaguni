@@ -5,7 +5,9 @@
 
 import os
 import base64
+import hashlib
 import json
+import queue
 import threading
 from concurrent.futures import ThreadPoolExecutor
 import time
@@ -15,7 +17,7 @@ from pathlib import Path
 from datetime import date
 
 from fastapi import FastAPI, Header, HTTPException, Request
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -41,7 +43,8 @@ from account import subscription
 from store import inventory
 from store import receipts
 from sources import supabase_db
-from chat.agent import SalpiAgent
+from chat import agent as chat_agent
+from chat.agent import BUTTON_ROUTES, SalpiAgent
 from sources.data_sources import ITEMS, ApiError, ApiKeyMissing, event_detail, foodspring_url, holidays, month_events, weather_forecast
 
 ROOT = Path(__file__).resolve().parent
@@ -59,6 +62,11 @@ async def lifespan(_app):
             _daily("forecast")
         except Exception:
             pass   # 키가 없거나 API 장애면 화면에서 안내
+        for name in ("demand", "costs"):   # 챗봇 버튼 · 도구가 바로 답하도록 내일 준비 · 원가율도 미리 (11/25 속도)
+            try:
+                chat_agent.CACHED[name]()
+            except Exception:
+                pass
     threading.Thread(target=warm, daemon=True).start()
     yield
 
@@ -166,7 +174,7 @@ def _peek_shared(key):
 
 
 # 우리 가게 자료(영수증 · 메뉴 · 판매 · 재고)로 계산한 보관값 — 자료가 바뀌면 _store_changed 가 메모리 · 보관함에서 같이 지움
-STORE_KEYS = ("costs_report", "receipts_recent", "my_items")
+STORE_KEYS = ("costs_report", "receipts_recent", "my_items", "receipts_all")
 
 
 def _demand_key():
@@ -356,7 +364,7 @@ def event(content_id: str):
 @app.get("/api/mart")
 def mart():
     """대형마트 판매가 (한국소비자원 참가격, 음식 재료만). 2주마다 조사돼서 6시간 보관."""
-    return _guard(lambda: shared("mart", mart_price.mart_prices, ttl=6 * 3600, keep=3 * 24 * 3600))
+    return _guard(lambda: shared("mart2", mart_price.mart_prices, ttl=6 * 3600, keep=3 * 24 * 3600))
 
 
 @app.get("/api/buy-links")
@@ -416,6 +424,14 @@ def _forecasts():
     """원가율 계산용: 재료 → 시세 예측 (첫 화면 시세 보관값). 없으면 {} → 원가율이 재료마다 직접 계산."""
     rows = _peek_shared("overview") or []
     return {r["item"]: r.get("forecast") for r in rows if r.get("forecast")}
+
+
+# 챗봇 도구가 화면과 같은 보관값을 씀 → 처음 부르는 도구도 다시 계산하지 않음 (11/25: 7 ~ 9초 → 보관값이면 1초 안)
+chat_agent.CACHED.update({
+    "overview": lambda: shared("overview", _overview),
+    "demand": lambda: shared(_demand_key(), lambda: demand.forecast(price_outlook=_price_outlook()), ttl=600) if _price_outlook() else None,
+    "costs": lambda: shared("costs_report", lambda: receipts.cost_report(supabase_db.DEMO_STORE, _forecasts()), 600),
+})
 
 
 def _sales_user(authorization, check=True):
@@ -501,12 +517,53 @@ def _image(b64, mime):
 class ReceiptIn(BaseModel):
     image: str = ""
     mime: str = "image/jpeg"
+    # 긴 영수증을 나눠 찍은 사진들 (위에서부터 차례로, 최대 receipts.MAX_PHOTOS 장). 'data:image/png;base64,…' 면 그 형식, 아니면 mime
+    images: list[str] = []
+
+
+def _photos(body):
+    """image(한 장, 예전 화면) + images(여러 장) → [(bytes, mime)]."""
+    raw = ([body.image] if body.image else []) + [x for x in body.images if x]
+    if len(raw) > receipts.MAX_PHOTOS:
+        raise HTTPException(400, f"사진은 한 번에 {receipts.MAX_PHOTOS}장까지 올릴 수 있어요")
+    mime_of = lambda x: x[5:x.index(";")] if x.startswith("data:") and ";" in x[:40] else body.mime   # 'data:image/png;base64,…' → image/png
+    return [_image(x, mime_of(x)) for x in raw]
 
 
 class ReceiptSave(ReceiptIn):
     date: str | None = None
     supplier: str | None = None
     items: list[dict] = []
+
+
+# ---------------------------------------------------------------
+# 악용 막기: 접속한 곳(IP)마다 AI 를 쓰는 요청 횟수를 셈 (11/25, 배포된 사이트 — Groq · 제미나이 무료 한도가 바닥나면 사장님 챗봇 · 영수증이 멈춤)
+# shortcut: 서버(Vercel 인스턴스)마다 메모리로 셈 → 여러 서버에 나뉘면 그만큼 더 허용됨. 악용이 실제로 보이면 Supabase 표로 옮길 것
+# ---------------------------------------------------------------
+_HITS, _HITS_LOCK = {}, threading.Lock()
+LIMITS = {   # 종류: (1분에, 하루에)
+    "chat": (8, 150), "receipt_anon": (3, 15), "receipt_user": (6, 60), "receipt_save": (6, 60),
+}
+
+
+def _client_ip(request):
+    fwd = request.headers.get("x-forwarded-for") or request.headers.get("x-real-ip") or ""
+    return fwd.split(",")[0].strip() or (request.client.host if request.client else "?")
+
+
+def _limit(request, kind):
+    per_min, per_day = LIMITS[kind]
+    now, key = time.time(), (kind, _client_ip(request))
+    with _HITS_LOCK:
+        q = [t for t in _HITS.get(key, []) if now - t < 86400]
+        if sum(1 for t in q if now - t < 60) >= per_min or len(q) >= per_day:
+            _HITS[key] = q
+            raise HTTPException(429, "요청이 너무 많아요. 잠시 뒤 다시 해 주세요.")
+        q.append(now)
+        _HITS[key] = q
+        if len(_HITS) > 20000:   # 메모리가 끝없이 늘지 않게 오래된 곳부터 정리
+            for k in [k for k, v in _HITS.items() if not v or now - v[-1] > 86400][:10000]:
+                _HITS.pop(k, None)
 
 
 def _receipt_guard(fn):
@@ -517,16 +574,17 @@ def _receipt_guard(fn):
 
 
 @app.post("/api/receipt/read")
-def receipt_read(body: ReceiptIn, authorization: str | None = Header(None)):
-    data, mime = _image(body.image, body.mime)
-    if not data:
+def receipt_read(body: ReceiptIn, request: Request, authorization: str | None = Header(None)):
+    photos = _photos(body)
+    if not photos:
         raise HTTPException(400, "영수증 사진을 골라 주세요")
     token = _bearer(authorization)
-    if not token:   # 로그인 표 없이 부르는 곳(모바일 시연 화면)은 지금처럼 횟수 없이
-        return _receipt_guard(lambda: receipts.read(data, mime))
-    # 로그인한 사장님: 무료 5회를 다 썼으면 402, 읽기에 성공했을 때만 1회 셈
+    _limit(request, "receipt_user" if token else "receipt_anon")
+    if not token:   # 로그인 표 없이 부르는 곳(모바일 시연 화면): 무료 횟수 대신 접속한 곳마다 하루 15번까지
+        return _receipt_guard(lambda: receipts.read(photos))
+    # 로그인한 사장님: 한 달 무료가 끝났으면 402, 읽기에 성공했을 때만 1회 셈 (첫 성공한 날부터 한 달 · 사진이 여러 장이어도 영수증 하나 = 1회)
     user = _auth(lambda: trial.check(token))
-    result = _receipt_guard(lambda: receipts.read(data, mime))
+    result = _receipt_guard(lambda: receipts.read(photos))
     return {**result, "trial": _auth(lambda: trial.count(user))}
 
 
@@ -592,9 +650,10 @@ def subscribe_cancel(body: CancelIn, authorization: str | None = Header(None)):
 
 
 @app.post("/api/receipt/save")
-def receipt_save(body: ReceiptSave):
-    data, mime = _image(body.image, body.mime)
-    return _receipt_guard(lambda: _store_changed(receipts.save(supabase_db.DEMO_STORE, body.model_dump(), data, mime)))
+def receipt_save(body: ReceiptSave, request: Request):
+    _limit(request, "receipt_save")
+    photos = _photos(body)
+    return _receipt_guard(lambda: _store_changed(receipts.save(supabase_db.DEMO_STORE, body.model_dump(), photos)))
 
 
 @app.get("/api/costs")
@@ -704,7 +763,9 @@ def inventory_set(body: StockIn):
 
 @app.get("/api/receipts")
 def receipt_list():
-    return _receipt_guard(lambda: {"receipts": receipts.recent(supabase_db.DEMO_STORE, limit=50)})
+    # shortcut: 1000장(Supabase 한 번에 주는 최대)까지, 넘으면 페이지 나눠 받기
+    # 보관값 10분 (사진 주소가 1시간이라 보관함 값은 40분까지만) · 영수증 저장 · 고치기 · 지우기면 _store_changed 가 비움 (11/25: 매번 1.5 ~ 2.7초 → 보관값 0.1초)
+    return _receipt_guard(lambda: shared("receipts_all", lambda: {"receipts": receipts.recent(supabase_db.DEMO_STORE, limit=1000)}, 600, 2400))
 
 
 @app.delete("/api/receipt/{purchase_id}")
@@ -977,6 +1038,27 @@ def store_costs_put(body: CostsIn, authorization: str | None = Header(None)):
     return _auth(lambda: store_costs.save(_bearer(authorization), body.costs))
 
 
+class ProfileEditIn(BaseModel):
+    name: str = ""
+    photo: str = ""            # base64 사진 (바꿀 때만)
+    reset_photo: bool = False  # 내가 올린 사진을 지우고 원래 사진(카카오 사진 · 기본 그림)으로
+
+
+@app.patch("/api/auth/profile")
+def auth_profile_edit(body: ProfileEditIn, authorization: str | None = Header(None)):
+    """마이페이지에서 사장님 이름 · 프로필 사진 바꾸기 (카카오로 로그인해도 같음)."""
+    return _auth(lambda: auth.update_profile(_bearer(authorization), body.model_dump()))
+
+
+@app.get("/api/auth/photo/{user_id}")
+def auth_photo(user_id: str):
+    """프로필 사진. 주소에 v(바꾼 번호)가 붙어 있어 사진이 바뀌면 주소도 바뀜 → 오래 기억해도 됨."""
+    data, kind = _auth(lambda: auth.photo(user_id))
+    if not data:
+        raise HTTPException(404, "사진이 없어요")
+    return Response(data, media_type=kind, headers={"Cache-Control": "private, max-age=2592000, immutable"})
+
+
 @app.post("/api/auth/logout")
 def auth_logout(authorization: str | None = Header(None)):
     _auth(lambda: auth.logout(_bearer(authorization)))
@@ -1001,12 +1083,21 @@ class ChatIn(BaseModel):
     session: str = ""      # 같은 채팅창의 대화 묶음 (화면이 만든 임의 번호, 대화 기록용)
 
 
-@app.post("/api/chat")
-def chat(body: ChatIn):
+def _answer(body, on_text=None, on_status=None):
+    """질문 하나에 답하고 대화 기록까지 남김 → 답 글. (/api/chat 과 /api/chat/stream 이 같이 씀)"""
     question, started, agent, status = body.message.strip()[:1000], time.time(), None, "ok"
     try:
-        agent = SalpiAgent(history=body.history)
-        reply = agent.ask(question)
+        if question in BUTTON_ROUTES:   # 화면 버튼 질문은 답이 정해져 있어 3시간 동안 같은 답을 재사용 (모델 호출 없이 바로)
+            def fresh():
+                nonlocal agent
+                agent = SalpiAgent()   # 버튼 답은 지난 대화와 무관하게 같아야 함
+                return agent.ask(question)
+            reply = shared("chat-" + hashlib.md5(question.encode()).hexdigest()[:8], fresh, ttl=3 * 3600)
+            if agent is None:
+                agent = type("Cached", (), {"last_tools": ["안내:버튼", "저장된 답"], "model": None})()
+        else:
+            agent = SalpiAgent(history=body.history)
+            reply = agent.ask(question, on_text, on_status)
     except ApiKeyMissing as e:
         reply, status = str(e), "nokey"
     except Exception as e:
@@ -1017,7 +1108,41 @@ def chat(body: ChatIn):
     if question:
         chat_log.save(body.session, len(body.history) // 2, question, reply, getattr(agent, "last_tools", []),
                       getattr(agent, "model", None), (time.time() - started) * 1000, status)
-    return {"reply": reply}
+    return reply
+
+
+def _chat_limit(body, request):
+    """버튼 질문은 AI 를 안 써서 세지 않음. 직접 친 질문만 접속한 곳마다 1분 8번 · 하루 150번."""
+    if body.message.strip() not in BUTTON_ROUTES:
+        _limit(request, "chat")
+
+
+@app.post("/api/chat")
+def chat(body: ChatIn, request: Request):
+    _chat_limit(body, request)
+    return {"reply": _answer(body)}
+
+
+@app.post("/api/chat/stream")
+def chat_stream(body: ChatIn, request: Request):
+    """답이 써지는 대로 한 줄씩(JSON) 보냄: {"s": 지금 하는 일} · {"t": 글자 조각} ... 마지막에 {"done": true, "reply": 완성된 답}"""
+    _chat_limit(body, request)
+    pieces: queue.Queue = queue.Queue()
+
+    def work():
+        reply = _answer(body, lambda t: pieces.put({"t": t}), lambda s: pieces.put({"s": s}))
+        pieces.put({"done": True, "reply": reply})
+
+    threading.Thread(target=work, daemon=True).start()
+
+    def lines():
+        while True:
+            item = pieces.get()
+            yield json.dumps(item, ensure_ascii=False) + "\n"
+            if item.get("done"):
+                return
+
+    return StreamingResponse(lines(), media_type="application/x-ndjson", headers={"X-Accel-Buffering": "no"})
 
 
 if __name__ == "__main__":

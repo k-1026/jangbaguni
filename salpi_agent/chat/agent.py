@@ -10,6 +10,8 @@
 터미널에서 바로 대화: python -m chat.agent
 """
 
+import functools
+import inspect
 import json
 import os
 from concurrent.futures import ThreadPoolExecutor
@@ -29,14 +31,72 @@ from store import menu_cost
 from price import price_judge
 from store import receipts
 from sources import supabase_db
-from chat import number_check
+from chat import number_check, quick
 from sources.data_sources import EXTRA_ITEMS, ITEMS, ApiKeyMissing, daegu_events, holidays
 
 ROOT = Path(__file__).resolve().parents[1]   # salpi_agent 폴더
-MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
+MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 # 기본 모델이 바쁘거나(503) 무료 한도를 넘으면(429) 순서대로 갈아탐
+# 챗봇 전용 순서 (11/25: 사장님이 3~5초 안에 답을 받게 가벼운 모델부터 · 자료는 미리 붙여 줘서 가벼운 모델로도 충분)
+CHAT_MODELS = [m.strip() for m in os.getenv(
+    "CHAT_GEMINI_MODELS", "gemini-3.5-flash-lite,gemini-3-flash-preview,gemini-3.8-flash,gemini-3.7-flash,gemini-3.6-flash").split(",") if m.strip()]
 FALLBACK_MODELS = [m.strip() for m in os.getenv(
-    "GEMINI_FALLBACK_MODELS", "gemini-3-flash-preview,gemini-flash-latest,gemini-3.5-flash-lite").split(",") if m.strip()]
+    "GEMINI_FALLBACK_MODELS", "gemini-3.7-flash,gemini-3.6-flash,gemini-3.5-flash,gemini-3-flash-preview,gemini-3.5-flash-lite").split(",") if m.strip()]
+
+
+# ---------------------------------------------------------------
+# 속도 (11/25 측정: 걸린 시간의 95%가 AI 기다리기 — experiments/chat_timing.py)
+# ---------------------------------------------------------------
+# 무료 한도가 바닥났거나(429, flash 는 모델마다 하루 20번) 붐비는(503) 모델은 잠시 건너뜀 → 매 질문마다 같은 실패를 기다리지 않음
+_COOL = {}
+COOL_SEC = {429: 1800, 503: 120, 504: 120, "timeout": 120}
+
+
+def _usable(models):
+    now = time.time()
+    ok = [m for m in models if _COOL.get(m, 0) < now]
+    return ok or models[-1:]   # 모두 쉬는 중이면 마지막(가장 가벼운) 모델로 한 번은 시도
+
+
+def _cool(model, err):
+    code = getattr(err, "code", None)
+    sec = COOL_SEC.get(code) or (COOL_SEC["timeout"] if not code else 0)
+    if sec:
+        _COOL[model] = time.time() + sec
+
+
+# 서버가 미리 계산해 둔 값 (server.py 가 채움: overview · demand · costs → 함수). 없으면 도구가 직접 계산
+CACHED = {}
+_tool_memo, TOOL_TTL = {}, 300
+
+
+def _remember(fn):
+    """같은 도구 · 같은 인자는 5분 동안 다시 계산하지 않음 (AI 가 같은 도구를 두 번 부를 때 · 질문이 이어질 때)."""
+    @functools.wraps(fn)
+    def inner(*a, **k):
+        key = (fn.__name__, a, tuple(sorted(k.items())))
+        hit = _tool_memo.get(key)
+        if hit and time.time() - hit[0] < TOOL_TTL:
+            return hit[1]
+        out = fn(*a, **k)
+        if not (isinstance(out, dict) and out.get("error")):
+            _tool_memo[key] = (time.time(), out)
+        return out
+    return inner
+
+
+def _cached(name):
+    try:
+        f = CACHED.get(name)
+        return f() if f else None
+    except Exception:
+        return None
+
+
+def _overview_rows():
+    """첫 화면 시세 보관값 (재료별 시세 · 기록 · 예측). 없으면 None."""
+    v = _cached("overview")
+    return v if isinstance(v, list) and v else None
 
 
 # ---------------------------------------------------------------
@@ -58,9 +118,13 @@ def list_supported_items() -> dict:
     return {"items": list(ITEMS), "meat_seafood": list(EXTRA_ITEMS)}
 
 
+@_remember
 def get_market_overview() -> dict:
     """지원하는 모든 재료의 대구 도매가(kg당)와 1주 전 대비 변화율, 소매가를 한 번에 돌려준다.
     아침 브리핑이나 '요즘 뭐가 올랐어?' 같은 질문에 쓴다."""
+    rows = _overview_rows()
+    if rows:   # 날짜별 기록 · 예측은 빼고 (답이 길어지지 않게)
+        return {"rows": [{k: v for k, v in r.items() if k not in ("history", "forecast")} for r in rows]}
     return _safe(lambda: {"rows": analysis.market_overview()})
 
 
@@ -72,6 +136,7 @@ def _item(name):
     return ITEM_ALIASES.get(name, name)
 
 
+@_remember
 def get_item_price_trend(item: str) -> dict:
     """재료 하나의 대구 도매가·소매가와 1주 전 대비 변화, 최근 2주 도매가 기록을 돌려준다.
 
@@ -81,6 +146,7 @@ def get_item_price_trend(item: str) -> dict:
     return _safe(analysis.item_trend, _item(item))
 
 
+@_remember
 def forecast_item_price(item: str) -> dict:
     """재료 하나의 다음 7일 도매가 방향(오를/내릴/비슷)과 예상 범위, 요인별 이유를 돌려준다.
     요인: 최근 시세 흐름, 반입량, 대구 날씨, 다가오는 공휴일, 대구 행사.
@@ -88,7 +154,9 @@ def forecast_item_price(item: str) -> dict:
     Args:
         item: 재료 이름 (예: 양파, 대파, 양배추, 청양고추, 당근, 깻잎)
     """
-    return _safe(analysis.forecast_item, _item(item))
+    name = _item(item)
+    ready = next((r.get("forecast") for r in _overview_rows() or [] if r["item"] == name and r.get("forecast")), None)
+    return ready or _safe(analysis.forecast_item, name)
 
 
 EXTRA_ALIASES = {"돼지고기": "돼지고기 앞다리", "앞다리": "돼지고기 앞다리", "삼겹살": "돼지고기 삼겹살",
@@ -97,6 +165,7 @@ EXTRA_ALIASES = {"돼지고기": "돼지고기 앞다리", "앞다리": "돼지�
                  "갈비살": "수입 소고기 갈비살", "목심": "돼지고기 목심", "수입삼겹살": "수입 돼지고기 삼겹살", "수입돼지고기": "수입 돼지고기 삼겹살"}
 
 
+@_remember
 def get_meat_seafood_prices(item: str = "") -> dict:
     """육류 · 수산물(한우 등심 · 양지, 수입 소고기 갈비살, 돼지고기 앞다리 · 삼겹살, 닭고기, 계란,
     고등어, 갈치, 명태, 굴, 홍합, 새우, 새우젓, 멸치액젓)의 대구 가격과
@@ -120,6 +189,7 @@ def get_meat_seafood_prices(item: str = "") -> dict:
     return _safe(analysis.extra_trend, EXTRA_ALIASES.get(name.replace(" ", ""), name))
 
 
+@_remember
 def get_weather_summary(days: int = 7) -> dict:
     """대구(관측소 143) 최근 날씨 요약: 강수량, 비 온 날, 최저·최고 기온.
 
@@ -129,6 +199,7 @@ def get_weather_summary(days: int = 7) -> dict:
     return _safe(analysis.weather_summary, max(1, min(21, days)))
 
 
+@_remember
 def get_daegu_events(days_ahead: int = 14) -> dict:
     """오늘부터 days_ahead일 안에 열리는 대구 행사·축제 목록 (한국관광공사).
 
@@ -138,6 +209,7 @@ def get_daegu_events(days_ahead: int = 14) -> dict:
     return _safe(lambda: {"events": daegu_events(days_ahead)})
 
 
+@_remember
 def get_upcoming_holidays(days_ahead: int = 30) -> dict:
     """오늘부터 days_ahead일 안의 공휴일 (한국천문연구원 특일 정보).
 
@@ -147,12 +219,13 @@ def get_upcoming_holidays(days_ahead: int = 30) -> dict:
     return _safe(lambda: {"holidays": holidays(days_ahead)})
 
 
+@_remember
 def recommend_buy_now() -> dict:
     """지금 사면 이득인 재료를 나눠서 돌려준다.
     buy_now_before_rise: 다음 7일 오를 가능성이 있어 미리 사면 좋은 재료,
     cheap_now: 지난주보다 많이 내려 지금 싼 재료, wait: 내릴 가능성이 있어 기다리면 좋은 재료,
     as_usual: 평소대로 사면 되는 재료. 각 재료에 식봄 검색 링크(foodspring_url)가 붙어 있다."""
-    return _safe(analysis.buy_now_recommendations)
+    return _safe(analysis.buy_now_recommendations, _overview_rows())
 
 
 def list_standard_menus() -> dict:
@@ -178,13 +251,14 @@ def calc_menu_margin(menu: str, sale_price: int, ingredients: str = "") -> dict:
     return _safe(menu_cost.menu_cost, menu, sale_price, parsed or None)
 
 
+@_remember
 def forecast_store_demand() -> dict:
     """우리 가게 판매 기록으로 내일 메뉴별 예상 그릇 수(범위 포함)와
     다음 입고일 전까지 모자란 재료의 발주량 · 판단(지금 사기 · 나눠 사기)을 돌려준다.
     시연 가게는 가상 판매 기록 1년으로 학습한 모델(learned_model = true), 그 밖은 규칙.
     menus 와 orders 에 있는 숫자 · 재료만 그대로 말한다."""
     def run():
-        r = demand.forecast()
+        r = _cached("demand") or demand.forecast()   # 서버의 '내일 준비' 보관값 (시세 예측 반영) → 없으면 계산
         if r.get("error"):
             return r
         reason = {}
@@ -206,6 +280,7 @@ def forecast_store_demand() -> dict:
     return _safe(run)
 
 
+@_remember
 def get_store_cost_ratio() -> dict:
     """우리 가게 메뉴별 원가율. 가게가 영수증으로 실제 산 가격(최근 영수증 단가) 기준. 기준은 원가율 40%.
     menus 마다 cost_ratio_pct(원가율 %), next_ratio_pct(다음 주 예상 원가율, 야채 시세 예측 반영),
@@ -214,7 +289,7 @@ def get_store_cost_ratio() -> dict:
     price_up(가격 조정: 제안 판매가 · 올릴 금액 · 올린 뒤 원가율), swap(대체 재료: 바꿀 재료 · 1인분 아끼는 돈 · 바꾼 뒤 원가율, 없으면 null),
     push_menu(메뉴 제안: 원가율이 괜찮고 한 그릇에 가장 많이 남는 우리 가게 메뉴)."""
     def run():
-        r = receipts.cost_report(supabase_db.DEMO_STORE)
+        r = _cached("costs") or receipts.cost_report(supabase_db.DEMO_STORE)   # 서버의 원가율 보관값 → 없으면 계산
         pick = lambda d, ks: {k: d[k] for k in ks} if d else None
         return {"store": "우리 가게", "target_ratio_pct": r["target_ratio_pct"], "menus": [{
             "menu": m["menu"], "price": m["price"], "cost_per_serving": m["cost_per_serving"], "cost_ratio_pct": m["cost_ratio_pct"],
@@ -227,6 +302,7 @@ def get_store_cost_ratio() -> dict:
     return _safe(run)
 
 
+@_remember
 def judge_receipt_prices() -> dict:
     """가장 최근 영수증의 품목마다 싸게/비싸게 샀는지 판정한다 (우리 가게 평소 단가 · 대구 시세와 비교, 10% 안쪽은 비슷해요).
     lines 마다 item, unit_price(기준 단위당 산 값), usual_price(평소 단가), retail_price(대구 소매 평균, 야채만),
@@ -250,6 +326,29 @@ AGENT_TOOLS = {
             get_item_price_trend],
     "내일준비": [forecast_store_demand, forecast_item_price, recommend_buy_now, get_weather_summary, get_upcoming_holidays],
 }
+# 도구를 부르는 동안 화면에 보여 줄 말
+TOOL_STATUS = {
+    "list_supported_items": "볼 수 있는 재료를 확인하는 중…", "get_market_overview": "전체 시세를 모으는 중…",
+    "get_item_price_trend": "재료 시세를 확인하는 중…", "forecast_item_price": "다음 주 시세를 계산하는 중…",
+    "recommend_buy_now": "지금 사면 좋은 재료를 고르는 중…", "get_meat_seafood_prices": "고기·생선 시세를 확인하는 중…",
+    "get_weather_summary": "날씨를 확인하는 중…", "get_daegu_events": "대구 행사를 확인하는 중…",
+    "get_upcoming_holidays": "공휴일을 확인하는 중…", "list_standard_menus": "메뉴 목록을 확인하는 중…",
+    "calc_menu_margin": "원가를 계산하는 중…", "forecast_store_demand": "내일 판매량을 계산하는 중…",
+    "get_store_cost_ratio": "우리 가게 원가율을 계산하는 중…", "judge_receipt_prices": "영수증 가격을 비교하는 중…",
+}
+
+
+def _announce(tools, on_status):
+    """도구를 실행하기 직전에 on_status 로 알리는 껍데기 (이름 · 설명 · 인자는 그대로라 모델이 보는 도구는 같음)"""
+    def wrap(fn):
+        @functools.wraps(fn)
+        def inner(*a, **k):
+            on_status(TOOL_STATUS.get(fn.__name__, "확인하는 중…"))
+            return fn(*a, **k)
+        return inner
+    return [wrap(t) for t in tools] if on_status else tools
+
+
 AGENT_NAMES = {"시세": "📈 시세", "원가": "💰 원가 · 마진", "내일준비": "📦 내일 준비"}
 TOOLS = list(dict.fromkeys(t for ts in AGENT_TOOLS.values() for t in ts))   # 모든 도구 (확인용)
 
@@ -330,7 +429,7 @@ B. "이 가격에 팔아도 남아?"처럼 메뉴나 판매가 없이 마진을 
 D. "내일 얼마나 준비할까?", 판매량 · 몇 그릇 · 발주량 · 재고 질문 → forecast_store_demand 를 부른다.
    첫 줄에 "우리 가게 판매 기록 기준"이라고 밝힌다.
    메뉴별 예상 그릇 수를 범위와 함께 말하고(예: 김치찌개 101그릇, 96~106), 영향이 큰 이유 1개를 쉬운 말로 붙인다.
-   그다음 orders 의 앞에서 3개를 "재료 · 발주량 · 판단(지금 사기/나눠 사기)" 한 줄씩 그대로 말하고,
+   그다음 orders 의 앞에서 3개를 "재료 · 발주량 · 판단(지금 사기/나눠 사기)" 한 줄씩 그대로 말하고 ("나눠 사기"는 "조금만 사기"라고 말한다),
    (orders 에 없는 재료 · 숫자를 말하지 않는다. 메뉴는 menus 에 있는 것만 전부 말한다)
    다음 입고일(next_delivery_date)까지 기준이라고 덧붙인다.
    시세가 오를 재료(why 에 시세 오름)는 "넉넉히 사 두세요"를 덧붙인다.
@@ -386,7 +485,10 @@ def route(message, client=None):
     text = message.strip()
     if text in BUTTON_ROUTES:
         return BUTTON_ROUTES[text], "버튼"
-    if client is not None:
+    hits = [k for k, pat in KEYWORDS.items() if re.search(pat, text)]
+    if len(hits) == 1:   # 낱말로 담당이 하나로 정해지면 AI 를 부르지 않음 (1 ~ 1.7초 절약)
+        return hits, "낱말"
+    if client is not None and _COOL.get(ROUTER_MODEL, 0) < time.time():
         try:
             r = client.models.generate_content(model=ROUTER_MODEL, contents=ROUTER_PROMPT + text[:500],
                                                config=types.GenerateContentConfig(response_mime_type="application/json",
@@ -395,6 +497,7 @@ def route(message, client=None):
             if picked:
                 return picked[:3], "모델"
         except Exception as e:   # 바쁘거나 이상한 답 → 낱말 규칙
+            _cool(ROUTER_MODEL, e)
             print(f"[안내] 가벼운 모델 실패, 낱말 규칙: {type(e).__name__}", flush=True)
     return _keyword_route(text), "낱말"
 
@@ -403,6 +506,99 @@ def route(message, client=None):
 # 담당 에이전트 대화
 # ---------------------------------------------------------------
 
+# 화면 버튼 질문: AI 없이 도구 값으로 바로 답 (chat/quick.py). 도구 값을 못 받으면 아래 미리 불러오기 + AI 한 번
+QUICK = {
+    "야채값 시세변동 추이 말해줘.": lambda: quick.trend(get_market_overview(), recommend_buy_now()),
+    "지금 사면 이득인 야채 알려줘": lambda: quick.buy_now(recommend_buy_now()),
+    "우리 가게 원가율 알려줘": lambda: quick.cost(get_store_cost_ratio()),
+    "내일 얼마나 준비할까?": lambda: quick.demand(forecast_store_demand()),
+    "이 가격에 팔아도 남아?": lambda: quick.ASK_MENU,
+}
+BUTTON_TOOLS = {
+    "야채값 시세변동 추이 말해줘.": ["get_market_overview", "recommend_buy_now"],
+    "지금 사면 이득인 야채 알려줘": ["recommend_buy_now"],
+    "우리 가게 원가율 알려줘": ["get_store_cost_ratio"],
+    "내일 얼마나 준비할까?": ["forecast_store_demand"],
+}
+# Groq 무료 한도는 모델마다 분당 8,000토큰 → 미리 붙이는 자료에서 답에 안 쓰는 칸(2주 기록 · 링크 · 등급표)은 빼고 줄임
+DROP_KEYS = {"wholesale_history", "history", "foodspring_url", "grade_table", "source", "base_note", "items_list", "method"}
+
+
+def _slim(v, depth=0):
+    if isinstance(v, dict):
+        return {k: _slim(x, depth + 1) for k, x in v.items() if k not in DROP_KEYS}
+    if isinstance(v, list):
+        return [_slim(x, depth + 1) for x in v[:8]]
+    return v
+
+
+PRE_NOTE = "\n\n[살피가 미리 불러온 도구 결과 — 숫자는 이 값만 인용한다. 더 필요한 것만 도구를 부른다]\n"
+
+
+def _mentioned(text):
+    """질문에 나온 재료 이름 (농산물 · 고기 · 생선, 긴 이름부터, 최대 2개)."""
+    names = {**{n: n for n in ITEMS}, **{n: n for n in EXTRA_ITEMS}, **ITEM_ALIASES, **EXTRA_ALIASES}
+    out, rest = [], text.replace(" ", "")
+    for alias in sorted(names, key=len, reverse=True):
+        a = alias.replace(" ", "")
+        if a in rest and names[alias] not in out:
+            out.append(names[alias])
+            rest = rest.replace(a, "")
+    return out[:2]
+
+
+def _prefetch(kind, message, on_status=None):
+    """질문을 보고 거의 꼭 필요한 도구를 미리 동시에 부름 → ({이름: 결과}, 버튼 질문인가). AI 왕복을 줄이는 곳."""
+    text = message.strip()
+    funcs = {f.__name__: f for f in AGENT_TOOLS[kind]}
+    if text in BUTTON_TOOLS:
+        calls, only = [(n, ()) for n in BUTTON_TOOLS[text] if n in funcs], True
+    else:
+        calls, only = [], False
+        for name in _mentioned(text):
+            if name in ITEMS:
+                calls += [(n, (name,)) for n in ("get_item_price_trend", "forecast_item_price") if n in funcs]
+            elif "get_meat_seafood_prices" in funcs:
+                calls.append(("get_meat_seafood_prices", (name,)))
+        if kind == "원가" and re.search(r"원가율|우리 가게|남아|마진", text):
+            calls.append(("get_store_cost_ratio", ()))
+        if kind == "내일준비":
+            calls.append(("forecast_store_demand", ()))
+        if kind == "시세" and not calls and re.search(r"올랐|내렸|요즘|시세|추이|뭐가", text):
+            calls.append(("get_market_overview", ()))
+    if not calls:
+        return {}, False
+    if on_status:
+        on_status(TOOL_STATUS.get(calls[0][0], "확인하는 중…"))
+    with ThreadPoolExecutor(len(calls)) as pool:
+        res = list(pool.map(lambda c: funcs[c[0]](*c[1]), calls))
+    return {f"{n}({', '.join(a)})": _slim(r) for (n, a), r in zip(calls, res)}, only
+
+
+# Groq (무료 · 아주 빠름): CHAT_PROVIDER=groq 이고 GROQ_API_KEY 가 있으면 먼저 쓰고, 실패하면 제미나이로
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+# 모델마다 무료 한도(분당 8,000토큰 · 하루 1,000번)가 따로라 여럿을 차례로 (11/25 한국어 · 도구 부르기 시험: 120b 가 가장 자연스러움)
+GROQ_MODELS = [m.strip() for m in os.getenv("GROQ_MODELS", os.getenv("GROQ_MODEL", "openai/gpt-oss-120b") + ",qwen/qwen3.8-27b,openai/gpt-oss-20b").split(",") if m.strip()]
+
+
+def _schema(fn):
+    """파이썬 도구 → Groq(OpenAI 모양) 도구 설명. 설명 · 인자는 제미나이가 보는 것과 같은 독스트링에서."""
+    doc = fn.__doc__ or ""
+    props, req = {}, []
+    for n, prm in inspect.signature(fn).parameters.items():
+        m = re.search(rf"{n}: (.+)", doc)
+        props[n] = {"type": {"int": "integer"}.get(getattr(prm.annotation, "__name__", ""), "string"),
+                    "description": m[1].strip() if m else n}
+        if prm.default is inspect.Parameter.empty:
+            req.append(n)
+    return {"type": "function", "function": {"name": fn.__name__, "description": doc.split("Args:")[0].strip()[:300],
+                                              "parameters": {"type": "object", "properties": props, "required": req}}}
+
+
+def _groq_on():
+    return os.getenv("CHAT_PROVIDER", "gemini").strip() == "groq" and bool(os.getenv("GROQ_API_KEY", "").strip())
+
+
 BRIEFING_PROMPT = ("오늘 아침 브리핑을 해 줘. 전체 시세에서 많이 오른 것과 내린 것, "
                    "그리고 가장 많이 오른 재료 하나의 다음 주 예측을 알려 줘.")
 
@@ -410,53 +606,157 @@ BRIEFING_PROMPT = ("오늘 아침 브리핑을 해 줘. 전체 시세에서 많�
 class SalpiAgent:
     """안내 → 담당 에이전트. 서버가 쓰는 모양(ask · last_tools · model)은 예전과 같음."""
 
-    def __init__(self, api_key=None, model=MODEL, history=None):
+    def __init__(self, api_key=None, model=None, history=None):
         """history: 지난 대화 [{"role": "user"|"bot", "text": ...}] — 화면이 보관했다가 보내 줌."""
         key = api_key or os.getenv("GEMINI_API_KEY", "").strip()
         if not key:
             raise ApiKeyMissing(".env 의 GEMINI_API_KEY 가 비어 있어요 (aistudio.google.com 에서 무료 발급)")
         # 응답이 45초 넘게 없으면 끊고 다음 모델로 (바쁜 모델에 오래 묶이지 않게)
+        # 10초 넘게 답이 없으면 끊고 다음 모델로 · 같은 모델 재시도는 안 함 (붐빌 때 같은 모델을 또 기다리지 않게, 11/25)
         self.client = genai.Client(api_key=key, http_options=types.HttpOptions(
-            timeout=45_000, retry_options=types.HttpRetryOptions(attempts=2)))
-        self.models = [model] + [m for m in FALLBACK_MODELS if m != model]
+            timeout=10_000, retry_options=types.HttpRetryOptions(attempts=1)))
+        self.models = [model] + [m for m in CHAT_MODELS if m != model] if model else list(CHAT_MODELS)
         self.model = self.models[0]
         self.history = [types.Content(role="user" if h.get("role") == "user" else "model",
                                       parts=[types.Part(text=str(h.get("text", ""))[:2000])])
                         for h in (history or [])[-12:] if h.get("text")]
         self.last_tools, self.last_route = [], []
 
-    def _ask_one(self, kind, message):
-        """담당 하나에게 묻기 → (답, 부른 도구, 모델, 도구 결과, 걸린 ms). 무료 API가 바쁘면(503 · 504 · 429) 다음 모델로 갈아탐."""
+    def _groq(self, kind, message, only_pre, on_status):
+        """Groq 모델을 차례로 (한도에 걸린 모델은 Groq 이 알려 준 시간만큼 건너뜀) → (답, 부른 도구, 모델, 도구 결과)."""
+        last = None
+        wait = min((_COOL.get("groq:" + m, 0) for m in GROQ_MODELS), default=0) - time.time()
+        if 0 < wait <= 4 and all(_COOL.get("groq:" + m, 0) > time.time() for m in GROQ_MODELS):
+            time.sleep(wait)   # 몇 초만 기다리면 풀리면 기다림 (제미나이로 넘어가면 10초 넘게 걸릴 때가 많음)
+        for model in [m for m in dict.fromkeys(GROQ_MODELS) if _COOL.get("groq:" + m, 0) < time.time()]:
+            try:
+                return self._groq_one(model, kind, message, only_pre, on_status)
+            except requests.HTTPError as e:
+                r = e.response
+                if r is not None and r.status_code == 429:
+                    _COOL["groq:" + model] = time.time() + min(float(r.headers.get("retry-after") or 20), 600)
+                last = e
+            except requests.RequestException as e:
+                _COOL["groq:" + model] = time.time() + (5 if "빈 답" in str(e) else 60)
+                last = e
+        raise last or RuntimeError("Groq 모델이 모두 쉬는 중이에요")
+
+    def _groq_one(self, model, kind, message, only_pre, on_status):
+        """Groq 모델 하나로 담당 하나. 도구는 한 번에 여러 개를 동시에 실행."""
+        funcs = {f.__name__: f for f in AGENT_TOOLS[kind]}
+        msgs = [{"role": "system", "content": SYSTEM_PROMPTS[kind]}]
+        msgs += [{"role": "user" if h.role == "user" else "assistant", "content": h.parts[0].text} for h in self.history]
+        msgs.append({"role": "user", "content": message})
+        used, outs = [], []
+        for _ in range(4):
+            body = {"model": model, "messages": msgs, "temperature": 0.3, "max_tokens": 900,
+                    # 생각하는 모델(gpt-oss · qwen3)은 생각을 짧게 → 빠르고, 생각에 글자를 다 써서 답이 비는 일이 없게 (11/25)
+                    "reasoning_effort": "none" if "qwen" in model else "low"}
+            if not only_pre:
+                body["tools"] = [_schema(f) for f in funcs.values()]
+            r = requests.post(GROQ_URL, json=body, timeout=15,
+                              headers={"Authorization": f"Bearer {os.getenv('GROQ_API_KEY', '').strip()}"})
+            r.raise_for_status()
+            m = r.json()["choices"][0]["message"]
+            calls = m.get("tool_calls") or []
+            if not calls:
+                if not (m.get("content") or "").strip():
+                    raise requests.RequestException("빈 답")   # 다음 Groq 모델로
+                return m["content"].strip(), used, f"groq:{model}", outs
+            msgs.append({"role": "assistant", "content": m.get("content") or "", "tool_calls": calls})
+
+            def run(c):
+                f = funcs.get(c["function"]["name"])
+                if on_status:
+                    on_status(TOOL_STATUS.get(c["function"]["name"], "확인하는 중…"))
+                try:
+                    return f(**json.loads(c["function"].get("arguments") or "{}")) if f else {"error": "없는 도구예요"}
+                except (TypeError, ValueError) as e:
+                    return {"error": f"도구 인자가 이상해요: {e}"}
+            with ThreadPoolExecutor(len(calls)) as pool:
+                res = list(pool.map(run, calls))
+            for c, out in zip(calls, res):
+                used.append(c["function"]["name"])
+                outs.append(out)
+                msgs.append({"role": "tool", "tool_call_id": c["id"],
+                             "content": json.dumps(_slim(out), ensure_ascii=False, default=str, separators=(",", ":"))[:3000]})
+        raise RuntimeError("Groq 도구 부르기가 너무 길어졌어요")
+
+    def _ask_one(self, kind, message, on_text=None, on_status=None):
+        """담당 하나에게 묻기 → (답, 부른 도구, 모델, 도구 결과, 걸린 ms). 무료 API가 바쁘면(503 · 504 · 429) 다음 모델로 갈아탐.
+        on_text 가 있으면 답이 써지는 대로 조각조각 넘겨 줌 (화면이 글자를 바로 보여 주도록).
+        먼저 거의 꼭 필요한 도구를 미리 불러 질문에 붙임 → AI 왕복이 줄어듦 (11/25 속도)."""
         last_error, started = None, time.time()
-        for model in self.models:
+        pre, only = _prefetch(kind, message, on_status)
+        if pre:
+            message = message + PRE_NOTE + json.dumps(pre, ensure_ascii=False, default=str, separators=(",", ":"))[:3000]
+        pre_names, pre_outs = [k.split("(")[0] for k in pre], list(pre.values())
+        if _groq_on():
+            try:
+                text, tools, model, outputs = self._groq(kind, message, only, on_status)
+                if on_text:
+                    on_text(text)
+                return text, pre_names + tools, model, pre_outs + outputs, round((time.time() - started) * 1000)
+            except Exception as e:   # Groq 한도 · 장애 → 제미나이로
+                print(f"[Groq] 실패, 제미나이로: {type(e).__name__}: {str(e)[:120]}", flush=True)
+        for model in _usable(self.models):
             chat = self.client.chats.create(
                 model=model, history=list(self.history) or None,
-                config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPTS[kind], tools=AGENT_TOOLS[kind],
+                config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPTS[kind],
+                                                   tools=None if only else _announce(AGENT_TOOLS[kind], on_status),
                                                    temperature=0.3))
+            sent = []
             try:
-                text = chat.send_message(message).text or "답을 만들지 못했어요. 다시 물어봐 주세요."
+                for chunk in chat.send_message_stream(message):
+                    if chunk.text:
+                        sent.append(chunk.text)
+                        if on_text:
+                            on_text(chunk.text)
+                text = "".join(sent) or "답을 만들지 못했어요. 다시 물어봐 주세요."
                 hist = chat.get_history(curated=False)
                 tools = [p.function_call.name for c in hist for p in (c.parts or []) if getattr(p, "function_call", None)]
                 outputs = [p.function_response.response for c in hist for p in (c.parts or [])
                            if getattr(p, "function_response", None)]   # 숫자 검사용 (도구가 돌려준 값)
-                return text, tools, model, outputs, round((time.time() - started) * 1000)
+                return text, pre_names + tools, model, pre_outs + outputs, round((time.time() - started) * 1000)
             except errors.APIError as e:
+                _cool(model, e)
+                if sent and on_text:
+                    raise      # 이미 화면에 글자가 나간 뒤라 다른 모델로 다시 쓰면 글이 겹침
                 if 400 <= e.code < 500 and e.code not in (404, 429):
                     raise      # 요청 자체가 잘못된 경우는 갈아타도 같음
                 last_error = e
             except Exception as e:  # 시간 초과·연결 끊김
+                _cool(model, e)
+                if sent and on_text:
+                    raise
                 last_error = e
         raise last_error
 
-    def ask(self, message: str) -> str:
+    def ask(self, message: str, on_text=None, on_status=None) -> str:
+        """on_text: 답 조각을 받는 함수. 담당이 하나일 때만 글자가 흘러가고, 섞인 질문은 완성된 뒤 한 번에 옴."""
         t0 = time.time()
+        text = message.strip()
+        if text in QUICK:   # 화면 버튼 질문: AI 없이 도구 값으로 바로 (보통 1초 안)
+            try:
+                reply = QUICK[text]()
+            except Exception as e:
+                reply = None
+                print(f"[버튼 답] 실패, AI 로: {type(e).__name__}", flush=True)
+            if reply:
+                if on_text:
+                    on_text(reply)
+                kinds = BUTTON_ROUTES.get(text, ["시세"])
+                self.model, self.last_route = "버튼 답(AI 없음)", kinds
+                self.last_tools = (["안내:버튼"] + [f"담당:{k}" for k in kinds] + BUTTON_TOOLS.get(text, [])
+                                   + [f"시간:바로 {round((time.time() - t0) * 1000)}ms"])
+                return reply
         kinds, how = route(message, self.client)
         route_ms = round((time.time() - t0) * 1000)
         self.last_route = kinds
         if len(kinds) == 1:
-            jobs = [(kinds[0], message)]
+            jobs = [(kinds[0], message, on_text, on_status)]
         else:   # 섞인 질문: 담당마다 자기 몫만 답하게 하고 동시에 부름 (차례로 부르면 두 배 걸림)
-            jobs = [(k, f"{message}\n\n(이 질문은 여러 담당이 나눠 답한다. 너는 {AGENT_NAMES[k]} 담당 부분만 답하고 다른 부분은 말하지 마라)")
+            jobs = [(k, f"{message}\n\n(이 질문은 여러 담당이 나눠 답한다. 너는 {AGENT_NAMES[k]} 담당 부분만 답하고 다른 부분은 말하지 마라)", None, on_status)
                     for k in kinds]
         with ThreadPoolExecutor(len(jobs)) as pool:
             results = list(pool.map(lambda j: self._ask_one(*j), jobs))

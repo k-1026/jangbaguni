@@ -93,7 +93,12 @@ def _profile(user, store=False):
     if store is False:   # 계정 정보에 가게가 복사돼 있으면 표를 다시 읽지 않음
         store = ({"id": meta["store_id"], "name": meta.get("store_name"), "district": meta.get("district"),
                   "business_type": meta.get("business_type", "한식")} if meta.get("store_id") else _store_of(user["id"]))
-    name = meta.get("name") or meta.get("full_name") or meta.get("nickname") or meta.get("preferred_username")   # 카카오는 닉네임
+    # 마이페이지에서 고친 이름 · 사진(display_name · photo_ver)이 먼저. 카카오는 로그인할 때마다 name · avatar_url 같은
+    # 자기 칸을 카카오 값으로 덮어써서, 고친 값은 카카오가 건드리지 않는 우리 칸에 따로 둠
+    name = (meta.get("display_name") or meta.get("name") or meta.get("full_name") or meta.get("nickname")
+            or meta.get("preferred_username"))   # 카카오는 닉네임
+    photo = f"/api/auth/photo/{user['id']}?v={meta['photo_ver']}" if meta.get("photo_ver") else None   # 바꿀 때마다 v 가 바뀌어 새 사진을 받음
+    base_avatar = (meta.get("avatar_url") or meta.get("picture") or "").replace("http://", "https://", 1) or None   # 카카오 사진은 http 로 옴 → https 사이트에서 막히지 않게
     email = user.get("email") or ""
     return {"id": user["id"], "login_id": meta.get("login_id"), "name": name,
             "email": None if email.endswith("@" + ID_DOMAIN) else email or None,   # 아이디로 가입하면 만들어 둔 가짜 주소라 안 보여 줌
@@ -101,7 +106,9 @@ def _profile(user, store=False):
             "phone": meta.get("phone"), "alarm": bool(meta.get("alarm")),
             "store_id": store["id"] if store else None, "store_name": store["name"] if store else None,
             "district": store["district"] if store else None, "business_type": store["business_type"] if store else None,
-            "place": meta.get("place"), "costs": meta.get("store_costs"), "avatar": (meta.get("avatar_url") or meta.get("picture") or "").replace("http://", "https://", 1) or None}   # 카카오 사진은 http 로 옴 → https 사이트에서 막히지 않게
+            "place": meta.get("place"), "costs": meta.get("store_costs"),
+            "avatar": photo or base_avatar, "base_avatar": base_avatar,   # base_avatar = 내가 올린 사진이 없을 때 보이는 사진 (카카오 사진)
+            "custom_photo": bool(photo)}
 
 
 def _session(body):
@@ -239,7 +246,7 @@ def setup_store(token, d):
             raise AuthError("필수 약관에 동의해 주세요.")
         store_id = str(uuid.uuid4())
         db.insert("stores", [{"id": store_id, "owner_id": user["id"], "name": store, "district": gu, "is_demo": False}])
-        meta = {**(user.get("user_metadata") or {}), "name": name, "alarm": bool(d.get("alarm")), "place": (d.get("place") or "").strip(),
+        meta = {**(user.get("user_metadata") or {}), "name": name, "display_name": name, "alarm": bool(d.get("alarm")), "place": (d.get("place") or "").strip(),
                 **_store_meta(store_id, store, gu)}
         r = _call("PUT", f"admin/users/{user['id']}", admin=True, json={"user_metadata": meta})
         if not r.ok:
@@ -270,6 +277,55 @@ def update_store(token, d):
     return _profile(r.json())
 
 
+PHOTO_BUCKET = "avatars"   # 비공개 보관함, 파일 이름 = 계정 번호 (사람마다 한 장, 새로 올리면 덮어씀)
+PHOTO_MAX = 1_000_000      # 화면이 정사각 512px JPEG 로 줄여 보냄 → 보통 100KB 안팎
+_PHOTO_SIGS = {b"\xff\xd8\xff": "image/jpeg", b"\x89PNG": "image/png", b"RIFF": "image/webp"}
+
+
+def _photo_type(data):
+    return next((t for sig, t in _PHOTO_SIGS.items() if data.startswith(sig)), None)
+
+
+def update_profile(token, d):
+    """마이페이지 '프로필 수정': 이름 · 사진을 바꿈 (아이디 가입 · 카카오 가입 모두 같은 방법).
+    d = {name, photo(base64 사진, 바꿀 때만), reset_photo(true 면 내가 올린 사진을 지우고 원래 사진으로)}."""
+    user = user_of(token)
+    meta = dict(user.get("user_metadata") or {})
+    name = (d.get("name") or "").strip()
+    if not name:
+        raise AuthError("이름을 입력해 주세요.")
+    if len(name) > 20:
+        raise AuthError("이름은 20자까지 쓸 수 있어요.")
+    meta["display_name"] = name
+    if d.get("photo"):
+        try:
+            data = base64.b64decode(d["photo"].split(",")[-1], validate=True)
+        except ValueError:
+            raise AuthError("사진을 읽지 못했어요. 다른 사진으로 해 주세요.") from None
+        if len(data) > PHOTO_MAX:
+            raise AuthError("사진이 너무 커요. 다른 사진으로 해 주세요.", 413)
+        kind = _photo_type(data)
+        if not kind:
+            raise AuthError("JPG · PNG · WEBP 사진만 쓸 수 있어요.")
+        db.upload(PHOTO_BUCKET, user["id"], data, kind)
+        meta["photo_ver"] = uuid.uuid4().hex[:8]
+    elif d.get("reset_photo") and meta.get("photo_ver"):
+        db.remove_file(f"{PHOTO_BUCKET}/{user['id']}")
+        meta.pop("photo_ver", None)
+    r = _call("PUT", f"admin/users/{user['id']}", admin=True, json={"user_metadata": meta})
+    if not r.ok:
+        raise ApiError(f"프로필을 저장하지 못했어요 ({r.status_code})")
+    return _profile(r.json())
+
+
+def photo(user_id):
+    """올린 프로필 사진 (bytes, 종류). 없으면 (None, None). 계정 번호(추측할 수 없는 긴 번호)로만 찾음."""
+    if not re.fullmatch(r"[0-9a-f-]{36}", user_id or ""):
+        return None, None
+    data = db.download(PHOTO_BUCKET, user_id)
+    return (data, _photo_type(data) or "image/jpeg") if data else (None, None)
+
+
 def logout(token):
     if token:
         _call("POST", "logout", token=token)   # 이 계정의 로그인 유지 표를 모두 무효로
@@ -280,8 +336,9 @@ def withdraw(token):
     user = user_of(token)
     for s in db.select("stores", owner_id=f"eq.{user['id']}", select="id"):
         for p in db.select("purchases", store_id=f"eq.{s['id']}", select="image_path"):
-            if p.get("image_path"):
-                db.remove_file(p["image_path"])
+            for x in str(p.get("image_path") or "").split("|"):   # 긴 영수증은 사진 여러 장 (store.receipts.PATH_SEP)
+                if x:
+                    db.remove_file(x)
     r = _call("DELETE", f"admin/users/{user['id']}", admin=True)
     if not r.ok:
         raise ApiError(f"탈퇴하지 못했어요 ({r.status_code})")

@@ -29,7 +29,7 @@
 | # | 할 일 | 상태 | 지금 있는 것 | 남은 것 |
 |---|---|---|---|---|
 | 6 | 밸류체인 × AI 역량 매트릭스 → AX 기회 10개 → 임팩트/실현성 평가 | 🟡 | 밸류체인 맵 v1 [valuechain_v1.html](../research/company/cj_freshway/valuechain/valuechain_v1.html), 기회 3개 영향 · 실현 가능성 점수 | AI 역량 축 매트릭스, 기회 10개로 늘려 평가 |
-| 7 | AX BM 캔버스(HTML) → 레드팀 피드백 → 크로스 리뷰 | ⬜ | 수익 모델 3단계(무료 → 유료 구독 → 제휴) [1106 발표 흐름 3절](presentation/1106_presentation_flow.md) | BM 캔버스 HTML, 레드팀 · 크로스 리뷰 기록 |
+| 7 | AX BM 캔버스(HTML) → 레드팀 피드백 | ⬜ | 수익 모델 3단계(무료 → 유료 구독 → 제휴) [1106 발표 흐름 3절](presentation/1106_presentation_flow.md) | BM 캔버스 HTML, 레드팀 기록 (크로스 리뷰는 11/25 일정에서 뺌) |
 | 8 | 추천 플랫폼 수익 구조 + 물류 비용 절감 효과 산정 | 🟡 | 수익 구조 3단계, "식재료비 1%만 아껴도 구독료의 6배" 예시 계산 | 물류(배송 · 발주 횟수) 비용 절감 계산 |
 | 11 | 경쟁사 비교표 + 포지셔닝 맵 + 시장 규모 시트 (수식 살아 있는 xlsx) | 🟡 | 포지셔닝 · SWOT 슬라이드 [살피.pptx](presentation/살피.pptx), CJ프레시웨이 · 식봄 리서치 [onepager.md](../research/company/cj_freshway/onepager.md) | 경쟁사 비교표 · 시장 규모 계산이 든 xlsx |
 | 12 | 주문량 · 재고 · 배송비 기반 손익 시뮬레이션 | 🟡 | ROI 예시 계산(가정값), 가상 사장님 6개월 시뮬레이션(발주 · 소진 · 폐기 기록) [data/simulation/](../data/simulation/) | 주문량 · 재고 · 배송비를 넣은 손익 계산 |

@@ -17,15 +17,17 @@ KINDS = {"야채": "veg", "과일": "fruit"}          # 종류 → 보관함 파
 BAND = 2.0                                          # 오를 · 비슷 · 내릴 기준 (채점 · 화면과 같음)
 MISSING = 63                                        # gbdt._Binner 의 빈 값 칸
 
-# 설 · 추석 (명절까지 남은 날 요인). 2027은 한국천문연구원 음력 기준
-MAJOR_HOLIDAYS = [date(2021, 2, 12), date(2021, 9, 21), date(2022, 2, 1), date(2022, 9, 10), date(2023, 1, 22), date(2023, 9, 29),
+# 설 · 추석 (명절까지 남은 날 요인). 2027은 한국천문연구원 음력 기준. 2016 ~ 2020은 서울 10년 학습 자료용
+MAJOR_HOLIDAYS = [date(2016, 2, 8), date(2016, 9, 15), date(2017, 1, 28), date(2017, 10, 4), date(2018, 2, 16), date(2018, 9, 24),
+                  date(2019, 2, 5), date(2019, 9, 13), date(2020, 1, 25), date(2020, 10, 1),
+                  date(2021, 2, 12), date(2021, 9, 21), date(2022, 2, 1), date(2022, 9, 10), date(2023, 1, 22), date(2023, 9, 29),
                   date(2024, 2, 10), date(2024, 9, 17), date(2025, 1, 29), date(2025, 10, 6), date(2026, 2, 17), date(2026, 9, 25),
                   date(2027, 2, 7), date(2027, 9, 15)]
 MAJOR_NEAR = 30   # 명절까지 이 날 수 안쪽일 때만 '다가오는 명절'로 따로 보여 줌
 
 # 모델이 쓸 수 있는 요인 전부. 실제로 쓰는 요인은 모델마다 다름 (학습 담당이 넣고 빼며 시험)
 ALL_FEATURES = ["item", "dev", "trend", "vchg", "vlevel", "wx", "rain", "cold", "hot", "volat", "chg3", "chg7",
-                "season", "to_major", "month", "dow"]
+                "season", "to_major", "month", "dow", "src"]   # src: 학습 줄 출처 (대구 0 · 서울 1), 화면 예측은 늘 0
 
 # 화면에 보여 줄 이유 묶음 (요인 → 묶음 이름). 화면 app.js 의 plainReason 이 이 이름으로 한 줄 이유를 고름
 GROUPS = {
@@ -35,8 +37,29 @@ GROUPS = {
     "season": "계절(지난 해 같은 때)", "month": "계절(지난 해 같은 때)",
     "to_major": "다가오는 명절(설 · 추석)",
     "trend": "최근 값 흐름", "chg3": "최근 값 흐름", "chg7": "최근 값 흐름", "volat": "최근 값 흐름",
-    "item": "품목 특성", "dow": "품목 특성",
+    "item": "품목 특성", "dow": "품목 특성", "src": "품목 특성",
 }
+
+
+CONFIDENT_PCT = 4.0   # 다음 주 평균이 이만큼 넘게 움직일 때만 "오를 · 내릴" 이라고 말함 (11/25 실험: 그때 방향 맞음 야채 70.5 · 과일 71.5%)
+
+
+def week_change(days, prices, i):
+    """학습 목표: 다음 주 평균(기준일 다음 날 ~ 7일) ÷ 이번 주 평균(기준일까지 7일) − 1 (%).
+    하루 경락가는 그날 반입량에 따라 크게 출렁여서, 사장님 장보기 단위(일주일)의 평균을 맞힘. 거래일이 2일 미만이면 None."""
+    asof = days[i]
+    past = [p for d, p in zip(days[max(0, i - 10): i + 1], prices[max(0, i - 10): i + 1]) if d > asof - timedelta(7)]
+    j = bisect_right(days, asof + timedelta(7))
+    nxt = prices[i + 1: j]
+    if len(past) < 2 or len(nxt) < 2 or j >= len(days):   # 다음 주가 다 지나야 (그 뒤 거래일이 있어야) 목표가 확정
+        return None
+    return (statistics.mean(nxt) / statistics.mean(past) - 1) * 100
+
+
+def week_avg(points, asof):
+    """이번 주 평균값 (기준일까지 7일, 화면 · 채점의 기준값)."""
+    v = [p[1] for p in points if asof - timedelta(7) < p[0] <= asof]
+    return statistics.mean(v) if v else None
 
 
 def _pct(a, b):
@@ -105,6 +128,7 @@ def make_features(name, item_idx, points, weather, asof, season):
     f["to_major"] = float(days_to_major(asof))
     f["month"] = float(asof.month)
     f["dow"] = float(asof.weekday())
+    f["src"] = 0.0
     f["_show"] = {"avg": avg, "last": pr[-1], "n": len(pr)}
     return f
 
@@ -253,5 +277,9 @@ def forecast(name, kind, points, weather, asof):
     factors = [{"factor": g, "effect_pct": round(v, 1), "detail": _detail(g, f, v)} for g, v in groups.items()]
     factors.sort(key=lambda x: -abs(x["effect_pct"]))
     half = (m.blob.get("range_half_pct") or {}).get(name) or m.blob.get("range_half_pct_all") or 8.0
-    return {"expected_change_pct": round(total, 1), "range_pct": [round(total - half, 1), round(total + half, 1)],
-            "factors": factors, "version": m.blob["version"], "metrics": m.blob.get("metrics")}
+    out = {"expected_change_pct": round(total, 1), "range_pct": [round(total - half, 1), round(total + half, 1)],
+           "factors": factors, "version": m.blob["version"], "metrics": m.blob.get("metrics"), "target": m.blob.get("target", "day")}
+    if out["target"] == "week":   # 위 % 는 '다음 주 평균 ÷ 이번 주 평균' 기준
+        out["week_avg"] = week_avg(points, asof)
+        out["confident_pct"] = m.blob.get("confident_pct", CONFIDENT_PCT)
+    return out

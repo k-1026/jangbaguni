@@ -126,6 +126,26 @@
 - `mode: "mock"` (키가 없을 때, 지금 Vercel): 결제창 없이 화면에서 "결제하기(모의)" 를 누르면 confirm 에 `order_id` · `amount` 만 보냄
 - 잘못된 주문 · 금액 · 같은 주문 두 번은 400 `detail` 로 안내 문구가 옴
 
+## 7-1. 긴 영수증 여러 장 찍기 — `POST /api/receipt/read` · `POST /api/receipt/save` 의 `images`
+
+✅ 서버 있음 (11/25, `server.py` `_photos` · `store/receipts.py` `read` · `save`). 화면은 아직 (사진을 옆에 쌓아 두고 **완료**를 누르면 한 번에 보냄)
+
+| 보낼 것 | 내용 |
+|---|---|
+| `images` | 사진 목록 `["data:image/jpeg;base64,…", …]` — **위에서부터 차례로**, 최대 **5장**. `data:` 앞머리에서 형식(jpeg · png · webp)을 읽음 |
+| `image` | 예전처럼 한 장 (그대로 됨). `image` 와 `images` 를 같이 보내면 `image` 가 첫 장 |
+
+| 주소 | 바뀐 점 |
+|---|---|
+| `POST /api/receipt/read` | 사진 여러 장을 AI 한 번에 넣어 **영수증 하나로** 읽음 (겹쳐 찍힌 줄은 한 번만). 답에 `photos: 장 수`. 무료 횟수는 사진 수와 관계없이 **1회** |
+| `POST /api/receipt/save` | 읽을 때 보낸 `images` 를 그대로 다시 보내면 모두 보관. 답에 `photos_saved` |
+| `GET /api/receipt/{id}` | `image_url` = 첫 장 (지금 화면 그대로) + **`image_urls`** = 모든 사진 (위에서부터) |
+| `GET /api/costs` 의 `receipts[]` | `image_url` = 첫 장 미리보기 + `photos` = 장 수 |
+
+- 6장 이상 · gif 등은 400 `detail` 로 안내 문구
+- ⚠️ Vercel 은 요청 하나가 **약 4.5MB** 를 넘으면 서버까지 못 옴 → 사진마다 긴 변 1600px 안팎 · jpeg 0.8 정도로 줄여 보내기 (5장 합쳐 4MB 아래)
+- 시험 (11/25): 시연 명세서 16줄을 위 · 아래 2장, 3장으로 겹치게 잘라 보냄 → 한 장일 때와 같은 16줄 · 합계 614,900원, 겹친 줄 중복 0
+
 ## 8. 앞으로 7일 날씨 — `GET /api/context` 의 `weather_forecast` (윤가언)
 
 ```json

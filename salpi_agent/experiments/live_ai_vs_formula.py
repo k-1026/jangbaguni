@@ -115,7 +115,8 @@ def main():
         s = series.get(r["item"]) or []
         upto = [p for p in s if p["date"] <= r["base_date"] and p["date"] >= (date.fromisoformat(r["base_date"]) - timedelta(27)).isoformat()]
         hit = actual(s, r["base_date"])
-        if not hit or not upto or upto[-1]["date"] != r["base_date"]:
+        # 기준 날짜가 휴장일(예: 11/17)이면 직전 개장일 시세가 기준 — 사흘 넘게 비면 건너뜀
+        if not hit or not upto or (date.fromisoformat(r["base_date"]) - date.fromisoformat(upto[-1]["date"])).days > 3:
             continue   # 7일 뒤 시세가 아직 없거나 기준 날짜 시세를 다시 못 받음
         base = float(r["base_price"])
         change = round((hit[1] / base - 1) * 100, 2)

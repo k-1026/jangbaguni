@@ -599,7 +599,7 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 @supports not selector(::-webkit-scrollbar) {   /* 파이어폭스: 표준 속성으로 얇게 */
   .stock-list { scrollbar-width: thin; scrollbar-color: rgba(0, 0, 0, .22) transparent; }
 }
-/* 묶음마다 투명한 연한 바탕색 + 같은 색 계열의 진한 제목 (먼저 사기 주황 · 평소대로 초록 · 조금만 사고 기다리기 노랑 · 안 사도 됨 민트) */
+/* 묶음마다 투명한 연한 바탕색 + 같은 색 계열의 진한 제목 (먼저 사기 주황 · 평소대로 초록 · 조금만 사기 노랑 · 안 사도 됨 민트) */
 .stock-col { --tone: #2F5A0C; --tint: rgba(150, 205, 60, .2); padding: 14px 14px 4px; border-radius: 14px; background: var(--tint); }
 .stock-col.first { --tone: #9A3412; --tint: rgba(255, 140, 70, .22); }
 .stock-col.split { --tone: #6B4E00; --tint: rgba(255, 205, 40, .3); }

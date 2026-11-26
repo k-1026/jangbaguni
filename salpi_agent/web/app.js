@@ -2924,6 +2924,12 @@ function scoreDetail(few) {
     ${few ? `<p class="score-foot">예측 ${SCORE_MIN}번 미만 ${few}개는 채점 중</p>` : ""}
   </div>`;
 }
+// 채점 기준 문구: 야채 · 과일은 11/26부터 '다음 주 평균' 모델 (서버 week_kinds), 육류 · 수산물은 '7일 뒤'
+function scoreBasis(label) {
+  const wk = score.week_kinds || [];
+  if (label !== "전체") return wk.includes(label) ? "다음 주 평균 가격 방향 적중률" : "7일 뒤 가격 방향 적중률";
+  return wk.length ? `가격 방향 적중률 (${wk.join(" · ")}는 다음 주 평균)` : "7일 뒤 가격 방향 적중률";
+}
 function renderScore() {
   const a = score.all;
   if (!a?.n) { $("#scoreCard").innerHTML = `<p class="muted">아직 채점한 예측이 없어요. 예측하고 7일이 지나면 채점해요.</p>`; return; }
@@ -2934,7 +2940,7 @@ function renderScore() {
   const few = Object.values(score.items).filter((v) => (label === "전체" || v.kind === label) && v.n < SCORE_MIN).length;
   $("#scoreCard").innerHTML = `<div class="score-top">
       <p class="score-big"><b>${s.direction_hit_pct}%</b><span>${esc(label)} 예측률</span></p>
-      <p class="score-sub">7일 뒤 가격 방향 적중률<br>${s.n}번 예측해서 ${scoreHits(s)}번 맞혔어요</p>
+      <p class="score-sub">${scoreBasis(label)}<br>${s.n}번 예측해서 ${scoreHits(s)}번 맞혔어요</p>
       ${scoreOpen ? `<div class="score-tabs" role="group" aria-label="재료 종류">${["전체", ...kinds].map((k) =>
         `<button type="button" data-skind="${esc(k)}" class="${k === scoreKind ? "active" : ""}" aria-pressed="${k === scoreKind}">${esc(k)}</button>`).join("")}</div>` : ""}
       <button type="button" class="score-more" data-smore aria-expanded="${scoreOpen}" aria-controls="scoreDetail">${scoreOpen ? "접기" : "상세보기"}

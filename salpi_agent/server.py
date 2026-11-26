@@ -761,6 +761,12 @@ def inventory_set(body: StockIn):
     return _receipt_guard(lambda: _store_changed(inventory.set_qty(supabase_db.DEMO_STORE, body.items)))
 
 
+@app.delete("/api/inventory/{item_id}")
+def inventory_remove(item_id: int):
+    """직접 넣은 재료 빼기 (메뉴 재료는 400)."""
+    return _receipt_guard(lambda: _store_changed(inventory.remove(supabase_db.DEMO_STORE, item_id)))
+
+
 @app.get("/api/receipts")
 def receipt_list():
     # shortcut: 1000장(Supabase 한 번에 주는 최대)까지, 넘으면 페이지 나눠 받기

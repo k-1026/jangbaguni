@@ -1983,7 +1983,7 @@ function receiptEditor(box, d, { image, thumb = true, badge, saveLabel = "확인
     `<option value="${i.id}" ${i.id === sel ? "selected" : ""}>${esc(i.name)}</option>`).join("");
   const unitOf = (id) => d.items_list.find((i) => i.id === +id)?.base_unit || "";
   const row = (x, i) => `<tr data-i="${i}">
-        <td><input class="rc-name" value="${esc(x.raw_name || "")}" aria-label="영수증 품목"></td>
+        <td><input class="rc-name" value="${esc(x.raw_name || "")}" aria-label="품목"></td>
         <td><select class="rc-item" aria-label="재료">${opts(x.item_id)}</select></td>
         <td class="qty-cell"><input class="rc-qty" type="number" step="0.1" min="0" value="${x.qty_base ?? ""}" aria-label="양"><span class="rc-unit">${esc(x.base_unit || "")}</span></td>
         <td><input class="rc-amount" type="number" min="0" value="${x.amount ?? ""}" aria-label="금액"></td>
@@ -2002,7 +2002,7 @@ function receiptEditor(box, d, { image, thumb = true, badge, saveLabel = "확인
       </div>
     </div>
     <div class="table-scroll"><table class="price-table edit-table">
-      <thead><tr><th>영수증 품목</th><th>재료</th><th>양</th><th>금액(원)</th><th></th></tr></thead>
+      <thead><tr><th>품목</th><th>재료</th><th>양</th><th>금액(원)</th><th></th></tr></thead>
       <tbody>${d.items.map(row).join("")}</tbody>
     </table></div>
     <button class="rc-add" type="button">+ 줄 더하기</button>
@@ -3347,7 +3347,7 @@ function showReceiptView(id, d) {
       ${receiptPhoto(d)}
       <div>
         <table class="price-table rc-table">
-          <thead><tr><th>영수증 품목</th><th>재료</th><th>양</th><th>금액</th><th>kg·모당</th><th></th></tr></thead>
+          <thead><tr><th>품목</th><th>재료</th><th>양</th><th>금액</th><th>kg·모당</th><th></th></tr></thead>
           <tbody>${d.items.map((x) => `<tr data-jk="${esc(judgeKey(x))}"><td>${esc(x.raw_name)}</td>
             <td>${esc(x.item || "재료 아님")}</td><td>${qtyTxt(x)}</td>
             <td class="price">${won(x.amount)}</td><td>${x.unit_price ? won(x.unit_price) : "-"}</td><td class="rc-judge-cell"><span class="rc-chip"></span></td></tr>`).join("")}</tbody>

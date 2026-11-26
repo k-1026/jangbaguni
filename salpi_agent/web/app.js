@@ -2363,7 +2363,7 @@ function menuForm(m) {
     e.preventDefault();
     const recipe = [...rows.querySelectorAll(".mf-row")].map((li) => {
       const it = menuItem(li.querySelector(".mf-item").value), v = parseFloat(li.querySelector(".mf-qty").value);
-      return it && v > 0 ? { item_id: it.id, qty: saveQty(it, v) } : null;
+      return it && v > 0 ? { item_id: it.id, qty: saveQty(it, v), raw_name: it.raw_name } : null;   // raw_name: 영수증 줄에서 가져온 재료 (저장할 때 재료가 됨)
     }).filter(Boolean);
     const btn = $("#mfSave"), msg = $("#mfMsg");
     btn.disabled = true; btn.textContent = "저장하는 중"; msg.hidden = true;

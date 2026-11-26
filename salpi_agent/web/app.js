@@ -1666,48 +1666,134 @@ $("#orderCard").onclick = (e) => {
   $(".stock-all").textContent = rows.every((b) => b.getAttribute("aria-expanded") === "true") ? "모두 접기" : "근거 모두 보기";
 };
 
-// 재고 입력 (/api/inventory): 재료마다 남은 양을 고쳐 저장 → 주문량 다시 계산
-// kg · L · 모는 소수 한 자리 · 개는 정수. 영수증을 저장하면 산 만큼 자동으로 늘어남
+// 재고 입력 (/api/inventory): 탭(야채 · 과일 · 수산물 · 육류 · 기타)마다 남은 양을 고쳐 저장 → 주문량 다시 계산
+// - 숫자 칸을 눌러 바로 고침 (kg · L · 모는 소수 한 자리 · 개는 정수). 영수증을 저장하면 산 만큼 자동으로 늘어남
+// - [+ 야채 추가]: 검색 → 고르기 → 남은 양 · [편집]: 직접 넣은 재료(메뉴에 안 쓰는 것)만 − 로 뺌
+// - 2주 넘게 안 고친 재료는 주황 점 + "23일 전"
+const STOCK_TABS = [["야채", "지금 남은 양을 고쳐 주세요"], ["과일", "지금 남은 양을 고쳐 주세요"], ["수산물", "지금 남은 양을 고쳐 주세요"],
+  ["육류", "지금 남은 양을 고쳐 주세요"], ["기타", "양념 · 곡류 · 가공 재료예요"]];
+const STOCK_TAB_OF = { 채소: "야채", 과일: "과일", 수산: "수산물", 수산물: "수산물", 육류: "육류" };   // items.category → 탭 (나머지는 기타)
+const stockTab = (c) => STOCK_TAB_OF[c] || "기타";
 const stockStep = (u) => (u === "개" ? "1" : "0.1");
+const stockFix = (v, u) => +(+v).toFixed(u === "개" ? 0 : 1);
+let stock = null;   // { items, catalog, tab, edit, adding }
+function stockAgo(s) {
+  if (!s) return { text: "입력 전", old: false };
+  const d = Math.floor((Date.now() - Date.parse(s)) / 86400000);
+  return { text: d < 1 ? "오늘" : `${d}일 전`, old: d > 14 };
+}
+
 async function openStock() {
   const modal = $("#stockModal"), box = $("#stockModalBody");
   box.innerHTML = `<div class="reading"><div class="spinner"></div><b>재고를 불러오는 중이에요</b></div>`;
   modal.hidden = false;
+  stock = null;
   let d;
   try { d = await getJSON("/api/inventory"); }
   catch (e) { box.innerHTML = `<p class="rc-warn">${esc(e.message)}</p>`; return; }
-  const when = (s) => (s ? `${mmdd(s.slice(0, 10))} 고침` : "입력 전");
-  box.innerHTML = `<h3>재고 입력</h3>
-    <p class="muted small">지금 가게에 남은 양을 적어 주세요. 영수증을 저장하면 산 만큼 자동으로 늘어나요.</p>
-    <form id="stockForm" novalidate>
-      <ul class="sk-rows">${d.items.map((i) => `<li class="sk-row${i.in_menu ? "" : " off"}">
-        <span class="sk-name">${esc(i.item)}<small>${when(i.updated_at)}${i.in_menu ? "" : " · 메뉴에 안 씀"}</small></span>
-        <span class="mf-amount"><input type="number" inputmode="decimal" min="0" step="${stockStep(i.unit)}" data-id="${i.item_id}"
-          data-was="${i.on_hand}" value="${+(+i.on_hand).toFixed(i.unit === "개" ? 0 : 1)}" aria-label="${esc(i.item)} 남은 양"><span class="mf-unit">${esc(i.unit)}</span></span>
-      </li>`).join("")}</ul>
-      <p class="rc-warn" id="skMsg" hidden></p>
-      <div class="mf-actions"><button type="button" class="btn" id="skCancel">취소</button>
-        <button type="submit" class="btn primary" id="skSave">저장</button></div>
-    </form>`;
-  $("#skCancel").onclick = closeStock;
-  $("#stockForm").oninput = (e) => e.target.closest(".sk-row")?.classList.toggle("changed", +e.target.value !== +(+e.target.dataset.was).toFixed(3));
-  $("#stockForm").onsubmit = async (e) => {
-    e.preventDefault();
-    const inputs = [...box.querySelectorAll("input[data-id]")];
-    const bad = inputs.find((x) => x.value === "" || !(+x.value >= 0));
-    const msg = $("#skMsg"), btn = $("#skSave");
-    if (bad) { msg.textContent = "남은 양은 0 이상 숫자로 넣어 주세요"; msg.hidden = false; bad.focus(); return; }
-    const items = inputs.filter((x) => x.closest(".sk-row").classList.contains("changed"))
-      .map((x) => ({ item_id: +x.dataset.id, on_hand: +x.value }));
-    if (!items.length) { closeStock(); return; }
-    btn.disabled = true; btn.textContent = "저장하는 중"; msg.hidden = true;
+  stock = { items: d.items.map((i) => ({ ...i, was: i.on_hand })), catalog: d.catalog || [], tab: "야채", edit: false, adding: null };
+  drawStock();
+}
+
+function drawStock() {
+  const s = stock, box = $("#stockModalBody");
+  const rows = s.items.filter((i) => stockTab(i.category) === s.tab);
+  const sub = STOCK_TABS.find(([t]) => t === s.tab)[1];
+  const row = (i) => {
+    const a = stockAgo(i.updated_at), menu = i.in_menu;
+    const chip = menu ? `<span class="sk-chip">메뉴</span>` : `<span class="sk-chip own">직접 추가</span>`;
+    const del = s.edit && !menu ? `<button type="button" class="sk-del" data-del="${i.item_id}" aria-label="${esc(i.item)} 빼기">−</button>` : "";
+    const qty = s.edit
+      ? `<span class="sk-qty-text">${stockFix(i.on_hand, i.unit)} <small>${esc(i.unit)}</small></span>`
+      : `<label class="sk-qty"><input type="number" inputmode="decimal" min="0" step="${stockStep(i.unit)}" data-id="${i.item_id}"
+          value="${i.on_hand === "" ? "" : stockFix(i.on_hand, i.unit)}" aria-label="${esc(i.item)} 남은 양"><small>${esc(i.unit)}</small></label>`;
+    return `<li class="sk-row${s.edit && menu ? " dim" : ""}">${del}
+      <span class="sk-name"><span><b>${esc(i.item)}</b>${chip}</span>${s.edit ? "" : `<small class="${a.old ? "old" : ""}">${a.text}</small>`}</span>${qty}</li>`;
+  };
+  const what = s.tab === "기타" ? "기타 재료" : s.tab;
+  const choices = s.adding ? s.catalog.filter((c) => stockTab(c.category) === s.tab && c.item.includes(s.adding.q)) : [];
+  const add = s.edit ? "" : !s.adding
+    ? `<button type="button" class="sk-add" data-add>+ ${what} 추가</button>`
+    : s.adding.pick
+      ? `<div class="sk-adding"><b>${esc(s.adding.pick.item)}</b>
+          <label class="sk-qty"><input type="number" inputmode="decimal" min="0" step="${stockStep(s.adding.pick.unit)}" id="skAddQty" placeholder="남은 양" aria-label="남은 양"><small>${esc(s.adding.pick.unit)}</small></label>
+          <button type="button" class="sk-add-ok" data-add-ok>넣기</button><button type="button" class="sk-add-x" data-add-x aria-label="취소">×</button></div>`
+      : `<div class="sk-adding col"><input type="search" id="skAddQ" placeholder="재료 이름 검색" value="${esc(s.adding.q)}" aria-label="재료 이름 검색">
+          <ul class="sk-pick">${choices.map((c) => `<li><button type="button" data-pick="${c.item_id}">${esc(c.item)} <small>${esc(c.unit)}</small></button></li>`).join("")
+            || `<li class="muted small">넣을 수 있는 ${what}가 없어요</li>`}</ul>
+          <button type="button" class="sk-add-x text" data-add-x>취소</button></div>`;
+  box.innerHTML = `<div class="sk-head"><h3>재고 입력</h3>
+      <button type="button" class="sk-edit${s.edit ? " on" : ""}" data-edit>${s.edit ? "완료" : "편집"}</button></div>
+    <p class="sk-sub">${sub}</p>
+    ${s.edit ? `<p class="sk-note">직접 추가한 재료만 뺄 수 있어요. 메뉴 재료는 메뉴에 쓰여서 뺄 수 없어요</p>` : ""}
+    <div class="sk-tabs" role="tablist">${STOCK_TABS.map(([t]) => `<button type="button" role="tab" aria-selected="${t === s.tab}" data-tab="${t}">${t}
+      <small>${s.items.filter((i) => stockTab(i.category) === t).length}</small></button>`).join("")}</div>
+    <div class="sk-list">${rows.length ? `<ul class="sk-rows">${rows.map(row).join("")}</ul>`
+      : `<div class="sk-empty"><b>아직 ${s.tab} 재료가 없어요</b><p>메뉴에 들어가거나 영수증으로 사면<br>여기에 생겨요</p></div>`}
+    ${add}</div>
+    <p class="rc-warn" id="skMsg" hidden></p>
+    <button type="button" class="sk-save${s.edit ? " done" : ""}" id="skSave">${s.edit ? "편집 완료" : "저장"}</button>`;
+  ($("#skAddQ") || $("#skAddQty"))?.focus();
+}
+
+const stockMsg = (t) => { const m = $("#skMsg"); m.textContent = t; m.hidden = !t; };
+$("#stockModalBody").addEventListener("input", (e) => {
+  if (!stock) return;
+  const id = e.target.dataset.id;
+  if (id) stock.items.find((i) => i.item_id === +id).on_hand = e.target.value;
+  if (e.target.id === "skAddQ") {
+    stock.adding.q = e.target.value.trim();
+    const at = e.target.selectionStart;
+    drawStock();
+    $("#skAddQ").setSelectionRange(at, at);
+  }
+});
+$("#stockModalBody").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && e.target.id === "skAddQty") $("#stockModalBody [data-add-ok]").click();
+});
+$("#stockModalBody").addEventListener("click", async (e) => {
+  const b = e.target.closest("button");
+  if (!b || !stock) return;
+  const s = stock;
+  if (b.dataset.tab) { s.tab = b.dataset.tab; s.adding = null; return drawStock(); }
+  if ("edit" in b.dataset || (b.id === "skSave" && s.edit)) { s.edit = !s.edit; s.adding = null; return drawStock(); }
+  if ("add" in b.dataset) { s.adding = { q: "", pick: null }; return drawStock(); }
+  if ("addX" in b.dataset) { s.adding = null; return drawStock(); }
+  if (b.dataset.pick) { s.adding.pick = s.catalog.find((c) => c.item_id === +b.dataset.pick); return drawStock(); }
+  if ("addOk" in b.dataset) {
+    const v = $("#skAddQty").value;
+    if (v === "" || !(+v >= 0)) return stockMsg("남은 양은 0 이상 숫자로 넣어 주세요");
+    const p = s.adding.pick;
+    s.items.push({ ...p, on_hand: v, was: null, updated_at: null, in_menu: false });   // was = null: 저장 때 새로 넣음
+    s.catalog = s.catalog.filter((c) => c !== p);
+    s.adding = null;
+    return drawStock();
+  }
+  if (b.dataset.del) {
+    const i = s.items.find((x) => x.item_id === +b.dataset.del);
+    if (i.was !== null) {   // 저장 전에 넣은 재료는 화면에서만 빼면 됨
+      b.disabled = true;
+      try { await sendJSON(`/api/inventory/${i.item_id}`, "DELETE"); }
+      catch (err) { b.disabled = false; return stockMsg(err.message); }
+    }
+    s.items = s.items.filter((x) => x !== i);
+    s.catalog.push({ item_id: i.item_id, item: i.item, unit: i.unit, category: i.category });
+    return drawStock();
+  }
+  if (b.id === "skSave") {
+    const bad = s.items.find((i) => i.on_hand === "" || !(+i.on_hand >= 0));
+    if (bad) { s.tab = stockTab(bad.category); drawStock(); return stockMsg(`${bad.item}: 남은 양은 0 이상 숫자로 넣어 주세요`); }
+    const items = s.items.filter((i) => i.was === null || +i.on_hand !== +(+i.was).toFixed(3))
+      .map((i) => ({ item_id: i.item_id, on_hand: +i.on_hand }));
+    if (!items.length) return closeStock();
+    b.disabled = true; b.textContent = "저장하는 중";
     try {
       await sendJSON("/api/inventory", "PUT", { items });
       closeStock();
       loadDemand();   // 주문량 다시 계산
-    } catch (err) { msg.textContent = err.message; msg.hidden = false; btn.disabled = false; btn.textContent = "저장"; }
-  };
-}
+    } catch (err) { stockMsg(err.message); b.disabled = false; b.textContent = "저장"; }
+  }
+});
 const closeStock = () => { $("#stockModal").hidden = true; };
 $("#stockModalClose").onclick = closeStock;
 $("#stockModal").onclick = (e) => { if (e.target.id === "stockModal") closeStock(); };

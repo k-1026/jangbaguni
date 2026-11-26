@@ -1978,7 +1978,7 @@ function resetReceipt() {
 
 // 확인 · 수정 표: 새로 읽은 영수증(아래 화면)과 저장한 영수증 고치기(팝업)가 같이 씀
 // d = { date, supplier, items[{raw_name, item_id, base_unit, qty_base, amount, qty}], items_list, total_matches, ... }
-function receiptEditor(box, d, { image, thumb = true, badge, saveLabel = "확인했어요, 저장", onSave, onCancel }) {
+function receiptEditor(box, d, { image, thumb = true, badge, saveLabel = "저장", onSave, onCancel }) {
   const opts = (sel) => `<option value="">재료 아님</option>` + d.items_list.map((i) =>
     `<option value="${i.id}" ${i.id === sel ? "selected" : ""}>${esc(i.name)}</option>`).join("");
   const unitOf = (id) => d.items_list.find((i) => i.id === +id)?.base_unit || "";

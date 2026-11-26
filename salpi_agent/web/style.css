@@ -873,6 +873,18 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .sp-channels dd { padding-left: 12px; font-weight: 700; color: #fff; }
 .sp-channels dd.won { padding-left: 0; text-align: right; font-weight: 800; }
 .sp-channels .unit { margin-left: 3px; font-size: 13px; font-weight: 500; color: #D5E3CD; }   /* 숫자와 '그릇' 사이를 띄우고 단위는 연하게 */
+/* 현재 마진: 총 매출 아래, 같은 크기로 강조 (가게 비용 − 재료비를 뺀 오늘 남는 돈) */
+.sp-margin { margin: 0 0 18px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,.16); }
+.sp-m-val { color: #CDE8BC; }
+.sp-m-val.minus { color: #FFB4A8; }
+.sp-m-rows { display: grid; grid-template-columns: 1fr max-content; column-gap: 12px; margin: 8px 0 0; }
+.sp-m-rows div { display: contents; }
+.sp-m-rows dt, .sp-m-rows dd { margin: 0; padding: 2px 0; font-size: 13px; line-height: 1.4; color: #D5E3CD; font-variant-numeric: tabular-nums; }
+.sp-m-rows dd { text-align: right; white-space: nowrap; }
+.sp-m-note { margin: 6px 0 0; font-size: 12px; color: #B9CCB0; }
+.sp-m-empty { margin: 4px 0 10px; font-size: 13.5px; line-height: 1.5; color: #D5E3CD; }
+.sp-m-btn { min-height: 34px; padding: 0 14px; border: 1px solid rgba(255,255,255,.35); border-radius: 999px; background: rgba(255,255,255,.1); color: #fff; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.sp-m-btn:hover { background: rgba(255,255,255,.18); }
 
 /* 접힌 상태: 날짜 · 저장 상태 | 총 판매량 | 매출 | 채널별 | [펼치기] */
 .sales-fold-row { display: flex; align-items: center; gap: 12px 0; flex-wrap: wrap; padding: 14px 20px; }

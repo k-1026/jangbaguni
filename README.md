@@ -8,7 +8,7 @@
 
 - **배포 화면**: https://jangbaguni-ten.vercel.app/
 - **관제 화면**: https://jangbaguni-ten.vercel.app/static/control.html
-- **PPT (캔바)**: -
+- **PPT (캔바)**: https://canva.link/ls7pk5n9109feny
 
 ---
 

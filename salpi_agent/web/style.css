@@ -1899,3 +1899,4 @@ body.login-view .login-only, body.signup-view .signup-only { display: flex; }
 .sk-adding .sk-qty input::placeholder { font-size: 13px; font-weight: 500; color: var(--muted); }
 .sk-qty input::-webkit-outer-spin-button, .sk-qty input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .sk-qty input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+.edit-table th { text-align: left; }   /* 입력 칸 표: 제목을 입력 칸 왼쪽 끝에 맞춤 (품목처럼) */

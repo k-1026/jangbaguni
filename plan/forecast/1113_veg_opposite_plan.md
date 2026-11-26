@@ -2,7 +2,7 @@
 
 > 무엇: 11/13 발표 피드백 "예측 오차 20%대는 높다, 기준을 10%로 잡고 낮춰 보자"에서 **야채(26.2%)** 를 어떻게 낮출지 정리
 > 앞 문서: [1113_forecast_accuracy_goals.md](1113_forecast_accuracy_goals.md) (과일 10% 방법 · 목표 정리) · [1112_forecast_backtest_results.md](1112_forecast_backtest_results.md) (5년 채점)
-> 할 일 목록: [../presentation/1113_feedback_todo.md](../presentation/1113_feedback_todo.md)
+> 할 일 목록: [../presentation/1113_feedback_todo.md](../presentation/1113/1113_feedback_todo.md)
 > 숫자: 북부도매시장 야채 15개, **2025-01 ~ 2026-11 (계수를 고를 때 안 쓴 기간)**, 이틀마다 예측해 7일 뒤 실제 값과 비교한 4,107건. `salpi_agent/price/backtest.py` 와 같은 계산 조각으로 품목 · 월 · 예측 크기별로 나눠 봄
 
 ---
@@ -123,7 +123,7 @@
 |---|---|---|---|---|
 | ① | 야채 말하는 기준 ±2% → ±6%, 채점 "비슷할" ±2% → ±5% | 정반대 26% → 약 8% | `analysis.py` · `backtest.py` · `forecast_log` 채점 | 11/14~18 (과일 ±4%와 같이) |
 | ② | 2021~2024 기간으로 ①을 다시 채점, `backtest.py` 에 품목별 · 달별 표 출력 추가 | 한 기간에만 맞춘 숫자가 아닌지 확인, 다음 채점부터 바로 비교 | `backtest.py` | ①과 같이 |
-| ③ | 대구 밖 자료 넣기: **서울 가락시장 경락가(선행 채점, [할 일 4-1](../presentation/1113_feedback_todo.md)) · 앞으로 7일 날씨 예보([4-2](../presentation/1113_feedback_todo.md)) · 주산지 날씨 · KAMIS 전국 도매 흐름** | 정반대가 아니라 **방향 적중률 자체**를 올림 (지금 45%). 봄 · 10월처럼 나는 곳이 바뀌는 때를 미리 앎 | `data_sources.py` · `analysis.py` | 11/20~25 |
+| ③ | 대구 밖 자료 넣기: **서울 가락시장 경락가(선행 채점, [할 일 4-1](../presentation/1113/1113_feedback_todo.md)) · 앞으로 7일 날씨 예보([4-2](../presentation/1113/1113_feedback_todo.md)) · 주산지 날씨 · KAMIS 전국 도매 흐름** | 정반대가 아니라 **방향 적중률 자체**를 올림 (지금 45%). 봄 · 10월처럼 나는 곳이 바뀌는 때를 미리 앎 | `data_sources.py` · `analysis.py` | 11/20~25 |
 | ④ | 봄 · 10월 "나는 곳 바뀜" 달력 (품목별 햇것 출하 시기) | 1-2 가설 확인. 맞으면 그 시기엔 평균 차이 계수를 줄임 | `analysis.py` | ③과 같이 |
 | ⑤ | 공식 vs 부스팅 비교에 ③ 자료 넣어 다시 비교 | 지금 부스팅도 방향 약 52%라, 새 자료가 있어야 의미 있는 차이가 날 것 | 부스팅 비교 (문서는 아직 저장소에 없음) | 11/20~25 |
 | ⑥ | 화면 대표 숫자를 방향 → **범위 적중률**로 ("10번 중 7번은 이 범위 안") | 사장님께 정직한 숫자 | `web/app.js` | 11/26~12/1 |

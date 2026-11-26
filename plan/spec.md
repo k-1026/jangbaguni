@@ -2,7 +2,7 @@
 
 > 무엇: 살피가 **무엇을 하는지(기능)**, **기능마다 무엇을 받아 무엇을 내놓는지(입력 · 출력 · 기준)**, **데이터가 어떻게 흐르는지**를 한곳에 정리
 > 기준: 11/18 실제 코드 (11/25 기능 상태 다시 맞춤) (`salpi_agent/`) · 시연 사이트 https://jangbaguni-ten.vercel.app — **"된다"는 지금 사이트에서 돌아가는 것만**
-> 같이 보는 문서: [As-Is → To-Be](presentation/1118_as_is_to_be.md) · [API 약속](1116_api_contract.md) · [최종 계획](1116_final_sprint_plan.md) · [에이전트 나누기](bm/1118_agent_split.md) · [DB 표](../supabase/schema.sql)
+> 같이 보는 문서: [As-Is → To-Be](presentation/1118/1118_as_is_to_be.md) · [API 약속](1116_api_contract.md) · [최종 계획](1116_final_sprint_plan.md) · [에이전트 나누기](bm/1118_agent_split.md) · [DB 표](../supabase/schema.sql)
 > 상태: ✅ 됨 · 🟡 일부만 / 시연 데이터 · ⬜ 아직 안 됨
 > 11/25 갱신: 11/18 이후 끝난 것(영수증 정확도 · 재고 입력 · 판매 기록 · 가게 비용 · 구독 · 원가율 알림 · 수산물 채점)만 상태 칸에 고침. 나머지는 11/18 그대로
 > 다음 버전: v2 (11/27, D5) — 11/26 영수증 시험 · 설문 결과 반영

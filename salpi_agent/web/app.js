@@ -2406,9 +2406,28 @@ function payFail(msg) {
   $('#payBody [data-pay="back"]').onclick = payClose;
 }
 
+// ⓪ 구독 안내: 결제 전에 무료 · 플러스 비교 → [19,900원 결제하기]로 결제
+const PAY_FEATURES = [["시세 · 7일 예측", "✓", "✓"], ["살피 챗봇", "✓", "✓"], ["영수증 분석", "5회", "무제한"],
+  ["메뉴별 원가율", "–", "✓"], ["원가율 낮추는 방법", "–", "✓"], ["판매율 분석", "잠금", "무제한"]];
+function payIntro(from) {
+  if (!SIGNED_IN) return goLogin();
+  payShow(`<div class="pay-card pay-intro">
+      <button class="pay-back pay-top" type="button" data-pay="back">‹ 뒤로</button>
+      <img src="/static/img/salpi_wave.png" alt="" draggable="false">
+      <h3>살피 플러스로 원가 걱정 끝</h3>
+      <p class="pay-price">월 <b>19,900</b>원</p>
+      <table class="pay-table"><thead><tr><th>기능</th><th>무료</th><th class="plus">플러스</th></tr></thead><tbody>
+        ${PAY_FEATURES.map(([f, a, b]) => `<tr><td>${f}</td><td>${a}</td><td class="plus">${b}</td></tr>`).join("")}
+      </tbody></table>
+      <button class="pay-btn pay-go" type="button" data-pay="buy">19,900원 결제하기</button>
+      <p class="pay-note">시연용 모의 결제예요. 실제로 돈이 나가지 않아요<br>언제든 해지할 수 있어요</p></div>`);
+  $('#payBody [data-pay="back"]').onclick = payClose;
+  $('#payBody [data-pay="buy"]').onclick = () => openPay(from);
+}
+
 // [월 19,900원으로 구독하기]: 영수증 분석 잠금 · 판매율 분석 잠금(나중에 그려지는 칸이라 문서에서 받음)
-$("#receiptSubBtn").onclick = () => openPay("receipt");
-document.addEventListener("click", (e) => { if (e.target.closest(".sales-sub-btn")) openPay("sales"); });
+$("#receiptSubBtn").onclick = () => payIntro("receipt");
+document.addEventListener("click", (e) => { if (e.target.closest(".sales-sub-btn")) payIntro("sales"); });
 $("#payClose").onclick = payClose;
 $("#payModal").onclick = (e) => { if (e.target.id === "payModal") payClose(); };
 
@@ -3484,7 +3503,7 @@ function planManage() {
     ${pays ? `<section class="my-card"><h4>최근 결제</h4><ul class="pm-pays">${pays}</ul></section>` : ""}`;
 }
 async function planClick(act) {
-  if (act === "buy") return openPay("mypage");
+  if (act === "buy") return payIntro("mypage");
   if (act === "manage") return renderMypage("plan");
 }
 

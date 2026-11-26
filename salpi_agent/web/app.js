@@ -3396,7 +3396,7 @@ async function loadJudge(id) {
     // 칩 바로 옆에 같은 줄로 금액만 (빨강 = 더 낸 돈, 초록 = 아낀 돈 · '과지출 · 절약' 글자는 합계 줄에만)
     const money = x.extra_paid ? `<b class="up">${won(x.extra_paid)}</b>` : x.saved ? `<b class="down">${won(x.saved)}</b>` : "";
     // 비싸게 산 재료는 '더 싼 곳' 버튼 → 누르면 그 줄 아래에 판매처 목록 (/api/cheaper)
-    const more = x.verdict === "비싸게 샀어요" && x.item
+    const more = x.verdict === "비싸게 샀어요" && x.item && x.cheaper_ok !== false   // 비교 못 하는 재료(고기 · 양념 등)는 버튼 없음
       ? `<button class="rc-cheaper-btn" type="button" data-item="${esc(x.item)}" data-paid="${x.unit_price || ""}" aria-expanded="false">더 싼 곳</button>` : "";
     tr.querySelector(".rc-chip").outerHTML = `<span class="demand-chip rc-chip ${JUDGE_CHIP[x.verdict] || ""}" title="${esc(why)}">${esc(text)}</span>`
       + (money ? `<span class="rc-why">${money}</span>` : "") + more;

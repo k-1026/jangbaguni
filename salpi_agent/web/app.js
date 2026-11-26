@@ -2316,7 +2316,7 @@ const recipeRow = (r = {}) => `<li class="mf-row" data-loss="${r.loss || 0}">
   <span class="mf-amount"><input class="mf-qty" type="number" inputmode="decimal" min="0" step="any" aria-label="1인분 양"
     value="${r.qty != null ? showQty(menuItem(r.item_id), r.qty) : ""}"><span class="mf-unit"></span></span>
   <button type="button" class="mf-del" aria-label="이 재료 빼기">✕</button>
-  <small class="mf-noprice" hidden>영수증 가격 없음</small></li>`;   // 안내는 ✕ 뒤에 (앞에 두면 ✕ 가 다음 줄로 밀림)
+  <small class="mf-noprice" hidden>영수증 가격 없음 <button type="button" class="mf-setprice">가격 넣기</button></small></li>`;   // 안내는 ✕ 뒤에 (앞에 두면 ✕ 가 다음 줄로 밀림)
 
 function menuForm(m) {
   const add = !m;
@@ -2355,7 +2355,10 @@ function menuForm(m) {
     $("#mfPrice").focus();
   });
   $("#mfAddRow").onclick = () => { rows.insertAdjacentHTML("beforeend", recipeRow()); rows.lastElementChild.querySelector("select").focus(); menuCalc(); };
-  rows.onclick = (e) => { if (e.target.closest(".mf-del")) { e.target.closest(".mf-row").remove(); menuCalc(); } };
+  rows.onclick = (e) => {
+    if (e.target.closest(".mf-del")) { e.target.closest(".mf-row").remove(); menuCalc(); }
+    if (e.target.closest(".mf-setprice")) setItemPrice(e.target.closest(".mf-setprice"));
+  };
   $("#menuForm").oninput = menuCalc;
   $("#mfCancel").onclick = closeMenu;
   if (!add) $("#mfStop").onclick = () => stopMenu(m);
@@ -2377,6 +2380,22 @@ function menuForm(m) {
       btn.disabled = false; btn.textContent = "저장";
     }
   };
+}
+
+// 영수증 가격이 없는 재료: 사장님이 기준 단위당 가격을 직접 넣음 → 바로 원가율에 씀 (나중에 영수증이 오면 그 값으로)
+async function setItemPrice(btn) {
+  const it = menuItem(btn.closest(".mf-row").querySelector(".mf-item").value);
+  const v = prompt(`${it.name} 1${it.unit} 가격을 원으로 적어 주세요`, "");
+  if (v == null) return;
+  const price = parseInt(v.replace(/[^0-9]/g, ""), 10);
+  if (!(price > 0)) return alert("가격을 숫자로 적어 주세요");
+  btn.disabled = true;
+  try {
+    await sendJSON("/api/menus/price", "POST", { item_id: it.id, price });
+    it.price = price;
+    menuCalc();
+  } catch (err) { alert(err.message); }
+  btn.disabled = false;
 }
 
 // 원가율 미리 보기: 재료마다 최근 영수증 단가 × 1인분 양 (화면의 메뉴별 원가율과 같은 계산)

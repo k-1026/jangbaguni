@@ -750,6 +750,17 @@ def menu_edit(menu_id: int, body: MenuIn):
     return _receipt_guard(lambda: _menu_changed(menus.save(supabase_db.DEMO_STORE, menu_id, body.model_dump())))
 
 
+class PriceIn(BaseModel):
+    item_id: int
+    price: int
+
+
+@app.post("/api/menus/price")
+def menu_item_price(body: PriceIn):
+    """영수증 가격이 없는 재료에 가격 직접 넣기 (메뉴 고치기 창의 [가격 넣기])."""
+    return _receipt_guard(lambda: _store_changed(menus.set_price(supabase_db.DEMO_STORE, body.item_id, body.price)))
+
+
 @app.post("/api/menus/{menu_id}/stop")
 def menu_stop(menu_id: int):
     """판매 중지 (메뉴를 지우면 판매 기록까지 지워져서 지우지 않음)."""

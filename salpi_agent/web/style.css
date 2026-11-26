@@ -1625,6 +1625,7 @@ main { overflow-x: clip; }   /* 화면 폭 배경이 가로 스크롤을 만들�
 .mf-unit { width: 24px; font-size: 16px; color: var(--muted); }
 .mf-noprice { grid-column: 1 / -1; margin-top: -4px; font-size: 13px; color: #B57A00; }
 .mf-noprice[hidden] { display: none; }
+.mf-setprice { margin-left: 6px; padding: 2px 8px; border: 1px solid #B57A00; border-radius: 6px; background: none; color: #B57A00; font: inherit; cursor: pointer; }
 .mf-del { width: 44px; height: 44px; border: 0; border-radius: 50%; background: none; font-size: 18px; color: var(--muted); cursor: pointer; }
 .mf-del:hover { background: var(--surface-variant); color: var(--up); }
 .mf-add { align-self: flex-start; padding: 8px 16px; font-size: 15px; }

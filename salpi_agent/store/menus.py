@@ -8,6 +8,8 @@
 - 손질 손실률은 화면에 보이지 않는다. 고칠 때는 원래 값을 그대로 두고, 새 재료는 0으로 넣는다.
 """
 
+from datetime import datetime, timedelta, timezone
+
 from price import units
 from store import inventory, menu_cost
 from sources import supabase_db as db
@@ -93,6 +95,24 @@ def editor_data(store_id):
                               for r in recipes if r["menu_id"] == m["id"]]} for m in menus],
         "templates": templates,
     }
+
+
+def set_price(store_id, item_id, price):
+    """영수증 가격이 없는 재료에 사장님이 기준 단위(kg · L · 모 · 개)당 가격을 직접 넣음.
+    '직접 입력' 구매 한 줄로 저장 → 원가율이 영수증 단가와 똑같이 씀. 나중에 영수증이 들어오면 더 최근 값이라 그걸 씀."""
+    try:
+        item_id, price = int(item_id), int(price)
+    except (TypeError, ValueError):
+        raise ValueError("가격을 숫자로 적어 주세요") from None
+    if not 1 <= price <= 10_000_000:
+        raise ValueError("가격은 1원 ~ 1,000만 원 사이로 적어 주세요")
+    if not db.select("items", id=f"eq.{item_id}", select="id"):
+        raise ValueError("재료를 찾지 못했어요")
+    today = datetime.now(timezone(timedelta(hours=9))).date().isoformat()
+    p = db.insert("purchases", [{"store_id": store_id, "purchased_on": today, "supplier": "직접 입력",
+                                 "total_amount": price, "source": "manual"}])[0]
+    db.insert("purchase_items", [{"purchase_id": p["id"], "item_id": item_id, "raw_name": "직접 입력", "qty_base": 1, "amount": price}])
+    return {"item_id": item_id, "price": price}
 
 
 def _check(body, item_ids):

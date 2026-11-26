@@ -582,7 +582,7 @@ def my_ingredients(store_id):
 def recent(store_id, limit=8):
     """최근 영수증 목록 + 사진 미리보기 주소 (1시간 동안 열리는 주소 → 보관할 때는 1시간보다 짧게)."""
     ps = db.select("purchases", store_id=f"eq.{store_id}", select="id,purchased_on,supplier,total_amount,source,image_path",
-                   order="purchased_on.desc,id.desc", limit=str(limit))
+                   source="neq.manual", order="purchased_on.desc,id.desc", limit=str(limit))   # 직접 넣은 가격(menus.set_price)은 영수증 목록에 안 보임
     counts, names = {}, {}
     for r in db.select("purchase_items", purchase_id=f"in.({','.join(str(p['id']) for p in ps) or 0})", select="purchase_id,raw_name", order="id"):
         counts[r["purchase_id"]] = counts.get(r["purchase_id"], 0) + 1

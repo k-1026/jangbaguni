@@ -1725,7 +1725,7 @@ function drawStock() {
     const qty = s.edit
       ? `<span class="sk-qty-text">${stockFix(i.on_hand, i.unit)} <small>${esc(i.unit)}</small></span>`
       : `<label class="sk-qty"><input type="number" inputmode="decimal" min="0" step="${stockStep(i.unit)}" data-id="${i.item_id}"
-          value="${i.on_hand === "" ? "" : stockFix(i.on_hand, i.unit)}" aria-label="${esc(i.item)} 남은 양"><small>${esc(i.unit)}</small></label>`;
+          value="${i.on_hand === "" ? "" : stockFix(i.on_hand, i.unit)}" aria-label="${esc(i.item)} 남은 양"><small>${esc(i.unit)}</small><span class="sk-step"><button type="button" data-step="1" aria-label="늘리기" tabindex="-1">▲</button><button type="button" data-step="-1" aria-label="줄이기" tabindex="-1">▼</button></span></label>`;
     return `<li class="sk-row${s.edit && menu ? " dim" : ""}">${del}
       <span class="sk-name"><span><b>${esc(i.item)}</b>${chip}</span>${s.edit ? "" : `<small class="${a.old ? "old" : ""}">${a.text}</small>`}</span>${qty}</li>`;
   };
@@ -1736,7 +1736,7 @@ function drawStock() {
     : p
       ? `<div class="sk-adding"><b>${esc(p.item)}</b>
           ${p.new ? `<select id="skAddUnit" aria-label="단위">${["kg", "개", "모", "L"].map((u) => `<option${u === p.unit ? " selected" : ""}>${u}</option>`).join("")}</select>` : ""}
-          <label class="sk-qty"><input type="number" inputmode="decimal" min="0" step="${stockStep(p.unit)}" id="skAddQty" placeholder="남은 양" aria-label="남은 양">${p.new ? "" : `<small>${esc(p.unit)}</small>`}</label>
+          <label class="sk-qty"><input type="number" inputmode="decimal" min="0" step="${stockStep(p.unit)}" id="skAddQty" placeholder="남은 양" aria-label="남은 양">${p.new ? "" : `<small>${esc(p.unit)}</small>`}<span class="sk-step"><button type="button" data-step="1" aria-label="늘리기" tabindex="-1">▲</button><button type="button" data-step="-1" aria-label="줄이기" tabindex="-1">▼</button></span></label>
           <button type="button" class="sk-add-ok" data-add-ok>넣기</button><button type="button" class="sk-add-x" data-add-x aria-label="취소">×</button></div>`
       : `<div class="sk-adding col"><input type="search" id="skAddQ" placeholder="재료 이름 검색" value="${esc(s.adding.q)}" maxlength="20" aria-label="재료 이름 검색">
           <ul class="sk-pick">${stockPicks()}</ul>
@@ -1777,6 +1777,23 @@ $("#stockModalBody").addEventListener("input", (e) => {
     $("#stockModalBody .sk-pick").innerHTML = stockPicks();
   }
 });
+// ▲ ▼ 원터치: 한 번 누르면 한 칸(kg · L · 모 0.1, 개 1), 누르고 있으면 쭉 오르내림 (0 밑으로는 안 내려감)
+let stockHold = null;
+const stockStop = () => { clearTimeout(stockHold); clearInterval(stockHold); stockHold = null; };
+function stockBump(btn) {
+  const input = btn.closest(".sk-qty").querySelector("input"), st = +input.step || 0.1, dec = st < 1 ? 1 : 0;
+  input.value = Math.max(0, +((+input.value || 0) + st * +btn.dataset.step).toFixed(dec));
+  input.dispatchEvent(new Event("input", { bubbles: true }));   // 저장할 값 · [저장] 버튼은 손으로 친 것과 똑같이
+}
+$("#stockModalBody").addEventListener("pointerdown", (e) => {
+  const b = e.target.closest("[data-step]");
+  if (!b) return;
+  e.preventDefault();   // 숫자 칸 포커스 · 글자 선택이 흔들리지 않게
+  stockStop();
+  stockBump(b);
+  stockHold = setTimeout(() => { stockHold = setInterval(() => stockBump(b), 70); }, 400);
+});
+["pointerup", "pointerleave", "pointercancel"].forEach((t) => $("#stockModalBody").addEventListener(t, stockStop));
 $("#stockModalBody").addEventListener("keydown", (e) => {
   if (e.key === "Enter" && e.target.id === "skAddQty") $("#stockModalBody [data-add-ok]").click();
 });

@@ -139,6 +139,9 @@ create table if not exists stores (
   is_demo             boolean not null default false,       -- 시연용 가상 매장 (누구나 조회 가능)
   created_at          timestamptz not null default now()
 );
+-- 11/26 영업시간: 마감이 자정을 넘기면(마감 <= 개점) 새벽 판매도 전날 영업일로 (store/sales.py)
+alter table stores add column if not exists open_time time default '11:00',
+                   add column if not exists close_time time default '21:00';
 alter table stores enable row level security;
 
 create table if not exists menus (

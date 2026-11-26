@@ -480,6 +480,17 @@ def sales_day(date: str | None = None):
     return _receipt_guard(lambda: sales.day(supabase_db.DEMO_STORE, date))
 
 
+class HoursIn(BaseModel):
+    open: str = ""
+    close: str = ""
+
+
+@app.put("/api/sales/hours")
+def sales_hours(body: HoursIn):
+    """영업시간 저장 (마감이 자정을 넘기면 새벽 판매도 전날 영업일로). → {open_time, close_time, today}"""
+    return _receipt_guard(lambda: sales.set_hours(supabase_db.DEMO_STORE, body.open, body.close))
+
+
 @app.put("/api/sales")
 def sales_save(body: SalesIn, authorization: str | None = Header(None)):
     """판매 기록 입력 → 내일 준비 · 원가율 다시 계산. 로그인 표가 있으면 새 날짜를 올릴 때 판매율 분석 1회
@@ -737,6 +748,17 @@ def menu_add(body: MenuIn):
 @app.put("/api/menus/{menu_id}")
 def menu_edit(menu_id: int, body: MenuIn):
     return _receipt_guard(lambda: _menu_changed(menus.save(supabase_db.DEMO_STORE, menu_id, body.model_dump())))
+
+
+class PriceIn(BaseModel):
+    item_id: int
+    price: int
+
+
+@app.post("/api/menus/price")
+def menu_item_price(body: PriceIn):
+    """영수증 가격이 없는 재료에 가격 직접 넣기 (메뉴 고치기 창의 [가격 넣기])."""
+    return _receipt_guard(lambda: _store_changed(menus.set_price(supabase_db.DEMO_STORE, body.item_id, body.price)))
 
 
 @app.post("/api/menus/{menu_id}/stop")

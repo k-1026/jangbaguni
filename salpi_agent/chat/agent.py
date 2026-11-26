@@ -472,6 +472,15 @@ BUTTON_ROUTES = {
     "야채값 시세변동 추이 말해줘.": ["시세"], "지금 사면 이득인 야채 알려줘": ["시세"],
     "이 가격에 팔아도 남아?": ["원가"], "우리 가게 원가율 알려줘": ["원가"], "내일 얼마나 준비할까?": ["내일준비"],
 }
+_BUTTON_KEY = lambda t: re.sub(r"[\s.?!~,]+", "", t)
+_BUTTONS = {_BUTTON_KEY(b): b for b in BUTTON_ROUTES}
+
+
+def button(text):
+    """직접 친 버튼 질문("야채값 시세 변동 추이 말해줘")도 띄어쓰기 · 문장 부호를 빼고 같으면 버튼 글로 바꿈. 아니면 그대로."""
+    return _BUTTONS.get(_BUTTON_KEY(text), text.strip())
+
+
 # 가벼운 모델이 실패하거나 바쁠 때 쓰는 낱말 규칙
 KEYWORDS = {
     "내일준비": r"내일|몇 ?그릇|판매량|발주|주문량|재고|준비",
@@ -505,7 +514,7 @@ def _keyword_route(message):
 
 def route(message, client=None, before=()):
     """→ (담당 목록, 어떻게 골랐나: 버튼 · 모델 · 낱말 · 이어서). before: 지난 대화 글 [질문, 답, 질문, 답, ...] (오래된 것부터)"""
-    text = message.strip()
+    text = button(message)
     if text in BUTTON_ROUTES:
         return BUTTON_ROUTES[text], "버튼"
     hits = [k for k, pat in KEYWORDS.items() if re.search(pat, text)]
@@ -517,8 +526,8 @@ def route(message, client=None, before=()):
         # 앞 질문에 낱말이 없으면("내 비빔밥 뭐가 문제야") 살피 답("원가율 21.5%")으로 판단
         turns = [t for t in zip(before[0::2], before[1::2]) if not quick.small_talk(t[0])]   # 소개 · 인사는 건너뜀
         for q, said in reversed(turns):
-            if q.strip() in BUTTON_ROUTES:
-                return BUTTON_ROUTES[q.strip()], "이어서"
+            if button(q) in BUTTON_ROUTES:
+                return BUTTON_ROUTES[button(q)], "이어서"
             if any(re.search(pat, q) for pat in KEYWORDS.values()):
                 return _keyword_route(q), "이어서"
             # 앞 질문에 낱말이 없으면 살피 답에서 낱말이 가장 많이 나온 담당 하나 (답에는 다른 담당 낱말도 덤으로 섞임)
@@ -786,7 +795,7 @@ class SalpiAgent:
     def ask(self, message: str, on_text=None, on_status=None) -> str:
         """on_text: 답 조각을 받는 함수. 담당이 하나일 때만 글자가 흘러가고, 섞인 질문은 완성된 뒤 한 번에 옴."""
         t0 = time.time()
-        text = message.strip()
+        message = text = button(message)   # 직접 친 버튼 질문도 버튼 답으로
         if text in QUICK:   # 화면 버튼 질문: AI 없이 도구 값으로 바로 (보통 1초 안)
             try:
                 reply = QUICK[text]()

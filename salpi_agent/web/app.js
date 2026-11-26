@@ -1257,7 +1257,7 @@ async function salesPut(body) {
 async function loadSales(date, open = true) {
   try {
     const d = await getJSON(date ? `/api/sales?date=${date}` : "/api/sales");
-    if (!sales.today) sales.today = d.date;
+    sales.today = d.today || sales.today || d.date;   // 서버가 영업시간으로 정한 '오늘' (자정 넘어 마감 전이면 전날)
     sales.data = d;
     sales.open = open;
     sales.failed = false;
@@ -1299,8 +1299,11 @@ function renderSales() {
       data-mid="${m.menu_id}" data-key="${key}" value="${m[key] ?? ""}" placeholder="${m[key] != null ? "0" : "-"}" aria-label="${esc(m.name)} ${label} 그릇 수">`;
   $("#salesCard").innerHTML = `
     <div class="sales-bar">
-      <div class="sales-bar-left"><label class="sales-date"><span class="sales-day-label">${isToday ? "오늘" : `${WEEKDAY[new Date(`${d.date}T00:00:00`).getDay()]}요일`}</span>
-        <input type="date" id="salesDate" value="${d.date}" min="${min}" max="${sales.today}" aria-label="날짜 고르기"></label></div>
+      <div class="sales-bar-left"><div class="sales-when"><label class="sales-date"><span class="sales-day-label">${isToday ? "오늘" : `${WEEKDAY[new Date(`${d.date}T00:00:00`).getDay()]}요일`}</span>
+        <input type="date" id="salesDate" value="${d.date}" min="${min}" max="${sales.today}" aria-label="날짜 고르기"></label>
+        <span class="sales-hours" title="마감이 자정을 넘기면 새벽 판매도 전날 영업일로 들어가요"><span>영업</span>
+          <input type="time" id="salesOpen" value="${d.open_time || "11:00"}" aria-label="개점 시간"><i>~</i>
+          <input type="time" id="salesClose" value="${d.close_time || "21:00"}" aria-label="마감 시간"></span></div></div>
       <div class="sales-bar-right">
         <button class="sales-unfold" type="button" data-sales="fold" aria-expanded="true" aria-controls="salesCard" aria-label="판매 기록 접기" title="접기">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>
@@ -1463,8 +1466,24 @@ $("#salesCard").addEventListener("click", async (e) => {
   if (act === "fold" && await salesFlush()) { sales.open = false; renderSales(); $('#salesCard [data-sales="unfold"]')?.focus(); }
   if (act === "unfold") { sales.open = true; renderSales(); $("#salesCard .sales-in")?.focus(); }
 });
+// 영업시간 저장 → 영업일 기준 '오늘'이 바뀌면(자정 넘어 마감으로 바꿈 등) 그날로 다시 불러옴
+async function salesHours() {
+  const o = $("#salesOpen").value, c = $("#salesClose").value, d = sales.data;
+  if (!o || !c) return;
+  try {
+    const r = await sendJSON("/api/sales/hours", "PUT", { open: o, close: c });
+    const was = sales.today;
+    Object.assign(d, { open_time: r.open_time, close_time: r.close_time });
+    sales.today = r.today;
+    if (r.today !== was && d.date === was && await salesFlush()) loadSales(r.today, true);
+  } catch (err) {
+    $("#salesOpen").value = d.open_time || "11:00"; $("#salesClose").value = d.close_time || "21:00";
+    salesMsg(err.message);
+  }
+}
 $("#salesCard").addEventListener("change", async (e) => {
   if (e.target.classList.contains("sales-in")) return salesLeave(e.target);
+  if (e.target.id === "salesOpen" || e.target.id === "salesClose") return salesHours();
   if (e.target.id !== "salesDate") return;
   const day = e.target.value;
   if (!day || day === sales.data.date) return;

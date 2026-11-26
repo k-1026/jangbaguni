@@ -256,5 +256,55 @@
   <div class="note">※ 한국소비자원 참가격(매장가) 기준이라 온라인몰 가격은 다를 수 있어요 · 화면에도 같은 안내</div>
 </section>
 
+
+<!-- AI 학습: 모델 비교 한 장 (출처: plan/forecast/1125_direction_accuracy.md 1절 · 3-3절, 같은 자료 · 같은 시험 1년 2025-11-18 ~ 2026-11-17, 7일 뒤 값) -->
+<section class="slide" id="aicmp">
+  <div class="eyebrow">2-2. AI 모델 학습</div>
+  <h1>어떤 모델이 시세를 가장 잘 맞힐까</h1>
+  <p class="sub">같은 자료 · 같은 시험 기간(학습 때 안 본 최근 1년)으로 8가지 방법을 겨룸</p>
+  <div class="card tbl">
+    <table>
+      <colgroup><col style="width:25%"><col style="width:23%"><col><col><col><col></colgroup>
+      <thead>
+        <tr><th rowspan="2">모델</th><th rowspan="2">종류</th><th colspan="2">야채 (4,481건)</th><th colspan="2">과일 (2,906건)</th></tr>
+        <tr><th>방향 맞음 ↑</th><th>정반대 ↓</th><th>방향 맞음 ↑</th><th>정반대 ↓</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>고정 공식</td><td>규칙 (평균으로 돌아감)</td><td>44.6%</td><td>28.1%</td><td>34.0%</td><td>21.4%</td></tr>
+        <tr><td>Chronos-Bolt <small>Amazon</small></td><td>시계열 (값 흐름만 봄)</td><td>45.8%</td><td>27.5%</td><td>43.5%</td><td>24.4%</td></tr>
+        <tr><td>MLP 신경망</td><td>딥러닝</td><td>53.0%</td><td>26.6%</td><td>49.6%</td><td>24.0%</td></tr>
+        <tr><td>랜덤 포레스트</td><td>머신러닝 (나무 묶음)</td><td>49.6%</td><td>26.2%</td><td>47.3%</td><td>21.2%</td></tr>
+        <tr><td>XGBoost</td><td>머신러닝 (부스팅)</td><td>51.2%</td><td>25.2%</td><td>51.2%</td><td>22.0%</td></tr>
+        <tr><td>LightGBM <small>Microsoft</small></td><td>머신러닝 (부스팅)</td><td>49.5%</td><td>23.4%</td><td>49.2%</td><td>20.6%</td></tr>
+        <tr><td>CatBoost <small>Yandex</small></td><td>머신러닝 (부스팅)</td><td>51.0%</td><td>23.9%</td><td>50.0%</td><td>20.0%</td></tr>
+        <tr class="ours"><td>살피 부스팅 <small>직접 구현</small></td><td>머신러닝 (부스팅)</td><td>54.0%</td><td>22.7%</td><td>51.7%</td><td>19.4%</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note">※ 방향 맞음 = 오름 · 비슷 · 내림(±2%) 중 맞힌 비율 · 정반대 = 오른다 했는데 내렸거나 그 반대 (사장님이 손해 보는 경우) · 라이브러리 모델은 기본 설정</div>
+  <style>
+    #aicmp { padding-top: 56px; }
+    #aicmp .sub { margin-top: 4px; font-size: 18px; font-weight: 600; color: #4f5753; }
+    #aicmp .tbl { margin-top: 22px; padding: 16px 28px 18px; }
+    #aicmp table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    #aicmp th, #aicmp td { padding: 0 14px; height: 43px; vertical-align: middle; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    #aicmp th { height: 36px; font-size: 14.5px; color: #6b736f; font-weight: 700; text-align: right; }
+    #aicmp thead tr:first-child th { color: #12302a; font-size: 16px; text-align: center; border-bottom: 1px solid #d9dcd9; }
+    #aicmp thead tr:first-child th[rowspan] { text-align: left; vertical-align: bottom; padding-bottom: 8px; color: #6b736f; font-size: 14.5px; border-bottom: 1px solid #d9dcd9; }
+    #aicmp thead tr:nth-child(2) th { border-bottom: 1px solid #d9dcd9; }
+    #aicmp td { border-top: 1px solid #ebedea; font-size: 18px; font-weight: 700; text-align: right; }
+    #aicmp tbody tr:first-child td { border-top: 0; }
+    #aicmp td:nth-child(1) { text-align: left; font-weight: 800; }
+    #aicmp td:nth-child(2) { text-align: left; font-size: 15px; font-weight: 500; color: #6b736f; }
+    #aicmp td small { font-size: 12.5px; font-weight: 500; color: #8b928e; margin-left: 6px; }
+    #aicmp td:nth-child(4), #aicmp td:nth-child(6) { color: #6b736f; }
+    #aicmp tr.ours td { background: #12302a; color: #fff; border-top: 0; }
+    #aicmp tr.ours td small, #aicmp tr.ours td:nth-child(2) { color: #cfdad3; }
+    #aicmp tr.ours td:nth-child(4), #aicmp tr.ours td:nth-child(6) { color: #ffb08a; }
+    #aicmp tr.ours td:first-child { border-radius: 12px 0 0 12px; }
+    #aicmp tr.ours td:last-child { border-radius: 0 12px 12px 0; }
+  </style>
+</section>
+
 </body>
 </html>

@@ -1838,7 +1838,8 @@ body.login-view .login-only, body.signup-view .signup-only { display: flex; }
 .pay-btn:hover { background: #FFD966; }
 .pay-back { padding: 6px 12px; border: 0; background: none; font: inherit; font-size: 14px; color: var(--muted); cursor: pointer; }
 .pay-back:hover { color: var(--ink); text-decoration: underline; }
-/* ⓪ 구독 안내 (결제 전) */
+/* ⓪ 구독 안내 (결제 전): 창 바탕은 베이지, 기능 비교표는 흰색 */
+.pay-box:has(.pay-intro) { background: #F3F1EC; }
 .pay-intro img { width: 120px; height: auto; }
 .pay-intro h3 { margin: 4px 0 0; font-size: 22px; font-weight: 800; white-space: nowrap; }
 .pay-top { align-self: flex-start; padding: 0; }

@@ -2419,8 +2419,7 @@ function payIntro(from) {
       <table class="pay-table"><thead><tr><th>기능</th><th>무료</th><th class="plus">플러스</th></tr></thead><tbody>
         ${PAY_FEATURES.map(([f, a, b]) => `<tr><td>${f}</td><td>${a}</td><td class="plus">${b}</td></tr>`).join("")}
       </tbody></table>
-      <button class="pay-btn pay-go" type="button" data-pay="buy">19,900원 결제하기</button>
-      <p class="pay-note">시연용 모의 결제예요. 실제로 돈이 나가지 않아요<br>언제든 해지할 수 있어요</p></div>`);
+      <button class="pay-btn pay-go" type="button" data-pay="buy">19,900원 결제하기</button></div>`);
   $('#payBody [data-pay="back"]').onclick = payClose;
   $('#payBody [data-pay="buy"]').onclick = () => openPay(from);
 }

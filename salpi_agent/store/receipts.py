@@ -71,7 +71,7 @@ def _josa(word, with_batchim, without):
 
 
 def _items():
-    return db.select("items", select="id,name,base_unit", order="id")
+    return inventory.shared_items(db.select("items", select="id,name,base_unit,note", order="id"))
 
 
 # ---------------------------------------------------------------

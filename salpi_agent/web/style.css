@@ -1900,3 +1900,4 @@ body.login-view .login-only, body.signup-view .signup-only { display: flex; }
 .sk-qty input::-webkit-outer-spin-button, .sk-qty input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .sk-qty input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 .edit-table th { text-align: left; }   /* 입력 칸 표: 제목을 입력 칸 왼쪽 끝에 맞춤 (품목처럼) */
+.receipt-edit .badge { display: block; padding: 0; border-radius: 0; background: none; font-size: 15px; font-weight: 700; color: var(--ink); }   /* 읽은 내용 안내: 배경 없이 굵게 */

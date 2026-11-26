@@ -1992,7 +1992,7 @@ function receiptEditor(box, d, { image, thumb = true, badge, saveLabel = "저장
     <div class="receipt-edit ${thumb ? "" : "no-thumb"}">
       ${thumb ? (image ? `<img class="receipt-thumb" src="${esc(image)}" alt="올린 영수증">` : `<div class="receipt-thumb no-photo">사진 없음</div>`) : ""}
       <div>
-        <span class="badge">${badge || "살피가 읽은 내용 · 틀린 곳은 고쳐 주세요"}</span>
+        <span class="badge">${badge || "살피가 읽은 내용이에요. 틀린 곳은 고쳐 주세요"}</span>
         <div class="receipt-meta">
           <label>날짜 <input type="date" class="rc-date" value="${esc(d.date || "")}"></label>
           <label>판매처 <input class="rc-supplier" value="${esc(d.supplier ? supplierName(d.supplier) : "")}"></label>

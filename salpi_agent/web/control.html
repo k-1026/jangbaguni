@@ -193,11 +193,11 @@ const STAGES = {
       result:["대구 도매시장 시세 예측 주제 확정","CJ프레시웨이 리서치 · 밸류체인 맵"]},
     {id:"a2",t:"고객 이해",p:"11/8–11/9",fixed:"done",out:["plan/journey/","data/simulation/"],
       result:["고객 여정 지도 · 페르소나 10명","페인포인트 Top 3"]},
-    {id:"a3",t:"VOC · 방향 전환",p:"11/11–11/12",fixed:"done",out:["plan/bm/1112_voc_analysis.md","plan/presentation/1112_changes_and_flow.md"],
+    {id:"a3",t:"VOC · 방향 전환",p:"11/11–11/12",fixed:"done",out:["plan/bm/1112_voc_analysis.md","plan/presentation/1113/1112_changes_and_flow.md"],
       result:["VOC 333장 → 원가 고민 59%","시세 예측 → 원가 관리 중심으로 전환"]},
     {id:"a4",t:"BM · 시장 · 경쟁사",p:"11/12–11/18",own:"윤가언",out:["plan/bm/1112_bm_canvas.md","plan/bm/1113_시장규모시트.md","plan/bm/1113_경쟁사비교.md","plan/bm/1113_포지셔닝맵.md"],
       match:it=>/구독료|시장 규모|수수료|판매처 연결 방향|업체 선정|의향|BM/.test(it.text)},
-    {id:"a5",t:"유저플로우 · AI 파이프라인",p:"11/12–11/19",own:"이성이",out:["plan/bm/1112_user_flow.md","plan/bm/1112_agent_pipeline.md","plan/presentation/살피_유저플로우_v2.png"],
+    {id:"a5",t:"유저플로우 · AI 파이프라인",p:"11/12–11/19",own:"이성이",out:["plan/bm/1112_user_flow.md","plan/bm/1112_agent_pipeline.md","plan/presentation/1113/살피_유저플로우_v2.png"],
       match:it=>/플로우|파이프라인/.test(it.text)},
     {id:"a6",t:"기획서 · 제안서",p:"11/20–11/27",own:"윤가언 · 이하영",last:true,out:["plan/1116_final_sprint_plan.md (6-6절)"],
       match:it=>/기획서|제안서|spec|흐름도|캔버스|레드팀|크로스 리뷰|To-Be|SNS/.test(it.text)},
@@ -215,7 +215,7 @@ const STAGES = {
       match:it=>/시연|녹화|점검|버그/.test(it.text)},
   ]
 };
-const GOAL = {id:"goal",t:"발표 · 문서",p:"11/17–12/4",own:"팀 전체",out:["plan/presentation/","plan/presentation/1113_feedback_todo.md"],
+const GOAL = {id:"goal",t:"발표 · 문서",p:"11/17–12/4",own:"팀 전체",out:["plan/presentation/","plan/presentation/1113/1113_feedback_todo.md"],
   match:it=>it.cats.includes("doc") || it.cats.length===0};
 const MILESTONES = [["11/17","PPT git","up"],["11/19","중간 발표","dn",1],["11/20","PPT 14시","up"],["11/26","기획 · 제안서","dn"],
   ["11/27","기능 완성","up",1],["12/1","기능 마감","dn"],["12/2","시연 녹화","up"],["12/4","최종 발표","dn",1]];

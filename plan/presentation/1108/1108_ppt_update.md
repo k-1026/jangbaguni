@@ -1,7 +1,7 @@
 # 발표 자료 수정 내용 · 해야 할 일 (11/08)
 
 > 기준 자료: `살피_1106_초안.pptx` (장 번호 기준)
-> 근거 문서: [정답 없는 시뮬레이션 결과](../../data/simulation/1108_open_simulation_result.md) · [예측 공식 고도화 계획](../forecast/1108_forecast_formula_v2.md)
+> 근거 문서: [정답 없는 시뮬레이션 결과](../../../data/simulation/1108_open_simulation_result.md) · [예측 공식 고도화 계획](../../forecast/1108_forecast_formula_v2.md)
 
 ---
 

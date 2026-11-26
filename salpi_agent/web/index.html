@@ -37,8 +37,8 @@
     <a href="/" class="logo"><img src="/static/img/logo.png" alt="살피"></a>
     <nav class="nav">
       <a href="/#dashboard">시세 대시보드</a>
-      <a href="/#mart">대형마트 판매가</a>
       <a href="/#score">살피 예측률</a>
+      <a href="/#mart">대형마트 판매가</a>
       <a href="/#context">시세 영향 정보</a>
     </nav>
     <div class="search" role="search">
@@ -318,8 +318,17 @@
     <div class="card" id="costCard"><p class="muted">원가율을 불러오는 중이에요</p></div>
   </section>
 
-  <!-- 대형마트 판매가 ~ 시세 영향 정보: 과일 · 야채 무늬 바탕을 끊김 없이 한 장으로 -->
+  <!-- 살피 예측률 ~ 시세 영향 정보: 과일 · 야채 무늬 바탕을 끊김 없이 한 장으로 -->
   <div class="pattern-zone home-only">
+
+  <!-- 살피 예측률: 지난 7일 예측을 실제 시세로 채점한 결과 (/api/forecast-score) · 상세보기 = 종류별 탭 + 품목별 -->
+  <section class="wrap section home-only" id="score">
+    <div class="section-head">
+      <h2>살피 예측률</h2>
+      <p class="muted">지난 7일 동안 한 예측을 실제 시세로 채점했어요</p>
+    </div>
+    <div class="card score-card" id="scoreCard"><p class="muted">불러오는 중</p></div>
+  </section>
 
   <!-- 대형마트 판매가: 한국소비자원 참가격 중 음식 재료만 (회사별 가격 · 2주 전 대비) -->
   <section class="wrap section home-only" id="mart">
@@ -332,15 +341,6 @@
       <div class="mart-grid" id="martGrid"><p class="muted">불러오는 중</p></div>
       <button class="order-all mart-all" id="martAll" type="button" hidden>모두 보기</button>
     </div>
-  </section>
-
-  <!-- 살피 예측률: 지난 7일 예측을 실제 시세로 채점한 결과 (/api/forecast-score) · 상세보기 = 종류별 탭 + 품목별 -->
-  <section class="wrap section home-only" id="score">
-    <div class="section-head">
-      <h2>살피 예측률</h2>
-      <p class="muted">지난 7일 동안 한 예측을 실제 시세로 채점했어요</p>
-    </div>
-    <div class="card score-card" id="scoreCard"><p class="muted">불러오는 중</p></div>
   </section>
 
   <!-- 날씨 · 공휴일 · 행사 -->

@@ -78,6 +78,9 @@ def _items():
 # 1) 읽기: 사진 → 품목 목록 (아직 저장하지 않음)
 # ---------------------------------------------------------------
 
+PROMPT_VER = b"3"   # 11/26: 같은 종류면 가장 가까운 재료로 (모듬쌈 → 상추) · 상표 · 줄임말 · 잘린 이름도 무엇인지 보고 고름
+
+
 def _prompt(items, n_photos=1):
     names = ", ".join(f"{i['name']}({i['base_unit']})" for i in items)
     many = (f"\n사진 {n_photos}장은 긴 영수증 한 장을 위에서부터 차례로 나눠 찍은 것이다. 모든 사진을 이어서 영수증 하나로 읽고, "
@@ -89,7 +92,11 @@ def _prompt(items, n_photos=1):
 규칙
 - 재료 목록(기준 단위): {names}
 - qty_base 예: '깐양파 15kg' 1망 → 15, '돈앞다리 1kg' 12 → 12, '국산두부' 45 → 45, '포기김치 10kg' 2 → 20, '대파 1단' 3 → 3
-- 단위를 알 수 없으면 qty_base 는 null. 목록에 없는 재료(봉투 · 배달비 등)는 item 을 null 로.
+- item 은 같은 종류면 목록에서 가장 가까운 재료로 고른다. 예: 꽃상추 · 청상추 · 모듬쌈 → 상추, 깐양파 → 양파, 대패삼겹 · 오겹살 → 돼지고기 삼겹살, 생닭 · 닭다리 → 닭고기
+- 상표 이름 · 줄임말 · 잘리거나 흐린 이름이어도 무슨 재료인지 알 수 있으면 고른다. 예: '백설 콩기름 1.8L' · '해표 식용유' · '○○발유용 500' → 식용유,
+  '해찬들 태양초 고추장' → 고추장, '종가집 포기김치' → 배추김치, '풀무원 국산콩 두부' → 두부, '특란 30구' → 계란
+- 같은 종류가 목록에 없거나(예: 콩나물인데 목록에 없음) 식재료가 아니면(봉투 · 배달비 · 음료) item 은 null. 모양만 비슷한 다른 재료로 억지로 맞추지 않는다.
+- 단위를 알 수 없으면 qty_base 는 null.
 - 날짜에 연도가 없으면(예: 11/2) {datetime.now(KST).year}년으로 본다.
 - 읽을 수 없는 글자는 추측하지 말고 null. 할인 · 부가세 · 합계 줄은 items 에 넣지 않는다."""
 
@@ -161,7 +168,8 @@ def _keep(h, data):
 
 def _ai_read(key, images, items):
     """사진 → AI 가 읽은 원래 답(dict) · 모델. 같은 사진이면 저장해 둔 답을 씀 (재료 짝 맞추기는 늘 새로 함)."""
-    h = hashlib.sha1(b"".join(b for b, _ in images)).hexdigest()[:20]
+    # PROMPT_VER: 읽기 규칙을 바꾸면 올려서, 예전 규칙으로 읽어 저장해 둔 답을 쓰지 않게 함
+    h = hashlib.sha1(PROMPT_VER + b"".join(b for b, _ in images)).hexdigest()[:20]
     if h in _READ:
         return _READ[h], "저장된 결과"
     try:
@@ -576,7 +584,7 @@ def my_ingredients(store_id):
 def recent(store_id, limit=8):
     """최근 영수증 목록 + 사진 미리보기 주소 (1시간 동안 열리는 주소 → 보관할 때는 1시간보다 짧게)."""
     ps = db.select("purchases", store_id=f"eq.{store_id}", select="id,purchased_on,supplier,total_amount,source,image_path",
-                   order="purchased_on.desc,id.desc", limit=str(limit))
+                   source="neq.manual", order="purchased_on.desc,id.desc", limit=str(limit))   # 직접 넣은 가격(menus.set_price)은 영수증 목록에 안 보임
     counts, names = {}, {}
     for r in db.select("purchase_items", purchase_id=f"in.({','.join(str(p['id']) for p in ps) or 0})", select="purchase_id,raw_name", order="id"):
         counts[r["purchase_id"]] = counts.get(r["purchase_id"], 0) + 1

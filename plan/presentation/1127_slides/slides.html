@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>11/27 발표 — 추가 · 수정 기능 빈 쪽 채우기</title>
+<!-- PPT 14 · 16 · 18 · 20쪽용. 한 장 = .slide 하나(1280×720), png 는 slide_*.png -->
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #ddd; font-family: Pretendard, "Noto Sans KR", "Malgun Gothic", sans-serif; color: #12302a; }
+  .slide { width: 1280px; height: 720px; background: #f3f1ec; position: relative; overflow: hidden; margin: 0 auto 24px; padding: 70px 72px 0; }
+  .eyebrow { color: #c0461b; font-weight: 800; font-size: 17px; }
+  h1 { font-size: 40px; font-weight: 800; letter-spacing: -.5px; margin-top: 4px; }
+  .cols { display: flex; gap: 28px; margin-top: 34px; height: 478px; }
+  .card { background: #fff; border-radius: 28px; padding: 26px 30px; flex: 1; position: relative; }
+  .pill { display: inline-block; background: #12302a; color: #fff; font-weight: 800; font-size: 19px; padding: 9px 22px; border-radius: 999px; }
+  .pill.light { background: #e3ede6; color: #12302a; }
+  .old { color: #8b928e; text-decoration: line-through; font-weight: 700; }
+  .arrow { color: #c0461b; font-weight: 800; }
+  .new { color: #c0461b; font-weight: 800; }
+  .muted { color: #6b736f; }
+  small { font-size: 14px; }
+  .note { position: absolute; left: 72px; bottom: 16px; font-size: 13px; color: #7d857f; }
+  /* 전 → 후 줄 */
+  .ba { display: grid; grid-template-columns: 44px 1fr; row-gap: 12px; align-items: center; margin-top: 20px; font-size: 18px; }
+  .ba b.tag { font-size: 16px; color: #6b736f; }
+  .box { border-radius: 14px; padding: 12px 16px; font-weight: 700; line-height: 1.4; }
+  .box.before { background: #f6e3d9; color: #8a3b17; }
+  .box.after { background: #dcebdf; color: #1d4d35; }
+  /* 흐름 */
+  .flow { display: flex; flex-direction: column; align-items: stretch; gap: 6px; margin-top: 18px; }
+  .step { background: #eef1ee; border-radius: 14px; padding: 11px 16px; font-weight: 800; font-size: 18px; text-align: center; }
+  .step small { display: block; font-weight: 600; color: #6b736f; margin-top: 2px; }
+  .step.hot { background: #e8692e; color: #fff; }
+  .step.hot small { color: #ffe6d8; }
+  .step.dark { background: #12302a; color: #fff; }
+  .down { text-align: center; color: #6b736f; font-size: 14px; font-weight: 700; }
+  /* 숫자 표 */
+  .rows { margin-top: 14px; }
+  .row { display: flex; align-items: center; padding: 15px 0; border-bottom: 1px solid #d9dcd9; gap: 18px; }
+  .row:last-child { border-bottom: 0; }
+  .row h3 { width: 210px; font-size: 21px; font-weight: 800; flex: none; }
+  .row .v { font-size: 26px; font-weight: 800; }
+  .row p { font-size: 14px; color: #4f5753; margin-top: 3px; line-height: 1.4; }
+</style>
+</head>
+<body>
+
+<!-- 12쪽: 재고 관리 -->
+<section class="slide" id="s12">
+  <div class="eyebrow">2-1. 추가 · 수정 기능</div>
+  <h1>재고 관리</h1>
+  <p style="font-size:21px;font-weight:700;margin-top:8px">남은 재고만 넣으면, 살피가 <span class="new">무엇을 얼마나 살지</span> 알려 줘요</p>
+  <div class="cols" style="margin-top:26px;height:440px;gap:0;align-items:stretch">
+    <div class="card st">
+      <div class="num">1</div><h2>재고 넣기</h2>
+      <div class="opt"><b>✍ 직접 입력</b><span>남은 양 고치기 · 검색해서 재료 추가</span></div>
+      <div class="opt"><b>🧾 영수증 찍기</b><span>산 만큼 재고에 자동으로 더해짐</span></div>
+    </div>
+    <div class="chev">›</div>
+    <div class="card st" style="flex:1.15">
+      <div class="num">2</div><h2>살피가 계산</h2>
+      <div class="calc">
+        <div><span>다음 입고까지 필요한 양</span><b>20 kg</b></div>
+        <small>내일 판매량 예측 × 메뉴 레시피</small>
+        <div><span>+ 여유 10%</span><b>2 kg</b></div>
+        <div><span>− 지금 재고</span><b>12 kg</b></div>
+        <div class="sum"><span>= 주문할 양</span><b>10 kg</b></div>
+      </div>
+      <small class="muted">예: 양파 (설명용 숫자)</small>
+    </div>
+    <div class="chev">›</div>
+    <div class="card st">
+      <div class="num">3</div><h2>무엇을 살지</h2>
+      <p class="muted" style="font-size:14px;margin:-4px 0 10px">다음 주 시세 예측까지 보고 4묶음으로</p>
+      <div class="grp" style="background:#fbdcd0"><b>먼저 사기</b><span>시세가 오를 수 있어요</span></div>
+      <div class="grp" style="background:#f6e3d9"><b>평소대로 주문</b><span>다음 입고 전에 모자라요</span></div>
+      <div class="grp" style="background:#fdf1c7"><b>조금만 사기</b><span>시세가 내릴 수 있어요</span></div>
+      <div class="grp" style="background:#dcebdf"><b>이번엔 안 사도 돼요</b><span>재고가 충분해요</span></div>
+    </div>
+  </div>
+  <div class="note">※ 화면 문구 그대로 · 2주 넘게 안 고친 재고는 주황색으로 표시해 다시 확인하게 함</div>
+  <style>
+    #s12 .st { padding: 24px 26px; }
+    #s12 .num { width: 36px; height: 36px; border-radius: 50%; background: #12302a; color: #fff; font-weight: 800; font-size: 19px; display: flex; align-items: center; justify-content: center; }
+    #s12 h2 { font-size: 26px; font-weight: 800; margin: 10px 0 16px; }
+    #s12 .chev { width: 34px; display: flex; align-items: center; justify-content: center; font-size: 46px; color: #c0461b; font-weight: 800; }
+    #s12 .opt { background: #f6f4ef; border-radius: 16px; padding: 16px 18px; margin-bottom: 12px; }
+    #s12 .opt b { display: block; font-size: 19px; }
+    #s12 .opt span { display: block; font-size: 15px; color: #4f5753; margin-top: 4px; }
+    #s12 .calc { background: #f6f4ef; border-radius: 16px; padding: 12px 18px; margin-bottom: 8px; }
+    #s12 .calc div { display: flex; justify-content: space-between; font-size: 17px; padding: 6px 0; }
+    #s12 .calc b { font-size: 19px; }
+    #s12 .calc small { display: block; color: #6b736f; margin: -4px 0 2px; }
+    #s12 .calc .sum { border-top: 2px solid #12302a; margin-top: 6px; padding-top: 10px; font-weight: 800; color: #c0461b; }
+    #s12 .calc .sum b { font-size: 24px; }
+    #s12 .grp { border-radius: 14px; padding: 10px 16px; margin-bottom: 9px; display: flex; justify-content: space-between; align-items: center; }
+    #s12 .grp b { font-size: 17px; }
+    #s12 .grp span { font-size: 13px; color: #4f5753; }
+  </style>
+</section>
+
+<!-- 14쪽: 원가율 낮추는 방법 추천 (발표 PPT 양식: 언제? 줄 + 카드 3장) -->
+<section class="slide" id="s14">
+  <div class="eyebrow">2-1. 추가 · 수정 기능</div>
+  <h1>원가율 낮추는 방법 추천</h1>
+  <div class="when"><b>언제?</b><span>메뉴 원가율이 40% 이상일 때, 지금뿐 아니라 시세 예측으로 다음 주에 넘을 원가율도 미리 알려 줌</span></div>
+  <div class="cols tip3">
+    <div class="card">
+      <span class="gp">대체 재료</span>
+      <p class="how">많이 오른 재료부터,<br>같은 메뉴에 바꿔 쓸 수 있는 재료를 찾아서 추천</p>
+      <div class="quote">“돼지고기 앞다리 절반을<br>수입 돼지고기 삼겹살로 바꾸면<br>1인분 기준 171원 아낄 수 있어요!”</div>
+      <p class="sub">원가율 41.5% → <b>39.6%</b><br><span class="warn">⚠ 원산지 표시 변경 필요</span>도 함께 안내</p>
+    </div>
+    <div class="card">
+      <span class="gp">판매가 조정</span>
+      <p class="how">다음 주에 오를 원가까지 버티도록,<br>40% 아래가 되는 가격을 500원 단위로 추천</p>
+      <div class="quote">“판매가를 9,500원으로<br>500원 올리면<br>원가율 39.5%로 40% 아래예요!”</div>
+      <p class="sub">제육볶음 9,000원 → <b>9,500원</b><br>한 그릇 남는 돈 5,749원</p>
+    </div>
+    <div class="card">
+      <span class="gp">남는 메뉴 판매 늘리기</span>
+      <p class="how">지금도 다음 주도 40% 아래인 메뉴 중<br>한 그릇에 가장 많이 남는 메뉴를 추천</p>
+      <div class="quote">“김치찌개는 한 그릇에<br>7,179원 남아요(원가율 20.2%).<br>오늘의 메뉴 · 세트로 밀어 보세요!”</div>
+      <p class="sub">원가율 높은 메뉴는 그대로 두고<br><b>잘 남는 메뉴</b>로 매출 채우기</p>
+    </div>
+  </div>
+  <div class="note">※ 시연(가상) 가게 제육볶음(판매가 9,000원 · 원가율 41.5%) 기준 · 고르는 건 사장님, 살피는 숫자로 비교만</div>
+  <style>
+    #s14 .when { margin-top: 22px; background: #fff; border-radius: 999px; padding: 14px 30px; display: flex; align-items: center; gap: 20px; font-size: 18px; }
+    #s14 .when b { font-size: 25px; font-weight: 800; color: #111; }
+    #s14 .tip3 { margin-top: 20px; height: 420px; gap: 16px; }
+    #s14 .card { padding: 22px 16px; display: flex; flex-direction: column; }
+    #s14 .gp { align-self: flex-start; background: #235c2c; color: #fff; font-weight: 800; font-size: 21px; padding: 11px 34px; border-radius: 999px; }
+    #s14 .how { font-size: 16px; line-height: 1.5; margin: 22px 8px 16px; color: #111; }
+    #s14 .quote { background: #f3f1ec; border-radius: 16px; padding: 22px 12px; text-align: center; font-size: 18px; font-weight: 800; line-height: 1.55; color: #111; }
+    #s14 .sub { margin: 18px 8px 0; font-size: 15px; line-height: 1.6; color: #4f5753; }
+    #s14 .sub b { color: #12302a; }
+    #s14 .warn { color: #c0461b; font-weight: 700; }
+  </style>
+</section>
+
+<!-- 16쪽: 재료 구매처 연결 -->
+<section class="slide" id="s16">
+  <div class="eyebrow">2-1. 추가 · 수정 기능</div>
+  <h1>재료 구매처 연결</h1>
+  <div class="cols">
+    <div class="card">
+      <span class="pill">사러 가기</span>
+      <div class="ba">
+        <b class="tag">전</b><div class="box before">식봄 고정 링크 하나</div>
+        <b class="tag">후</b><div class="box after">판매처 6곳 중 사장님이 고름</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px">
+        <div class="logo"><img src="../../../salpi_agent/web/img/shops/foodspring.png"><b>식봄</b></div>
+        <div class="logo"><img src="../../../salpi_agent/web/img/shops/coupang.png"><b>쿠팡</b></div>
+        <div class="logo"><img src="../../../salpi_agent/web/img/shops/nonghyup.png"><b>농협몰</b></div>
+        <div class="logo"><img src="../../../salpi_agent/web/img/shops/emart.png"><b>이마트몰</b></div>
+        <div class="logo"><img src="../../../salpi_agent/web/img/shops/zetta.png"><b>롯데마트 제타</b></div>
+        <div class="logo"><img src="../../../salpi_agent/web/img/shops/baemin.png"><b>배민상회</b></div>
+      </div>
+      <p style="margin-top:16px;font-size:16px;line-height:1.5"><b>재료 시세 화면 → 사러 가기 → 판매처</b><br><span class="muted">고른 곳의 그 재료 검색 결과로 바로 이동</span></p>
+    </div>
+    <div class="card">
+      <span class="pill">영수증 → 더 싼 곳</span>
+      <div class="flow">
+        <div class="step">영수증 사진 한 장</div>
+        <div class="down">↓ kg당 단가로 평소 가격과 비교</div>
+        <div class="step hot">비싸게 샀어요 <small>깐양파 15kg 2,300원/kg · 14,700원 더 냄</small></div>
+        <div class="down">↓ '더 싼 곳' 버튼</div>
+        <div class="step dark">식봄 판매처를 kg당 싼 순서로</div>
+      </div>
+      <div style="margin-top:18px;background:#f6f4ef;border-radius:14px;padding:14px 18px;font-size:16px;line-height:1.55">
+        <b>살피는 팔지 않고 연결만</b><br>
+        <span class="muted">쿠팡 파트너스 제휴 링크 → 구매 시 수수료 3% (BM 수익원)</span>
+      </div>
+    </div>
+  </div>
+  <div class="note">※ 영수증 숫자는 시연(가상) 영수증 11.04 살피마트 예시</div>
+  <style>.logo{display:flex;align-items:center;gap:8px;white-space:nowrap;letter-spacing:-.3px;background:#f6f4ef;border-radius:14px;padding:10px 12px;font-size:15px}.logo img{width:38px;height:38px;border-radius:9px}</style>
+</section>
+
+<!-- 18쪽: 예측 정답률 추가 -->
+<section class="slide" id="s18">
+  <div class="eyebrow">2-1. 추가 · 수정 기능</div>
+  <h1>예측 정답률 추가</h1>
+  <div class="cols">
+    <div class="card">
+      <span class="pill">예측 방식 변경</span>
+      <div class="rows">
+        <div class="row"><h3 style="width:150px">무엇을</h3>
+          <div><div class="v" style="font-size:21px"><span class="old" style="font-size:18px">내일 값</span> <span class="arrow">→</span> 다음 주 평균</div>
+          <p>하루 값은 흔들림이 커서 한 주 평균으로</p></div></div>
+        <div class="row"><h3 style="width:150px">언제 말하나</h3>
+          <div><div class="v" style="font-size:21px">4% 넘게 움직일 때만</div>
+          <p>오를지 · 내릴지는 자신 있을 때만, 나머지는 "크게 안 바뀔 것 같아요"</p></div></div>
+        <div class="row"><h3 style="width:150px">방향 정답률</h3>
+          <div><div class="v" style="font-size:22px;white-space:nowrap"><span class="old" style="font-size:18px">58.5%</span> <span class="arrow">→</span> <span class="new">야채 71.7% · 과일 70.5%</span></div>
+          <p>방향을 말한 예측만 셈 (지난 자료로 검증)</p></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <span class="pill">화면에 정답률 공개</span>
+      <div class="flow">
+        <div class="step">매일 예측을 기록</div>
+        <div class="down">↓ 7일 뒤</div>
+        <div class="step">실제 시세와 맞춰 보고 채점<small>AI가 아닌 단순 계산 — 맞힌 수 ÷ 예측 수</small></div>
+        <div class="down">↓</div>
+        <div class="step dark">살피 예측률 칸 · 재료 페이지 맨 위</div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px">
+        <span class="pill light" style="font-size:16px">예측 정확</span><span class="pill light" style="font-size:16px">예측 안정</span><span class="pill light" style="font-size:16px">예측 성장 중</span>
+      </div>
+      <p style="margin-top:14px;font-size:15px;line-height:1.55">"○번 예측해서 ○번 맞혔어요"로 숨기지 않고 보여 줌<br>
+      <span class="muted">50% 아래는 "가격 변동이 커서 예측이 어려운 재료예요"<br>3번 미만은 "채점 중"</span></p>
+    </div>
+  </div>
+  <div class="note">※ 70%는 방향을 말한 예측만 (야채 61% · 과일 37%에서 말함) · 화면에 나간 예측 실전 채점 2주 결과는 12/1</div>
+</section>
+
+<!-- 20쪽: 대형마트 가격비교 -->
+<section class="slide" id="s20">
+  <div class="eyebrow">2-1. 추가 · 수정 기능</div>
+  <h1>대형마트 가격비교</h1>
+  <div class="cols">
+    <div class="card" style="flex:.95">
+      <span class="pill">고친 점</span>
+      <div class="ba">
+        <b class="tag">문제</b><div class="box before">온라인몰 없는 곳(GS더프레시 · 현대백화점 · 편의점)이 최저가면 바로가기와 어긋남</div>
+        <b class="tag">개선</b><div class="box after">온라인몰 있는 4곳끼리만 비교<br>최저가 = 바로가기로 가는 몰</div>
+      </div>
+      <div class="rows" style="margin-top:14px">
+        <div class="row" style="padding:10px 0"><h3 style="width:170px;font-size:17px">이마트</h3><span style="font-size:17px">→ 이마트몰</span></div>
+        <div class="row" style="padding:10px 0"><h3 style="width:170px;font-size:17px">신세계백화점</h3><span style="font-size:17px">→ SSG.COM</span></div>
+        <div class="row" style="padding:10px 0"><h3 style="width:170px;font-size:17px">농협하나로마트</h3><span style="font-size:17px">→ 농협몰</span></div>
+        <div class="row" style="padding:10px 0"><h3 style="width:170px;font-size:17px">롯데슈퍼</h3><span style="font-size:17px">→ 롯데마트 제타</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <span class="pill">사용 흐름</span>
+      <div class="flow">
+        <div class="step">분류 고르기 <small>면 · 떡 · 쌀 / 수산 / 장 · 양념 … (2주 새 오른 것 먼저)</small></div>
+        <div class="down">↓</div>
+        <div class="step">판매처별 가격 펼치기</div>
+      </div>
+      <div style="margin:8px 0 0;background:#f6f4ef;border-radius:14px;padding:9px 18px;font-size:15px">
+        <b>오뚜기 부침가루 1kg</b>
+        <div style="display:grid;grid-template-columns:1fr auto;row-gap:1px;margin-top:4px">
+          <b style="color:#2a62d6">농협하나로마트</b><b style="color:#2a62d6">3,000원</b>
+          <span>이마트</span><span>3,140원</span><span>신세계백화점</span><span>3,980원</span><span>롯데슈퍼</span><span>3,990원</span>
+        </div>
+      </div>
+      <div class="down" style="margin:6px 0">↓ 최저가 바로가기</div>
+      <div class="step dark">농협몰 "오뚜기 부침가루 1kg" 검색 결과로 바로</div>
+    </div>
+  </div>
+  <div class="note">※ 한국소비자원 참가격(매장가) 기준이라 온라인몰 가격은 다를 수 있어요 · 화면에도 같은 안내</div>
+</section>
+
+
+<!-- AI 학습: 모델 비교 한 장 (출처: plan/forecast/1125_direction_accuracy.md 1절 · 3-3절, 같은 자료 · 같은 시험 1년 2025-11-18 ~ 2026-11-17, 7일 뒤 값) -->
+<section class="slide" id="aicmp">
+  <div class="eyebrow">2-2. AI 모델 학습</div>
+  <h1>어떤 모델이 시세를 가장 잘 맞힐까</h1>
+  <p class="sub">같은 자료 · 같은 시험 기간(학습 때 안 본 최근 1년)으로 8가지 방법을 겨룸</p>
+  <div class="card tbl">
+    <table>
+      <colgroup><col style="width:25%"><col style="width:23%"><col><col><col><col></colgroup>
+      <thead>
+        <tr><th rowspan="2">모델</th><th rowspan="2">종류</th><th colspan="2">야채 (4,481건)</th><th colspan="2">과일 (2,906건)</th></tr>
+        <tr><th>방향 맞음 ↑</th><th>정반대 ↓</th><th>방향 맞음 ↑</th><th>정반대 ↓</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>고정 공식</td><td>규칙 (평균으로 돌아감)</td><td>44.6%</td><td>28.1%</td><td>34.0%</td><td>21.4%</td></tr>
+        <tr><td>Chronos-Bolt <small>Amazon</small></td><td>시계열 (값 흐름만 봄)</td><td>45.8%</td><td>27.5%</td><td>43.5%</td><td>24.4%</td></tr>
+        <tr><td>MLP 신경망</td><td>딥러닝</td><td>53.0%</td><td>26.6%</td><td>49.6%</td><td>24.0%</td></tr>
+        <tr><td>랜덤 포레스트</td><td>머신러닝 (나무 묶음)</td><td>49.6%</td><td>26.2%</td><td>47.3%</td><td>21.2%</td></tr>
+        <tr><td>XGBoost</td><td>머신러닝 (부스팅)</td><td>51.2%</td><td>25.2%</td><td>51.2%</td><td>22.0%</td></tr>
+        <tr><td>LightGBM <small>Microsoft</small></td><td>머신러닝 (부스팅)</td><td>49.5%</td><td>23.4%</td><td>49.2%</td><td>20.6%</td></tr>
+        <tr><td>CatBoost <small>Yandex</small></td><td>머신러닝 (부스팅)</td><td>51.0%</td><td>23.9%</td><td>50.0%</td><td>20.0%</td></tr>
+        <tr class="ours"><td>살피 부스팅 <small>직접 구현</small></td><td>머신러닝 (부스팅)</td><td>54.0%</td><td>22.7%</td><td>51.7%</td><td>19.4%</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note">※ 방향 맞음 = 오름 · 비슷 · 내림(±2%) 중 맞힌 비율 · 정반대 = 오른다 했는데 내렸거나 그 반대 (사장님이 손해 보는 경우) · 라이브러리 모델은 기본 설정</div>
+  <style>
+    #aicmp { padding-top: 56px; }
+    #aicmp .sub { margin-top: 4px; font-size: 18px; font-weight: 600; color: #4f5753; }
+    #aicmp .tbl { margin-top: 22px; padding: 16px 28px 18px; }
+    #aicmp table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    #aicmp th, #aicmp td { padding: 0 14px; height: 43px; vertical-align: middle; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    #aicmp th { height: 36px; font-size: 14.5px; color: #6b736f; font-weight: 700; text-align: right; }
+    #aicmp thead tr:first-child th { color: #12302a; font-size: 16px; text-align: center; border-bottom: 1px solid #d9dcd9; }
+    #aicmp thead tr:first-child th[rowspan] { text-align: left; vertical-align: bottom; padding-bottom: 8px; color: #6b736f; font-size: 14.5px; border-bottom: 1px solid #d9dcd9; }
+    #aicmp thead tr:nth-child(2) th { border-bottom: 1px solid #d9dcd9; }
+    #aicmp td { border-top: 1px solid #ebedea; font-size: 18px; font-weight: 700; text-align: right; }
+    #aicmp tbody tr:first-child td { border-top: 0; }
+    #aicmp td:nth-child(1) { text-align: left; font-weight: 800; }
+    #aicmp td:nth-child(2) { text-align: left; font-size: 15px; font-weight: 500; color: #6b736f; }
+    #aicmp td small { font-size: 12.5px; font-weight: 500; color: #8b928e; margin-left: 6px; }
+    #aicmp td:nth-child(4), #aicmp td:nth-child(6) { color: #6b736f; }
+    #aicmp tr.ours td { background: #12302a; color: #fff; border-top: 0; }
+    #aicmp tr.ours td small, #aicmp tr.ours td:nth-child(2) { color: #cfdad3; }
+    #aicmp tr.ours td:nth-child(4), #aicmp tr.ours td:nth-child(6) { color: #ffb08a; }
+    #aicmp tr.ours td:first-child { border-radius: 12px 0 0 12px; }
+    #aicmp tr.ours td:last-child { border-radius: 0 12px 12px 0; }
+  </style>
+</section>
+
+
+<!-- 4. 마무리 일정 (날짜: Issue #86 3주차 11/30 ~ 12/4) -->
+<section class="slide" id="send">
+  <div class="eyebrow">4. 마무리 일정</div>
+  <h1>살피 서비스 마무리 단계</h1>
+  <p class="sub">실제 채점 · 사장님 설문으로 숫자를 채우고, 발표 전에 모델을 고정해요</p>
+
+  <div class="tl">
+    <div class="tl-line"></div>
+    <div class="tl-day"><i></i><b>11/30</b><span>월</span></div>
+    <div class="tl-day"><i></i><b>12/1</b><span>화</span></div>
+    <div class="tl-day hot"><i></i><b>12/2</b><span>수</span></div>
+    <div class="tl-day"><i></i><b>12/3</b><span>목</span></div>
+    <div class="tl-day end"><i></i><b>12/4</b><span>최종 발표</span></div>
+  </div>
+
+  <div class="cols st3">
+    <div class="card">
+      <div class="when">11/30 ~ 12/2 오전</div>
+      <span class="gp">① 채점 결과 반영</span>
+      <h3>시세 예측 채점</h3>
+      <ul>
+        <li>새 방식(다음 주 평균) 첫 실전 채점 <b>12/2 오전</b></li>
+        <li>사이트 살피 예측률을 새 방식 숫자로</li>
+      </ul>
+      <h3>정답률 채점</h3>
+      <ul>
+        <li>실전 채점 2주 결과 <b>12/1</b> — 고정 공식 vs AI</li>
+        <li>방향 맞음 · 정반대 · 평균 오차 3가지</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="when">11/25 ~ 취합 중</div>
+      <span class="gp">② 설문 결과 반영</span>
+      <h3>사장님 설문</h3>
+      <ul>
+        <li>네이버 자영업자 카페 · 스레드에서 <b>11/25부터</b> 응답 모으는 중</li>
+        <li>지불 의향 → 구독료 <b>19,900원</b> 근거 확인</li>
+        <li>필요한 기능 순위 → As-Is · To-Be 숫자</li>
+      </ul>
+      <h3>발표 자료에 넣기</h3>
+      <ul><li>응답 수 · 결과를 PPT · 기획서에 반영 (<b>12/2</b> PPT 준비)</li></ul>
+    </div>
+    <div class="card">
+      <div class="when">12/2 새벽 ~ 12/4</div>
+      <span class="gp">③ 모델 고정</span>
+      <h3>가장 좋은 모델로 확정</h3>
+      <ul>
+        <li><b>12/2 새벽</b> 11/26 이후 모델을 같은 시험으로 다시 채점 → <b>성적이 가장 좋은 모델로 확정</b></li>
+        <li>12/3부터 자동 교체 멈춤 → 녹화 · 라이브 시연 · PPT 숫자가 같게</li>
+      </ul>
+      <h3>발표 준비만</h3>
+      <ul>
+        <li><b>12/3</b> 코드 고치지 않음 · 리허설 2번 · 백업 영상</li>
+        <li><b>12/4</b> 최종 발표 (5분 피치 + 라이브 시연 + Q&amp;A)</li>
+      </ul>
+    </div>
+  </div>
+  <style>
+    #send { padding-top: 52px; }
+    #send .sub { margin-top: 4px; font-size: 18px; font-weight: 600; color: #6b736f; }
+    #send .tl { position: relative; display: flex; justify-content: space-between; margin: 26px 40px 0; }
+    #send .tl-line { position: absolute; left: 10px; right: 10px; top: 8px; height: 3px; background: #d6dad6; }
+    #send .tl-day { position: relative; display: flex; flex-direction: column; align-items: center; width: 90px; }
+    #send .tl-day i { width: 19px; height: 19px; border-radius: 50%; background: #fff; border: 3px solid #12302a; }
+    #send .tl-day b { margin-top: 6px; font-size: 17px; font-weight: 800; }
+    #send .tl-day span { font-size: 13px; color: #6b736f; font-weight: 600; }
+    #send .tl-day.hot i { background: #e8692e; border-color: #e8692e; }
+    #send .tl-day.end i { background: #12302a; }
+    #send .tl-day.end span { color: #c0461b; font-weight: 800; }
+    #send .st3 { margin-top: 18px; height: 380px; gap: 18px; }
+    #send .card { padding: 20px 24px; }
+    #send .when { position: absolute; right: 22px; top: 27px; font-size: 13.5px; font-weight: 700; color: #c0461b; }
+    #send .gp { display: inline-block; background: #235c2c; color: #fff; font-weight: 800; font-size: 19px; padding: 9px 22px; border-radius: 999px; }
+    #send h3 { margin-top: 16px; font-size: 17px; font-weight: 800; }
+    #send ul { margin: 6px 0 0 18px; }
+    #send li { word-break: keep-all; font-size: 15px; line-height: 1.5; color: #2c3a35; margin-top: 3px; }
+    #send li b { color: #12302a; }
+  </style>
+</section>
+
+</body>
+</html>

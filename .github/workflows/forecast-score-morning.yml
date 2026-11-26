@@ -1,0 +1,22 @@
+# 매일 오전 10시 예측 다시 채점: 새벽 6시 채점 뒤에 올라온 시세(전날 경락가)까지 넣어 살피 예측률을 다시 계산
+# - 대구 시세는 하루 넘게 늦게 올라와서, 새벽 채점만으로는 주 평균 모델(다음 주 평균) 첫 채점이 하루 늦어짐
+# - /api/jobs/daily 는 같은 날 예측을 다시 저장하지 않음(처음 저장한 것 그대로) → 채점만 새로 됨
+# - GitHub 예약 실행은 몇 분~수십 분 늦을 수 있어 점심 전에 끝나도록 10시
+# - 직접 돌리기: Actions 탭 → "오전 예측 다시 채점" → Run workflow
+name: 오전 예측 다시 채점
+
+on:
+  schedule:
+    - cron: "0 1 * * *"   # GitHub 시간(UTC) 01:00 = 한국 시간 10:00, 매일
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 실제 사이트에서 예측 저장 · 채점
+        run: curl -fsS -X POST --max-time 280 "https://jangbaguni-ten.vercel.app/api/jobs/daily"

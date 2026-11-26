@@ -20,6 +20,11 @@
   평균 오차 : |예상 변화율 − 실제 변화율| 평균 (%p) → 안전장치. 나빠지면 안 됨
   범위 적중 : 7일 뒤 실제 값이 화면의 예상 범위 안에 든 비율 → 화면 · 사장님용
 교체 기준: 시험 기간(최근 1년)에서 정반대가 0.3%p 이상 줄고, 평균 오차는 같거나 줄 것
+
+모델 확정 (MODEL_FREEZE_DATE, 기본 2026-12-02 — 12/4 최종 발표 · 시연 숫자를 같게)
+  그날 새벽: 위 흐름 + 지금까지 화면에 썼던 주 평균 모델(ai-week) 설정을 모두 같은 자료 · 같은 시험으로 다시 채점
+            → 평균 오차가 늘지 않으면서 정반대가 가장 낮은 설정으로 확정해 올림
+  그 다음 날부터: 학습 · 교체 · 올리기를 하지 않음 (보관함 모델 그대로, 예측 저장 · 채점은 계속)
 """
 import argparse
 import json
@@ -43,6 +48,7 @@ BUCKET = "models"
 PROMOTE_OPP = 0.3            # 정반대가 이만큼(%p) 이상 줄어야 교체
 RANGE_Q = 70                 # 예상 범위 = 지난 1년 오차의 70% 지점 (범위 적중 70% 목표)
 EXPERIMENTS_PER_DAY = 2
+FREEZE_DATE = os.getenv("MODEL_FREEZE_DATE", "2026-12-02")   # 빈 값이면 확정 없이 매일 교체
 
 DEFAULT_CONFIG = {
     "features": ["item", "dev", "trend", "vchg", "wx", "rain", "cold", "hot", "volat", "chg3", "season", "to_major", "month"],
@@ -406,7 +412,26 @@ def run_kind(kind, series, weather, past_all, upload):
         print(f"→ 교체: {best[0]['label']}")
     else:
         print("→ 교체 기준을 넘은 실험이 없어 지금 모델 유지 (오늘 자료로 다시 학습만)")
+    finals = []
+    if FREEZE_DATE and str(today()) == FREEZE_DATE:
+        # 확정하는 날: 지난 주 평균 모델 설정들도 오늘 자료 · 같은 시험으로 다시 채점해 가장 좋은 것 하나로
+        seen = {json.dumps(cfg, sort_keys=True)}
+        for h in past_all:
+            c = h.get("config")
+            if h["kind"] != kind or not str(h.get("version", "")).startswith("ai-week") or not c or json.dumps(c, sort_keys=True) in seen:
+                continue
+            seen.add(json.dumps(c, sort_keys=True))
+            r = evaluate(D, c)
+            finals.append({"version": h["version"], "metrics": r["metrics"], "chosen": False})
+            print(f"확정 후보 {h['version']:<24}{fmt(r['metrics'])}")
+            if r["metrics"]["mae_pp"] <= champ["metrics"]["mae_pp"] and r["metrics"]["opposite_pct"] < champ["metrics"]["opposite_pct"]:
+                cfg, champ = c, r
+                for f in finals:
+                    f["chosen"] = f is finals[-1]
+        print(f"→ 모델 확정 ({FREEZE_DATE}): {next((f['version'] for f in finals if f['chosen']), '오늘 모델')} 설정 · {fmt(champ['metrics'])}")
     blob = deploy_blob(D, kind, cfg, champ, formula, series)
+    if finals or (FREEZE_DATE and str(today()) == FREEZE_DATE):
+        blob["frozen"] = FREEZE_DATE
     print(f"화면 사용: {'AI 모델' if blob['use_on_screen'] else '고정 공식 (AI 모델이 아직 못 이김)'} · 버전 {blob['version']}")
     if upload:
         save_json(f"forecast/{key}.json", blob)
@@ -414,7 +439,7 @@ def run_kind(kind, series, weather, past_all, upload):
         "date": str(today()), "kind": kind, "version": blob["version"], "config": cfg, "metrics": champ["metrics"],
         "formula_metrics": formula, "use_on_screen": blob["use_on_screen"], "test_period": D.period,
         "experiments": [{k: e[k] for k in ("id", "label", "why", "by", "metrics", "promoted")} for e in exps],
-        "promoted": bool(best), "diagnosis": diagnosis, "importance": champ["importance"],
+        "promoted": bool(best), "diagnosis": diagnosis, "final_candidates": finals, "importance": champ["importance"],
         "worst_items": dict(sorted(champ["items"].items(), key=lambda kv: -kv[1]["opposite_pct"])[:5]),
     }
 
@@ -430,6 +455,9 @@ def main():
     ap.add_argument("--kinds", nargs="*", default=list(FM.KINDS))
     a = ap.parse_args()
     upload = not a.dry_run
+    if FREEZE_DATE and str(today()) > FREEZE_DATE:
+        print(f"모델 확정 중 ({FREEZE_DATE} 확정) — 학습 · 교체 · 올리기를 하지 않아요. 다시 켜려면 MODEL_FREEZE_DATE 를 비우거나 바꾸세요")
+        return
     t = time.time()
     series, weather, _ = load_data(upload)
     history = load_json("forecast/history.json", []) if upload else []

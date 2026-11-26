@@ -10,6 +10,9 @@
 주 평균 모델(formula_version 'ai-week-…', 11/25~): 실제 = 기준 날짜 다음 날 ~ 7일 시세 평균, 기준 값 = 이번 주 평균.
   확신이 없어 방향을 말하지 않은 예측(화면 'unsure', 표에는 direction 'flat' 으로 저장 — 표의 check 제약 때문)은
   방향 채점에서 빼고, 말한 비율을 따로 셈
+  다음 주 거래일이 WEEK_MIN_DAYS(4)일 이상 모이면 먼저 채점(잠정)하고, 7일이 다 차면 그 평균으로 다시 채점(확정)
+  — 주 평균 모델 첫 채점을 12/2 오전에 보이게 (7일을 다 기다리면 시세가 하루 넘게 늦게 올라와 12/4 ~ 12/5)
+- scorecard: 야채 · 과일은 주 평균 모델 채점이 하나라도 있으면 그 종류는 주 평균 모델만 셈 (예전 '7일 뒤 하루 값' 모델과 섞지 않음)
 """
 
 from datetime import date, datetime, timedelta, timezone
@@ -20,6 +23,7 @@ from price.analysis import FORMULA_VERSION
 KST = timezone(timedelta(hours=9))
 BAND = 2.0          # 오를 · 유지 · 내릴 기준 (화면 문구와 같음)
 LOOK_AHEAD = 3      # 7일 뒤 시세가 없으면 사흘 안의 첫 시세로 채점
+WEEK_MIN_DAYS = 4   # 주 평균 모델: 다음 주 거래일이 이만큼 모이면 먼저 채점 (잠정)
 
 
 def today():
@@ -28,6 +32,10 @@ def today():
 
 def _direction(pct):
     return "up" if pct >= BAND else "down" if pct <= -BAND else "flat"
+
+
+def _is_week(row):
+    return str(row.get("formula_version") or "").startswith("ai-week")
 
 
 def _unstated(row):
@@ -89,19 +97,32 @@ def score(veg_rows, extra_rows):
         return 0
     # 대시보드 기록(4~5주)보다 오래된 예측은 7일 뒤 시세가 없어 채점할 수 없음 → 매번 다시 찾지 않게 뺌
     oldest = min(starts) - timedelta(7)
+    cols = "run_date,item,base_date,base_price,range_low,range_high,direction,formula_version,actual_date"
     due = supabase_db.select("forecast_log", actual_price="is.null",
-                             **{"and": f"(base_date.gte.{oldest.isoformat()},base_date.lte.{(today() - timedelta(7)).isoformat()})"},
-                             select="run_date,item,base_date,base_price,range_low,range_high,direction,formula_version")
+                             **{"and": f"(base_date.gte.{oldest.isoformat()},base_date.lte.{(today() - timedelta(WEEK_MIN_DAYS)).isoformat()})"},
+                             select=cols)
+    # 주 평균 모델의 잠정 채점(7일이 다 안 찬 것)은 거래일이 더 모이면 다시 채점
+    due += [r for r in supabase_db.select("forecast_log", actual_price="not.is.null", formula_version="like.ai-week*",
+                                          base_date=f"gte.{(today() - timedelta(21)).isoformat()}", select=cols)
+            if date.fromisoformat(r["actual_date"]) < date.fromisoformat(r["base_date"]) + timedelta(7)]
     for row in due:
         base_day = date.fromisoformat(row["base_date"])
         target = base_day + timedelta(7)
-        if str(row.get("formula_version") or "").startswith("ai-week"):
-            # 주 평균: 다음 날 ~ 7일 시세 평균 (7일이 지나고 그 뒤 시세가 하나라도 올라와야 확정)
+        if _is_week(row):
+            # 주 평균: 다음 날 ~ 7일 시세 평균. 거래일 WEEK_MIN_DAYS일 이상이면 잠정, 7일 뒤 시세가 올라오면 확정
             pts = [(d, p) for d, p in hist.get(row["item"], []) if base_day < date.fromisoformat(d) <= target]
             later = any(date.fromisoformat(d) > target for d, _ in hist.get(row["item"], []))
-            if len(pts) < 2 or not later:
+            if len(pts) < WEEK_MIN_DAYS and not (later and len(pts) >= 2):
                 continue
-            hit = (pts[-1][0], round(sum(p for _, p in pts) / len(pts)))
+            if later or target <= date.fromisoformat(pts[-1][0]):
+                pts_date = target.isoformat()   # 확정: 실제 날짜를 목표일로 적어 다시 채점하지 않음
+            else:
+                pts_date = pts[-1][0]
+            if row.get("actual_date") == pts_date:
+                continue   # 새로 모인 거래일이 없음
+            hit = (pts_date, round(sum(p for _, p in pts) / len(pts)))
+        elif date.fromisoformat(row["base_date"]) > today() - timedelta(7):
+            continue   # 예전 모델은 7일이 지나야 채점
         else:
             hit = next(((d, p) for d, p in hist.get(row["item"], []) if target <= date.fromisoformat(d) <= target + timedelta(LOOK_AHEAD)), None)
         if not hit:
@@ -142,6 +163,9 @@ def scorecard(weeks=4):
     for r in sorted(rows, key=lambda r: r["run_date"]):
         first.setdefault((r["item"], r["base_date"]), r)
     rows = list(first.values())
+    # 야채 · 과일: 주 평균 모델 채점이 있으면 그 종류는 주 평균 모델만 (11/26 바꾼 새 방식으로 예측률을 보여 줌)
+    week_kinds = {r["kind"] for r in rows if _is_week(r)}
+    rows = [r for r in rows if _is_week(r) or r["kind"] not in week_kinds]
 
     def summary(group):
         if not group:
@@ -155,7 +179,7 @@ def scorecard(weeks=4):
                 "opposite_pct": round(opp / n * 100, 1) if n else None,
                 "stated_share_pct": round(n / len(group) * 100, 1), "scored": len(group)}
 
-    weekly = summary([r for r in rows if str(r.get("formula_version") or "").startswith("ai-week")])
+    weekly = summary([r for r in rows if _is_week(r)])
     by_kind, by_item = {}, {}
     for r in rows:
         by_kind.setdefault(r["kind"], []).append(r)
@@ -163,6 +187,6 @@ def scorecard(weeks=4):
     return {"weeks": weeks, "since": since, "formula_version": FORMULA_VERSION, "all": summary(rows),
             "kinds": {k: summary(v) for k, v in by_kind.items()},
             "items": {k: {**summary(v), "kind": v[0]["kind"]} for k, v in by_item.items()},
-            "week_model": weekly,
+            "week_model": weekly, "week_kinds": sorted(week_kinds),
             "note": "채점은 기준 날짜 + 7일 이후 첫 시세와 비교. 방향은 ±2% 기준 (오를 · 유지 · 내릴). "
                     "주 평균 모델(ai-week)은 다음 주 평균과 비교하고, 방향을 말한 예측만 방향을 채점 (stated_share_pct = 말한 비율)"}

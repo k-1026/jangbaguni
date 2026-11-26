@@ -810,6 +810,10 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .sales-bar-right { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 0 20px; }
 .sales-date { display: inline-flex; align-items: center; gap: 10px; }
 .sales-day-label { font-size: 16px; font-weight: 700; color: var(--ink); }
+.sales-when { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; }
+.sales-hours { display: inline-flex; align-items: center; gap: 8px; padding-left: 14px; border-left: 1px solid var(--outline-variant); font-size: 14px; color: var(--muted); }
+.sales-hours i { font-style: normal; }
+.sales-hours input { height: 40px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--outline); border-radius: 10px; background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; }
 .sales-date input { height: 40px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--outline); border-radius: 10px; background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; }
 /* 접기 · 펼치기(넣기) 버튼 */
 /* 접기 · 펼치기: 글자 · 동그라미 없이 화살표만 (누르는 자리는 44px 그대로) */
@@ -869,6 +873,18 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .sp-channels dd { padding-left: 12px; font-weight: 700; color: #fff; }
 .sp-channels dd.won { padding-left: 0; text-align: right; font-weight: 800; }
 .sp-channels .unit { margin-left: 3px; font-size: 13px; font-weight: 500; color: #D5E3CD; }   /* 숫자와 '그릇' 사이를 띄우고 단위는 연하게 */
+/* 현재 마진: 총 매출 아래, 같은 크기로 강조 (가게 비용 − 재료비를 뺀 오늘 남는 돈) */
+.sp-margin { margin: 0 0 18px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,.16); }
+.sp-m-val { color: #CDE8BC; }
+.sp-m-val.minus { color: #FFB4A8; }
+.sp-m-rows { display: grid; grid-template-columns: 1fr max-content; column-gap: 12px; margin: 8px 0 0; }
+.sp-m-rows div { display: contents; }
+.sp-m-rows dt, .sp-m-rows dd { margin: 0; padding: 2px 0; font-size: 13px; line-height: 1.4; color: #D5E3CD; font-variant-numeric: tabular-nums; }
+.sp-m-rows dd { text-align: right; white-space: nowrap; }
+.sp-m-note { margin: 6px 0 0; font-size: 12px; color: #B9CCB0; }
+.sp-m-empty { margin: 4px 0 10px; font-size: 13.5px; line-height: 1.5; color: #D5E3CD; }
+.sp-m-btn { min-height: 34px; padding: 0 14px; border: 1px solid rgba(255,255,255,.35); border-radius: 999px; background: rgba(255,255,255,.1); color: #fff; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.sp-m-btn:hover { background: rgba(255,255,255,.18); }
 
 /* 접힌 상태: 날짜 · 저장 상태 | 총 판매량 | 매출 | 채널별 | [펼치기] */
 .sales-fold-row { display: flex; align-items: center; gap: 12px 0; flex-wrap: wrap; padding: 14px 20px; }
@@ -1621,6 +1637,7 @@ main { overflow-x: clip; }   /* 화면 폭 배경이 가로 스크롤을 만들�
 .mf-unit { width: 24px; font-size: 16px; color: var(--muted); }
 .mf-noprice { grid-column: 1 / -1; margin-top: -4px; font-size: 13px; color: #B57A00; }
 .mf-noprice[hidden] { display: none; }
+.mf-setprice { margin-left: 6px; padding: 2px 8px; border: 1px solid #B57A00; border-radius: 6px; background: none; color: #B57A00; font: inherit; cursor: pointer; }
 .mf-del { width: 44px; height: 44px; border: 0; border-radius: 50%; background: none; font-size: 18px; color: var(--muted); cursor: pointer; }
 .mf-del:hover { background: var(--surface-variant); color: var(--up); }
 .mf-add { align-self: flex-start; padding: 8px 16px; font-size: 15px; }
@@ -1899,3 +1916,10 @@ body.login-view .login-only, body.signup-view .signup-only { display: flex; }
 .sk-adding .sk-qty input::placeholder { font-size: 13px; font-weight: 500; color: var(--muted); }
 .sk-qty input::-webkit-outer-spin-button, .sk-qty input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .sk-qty input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+.edit-table th { text-align: left; }   /* 입력 칸 표: 제목을 입력 칸 왼쪽 끝에 맞춤 (품목처럼) */
+.receipt-edit .badge { display: block; padding: 0; border-radius: 0; background: none; font-size: 15px; font-weight: 700; color: var(--ink); }   /* 읽은 내용 안내: 배경 없이 굵게 */
+.sk-qty { align-items: center; }
+.sk-step { display: flex; flex-direction: column; margin-left: 2px; }
+.sk-step button { width: 26px; height: 18px; padding: 0; border: 0; border-radius: 5px; background: none; font-size: 10px; line-height: 1; color: var(--muted); cursor: pointer; touch-action: none; user-select: none; }
+.sk-step button:hover { background: rgba(0, 0, 0, .06); color: var(--ink); }
+.sk-step button:active { background: var(--primary-container); color: var(--primary); }

@@ -1998,7 +1998,8 @@ function resetReceipt() {
 // 확인 · 수정 표: 새로 읽은 영수증(아래 화면)과 저장한 영수증 고치기(팝업)가 같이 씀
 // d = { date, supplier, items[{raw_name, item_id, base_unit, qty_base, amount, qty}], items_list, total_matches, ... }
 function receiptEditor(box, d, { image, thumb = true, badge, saveLabel = "저장", onSave, onCancel }) {
-  const opts = (sel) => `<option value="">재료 아님</option>` + d.items_list.map((i) =>
+  // 분석 제외: 재료 명단(시세보드 + 메뉴 재료)에 없어 단가 · 원가율 분석을 못 하는 줄 (금액은 합계에 들어감)
+  const opts = (sel) => `<option value="">분석 제외</option>` + d.items_list.map((i) =>
     `<option value="${i.id}" ${i.id === sel ? "selected" : ""}>${esc(i.name)}</option>`).join("");
   const unitOf = (id) => d.items_list.find((i) => i.id === +id)?.base_unit || "";
   const row = (x, i) => `<tr data-i="${i}">
@@ -3368,7 +3369,7 @@ function showReceiptView(id, d) {
         <table class="price-table rc-table">
           <thead><tr><th>품목</th><th>재료</th><th>양</th><th>금액</th><th>kg·모당</th><th></th></tr></thead>
           <tbody>${d.items.map((x) => `<tr data-jk="${esc(judgeKey(x))}"><td>${esc(x.raw_name)}</td>
-            <td>${esc(x.item || "재료 아님")}</td><td>${qtyTxt(x)}</td>
+            <td>${esc(x.item || "분석 제외")}</td><td>${qtyTxt(x)}</td>
             <td class="price">${won(x.amount)}</td><td>${x.unit_price ? won(x.unit_price) : "-"}</td><td class="rc-judge-cell"><span class="rc-chip"></span></td></tr>`).join("")}</tbody>
           <!-- 맨 아래 한 줄: 합계 + 평소 가격과 비교한 결과 (구매가 점검을 표 안으로 합침) -->
           <tfoot><tr class="rc-total"><td colspan="6"><div><b>합계 ${won(d.total_amount)}</b>
@@ -3424,7 +3425,7 @@ async function loadJudge(id) {
   const extra = j.summary?.extra_paid || 0, saved = j.summary?.saved || 0;
   sum.innerHTML = [extra ? `<b class="up">${won(extra)} 과지출</b>` : "",
                    saved ? `<b class="down">${won(saved)} 절약</b>` : ""].filter(Boolean).join(" · ")
-    // 비교한 재료가 하나도 없으면(모두 재료 아님 · 비교할 값 없음) '평소 값'이라고 하지 않음
+    // 비교한 재료가 하나도 없으면(모두 분석 제외 · 비교할 값 없음) '평소 값'이라고 하지 않음
     || ((j.lines || []).some((x) => x.verdict !== "비교할 값 없음") ? "모두 평소 값에 샀어요" : "평소 값과 비교할 재료가 없어요");
   praiseFrom(j);   // 예전 영수증을 열 때도 이득이면 칭찬 팝업
 }

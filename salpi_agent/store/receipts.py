@@ -78,8 +78,7 @@ def _items():
 # 1) 읽기: 사진 → 품목 목록 (아직 저장하지 않음)
 # ---------------------------------------------------------------
 
-PROMPT_VER = b"3"   # 11/26: 같은 종류면 가장 가까운 재료로 (모듬쌈 → 상추) · 목록에 없는 식재료는 짧은 이름 · 종류 · 단위로 새 재료
-NEW_KINDS = ("채소", "과일", "육류", "수산", "기타")   # 새 재료 종류 (재고 창 탭: 야채 · 과일 · 육류 · 수산물 · 기타)
+PROMPT_VER = b"2"   # 11/26: 같은 종류면 가장 가까운 재료로 (모듬쌈 → 상추)
 
 
 def _prompt(items, n_photos=1):
@@ -89,15 +88,12 @@ def _prompt(items, n_photos=1):
     return f"""식당 식자재 영수증(거래명세서 · 마트 영수증 · 손글씨 간이영수증) 사진이다. 적힌 내용만 읽어서 JSON으로만 답한다.{many}
 {{"date": "YYYY-MM-DD 또는 null", "supplier": "판매처 이름 또는 null", "total": 합계 금액(숫자) 또는 null,
  "items": [{{"raw_name": "영수증에 적힌 품목 이름 그대로", "qty": 수량(숫자), "amount": 그 줄의 금액(원, 숫자),
-            "item": "아래 재료 목록 중 같은 재료 이름, 목록에 없는 식재료면 짧은 재료 이름, 식재료가 아니면 null",
-            "new": 목록에 없는 식재료면 true 아니면 false, "kind": "new 일 때 채소 · 과일 · 육류 · 수산 · 기타 중 하나",
-            "unit": "new 일 때 기준 단위 kg · 개 · 모 · L 중 하나", "qty_base": 그 재료 기준 단위로 바꾼 전체 양(숫자) 또는 null}}]}}
+            "item": "아래 재료 목록 중 같은 재료 이름 또는 null", "qty_base": 그 재료 기준 단위로 바꾼 전체 양(숫자) 또는 null}}]}}
 규칙
 - 재료 목록(기준 단위): {names}
 - qty_base 예: '깐양파 15kg' 1망 → 15, '돈앞다리 1kg' 12 → 12, '국산두부' 45 → 45, '포기김치 10kg' 2 → 20, '대파 1단' 3 → 3
 - item 은 같은 종류면 목록에서 가장 가까운 재료로 고른다. 예: 꽃상추 · 청상추 · 모듬쌈 → 상추, 깐양파 → 양파, 대패삼겹 · 오겹살 → 돼지고기 삼겹살, 생닭 · 닭다리 → 닭고기
-- 같은 종류가 목록에 없는 식재료는 new=true 로, item 에 산지 · 유기농 · 봉 · 무게 · 상표를 뺀 짧은 재료 이름을 쓴다. 예: '봉콩나물200G' → 콩나물(kg), '국산 숙주 1kg' → 숙주(kg), '진간장 1.8L' → 간장(L). 모양만 비슷한 다른 재료로 억지로 맞추지 않는다.
-- 식재료가 아니면(봉투 · 배달비 · 음료 · 과자 · 생활용품) item 은 null.
+- 같은 종류가 목록에 없거나(예: 콩나물인데 목록에 없음) 식재료가 아니면(봉투 · 배달비 · 음료) item 은 null. 모양만 비슷한 다른 재료로 억지로 맞추지 않는다.
 - 단위를 알 수 없으면 qty_base 는 null.
 - 날짜에 연도가 없으면(예: 11/2) {datetime.now(KST).year}년으로 본다.
 - 읽을 수 없는 글자는 추측하지 말고 null. 할인 · 부가세 · 합계 줄은 items 에 넣지 않는다."""
@@ -255,11 +251,6 @@ def _rows_from(data, items, model, n_photos):
             name = str(x.get("item") or "").strip()
             it = by_name.get(name) or by_name.get(re.sub(r"\s*\([^)]*\)\s*$", "", name))
             qty_base, how = _num(x.get("qty_base")), "AI 추정"
-            if not it and name and x.get("new"):   # 목록에 없는 식재료 → 재료 명단에 자동으로 추가
-                it = _auto_item(name, x.get("kind"), x.get("unit"), items)
-                if it:
-                    how = "AI 새 재료"
-                    by_name[it["name"]] = by_id[it["id"]] = by_name[name] = it   # 같은 영수증에 또 나오면 바로 찾게
             if it and qty:
                 qty_base = _piece_qty(it["name"], str(x.get("raw_name") or ""), qty, qty_base)
         rows.append({"raw_name": str(x.get("raw_name") or "").strip(), "qty": qty, "amount": _num(x.get("amount")),
@@ -271,21 +262,6 @@ def _rows_from(data, items, model, n_photos):
             "items_list": [{"id": i["id"], "name": i["name"], "base_unit": i["base_unit"]} for i in items],
             "total_matches": total is None or abs(total - line_sum) < 1,   # 줄 금액 합 = 합계인지 (틀리면 다시 보라고 안내)
             "line_sum": line_sum, "model": model, "photos": n_photos}
-
-
-def _auto_item(name, kind, unit, items):
-    """AI 가 목록에 없다고 한 식재료를 명단에 넣고 items(이번 읽기의 재료 목록)에도 붙임. 이름 · 단위가 이상하면 None (재료 아님으로 둠)."""
-    name = re.sub(r"\s*\([^)]*\)\s*$", "", re.sub(r"\s+", " ", name)).strip()
-    if not 1 <= len(name) <= 12 or not re.fullmatch(r"[가-힣A-Za-z ]+", name) or unit not in inventory.UNITS:
-        return None
-    try:
-        r = inventory.add_item(name, unit, kind if kind in NEW_KINDS else "기타", inventory.AUTO_NOTE)
-    except (ApiError, ValueError):
-        return None   # 저장이 안 되면 재료 아님으로 두고 사장님이 고르게
-    it = {"id": r["item_id"], "name": r["item"], "base_unit": r["unit"]}
-    if all(i["id"] != it["id"] for i in items):
-        items.append(it)   # 확인 표 재료 칸(items_list)에도 보이게
-    return it
 
 
 def _piece_qty(item, raw_name, qty, ai_qty_base):

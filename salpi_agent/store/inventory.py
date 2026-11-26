@@ -11,7 +11,6 @@ import re
 from datetime import datetime, timezone
 
 from sources import supabase_db as db
-from sources.data_sources import ApiError
 
 
 def _now():
@@ -94,9 +93,6 @@ OWN_NOTE = "재고 창에서 사장님이 추가"   # 이 표시가 있는 재�
 def shared_items(rows):
     """재고 창에서 사장님이 넣은 재료를 뺀 표준 재료 (rows 에 note 가 있어야 함)"""
     return [r for r in rows if r.get("note") != OWN_NOTE]
-
-
-AUTO_NOTE = "영수증에서 자동 추가"   # 영수증 AI 가 명단에 없는 식재료를 보고 만든 재료 (어디서나 보임)
 TAB_CATEGORY = {"야채": "채소", "과일": "과일", "수산물": "수산", "육류": "육류", "기타": "기타"}   # 재고 창 탭 → items.category
 
 
@@ -109,21 +105,7 @@ def new_item(name, unit, tab):
         raise ValueError("단위는 kg · 개 · 모 · L 중에서 골라 주세요")
     if tab not in TAB_CATEGORY:
         raise ValueError("재료 종류를 다시 골라 주세요")
-    return add_item(name, unit, TAB_CATEGORY[tab], OWN_NOTE)
-
-
-def add_item(name, unit, category, note):
-    """재료 명단에 새 재료 (이미 같은 이름이면 띄어쓰기 무시하고 그걸 돌려줌) → {item_id, item, unit, category}"""
     key = name.replace(" ", "")
-    find = lambda: next((i for i in db.select("items", select="id,name,base_unit,category,note") if i["name"].replace(" ", "") == key), None)
-    row = find()
-    if row and row.get("note") == OWN_NOTE and note != OWN_NOTE:   # 재고 창 전용이던 재료를 영수증이 찾으면 어디서나 보이게
-        db.update("items", {"note": note}, id=f"eq.{row['id']}")
-    if not row:
-        try:
-            row = db.insert("items", [{"name": name, "category": category, "base_unit": unit, "note": note}])[0]
-        except ApiError:   # 같은 순간 다른 영수증이 먼저 만들었으면 그걸 씀
-            row = find()
-            if not row:
-                raise
+    old = next((i for i in db.select("items", select="id,name,base_unit,category") if i["name"].replace(" ", "") == key), None)
+    row = old or db.insert("items", [{"name": name, "category": TAB_CATEGORY[tab], "base_unit": unit, "note": OWN_NOTE}])[0]
     return {"item_id": row["id"], "item": row["name"], "unit": row["base_unit"], "category": row["category"]}

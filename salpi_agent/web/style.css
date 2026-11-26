@@ -1787,7 +1787,7 @@ body.login-view .login-only, body.signup-view .signup-only { display: flex; }
 .order-all.stock-edit { background: var(--surface); color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
 .order-all.stock-edit:hover { background: var(--primary-container); }
 /* 재고 입력: 밑줄 탭 · 편집(직접 넣은 재료만 −) · 숫자 칸을 눌러 바로 고침 · 2주 넘게 안 고치면 주황 */
-.modal-box.stock-box { width: min(520px, 100%); max-height: min(720px, calc(100vh - 32px)); display: flex; flex-direction: column; padding: 24px 22px 20px; }
+.modal-box.stock-box { width: min(440px, 100%); max-height: min(720px, calc(100vh - 32px)); display: flex; flex-direction: column; padding: 24px 22px 20px; }
 .stock-box #stockModalBody { display: flex; flex-direction: column; min-height: 0; flex: 1; }
 .sk-head { display: flex; align-items: center; gap: 10px; padding-right: 40px; }
 .sk-head h3 { margin: 0; font-size: 22px; font-weight: 800; }

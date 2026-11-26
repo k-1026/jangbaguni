@@ -3405,7 +3405,8 @@ async function loadJudge(id) {
   const extra = j.summary?.extra_paid || 0, saved = j.summary?.saved || 0;
   sum.innerHTML = [extra ? `<b class="up">${won(extra)} 과지출</b>` : "",
                    saved ? `<b class="down">${won(saved)} 절약</b>` : ""].filter(Boolean).join(" · ")
-    || "모두 평소 값에 샀어요";
+    // 비교한 재료가 하나도 없으면(모두 재료 아님 · 비교할 값 없음) '평소 값'이라고 하지 않음
+    || ((j.lines || []).some((x) => x.verdict !== "비교할 값 없음") ? "모두 평소 값에 샀어요" : "평소 값과 비교할 재료가 없어요");
   praiseFrom(j);   // 예전 영수증을 열 때도 이득이면 칭찬 팝업
 }
 

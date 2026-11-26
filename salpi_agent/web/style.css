@@ -1787,15 +1787,15 @@ body.login-view .login-only, body.signup-view .signup-only { display: flex; }
 .order-all.stock-edit { background: var(--surface); color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
 .order-all.stock-edit:hover { background: var(--primary-container); }
 /* 재고 입력: 밑줄 탭 · 편집(직접 넣은 재료만 −) · 숫자 칸을 눌러 바로 고침 · 2주 넘게 안 고치면 주황 */
-.modal-box.stock-box { width: min(440px, 100%); max-height: min(720px, calc(100vh - 32px)); display: flex; flex-direction: column; padding: 24px 22px 20px; }
+.modal-box.stock-box { width: min(520px, 100%); max-height: min(720px, calc(100vh - 32px)); display: flex; flex-direction: column; padding: 24px 22px 20px; }
 .stock-box #stockModalBody { display: flex; flex-direction: column; min-height: 0; flex: 1; }
 .sk-head { display: flex; align-items: center; gap: 10px; padding-right: 40px; }
-.sk-head h3 { margin: 0; font-size: 20px; font-weight: 800; }
+.sk-head h3 { margin: 0; font-size: 22px; font-weight: 800; }
 .sk-edit { margin-left: auto; padding: 5px 10px; border: 0; border-radius: 8px; background: none; font: inherit; font-size: 14px; font-weight: 800; color: var(--primary); cursor: pointer; }
 .sk-edit.on { color: #fff; background: var(--primary); }
-.sk-sub { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
+.sk-sub { margin: 4px 0 0; font-size: 14px; color: var(--muted); }
 .sk-tabs { display: flex; margin-top: 14px; border-bottom: 1px solid var(--outline-variant); }
-.sk-tabs button { flex: 1; padding: 10px 2px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; font: inherit; font-size: 14px; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.sk-tabs button { flex: 1; padding: 10px 2px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; font: inherit; font-size: 15px; color: var(--muted); cursor: pointer; white-space: nowrap; }
 .sk-tabs button small { font-size: 12px; }
 .sk-tabs button[aria-selected="true"] { color: var(--ink); font-weight: 800; border-bottom-color: var(--ink); }
 .sk-list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
@@ -1803,14 +1803,14 @@ body.login-view .login-only, body.signup-view .signup-only { display: flex; }
 .sk-row { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 8px 0; border-bottom: 1px solid var(--outline-variant); }
 .sk-row.dim { opacity: .45; }
 .sk-name { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.sk-name b { font-size: 15px; font-weight: 700; }
-.sk-name small { font-size: 12px; color: var(--muted); }
+.sk-name b { font-size: 17px; font-weight: 700; }
+.sk-name small { font-size: 13px; color: var(--muted); }
 .sk-name small.old { color: #C2410C; font-weight: 700; }
 .sk-name small.old::before { content: ""; display: inline-block; width: 6px; height: 6px; margin: 0 5px 1px 0; border-radius: 50%; background: #EA580C; }
-.sk-chip { margin-left: 6px; padding: 1px 6px; border-radius: 6px; background: var(--primary-container); color: var(--primary); font-size: 11px; font-weight: 700; vertical-align: 2px; }
+.sk-chip { margin-left: 6px; padding: 1px 6px; border-radius: 6px; background: var(--primary-container); color: var(--primary); font-size: 12px; font-weight: 700; vertical-align: 2px; }
 .sk-chip.own { background: var(--surface-variant); color: var(--muted); }
 .sk-qty { display: flex; align-items: baseline; gap: 4px; padding: 8px 12px; border-radius: 10px; background: #F3F1EC; cursor: text; }
-.sk-qty input { width: 64px; padding: 0; border: 0; background: none; font: inherit; font-size: 18px; font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
+.sk-qty input { width: 72px; padding: 0; border: 0; background: none; font: inherit; font-size: 20px; font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
 .sk-qty input:focus { outline: none; }
 .sk-qty:focus-within { box-shadow: 0 0 0 2px var(--primary); }
 .sk-qty small, .sk-qty-text small { font-size: 12px; color: var(--muted); }

@@ -1731,17 +1731,19 @@ function drawStock() {
       : `<div class="sk-empty"><b>아직 ${s.tab} 재료가 없어요</b><p>메뉴에 들어가거나 영수증으로 사면<br>여기에 생겨요</p></div>`}
     ${add}</div>
     <p class="rc-warn" id="skMsg" hidden></p>
-    <button type="button" class="sk-save${s.edit ? " done" : ""}" id="skSave">${s.edit ? "편집 완료" : "저장"}</button>`;
+    <button type="button" class="sk-save${s.edit ? " done" : ""}" id="skSave"${s.edit || stockDirty() ? "" : " hidden"}>${s.edit ? "편집 완료" : "저장"}</button>`;
   ($("#skAddQ") || $("#skAddQty"))?.focus();
 }
 
 // 검색 결과 (글자를 칠 때마다 이 목록만 다시 그림: 창 전체를 다시 그리면 한글 조합이 끊겨 'ㄷㅜㅣ'처럼 풀어짐)
 // 검색한 이름이 어디에도 없으면 [+ '사과' 새로 넣기] (단위는 넣을 때 고름)
+// 저장할 게 있을 때만 [저장] (새로 넣은 재료 · 숫자를 고친 재료)
+const stockDirty = () => stock.items.some((i) => i.was === null || i.on_hand === "" || +i.on_hand !== +(+i.was).toFixed(3));
 function stockPicks() {
   const s = stock, q = s.adding.q.trim(), flat = (t) => t.replace(/\s/g, "");
   const choices = s.catalog.filter((c) => stockTab(c.category) === s.tab && c.item.includes(q));
   const canNew = q && ![...s.items, ...s.catalog].some((c) => flat(c.item) === flat(q));
-  return choices.map((c) => `<li><button type="button" data-pick="${c.item_id}">${esc(c.item)} <small>${esc(c.unit)}</small></button></li>`).join("")
+  return choices.slice(0, 4).map((c) => `<li><button type="button" data-pick="${c.item_id}">${esc(c.item)} <small>${esc(c.unit)}</small></button></li>`).join("")
     + (canNew ? `<li><button type="button" class="new" data-new>+ '${esc(q)}' 새로 넣기</button></li>`
       : choices.length ? "" : `<li class="muted small">${q ? "이미 목록에 있는 재료예요" : "재료 이름을 넣어 찾아 보세요"}</li>`);
 }
@@ -1750,7 +1752,7 @@ const stockMsg = (t) => { const m = $("#skMsg"); m.textContent = t; m.hidden = !
 $("#stockModalBody").addEventListener("input", (e) => {
   if (!stock) return;
   const id = e.target.dataset.id;
-  if (id) stock.items.find((i) => i.item_id === +id).on_hand = e.target.value;
+  if (id) { stock.items.find((i) => i.item_id === +id).on_hand = e.target.value; $("#skSave").hidden = !stockDirty(); }
   if (e.target.id === "skAddQ") {
     stock.adding.q = e.target.value;   // 띄어쓰기를 치는 중일 수 있어 그대로 (쓸 때 trim)
     $("#stockModalBody .sk-pick").innerHTML = stockPicks();

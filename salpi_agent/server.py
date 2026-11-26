@@ -480,6 +480,17 @@ def sales_day(date: str | None = None):
     return _receipt_guard(lambda: sales.day(supabase_db.DEMO_STORE, date))
 
 
+class HoursIn(BaseModel):
+    open: str = ""
+    close: str = ""
+
+
+@app.put("/api/sales/hours")
+def sales_hours(body: HoursIn):
+    """영업시간 저장 (마감이 자정을 넘기면 새벽 판매도 전날 영업일로). → {open_time, close_time, today}"""
+    return _receipt_guard(lambda: sales.set_hours(supabase_db.DEMO_STORE, body.open, body.close))
+
+
 @app.put("/api/sales")
 def sales_save(body: SalesIn, authorization: str | None = Header(None)):
     """판매 기록 입력 → 내일 준비 · 원가율 다시 계산. 로그인 표가 있으면 새 날짜를 올릴 때 판매율 분석 1회

@@ -2305,8 +2305,8 @@ const recipeRow = (r = {}) => `<li class="mf-row" data-loss="${r.loss || 0}">
   <select class="mf-item" aria-label="재료">${itemOptions(r.item_id)}</select>
   <span class="mf-amount"><input class="mf-qty" type="number" inputmode="decimal" min="0" step="any" aria-label="1인분 양"
     value="${r.qty != null ? showQty(menuItem(r.item_id), r.qty) : ""}"><span class="mf-unit"></span></span>
-  <small class="mf-noprice" hidden>영수증 가격 없음</small>
-  <button type="button" class="mf-del" aria-label="이 재료 빼기">✕</button></li>`;
+  <button type="button" class="mf-del" aria-label="이 재료 빼기">✕</button>
+  <small class="mf-noprice" hidden>영수증 가격 없음</small></li>`;   // 안내는 ✕ 뒤에 (앞에 두면 ✕ 가 다음 줄로 밀림)
 
 function menuForm(m) {
   const add = !m;

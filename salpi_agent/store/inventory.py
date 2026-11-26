@@ -2,10 +2,12 @@
 
 - listing : 재고 입력 창용. 메뉴에 들어가는 재료 + 이미 재고가 있는 재료를 이름순으로 (없으면 0) · 더 넣을 수 있는 재료(catalog)
 - remove  : 직접 넣은 재료 빼기 (메뉴에 쓰는 재료는 못 뺌)
+- new_item: 검색해도 없는 재료를 표준 재료표(items)에 새로 만듦 (같은 이름이 있으면 그걸 씀)
 - set_qty : 사장님이 고친 남은 양을 그대로 저장 (기준 단위: kg · 모 · 개 · L)
 - adjust  : 재료별로 더하고 빼기 (영수증 저장 +, 지우기 −, 고치기는 바뀐 만큼). 0 밑으로는 안 내려감
 """
 
+import re
 from datetime import datetime, timezone
 
 from sources import supabase_db as db
@@ -82,3 +84,22 @@ def qty_by_item(rows):
         if r.get("item_id") and r.get("qty_base"):
             out[int(r["item_id"])] = out.get(int(r["item_id"]), 0) + float(r["qty_base"])
     return out
+
+
+UNITS = ("kg", "개", "모", "L")
+TAB_CATEGORY = {"야채": "채소", "과일": "과일", "수산물": "수산", "육류": "육류", "기타": "기타"}   # 재고 창 탭 → items.category
+
+
+def new_item(name, unit, tab):
+    """사장님이 직접 넣는 새 재료. 이름은 띄어쓰기를 하나로 줄여 같은 이름이면(띄어쓰기 무시) 있는 걸 돌려줌."""
+    name = re.sub(r"\s+", " ", str(name or "")).strip()
+    if not 1 <= len(name) <= 20 or not re.fullmatch(r"[0-9A-Za-z가-힣 ()·]+", name):
+        raise ValueError("재료 이름은 한글 · 영어 · 숫자로 20자까지 넣어 주세요")
+    if unit not in UNITS:
+        raise ValueError("단위는 kg · 개 · 모 · L 중에서 골라 주세요")
+    if tab not in TAB_CATEGORY:
+        raise ValueError("재료 종류를 다시 골라 주세요")
+    key = name.replace(" ", "")
+    old = next((i for i in db.select("items", select="id,name,base_unit,category") if i["name"].replace(" ", "") == key), None)
+    row = old or db.insert("items", [{"name": name, "category": TAB_CATEGORY[tab], "base_unit": unit, "note": "재고 창에서 사장님이 추가"}])[0]
+    return {"item_id": row["id"], "item": row["name"], "unit": row["base_unit"], "category": row["category"]}

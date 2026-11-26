@@ -761,6 +761,18 @@ def inventory_set(body: StockIn):
     return _receipt_guard(lambda: _store_changed(inventory.set_qty(supabase_db.DEMO_STORE, body.items)))
 
 
+class NewItemIn(BaseModel):
+    name: str = ""
+    unit: str = "kg"
+    tab: str = "기타"
+
+
+@app.post("/api/inventory/item")
+def inventory_new_item(body: NewItemIn):
+    """재고 창 검색에 없는 재료를 새로 만듦 → {item_id, item, unit, category} (남은 양은 [저장] 때 PUT 으로)."""
+    return _receipt_guard(lambda: _store_changed(inventory.new_item(body.name, body.unit, body.tab)))
+
+
 @app.delete("/api/inventory/{item_id}")
 def inventory_remove(item_id: int):
     """직접 넣은 재료 빼기 (메뉴 재료는 400)."""

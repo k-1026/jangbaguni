@@ -1328,6 +1328,7 @@ function renderSales() {
         <p class="sp-label">${isToday ? "오늘" : dayLabel(d.date)} 총 매출</p>
         <p class="sp-money" id="spMoney">0원</p>
         <p class="sp-bowls" id="spBowls">총 0그릇 판매</p>
+        <div class="sp-margin" id="spMargin"></div>
         <dl class="sp-channels" id="spChannels"></dl>
       </aside>
     </div>`;
@@ -1386,6 +1387,39 @@ function salesTotals() {
   // 홀 / 배달 한 줄: 이름 | 그릇 | 금액 — 세 칸으로 줄 맞춤
   const line = (label, c, cls = "") => `<div class="${cls}"><dt>${label}</dt><dd>${num(c.n)}<span class="unit">그릇</span></dd><dd class="won">${won(c.won)}</dd></div>`;
   $("#spChannels").innerHTML = line("홀", ch.hall) + line("배달", ch.delivery, "deliv");
+  salesMargin(money, sales.data.menus.map((m) => {
+    const v = (key) => { const el = document.querySelector(`#salesCard .sales-in[data-mid="${m.menu_id}"][data-key="${key}"]`); const x = el ? effVal(el) : m[key]; return Number.isFinite(x) ? x : 0; };
+    return { id: m.menu_id, n: v("hall") + v("delivery") };
+  }));
+}
+
+// 현재 마진 = 총 매출 − 재료비(그릇 × 1인분 재료비) − 고정 비용 하루 몫 − 카드 수수료 · 부가세 어림 (마이페이지 '가게 비용'과 같은 규칙, costCalc)
+//   고정 비용 하루 몫 = (고정 + 판매 비용 추가 항목 + 배달 비용) 한 달 합 ÷ 한 달 영업일 — 하루가 끝나기 전에는 마이너스일 수 있음
+function salesMargin(money, rows) {
+  const el = $("#spMargin");
+  if (!el) return;
+  const c = load(COST_KEY(), null) ? costs() : { ...COST_DEFAULT, ...(readLogin()?.profile?.costs || {}) };
+  const k = costCalc(c);
+  if (!k.days || !k.fixed) {
+    el.innerHTML = `<p class="sp-label">현재 마진</p><p class="sp-m-empty">임대료 · 인건비 같은 가게 비용을 넣으면<br>오늘 얼마 남는지 계산해 드려요</p>
+      <button type="button" class="sp-m-btn" data-sales="costs">가게 비용 넣기 ›</button>`;
+    return;
+  }
+  const W = 10000, n = (v) => +v || 0;
+  const per = sales.costPer || {};
+  const material = rows.reduce((s, r) => s + r.n * n(per[r.id]), 0);
+  const noCost = rows.some((r) => r.n > 0 && per[r.id] == null);
+  const extra = c.extra.filter((x) => extraSec(x) === "sale").reduce((s, x) => s + n(x.v), 0);
+  const daily = (k.fixed + extra + k.deliv) * W / k.days;
+  const card = c.card == null ? money * 0.012 : n(c.card) * W / k.days;
+  const vat = c.tax === "simple" ? money * 0.015 : Math.max(0, money - material) / 11;
+  const margin = money - material - daily - card - vat;
+  const r0 = (v) => Math.round(v).toLocaleString("ko-KR");
+  const row = (label, v) => `<div><dt>${label}</dt><dd>−${r0(v)}원</dd></div>`;
+  el.innerHTML = `<p class="sp-label">현재 마진</p>
+    <p class="sp-money sp-m-val${margin < 0 ? " minus" : ""}">${margin < 0 ? "−" : ""}${r0(Math.abs(margin))}<small>원</small></p>
+    <dl class="sp-m-rows">${row("재료비", material)}${row("임대료 · 인건비 등 하루 몫", daily)}${row("카드 수수료 · 부가세", card + vat)}</dl>
+    ${noCost ? `<p class="sp-m-note">재료비를 모르는 메뉴는 빼고 계산했어요</p>` : ""}`;
 }
 
 // 저장된 값과 다르고 규칙에 맞는 칸만 → [{menu_id, hall, delivery}] (안 바뀐 쪽은 null = 그대로)
@@ -1465,6 +1499,7 @@ $("#salesCard").addEventListener("click", async (e) => {
   if (act === "retry") { sales.failed = false; autoSave(); }
   if (act === "fold" && await salesFlush()) { sales.open = false; renderSales(); $('#salesCard [data-sales="unfold"]')?.focus(); }
   if (act === "unfold") { sales.open = true; renderSales(); $("#salesCard .sales-in")?.focus(); }
+  if (act === "costs") openMypage();   // 마이페이지 첫 화면에 가게 비용 칸
 });
 // 영업시간 저장 → 영업일 기준 '오늘'이 바뀌면(자정 넘어 마감으로 바꿈 등) 그날로 다시 불러옴
 async function salesHours() {
@@ -2276,6 +2311,8 @@ addEventListener("resize", rcArrows);
 async function loadCosts(full = true) {
   try {
     const r = await getJSON("/api/costs", { auth: true });
+    sales.costPer = Object.fromEntries((r.menus || []).filter((m) => m.cost_per_serving != null).map((m) => [m.menu_id, m.cost_per_serving]));
+    if (sales.data && sales.open && $("#spMargin")) salesTotals();
     if (r.locked) showSalesLock();
     else if (full) renderCosts(r, false);
     showReceiptList(r.receipts);
@@ -3346,6 +3383,7 @@ loadMyItems();
 loadCostAlerts();
 if (STORE_VIEW) {
   const storeReady = Promise.allSettled([loadSales(), loadDemand(), loadCosts()]);
+  freshProfile().then((me) => { if (me?.costs && !costEdit) store(COST_KEY(), me.costs); if (sales.data && sales.open && $("#spMargin")) salesTotals(); }).catch(() => {});
   // 첫 화면 영수증 분석 체험 칸(/?page=store#receipt): 열자마자 영수증 분석 칸으로 이동하고,
   // 위 칸(내일 준비 · 원가율)이 늦게 채워져 길어지는 동안에도 그 자리에 머무름 (사용자가 직접 스크롤하면 멈춤)
   if (location.hash === "#receipt") {

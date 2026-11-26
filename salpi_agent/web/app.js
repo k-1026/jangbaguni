@@ -1804,11 +1804,14 @@ $("#stockModalBody").addEventListener("click", async (e) => {
     if (bad) { s.tab = stockTab(bad.category); drawStock(); return stockMsg(`${bad.item}: 남은 양은 0 이상 숫자로 넣어 주세요`); }
     const items = s.items.filter((i) => i.was === null || +i.on_hand !== +(+i.was).toFixed(3))
       .map((i) => ({ item_id: i.item_id, on_hand: +i.on_hand }));
-    if (!items.length) return closeStock();
+    if (!items.length) return;
     b.disabled = true; b.textContent = "저장하는 중";
     try {
       await sendJSON("/api/inventory", "PUT", { items });
-      closeStock();
+      // 창은 그대로 두고 저장한 값을 새 기준으로 (고친 날 = 오늘)
+      const now = new Date().toISOString(), saved = new Set(items.map((x) => x.item_id));
+      s.items.forEach((i) => { if (saved.has(i.item_id)) { i.on_hand = +i.on_hand; i.was = i.on_hand; i.updated_at = now; } });
+      drawStock();
       loadDemand();   // 주문량 다시 계산
     } catch (err) { stockMsg(err.message); b.disabled = false; b.textContent = "저장"; }
   }

@@ -1894,4 +1894,9 @@ body.login-view .login-only, body.signup-view .signup-only { display: flex; }
 .pay-table th:first-child, .pay-table td:first-child { text-align: left; font-weight: 700; }
 .pay-table .plus { background: var(--primary-container); color: var(--primary); font-weight: 800; }
 .pay-btn.pay-go { color: #fff; background: var(--primary); border-color: var(--primary); }
-.pay-btn.pay-go:hover { background: var(--primary-hover); }
+.pay-btn.pay-go:hover { background: var(--primary-hover); }.sk-pick button.new { border-style: dashed; border-color: var(--primary); color: var(--primary); font-weight: 700; }
+.sk-adding select { padding: 8px 6px; border: 1px solid var(--outline); border-radius: 10px; font: inherit; font-size: 14px; background: var(--surface); }
+.sk-adding .sk-qty input { width: 76px; }
+.sk-adding .sk-qty input::placeholder { font-size: 13px; font-weight: 500; color: var(--muted); }
+.sk-qty input::-webkit-outer-spin-button, .sk-qty input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.sk-qty input[type="number"] { -moz-appearance: textfield; appearance: textfield; }

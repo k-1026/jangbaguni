@@ -2015,13 +2015,9 @@ function resetReceipt() {
 // 확인 · 수정 표: 새로 읽은 영수증(아래 화면)과 저장한 영수증 고치기(팝업)가 같이 씀
 // d = { date, supplier, items[{raw_name, item_id, base_unit, qty_base, amount, qty}], items_list, total_matches, ... }
 function receiptEditor(box, d, { image, thumb = true, badge, saveLabel = "저장", onSave, onCancel }) {
-  // 분석 제외: 재료 명단(시세보드 + 메뉴 재료)에 없어 단가 · 원가율 분석을 못 하는 줄 (금액은 합계에 들어감)
-  const opts = (sel) => `<option value="">분석 제외</option>` + d.items_list.map((i) =>
-    `<option value="${i.id}" ${i.id === sel ? "selected" : ""}>${esc(i.name)}</option>`).join("");
-  const unitOf = (id) => d.items_list.find((i) => i.id === +id)?.base_unit || "";
-  const row = (x, i) => `<tr data-i="${i}">
+  // 재료 분류는 살피(AI)가 정하고 사장님 화면에는 안 보임 → 읽은 값(item_id)을 줄에 그대로 들고 있다가 저장
+  const row = (x, i) => `<tr data-i="${i}" data-item="${x.item_id ?? ""}">
         <td><input class="rc-name" value="${esc(x.raw_name || "")}" aria-label="품목"></td>
-        <td><select class="rc-item" aria-label="재료">${opts(x.item_id)}</select></td>
         <td class="qty-cell"><input class="rc-qty" type="number" step="0.1" min="0" value="${x.qty_base ?? ""}" aria-label="양"><span class="rc-unit">${esc(x.base_unit || "")}</span></td>
         <td><input class="rc-amount" type="number" min="0" value="${x.amount ?? ""}" aria-label="금액"></td>
         <td><button class="rc-del" type="button" title="이 줄 빼기">×</button></td></tr>`;
@@ -2039,16 +2035,13 @@ function receiptEditor(box, d, { image, thumb = true, badge, saveLabel = "저장
       </div>
     </div>
     <div class="table-scroll"><table class="price-table edit-table">
-      <thead><tr><th>품목</th><th>재료</th><th>양</th><th>금액(원)</th><th></th></tr></thead>
+      <thead><tr><th>품목</th><th>양</th><th>금액(원)</th><th></th></tr></thead>
       <tbody>${d.items.map(row).join("")}</tbody>
     </table></div>
     <button class="rc-add" type="button">+ 줄 더하기</button>
     <p class="muted small">양은 재료 기준 단위(kg · 모)로 바꾼 전체 양이에요. 예: 깐양파 15kg 1망 → 15</p>
     <div class="receipt-actions"><button class="btn rc-cancel" type="button">취소</button><button class="btn primary rc-save" type="button">${saveLabel}</button></div>`;
   const tb = box.querySelector("tbody");
-  tb.onchange = (e) => {
-    if (e.target.classList.contains("rc-item")) e.target.closest("tr").querySelector(".rc-unit").textContent = unitOf(e.target.value);
-  };
   tb.onclick = (e) => { if (e.target.classList.contains("rc-del")) e.target.closest("tr").remove(); };
   box.querySelector(".rc-add").onclick = () => {
     tb.insertAdjacentHTML("beforeend", row({}, -1));
@@ -2059,7 +2052,7 @@ function receiptEditor(box, d, { image, thumb = true, badge, saveLabel = "저장
   btn.onclick = async () => {
     const items = [...tb.querySelectorAll("tr")].map((tr) => {
       const orig = d.items[+tr.dataset.i] || {};
-      const itemId = tr.querySelector(".rc-item").value;
+      const itemId = tr.dataset.item;
       return { raw_name: tr.querySelector(".rc-name").value.trim(), qty: orig.qty ?? null, item_id: itemId ? +itemId : null,
                qty_base: parseFloat(tr.querySelector(".rc-qty").value) || null, amount: parseFloat(tr.querySelector(".rc-amount").value) || null };
     });
@@ -3384,12 +3377,11 @@ function showReceiptView(id, d) {
       ${receiptPhoto(d)}
       <div>
         <table class="price-table rc-table">
-          <thead><tr><th>품목</th><th>재료</th><th>양</th><th>금액</th><th>kg·모당</th><th></th></tr></thead>
-          <tbody>${d.items.map((x) => `<tr data-jk="${esc(judgeKey(x))}"><td>${esc(x.raw_name)}</td>
-            <td>${esc(x.item || "분석 제외")}</td><td>${qtyTxt(x)}</td>
+          <thead><tr><th>품목</th><th>양</th><th>금액</th><th>kg·모당</th><th></th></tr></thead>
+          <tbody>${d.items.map((x) => `<tr data-jk="${esc(judgeKey(x))}"><td>${esc(x.raw_name)}</td><td>${qtyTxt(x)}</td>
             <td class="price">${won(x.amount)}</td><td>${x.unit_price ? won(x.unit_price) : "-"}</td><td class="rc-judge-cell"><span class="rc-chip"></span></td></tr>`).join("")}</tbody>
           <!-- 맨 아래 한 줄: 합계 + 평소 가격과 비교한 결과 (구매가 점검을 표 안으로 합침) -->
-          <tfoot><tr class="rc-total"><td colspan="6"><div><b>합계 ${won(d.total_amount)}</b>
+          <tfoot><tr class="rc-total"><td colspan="5"><div><b>합계 ${won(d.total_amount)}</b>
             <span class="rc-judge-sum" id="rcJudgeSum">평소 가격과 비교하는 중이에요</span></div></td></tr></tfoot>
         </table>
       </div>

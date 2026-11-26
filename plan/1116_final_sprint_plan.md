@@ -1,7 +1,7 @@
 # 최종 발표까지 계획 (11/16 ~ 11/27 완성, 12/4 발표)
 
 > 무엇: 12/4 최종 발표를 위해 **11/27(금)까지 끝낼 일 전부**와 매일 일정표(09–18시, 점심 13–14시 제외), 받아야 할 자료, 정해야 할 것, 논리가 약한 곳
-> 앞 문서: [11/13 피드백 할 일](presentation/1113_feedback_todo.md) · [스스로 배우는 시세 예측](forecast/1116_self_learning_forecast.md) · [AI 에이전트 파이프라인 (11/12)](bm/1112_agent_pipeline.md) · [BM](bm/1112_bm_canvas.md) · [시장 규모](bm/1113_시장규모시트.md) · [경쟁사 비교](bm/1113_경쟁사비교.md)
+> 앞 문서: [11/13 피드백 할 일](presentation/1113/1113_feedback_todo.md) · [스스로 배우는 시세 예측](forecast/1116_self_learning_forecast.md) · [AI 에이전트 파이프라인 (11/12)](bm/1112_agent_pipeline.md) · [BM](bm/1112_bm_canvas.md) · [시장 규모](bm/1113_시장규모시트.md) · [경쟁사 비교](bm/1113_경쟁사비교.md)
 > 표시: ✅ 끝 · 🟡 일부 · ⬜ 안 함 · 👤 사람이 해야 함 (키 · 신청 · 인터뷰 · PPT)
 
 ---

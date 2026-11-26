@@ -3,7 +3,7 @@
 > 무엇: 실제 사장님의 메뉴 · 영수증 · 판매량을 구할 수 없어서, **가상 가게 1년 치 데이터**를 만들고 그걸로 **다음 날 메뉴별 판매량을 학습 모델(부스팅)로 예측**해 봄
 > 코드: [dummy_store.py](../../salpi_agent/demand/dummy_store.py) (더미 데이터) · [demand_learn.py](../../salpi_agent/demand/demand_learn.py) (학습 · 시험) · [demand_model.py](../../salpi_agent/demand/demand_model.py) (화면 예측) · [demand.py](../../salpi_agent/demand/demand.py) (내일 준비)
 > 데이터: [data/dummy_store/](../../data/dummy_store/) · 모델: `salpi_agent/models/demand_demo.json`
-> 앞 문서: [최종 계획 M6](../1116_final_sprint_plan.md) · [AI 파이프라인 v3](../presentation/살피_AI파이프라인_v3.png) (내일 준비 에이전트 · 판매량 예측 모델)
+> 앞 문서: [최종 계획 M6](../1116_final_sprint_plan.md) · [AI 파이프라인 v3](../presentation/1118/살피_AI파이프라인_v3.png) (내일 준비 에이전트 · 판매량 예측 모델)
 
 ---
 

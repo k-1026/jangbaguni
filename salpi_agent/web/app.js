@@ -1725,7 +1725,6 @@ function drawStock() {
   box.innerHTML = `<div class="sk-head"><h3>재고 입력</h3>
       <button type="button" class="sk-edit${s.edit ? " on" : ""}" data-edit>${s.edit ? "완료" : "편집"}</button></div>
     <p class="sk-sub">${sub}</p>
-    ${s.edit ? `<p class="sk-note">직접 추가한 재료만 뺄 수 있어요. 메뉴 재료는 메뉴에 쓰여서 뺄 수 없어요</p>` : ""}
     <div class="sk-tabs" role="tablist">${STOCK_TABS.map(([t]) => `<button type="button" role="tab" aria-selected="${t === s.tab}" data-tab="${t}">${t}
       <small>${s.items.filter((i) => stockTab(i.category) === t).length}</small></button>`).join("")}</div>
     <div class="sk-list">${rows.length ? `<ul class="sk-rows">${rows.map(row).join("")}</ul>`
@@ -1786,15 +1785,19 @@ $("#stockModalBody").addEventListener("click", async (e) => {
     return drawStock();
   }
   if (b.dataset.del) {
-    const i = s.items.find((x) => x.item_id === +b.dataset.del);
-    if (i.was !== null) {   // 저장 전에 넣은 재료는 화면에서만 빼면 됨
-      b.disabled = true;
-      try { await sendJSON(`/api/inventory/${i.item_id}`, "DELETE"); }
-      catch (err) { b.disabled = false; return stockMsg(err.message); }
-    }
-    s.items = s.items.filter((x) => x !== i);
+    // 화면에서 먼저 빼고 서버는 뒤에서 (기다리면 1~2초 멈춤). 실패하면 제자리로 되돌림
+    const at = s.items.findIndex((x) => x.item_id === +b.dataset.del), i = s.items[at];
+    s.items.splice(at, 1);
     s.catalog.push({ item_id: i.item_id, item: i.item, unit: i.unit, category: i.category });
-    return drawStock();
+    drawStock();
+    if (i.was !== null) sendJSON(`/api/inventory/${i.item_id}`, "DELETE").catch((err) => {   // 저장 전에 넣은 재료는 서버에 없음
+      if (stock !== s) return;   // 그새 창을 닫았다 열었으면 새 목록이 맞음
+      s.items.splice(Math.min(at, s.items.length), 0, i);
+      s.catalog = s.catalog.filter((c) => c.item_id !== i.item_id);
+      drawStock();
+      stockMsg(`${i.item}: ${err.message}`);
+    });
+    return;
   }
   if (b.id === "skSave") {
     const bad = s.items.find((i) => i.on_hand === "" || !(+i.on_hand >= 0));

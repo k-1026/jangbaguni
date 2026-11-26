@@ -48,7 +48,7 @@ def remove(store_id, item_id):
     if int(item_id) in _used(store_id):
         raise ValueError("메뉴에 쓰는 재료는 뺄 수 없어요")
     db.delete("inventory", store_id=f"eq.{store_id}", item_id=f"eq.{int(item_id)}")
-    return listing(store_id)
+    return {"removed": int(item_id)}   # 화면은 이미 뺀 상태라 목록을 다시 만들지 않음 (조회 3번 줄임)
 
 
 def set_qty(store_id, rows):

@@ -1794,7 +1794,6 @@ body.login-view .login-only, body.signup-view .signup-only { display: flex; }
 .sk-edit { margin-left: auto; padding: 5px 10px; border: 0; border-radius: 8px; background: none; font: inherit; font-size: 14px; font-weight: 800; color: var(--primary); cursor: pointer; }
 .sk-edit.on { color: #fff; background: var(--primary); }
 .sk-sub { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
-.sk-note { margin: 10px 0 0; padding: 9px 12px; border-radius: 10px; background: #FFF1E4; color: #9A3412; font-size: 13px; font-weight: 600; line-height: 1.5; }
 .sk-tabs { display: flex; margin-top: 14px; border-bottom: 1px solid var(--outline-variant); }
 .sk-tabs button { flex: 1; padding: 10px 2px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; font: inherit; font-size: 14px; color: var(--muted); cursor: pointer; white-space: nowrap; }
 .sk-tabs button small { font-size: 12px; }

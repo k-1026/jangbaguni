@@ -44,7 +44,7 @@ from store import inventory
 from store import receipts
 from sources import supabase_db
 from chat import agent as chat_agent
-from chat.agent import BUTTON_ROUTES, SalpiAgent
+from chat.agent import BUTTON_ROUTES, SalpiAgent, button
 from sources.data_sources import ITEMS, ApiError, ApiKeyMissing, event_detail, foodspring_url, holidays, month_events, weather_forecast
 
 ROOT = Path(__file__).resolve().parent
@@ -761,6 +761,24 @@ def inventory_set(body: StockIn):
     return _receipt_guard(lambda: _store_changed(inventory.set_qty(supabase_db.DEMO_STORE, body.items)))
 
 
+class NewItemIn(BaseModel):
+    name: str = ""
+    unit: str = "kg"
+    tab: str = "기타"
+
+
+@app.post("/api/inventory/item")
+def inventory_new_item(body: NewItemIn):
+    """재고 창 검색에 없는 재료를 새로 만듦 → {item_id, item, unit, category} (남은 양은 [저장] 때 PUT 으로)."""
+    return _receipt_guard(lambda: _store_changed(inventory.new_item(body.name, body.unit, body.tab)))
+
+
+@app.delete("/api/inventory/{item_id}")
+def inventory_remove(item_id: int):
+    """직접 넣은 재료 빼기 (메뉴 재료는 400)."""
+    return _receipt_guard(lambda: _store_changed(inventory.remove(supabase_db.DEMO_STORE, item_id)))
+
+
 @app.get("/api/receipts")
 def receipt_list():
     # shortcut: 1000장(Supabase 한 번에 주는 최대)까지, 넘으면 페이지 나눠 받기
@@ -1085,7 +1103,7 @@ class ChatIn(BaseModel):
 
 def _answer(body, on_text=None, on_status=None):
     """질문 하나에 답하고 대화 기록까지 남김 → 답 글. (/api/chat 과 /api/chat/stream 이 같이 씀)"""
-    question, started, agent, status = body.message.strip()[:1000], time.time(), None, "ok"
+    question, started, agent, status = button(body.message[:1000]), time.time(), None, "ok"
     try:
         if question in BUTTON_ROUTES:   # 화면 버튼 질문은 답이 정해져 있어 3시간 동안 같은 답을 재사용 (모델 호출 없이 바로)
             def fresh():
@@ -1113,7 +1131,7 @@ def _answer(body, on_text=None, on_status=None):
 
 def _chat_limit(body, request):
     """버튼 질문은 AI 를 안 써서 세지 않음. 직접 친 질문만 접속한 곳마다 1분 8번 · 하루 150번."""
-    if body.message.strip() not in BUTTON_ROUTES:
+    if button(body.message[:1000]) not in BUTTON_ROUTES:
         _limit(request, "chat")
 
 

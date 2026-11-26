@@ -6,7 +6,7 @@
 - 손질 손실률은 화면에 보이지 않는다. 고칠 때는 원래 값을 그대로 두고, 새 재료는 0으로 넣는다.
 """
 
-from store import menu_cost
+from store import inventory, menu_cost
 from sources import supabase_db as db
 
 MAX_NAME = 30
@@ -14,7 +14,7 @@ MAX_NAME = 30
 
 def editor_data(store_id):
     """입력 창에 필요한 것: 재료 목록(+ 최근 영수증 단가) · 메뉴(판매 중 · 중지) · 자주 쓰는 메뉴 틀."""
-    items = db.select("items", select="id,name,category,base_unit", order="category,name")
+    items = inventory.shared_items(db.select("items", select="id,name,category,base_unit,note", order="category,name"))
     prices = {p["item_id"]: float(p["unit_price_base"]) for p in
               db.select("v_latest_purchase_price", store_id=f"eq.{store_id}", select="item_id,unit_price_base")
               if p["unit_price_base"] is not None}

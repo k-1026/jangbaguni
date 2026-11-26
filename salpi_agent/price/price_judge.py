@@ -103,6 +103,7 @@ def judge(store_id=db.DEMO_STORE, purchase_id=None):
             "retail_price": round(market["retail"]) if market and market.get("retail") else None,
             "market_date": str(market["date"])[:10] if market else None,
             "verdict": verdict, "why": why, "extra_paid": extra, "saved": saved,
+            "cheaper_ok": name in ITEMS,   # 더 싼 판매처 비교는 시세 품목(ITEMS)만 (price/cheaper.py 와 같은 기준)
         })
     order = {"비싸게 샀어요": 0, "시세가 올랐어요": 1, "싸게 샀어요": 2, "비슷해요": 3, "비교할 값 없음": 4}
     lines.sort(key=lambda x: (order[x["verdict"]], -x["extra_paid"]))

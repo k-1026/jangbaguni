@@ -1257,7 +1257,7 @@ async function salesPut(body) {
 async function loadSales(date, open = true) {
   try {
     const d = await getJSON(date ? `/api/sales?date=${date}` : "/api/sales");
-    if (!sales.today) sales.today = d.date;
+    sales.today = d.today || sales.today || d.date;   // 서버가 영업시간으로 정한 '오늘' (자정 넘어 마감 전이면 전날)
     sales.data = d;
     sales.open = open;
     sales.failed = false;
@@ -1299,8 +1299,11 @@ function renderSales() {
       data-mid="${m.menu_id}" data-key="${key}" value="${m[key] ?? ""}" placeholder="${m[key] != null ? "0" : "-"}" aria-label="${esc(m.name)} ${label} 그릇 수">`;
   $("#salesCard").innerHTML = `
     <div class="sales-bar">
-      <div class="sales-bar-left"><label class="sales-date"><span class="sales-day-label">${isToday ? "오늘" : `${WEEKDAY[new Date(`${d.date}T00:00:00`).getDay()]}요일`}</span>
-        <input type="date" id="salesDate" value="${d.date}" min="${min}" max="${sales.today}" aria-label="날짜 고르기"></label></div>
+      <div class="sales-bar-left"><div class="sales-when"><label class="sales-date"><span class="sales-day-label">${isToday ? "오늘" : `${WEEKDAY[new Date(`${d.date}T00:00:00`).getDay()]}요일`}</span>
+        <input type="date" id="salesDate" value="${d.date}" min="${min}" max="${sales.today}" aria-label="날짜 고르기"></label>
+        <span class="sales-hours" title="마감이 자정을 넘기면 새벽 판매도 전날 영업일로 들어가요"><span>영업</span>
+          <input type="time" id="salesOpen" value="${d.open_time || "11:00"}" aria-label="개점 시간"><i>~</i>
+          <input type="time" id="salesClose" value="${d.close_time || "21:00"}" aria-label="마감 시간"></span></div></div>
       <div class="sales-bar-right">
         <button class="sales-unfold" type="button" data-sales="fold" aria-expanded="true" aria-controls="salesCard" aria-label="판매 기록 접기" title="접기">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>
@@ -1463,8 +1466,24 @@ $("#salesCard").addEventListener("click", async (e) => {
   if (act === "fold" && await salesFlush()) { sales.open = false; renderSales(); $('#salesCard [data-sales="unfold"]')?.focus(); }
   if (act === "unfold") { sales.open = true; renderSales(); $("#salesCard .sales-in")?.focus(); }
 });
+// 영업시간 저장 → 영업일 기준 '오늘'이 바뀌면(자정 넘어 마감으로 바꿈 등) 그날로 다시 불러옴
+async function salesHours() {
+  const o = $("#salesOpen").value, c = $("#salesClose").value, d = sales.data;
+  if (!o || !c) return;
+  try {
+    const r = await sendJSON("/api/sales/hours", "PUT", { open: o, close: c });
+    const was = sales.today;
+    Object.assign(d, { open_time: r.open_time, close_time: r.close_time });
+    sales.today = r.today;
+    if (r.today !== was && d.date === was && await salesFlush()) loadSales(r.today, true);
+  } catch (err) {
+    $("#salesOpen").value = d.open_time || "11:00"; $("#salesClose").value = d.close_time || "21:00";
+    salesMsg(err.message);
+  }
+}
 $("#salesCard").addEventListener("change", async (e) => {
   if (e.target.classList.contains("sales-in")) return salesLeave(e.target);
+  if (e.target.id === "salesOpen" || e.target.id === "salesClose") return salesHours();
   if (e.target.id !== "salesDate") return;
   const day = e.target.value;
   if (!day || day === sales.data.date) return;
@@ -1706,7 +1725,7 @@ function drawStock() {
     const qty = s.edit
       ? `<span class="sk-qty-text">${stockFix(i.on_hand, i.unit)} <small>${esc(i.unit)}</small></span>`
       : `<label class="sk-qty"><input type="number" inputmode="decimal" min="0" step="${stockStep(i.unit)}" data-id="${i.item_id}"
-          value="${i.on_hand === "" ? "" : stockFix(i.on_hand, i.unit)}" aria-label="${esc(i.item)} 남은 양"><small>${esc(i.unit)}</small></label>`;
+          value="${i.on_hand === "" ? "" : stockFix(i.on_hand, i.unit)}" aria-label="${esc(i.item)} 남은 양"><small>${esc(i.unit)}</small><span class="sk-step"><button type="button" data-step="1" aria-label="늘리기" tabindex="-1">▲</button><button type="button" data-step="-1" aria-label="줄이기" tabindex="-1">▼</button></span></label>`;
     return `<li class="sk-row${s.edit && menu ? " dim" : ""}">${del}
       <span class="sk-name"><span><b>${esc(i.item)}</b>${chip}</span>${s.edit ? "" : `<small class="${a.old ? "old" : ""}">${a.text}</small>`}</span>${qty}</li>`;
   };
@@ -1717,7 +1736,7 @@ function drawStock() {
     : p
       ? `<div class="sk-adding"><b>${esc(p.item)}</b>
           ${p.new ? `<select id="skAddUnit" aria-label="단위">${["kg", "개", "모", "L"].map((u) => `<option${u === p.unit ? " selected" : ""}>${u}</option>`).join("")}</select>` : ""}
-          <label class="sk-qty"><input type="number" inputmode="decimal" min="0" step="${stockStep(p.unit)}" id="skAddQty" placeholder="남은 양" aria-label="남은 양">${p.new ? "" : `<small>${esc(p.unit)}</small>`}</label>
+          <label class="sk-qty"><input type="number" inputmode="decimal" min="0" step="${stockStep(p.unit)}" id="skAddQty" placeholder="남은 양" aria-label="남은 양">${p.new ? "" : `<small>${esc(p.unit)}</small>`}<span class="sk-step"><button type="button" data-step="1" aria-label="늘리기" tabindex="-1">▲</button><button type="button" data-step="-1" aria-label="줄이기" tabindex="-1">▼</button></span></label>
           <button type="button" class="sk-add-ok" data-add-ok>넣기</button><button type="button" class="sk-add-x" data-add-x aria-label="취소">×</button></div>`
       : `<div class="sk-adding col"><input type="search" id="skAddQ" placeholder="재료 이름 검색" value="${esc(s.adding.q)}" maxlength="20" aria-label="재료 이름 검색">
           <ul class="sk-pick">${stockPicks()}</ul>
@@ -1758,6 +1777,23 @@ $("#stockModalBody").addEventListener("input", (e) => {
     $("#stockModalBody .sk-pick").innerHTML = stockPicks();
   }
 });
+// ▲ ▼ 원터치: 한 번 누르면 한 칸(kg · L · 모 0.1, 개 1), 누르고 있으면 쭉 오르내림 (0 밑으로는 안 내려감)
+let stockHold = null;
+const stockStop = () => { clearTimeout(stockHold); clearInterval(stockHold); stockHold = null; };
+function stockBump(btn) {
+  const input = btn.closest(".sk-qty").querySelector("input"), st = +input.step || 0.1, dec = st < 1 ? 1 : 0;
+  input.value = Math.max(0, +((+input.value || 0) + st * +btn.dataset.step).toFixed(dec));
+  input.dispatchEvent(new Event("input", { bubbles: true }));   // 저장할 값 · [저장] 버튼은 손으로 친 것과 똑같이
+}
+$("#stockModalBody").addEventListener("pointerdown", (e) => {
+  const b = e.target.closest("[data-step]");
+  if (!b) return;
+  e.preventDefault();   // 숫자 칸 포커스 · 글자 선택이 흔들리지 않게
+  stockStop();
+  stockBump(b);
+  stockHold = setTimeout(() => { stockHold = setInterval(() => stockBump(b), 70); }, 400);
+});
+["pointerup", "pointerleave", "pointercancel"].forEach((t) => $("#stockModalBody").addEventListener(t, stockStop));
 $("#stockModalBody").addEventListener("keydown", (e) => {
   if (e.key === "Enter" && e.target.id === "skAddQty") $("#stockModalBody [data-add-ok]").click();
 });
@@ -1950,7 +1986,7 @@ function stitch(pages) {
 async function readReceipt(blob) {
   const box = $("#receiptResult");
   $("#receiptStart").hidden = true;
-  box.innerHTML = `<div class="reading"><div class="spinner"></div><b>살피가 영수증을 읽는 중이에요</b><p class="muted">10~30초쯤 걸려요</p></div>`;
+  box.innerHTML = `<div class="reading"><div class="spinner"></div><b>분석 중</b></div>`;
   try {
     let image, skipped = 0;
     if (Array.isArray(blob)) image = stitch(blob);
@@ -1978,13 +2014,10 @@ function resetReceipt() {
 
 // 확인 · 수정 표: 새로 읽은 영수증(아래 화면)과 저장한 영수증 고치기(팝업)가 같이 씀
 // d = { date, supplier, items[{raw_name, item_id, base_unit, qty_base, amount, qty}], items_list, total_matches, ... }
-function receiptEditor(box, d, { image, thumb = true, badge, saveLabel = "확인했어요, 저장", onSave, onCancel }) {
-  const opts = (sel) => `<option value="">재료 아님</option>` + d.items_list.map((i) =>
-    `<option value="${i.id}" ${i.id === sel ? "selected" : ""}>${esc(i.name)}</option>`).join("");
-  const unitOf = (id) => d.items_list.find((i) => i.id === +id)?.base_unit || "";
-  const row = (x, i) => `<tr data-i="${i}">
-        <td><input class="rc-name" value="${esc(x.raw_name || "")}" aria-label="영수증 품목"></td>
-        <td><select class="rc-item" aria-label="재료">${opts(x.item_id)}</select></td>
+function receiptEditor(box, d, { image, thumb = true, badge, saveLabel = "저장", onSave, onCancel }) {
+  // 재료 분류는 살피(AI)가 정하고 사장님 화면에는 안 보임 → 읽은 값(item_id)을 줄에 그대로 들고 있다가 저장
+  const row = (x, i) => `<tr data-i="${i}" data-item="${x.item_id ?? ""}">
+        <td><input class="rc-name" value="${esc(x.raw_name || "")}" aria-label="품목"></td>
         <td class="qty-cell"><input class="rc-qty" type="number" step="0.1" min="0" value="${x.qty_base ?? ""}" aria-label="양"><span class="rc-unit">${esc(x.base_unit || "")}</span></td>
         <td><input class="rc-amount" type="number" min="0" value="${x.amount ?? ""}" aria-label="금액"></td>
         <td><button class="rc-del" type="button" title="이 줄 빼기">×</button></td></tr>`;
@@ -1992,7 +2025,7 @@ function receiptEditor(box, d, { image, thumb = true, badge, saveLabel = "확인
     <div class="receipt-edit ${thumb ? "" : "no-thumb"}">
       ${thumb ? (image ? `<img class="receipt-thumb" src="${esc(image)}" alt="올린 영수증">` : `<div class="receipt-thumb no-photo">사진 없음</div>`) : ""}
       <div>
-        <span class="badge">${badge || "살피가 읽은 내용 · 틀린 곳은 고쳐 주세요"}</span>
+        <span class="badge">${badge || "살피가 읽은 내용이에요. 틀린 곳은 고쳐 주세요"}</span>
         <div class="receipt-meta">
           <label>날짜 <input type="date" class="rc-date" value="${esc(d.date || "")}"></label>
           <label>판매처 <input class="rc-supplier" value="${esc(d.supplier ? supplierName(d.supplier) : "")}"></label>
@@ -2002,16 +2035,13 @@ function receiptEditor(box, d, { image, thumb = true, badge, saveLabel = "확인
       </div>
     </div>
     <div class="table-scroll"><table class="price-table edit-table">
-      <thead><tr><th>영수증 품목</th><th>재료</th><th>양</th><th>금액(원)</th><th></th></tr></thead>
+      <thead><tr><th>품목</th><th>양</th><th>금액(원)</th><th></th></tr></thead>
       <tbody>${d.items.map(row).join("")}</tbody>
     </table></div>
     <button class="rc-add" type="button">+ 줄 더하기</button>
     <p class="muted small">양은 재료 기준 단위(kg · 모)로 바꾼 전체 양이에요. 예: 깐양파 15kg 1망 → 15</p>
     <div class="receipt-actions"><button class="btn rc-cancel" type="button">취소</button><button class="btn primary rc-save" type="button">${saveLabel}</button></div>`;
   const tb = box.querySelector("tbody");
-  tb.onchange = (e) => {
-    if (e.target.classList.contains("rc-item")) e.target.closest("tr").querySelector(".rc-unit").textContent = unitOf(e.target.value);
-  };
   tb.onclick = (e) => { if (e.target.classList.contains("rc-del")) e.target.closest("tr").remove(); };
   box.querySelector(".rc-add").onclick = () => {
     tb.insertAdjacentHTML("beforeend", row({}, -1));
@@ -2022,7 +2052,7 @@ function receiptEditor(box, d, { image, thumb = true, badge, saveLabel = "확인
   btn.onclick = async () => {
     const items = [...tb.querySelectorAll("tr")].map((tr) => {
       const orig = d.items[+tr.dataset.i] || {};
-      const itemId = tr.querySelector(".rc-item").value;
+      const itemId = tr.dataset.item;
       return { raw_name: tr.querySelector(".rc-name").value.trim(), qty: orig.qty ?? null, item_id: itemId ? +itemId : null,
                qty_base: parseFloat(tr.querySelector(".rc-qty").value) || null, amount: parseFloat(tr.querySelector(".rc-amount").value) || null };
     });
@@ -2285,8 +2315,8 @@ const recipeRow = (r = {}) => `<li class="mf-row" data-loss="${r.loss || 0}">
   <select class="mf-item" aria-label="재료">${itemOptions(r.item_id)}</select>
   <span class="mf-amount"><input class="mf-qty" type="number" inputmode="decimal" min="0" step="any" aria-label="1인분 양"
     value="${r.qty != null ? showQty(menuItem(r.item_id), r.qty) : ""}"><span class="mf-unit"></span></span>
-  <small class="mf-noprice" hidden>영수증 가격 없음</small>
-  <button type="button" class="mf-del" aria-label="이 재료 빼기">✕</button></li>`;
+  <button type="button" class="mf-del" aria-label="이 재료 빼기">✕</button>
+  <small class="mf-noprice" hidden>영수증 가격 없음 <button type="button" class="mf-setprice">가격 넣기</button></small></li>`;   // 안내는 ✕ 뒤에 (앞에 두면 ✕ 가 다음 줄로 밀림)
 
 function menuForm(m) {
   const add = !m;
@@ -2325,7 +2355,10 @@ function menuForm(m) {
     $("#mfPrice").focus();
   });
   $("#mfAddRow").onclick = () => { rows.insertAdjacentHTML("beforeend", recipeRow()); rows.lastElementChild.querySelector("select").focus(); menuCalc(); };
-  rows.onclick = (e) => { if (e.target.closest(".mf-del")) { e.target.closest(".mf-row").remove(); menuCalc(); } };
+  rows.onclick = (e) => {
+    if (e.target.closest(".mf-del")) { e.target.closest(".mf-row").remove(); menuCalc(); }
+    if (e.target.closest(".mf-setprice")) setItemPrice(e.target.closest(".mf-setprice"));
+  };
   $("#menuForm").oninput = menuCalc;
   $("#mfCancel").onclick = closeMenu;
   if (!add) $("#mfStop").onclick = () => stopMenu(m);
@@ -2333,7 +2366,7 @@ function menuForm(m) {
     e.preventDefault();
     const recipe = [...rows.querySelectorAll(".mf-row")].map((li) => {
       const it = menuItem(li.querySelector(".mf-item").value), v = parseFloat(li.querySelector(".mf-qty").value);
-      return it && v > 0 ? { item_id: it.id, qty: saveQty(it, v) } : null;
+      return it && v > 0 ? { item_id: it.id, qty: saveQty(it, v), raw_name: it.raw_name } : null;   // raw_name: 영수증 줄에서 가져온 재료 (저장할 때 재료가 됨)
     }).filter(Boolean);
     const btn = $("#mfSave"), msg = $("#mfMsg");
     btn.disabled = true; btn.textContent = "저장하는 중"; msg.hidden = true;
@@ -2347,6 +2380,22 @@ function menuForm(m) {
       btn.disabled = false; btn.textContent = "저장";
     }
   };
+}
+
+// 영수증 가격이 없는 재료: 사장님이 기준 단위당 가격을 직접 넣음 → 바로 원가율에 씀 (나중에 영수증이 오면 그 값으로)
+async function setItemPrice(btn) {
+  const it = menuItem(btn.closest(".mf-row").querySelector(".mf-item").value);
+  const v = prompt(`${it.name} 1${it.unit} 가격을 원으로 적어 주세요`, "");
+  if (v == null) return;
+  const price = parseInt(v.replace(/[^0-9]/g, ""), 10);
+  if (!(price > 0)) return alert("가격을 숫자로 적어 주세요");
+  btn.disabled = true;
+  try {
+    await sendJSON("/api/menus/price", "POST", { item_id: it.id, price });
+    it.price = price;
+    menuCalc();
+  } catch (err) { alert(err.message); }
+  btn.disabled = false;
 }
 
 // 원가율 미리 보기: 재료마다 최근 영수증 단가 × 1인분 양 (화면의 메뉴별 원가율과 같은 계산)
@@ -3347,12 +3396,11 @@ function showReceiptView(id, d) {
       ${receiptPhoto(d)}
       <div>
         <table class="price-table rc-table">
-          <thead><tr><th>영수증 품목</th><th>재료</th><th>양</th><th>금액</th><th>kg·모당</th><th></th></tr></thead>
-          <tbody>${d.items.map((x) => `<tr data-jk="${esc(judgeKey(x))}"><td>${esc(x.raw_name)}</td>
-            <td>${esc(x.item || "재료 아님")}</td><td>${qtyTxt(x)}</td>
+          <thead><tr><th>품목</th><th>양</th><th>금액</th><th>kg·모당</th><th></th></tr></thead>
+          <tbody>${d.items.map((x) => `<tr data-jk="${esc(judgeKey(x))}"><td>${esc(x.raw_name)}</td><td>${qtyTxt(x)}</td>
             <td class="price">${won(x.amount)}</td><td>${x.unit_price ? won(x.unit_price) : "-"}</td><td class="rc-judge-cell"><span class="rc-chip"></span></td></tr>`).join("")}</tbody>
           <!-- 맨 아래 한 줄: 합계 + 평소 가격과 비교한 결과 (구매가 점검을 표 안으로 합침) -->
-          <tfoot><tr class="rc-total"><td colspan="6"><div><b>합계 ${won(d.total_amount)}</b>
+          <tfoot><tr class="rc-total"><td colspan="5"><div><b>합계 ${won(d.total_amount)}</b>
             <span class="rc-judge-sum" id="rcJudgeSum">평소 가격과 비교하는 중이에요</span></div></td></tr></tfoot>
         </table>
       </div>
@@ -3396,7 +3444,7 @@ async function loadJudge(id) {
     // 칩 바로 옆에 같은 줄로 금액만 (빨강 = 더 낸 돈, 초록 = 아낀 돈 · '과지출 · 절약' 글자는 합계 줄에만)
     const money = x.extra_paid ? `<b class="up">${won(x.extra_paid)}</b>` : x.saved ? `<b class="down">${won(x.saved)}</b>` : "";
     // 비싸게 산 재료는 '더 싼 곳' 버튼 → 누르면 그 줄 아래에 판매처 목록 (/api/cheaper)
-    const more = x.verdict === "비싸게 샀어요" && x.item
+    const more = x.verdict === "비싸게 샀어요" && x.item && x.cheaper_ok !== false   // 비교 못 하는 재료(고기 · 양념 등)는 버튼 없음
       ? `<button class="rc-cheaper-btn" type="button" data-item="${esc(x.item)}" data-paid="${x.unit_price || ""}" aria-expanded="false">더 싼 곳</button>` : "";
     tr.querySelector(".rc-chip").outerHTML = `<span class="demand-chip rc-chip ${JUDGE_CHIP[x.verdict] || ""}" title="${esc(why)}">${esc(text)}</span>`
       + (money ? `<span class="rc-why">${money}</span>` : "") + more;
@@ -3405,7 +3453,8 @@ async function loadJudge(id) {
   const extra = j.summary?.extra_paid || 0, saved = j.summary?.saved || 0;
   sum.innerHTML = [extra ? `<b class="up">${won(extra)} 과지출</b>` : "",
                    saved ? `<b class="down">${won(saved)} 절약</b>` : ""].filter(Boolean).join(" · ")
-    || "모두 평소 값에 샀어요";
+    // 비교한 재료가 하나도 없으면(모두 분석 제외 · 비교할 값 없음) '평소 값'이라고 하지 않음
+    || ((j.lines || []).some((x) => x.verdict !== "비교할 값 없음") ? "모두 평소 값에 샀어요" : "평소 값과 비교할 재료가 없어요");
   praiseFrom(j);   // 예전 영수증을 열 때도 이득이면 칭찬 팝업
 }
 

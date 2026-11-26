@@ -1950,7 +1950,7 @@ function stitch(pages) {
 async function readReceipt(blob) {
   const box = $("#receiptResult");
   $("#receiptStart").hidden = true;
-  box.innerHTML = `<div class="reading"><div class="spinner"></div><b>살피가 영수증을 읽는 중이에요</b><p class="muted">10~30초쯤 걸려요</p></div>`;
+  box.innerHTML = `<div class="reading"><div class="spinner"></div><b>분석 중이에요</b></div>`;
   try {
     let image, skipped = 0;
     if (Array.isArray(blob)) image = stitch(blob);

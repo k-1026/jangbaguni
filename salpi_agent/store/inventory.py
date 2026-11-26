@@ -87,6 +87,12 @@ def qty_by_item(rows):
 
 
 UNITS = ("kg", "개", "모", "L")
+OWN_NOTE = "재고 창에서 사장님이 추가"   # 이 표시가 있는 재료는 재고 창에만 (영수증 읽기 · 메뉴 재료 목록에서 뺌)
+
+
+def shared_items(rows):
+    """재고 창에서 사장님이 넣은 재료를 뺀 표준 재료 (rows 에 note 가 있어야 함)"""
+    return [r for r in rows if r.get("note") != OWN_NOTE]
 TAB_CATEGORY = {"야채": "채소", "과일": "과일", "수산물": "수산", "육류": "육류", "기타": "기타"}   # 재고 창 탭 → items.category
 
 
@@ -101,5 +107,5 @@ def new_item(name, unit, tab):
         raise ValueError("재료 종류를 다시 골라 주세요")
     key = name.replace(" ", "")
     old = next((i for i in db.select("items", select="id,name,base_unit,category") if i["name"].replace(" ", "") == key), None)
-    row = old or db.insert("items", [{"name": name, "category": TAB_CATEGORY[tab], "base_unit": unit, "note": "재고 창에서 사장님이 추가"}])[0]
+    row = old or db.insert("items", [{"name": name, "category": TAB_CATEGORY[tab], "base_unit": unit, "note": OWN_NOTE}])[0]
     return {"item_id": row["id"], "item": row["name"], "unit": row["base_unit"], "category": row["category"]}

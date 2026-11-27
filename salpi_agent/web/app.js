@@ -3077,6 +3077,7 @@ chatEl.addEventListener("pointermove", (e) => {
     if (rs.dir.includes("n")) top += height - h;
     Object.assign(chatEl.style, { width: `${w}px`, height: `${h}px`, right: "auto", bottom: "auto",
       left: `${Math.max(0, Math.min(window.innerWidth - w, left))}px`, top: `${Math.max(0, Math.min(window.innerHeight - h, top))}px` });
+    if (rs.fab) placeFab(rs.fab.left + dx, rs.fab.top + dy, false);   // 살피 캐릭터도 같은 만큼 함께 이동
     return;
   }
   chatEl.style.cursor = CURSOR[edgeAt(e)] || (onChatHead(e) ? "move" : "");
@@ -3087,24 +3088,34 @@ chatEl.addEventListener("pointerdown", (e) => {
   const dir = edgeAt(e) || (onChatHead(e) ? "m" : "");
   if (!dir) return;
   const r = chatEl.getBoundingClientRect();
-  rs = { dir, x: e.clientX, y: e.clientY, box: { left: r.left, top: r.top, width: r.width, height: r.height } };
+  rs = { dir, x: e.clientX, y: e.clientY, box: { left: r.left, top: r.top, width: r.width, height: r.height },
+         fab: dir === "m" ? fab.getBoundingClientRect() : null };
   chatEl.setPointerCapture(e.pointerId);
   chatEl.classList.add("resizing");
   e.preventDefault();
 }, true);
-chatEl.addEventListener("pointerup", () => { if (rs) { rs = null; chatEl.classList.remove("resizing"); } });
+chatEl.addEventListener("pointerup", () => {
+  if (!rs) return;
+  if (rs.fab) saveFabPos();
+  rs = null;
+  chatEl.classList.remove("resizing");
+});
 chatEl.addEventListener("pointerleave", () => { if (!rs) chatEl.style.cursor = ""; });
 
 // 살피 캐릭터 끌어서 옮기기 (살짝 누르면 채팅 열기 · 끌면 이동), 놓은 자리는 이 브라우저에 기억
 const fab = $("#fab");
 const FAB_KEY = "salpi_fab_pos";
-function placeFab(x, y) {
+function placeFab(x, y, follow = true) {   // follow = false: 채팅창을 직접 옮기는 중이라 채팅창은 그대로
   const w = fab.offsetWidth, h = fab.offsetHeight;
   x = Math.max(0, Math.min(window.innerWidth - w, x));
   y = Math.max(64, Math.min(window.innerHeight - h, y));
   Object.assign(fab.style, { left: `${x}px`, top: `${y}px`, right: "auto", bottom: "auto" });
   fab.classList.toggle("on-left", x + w / 2 < window.innerWidth / 2);   // 왼쪽에 있으면 말풍선을 오른쪽에
-  placeChat();
+  if (follow) placeChat();
+}
+function saveFabPos() {
+  const r = fab.getBoundingClientRect();
+  try { localStorage.setItem(FAB_KEY, JSON.stringify({ x: r.left / window.innerWidth, y: r.top / window.innerHeight })); } catch (e) {}
 }
 function placeChat() {
   // 채팅창을 살피가 있는 쪽에 붙임 (넓은 화면만, 모바일은 아래에서 올라옴)
@@ -3137,8 +3148,7 @@ fab.addEventListener("pointerup", () => {
   if (!drag) return;
   fab.classList.remove("dragging");
   if (drag.moved) {
-    const r = fab.getBoundingClientRect();
-    try { localStorage.setItem(FAB_KEY, JSON.stringify({ x: r.left / window.innerWidth, y: r.top / window.innerHeight })); } catch (e) {}
+    saveFabPos();
   } else if (fabHidden()) {
     setFabHidden(false);
   } else {

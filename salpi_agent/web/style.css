@@ -523,6 +523,7 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .msg ul { margin: 4px 0; padding-left: 18px; }
 .msg p { margin: 0 0 6px; } .msg p:last-child { margin: 0; }
 .msg.typing { color: var(--muted); }
+.msg-link { color: var(--primary); font-weight: 700; text-decoration: underline; }
 .quick { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 16px; background: var(--surface); border-top: 1px solid var(--outline-variant); }
 .quick button { text-align: left; border: 1px solid var(--outline); background: var(--surface); border-radius: 8px; padding: 6px 12px; font-size: 12.5px; color: var(--ink);
   transition: background .15s, color .15s; }

@@ -3225,7 +3225,18 @@ async function send(text) {
   busy = false;
   document.querySelectorAll("#quick button").forEach((b) => (b.disabled = false));
 }
-$("#quick").addEventListener("click", (e) => { const b = e.target.closest("button[data-q]"); if (b) { $("#quickMenu").open = false; send(b.dataset.q); } });
+$("#quick").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-q]");
+  if (!b || busy) return;
+  $("#quickMenu").open = false;
+  if (b.hasAttribute("data-login") && !SIGNED_IN) {   // 우리 가게 질문은 가게 정보가 있어야 답함 → 로그인 안내 (서버에 묻지 않음)
+    addMsg("me", b.dataset.q);
+    addMsg("bot", "이 질문은 **사장님 가게 정보**로 답해 드려요.\n로그인하면 바로 볼 수 있어요.")
+      .insertAdjacentHTML("beforeend", `<p><a class="msg-link" href="${LOGIN_URL}">로그인하러 가기 →</a></p>`);
+    return;
+  }
+  send(b.dataset.q);
+});
 $("#chatForm").addEventListener("submit", (e) => { e.preventDefault(); const t = $("#chatText"); send(t.value); t.value = ""; });
 
 // ---------------------------------------------------------------

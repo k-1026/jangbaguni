@@ -927,6 +927,7 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 /* 메뉴별 원가율 카드 (구글 스타일 · 어르신도 한눈에): 메뉴 이름 → 숫자 넷 한 줄(세로 선으로 구분) → 대체 재료 제안 띠 */
 .cost-guide { margin: -4px 0 16px; font-size: 15px; line-height: 1.6; color: var(--muted); }
 .cost-guide b { color: var(--ink); }
+.cost-target { padding: 2px 6px; border: 1px solid var(--outline); border-radius: 8px; font: inherit; font-weight: 700; color: var(--ink); background: var(--surface); cursor: pointer; }
 .cost-cards { display: flex; flex-direction: column; gap: 16px; }
 .cost-card { --tone: var(--down); --tone-bg: #E6F5EF; padding: 20px 24px; border-radius: 16px; background: var(--surface);
   border: 1px solid var(--outline-variant); color: var(--ink); }

@@ -2891,7 +2891,7 @@ $("#martAll").onclick = () => {
 };
 
 // ---------------------------------------------------------------
-// 살피 예측률: 지난 7일 화면 예측을 7일 뒤 실제 시세와 비교해 맞춘 비율 (/api/forecast-score?weeks=1)
+// 살피 예측률: 지난 4주 화면 예측을 7일 뒤 실제 시세와 비교해 맞춘 비율 (/api/forecast-score?weeks=4, 재료 페이지와 같은 기간 — 7일이면 품목당 5번뿐이라 한 번에 20%씩 흔들림)
 // 맞춤 = 오를지 · 비슷할지 · 내릴지(±2%) 방향을 맞힘. 품목은 예측 3번 이상만 (적으면 0% · 100%로 들쭉날쭉)
 // ---------------------------------------------------------------
 const SCORE_KINDS = ["과일", "야채", "육류", "수산물"];   // 탭 순서 (그 밖의 종류가 오면 뒤에 붙임)
@@ -2949,7 +2949,7 @@ function renderScore() {
     ${scoreOpen ? scoreDetail(few) : ""}`;
 }
 async function loadScore() {
-  try { score = await getJSON("/api/forecast-score?weeks=1"); }
+  try { score = await getJSON("/api/forecast-score?weeks=4"); }
   catch (e) { $("#scoreCard").innerHTML = `<p class="muted">예측률을 불러오지 못했어요</p>`; return; }
   renderScore();
 }

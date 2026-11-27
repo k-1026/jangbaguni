@@ -480,10 +480,14 @@ body.chat-open .salpi-fab .bubbles, .salpi-fab.dragging .bubbles { display: none
 .fab-main { display: block; background: none; border: 0; padding: 0; cursor: inherit; touch-action: none; }
 .fab-main:focus-visible, .fab-x:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .salpi-fab .bubble { cursor: pointer; }
-.fab-x { padding: 5px 12px; font-size: 12px; color: var(--muted);
-  opacity: 0; transform: translateY(-8px) scale(.85); pointer-events: none; transition: opacity .15s ease, transform .25s cubic-bezier(.3,1.6,.6,1); }
-.salpi-fab .bubbles:hover .fab-x, .fab-x:focus-visible { opacity: 1; transform: none; pointer-events: auto; }
+/* 살피 오른쪽 귀 위 ×: 누르면 작게 줄임. 평소엔 조금 흐리게 · 살피에 마우스를 올리면 또렷하게 */
+.fab-x { position: absolute; top: -8px; right: 1px; z-index: 1; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%;
+  background: var(--surface); color: var(--muted); box-shadow: var(--e1); font: inherit; font-size: 15px; line-height: 22px; text-align: center; cursor: pointer;
+  opacity: .75; transition: opacity .15s; }
+.salpi-fab:hover .fab-x, .fab-x:focus-visible { opacity: 1; }
 .fab-x:hover { color: var(--up); }
+.salpi-fab:has(.fab-count:not([hidden])) .fab-x { right: 28px; }   /* 알림 숫자가 귀 위에 뜨면 겹치지 않게 왼쪽으로 */
+body.fab-hidden .fab-x, .salpi-fab.dragging .fab-x { display: none; }
 /* 줄인 상태: 문장 없이 작은 살피만 오른쪽 아래에 */
 body.fab-hidden .salpi-fab { left: auto !important; top: auto !important; right: 24px !important; bottom: 16px !important; cursor: pointer; }
 body.fab-hidden .salpi-fab img { width: 44px; }
@@ -493,7 +497,7 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 
 /* 채팅창: 흰 카드 + 초록 머리줄, 말풍선은 평평하게 */
 .chat {
-  position: fixed; right: 24px; bottom: 150px; z-index: 50; width: 400px; height: min(600px, calc(100vh - 230px));
+  position: fixed; right: 24px; bottom: 150px; z-index: 50; width: 400px; height: min(680px, calc(100vh - 230px));
   background: var(--surface); border-radius: 24px; box-shadow: var(--e3);
   display: flex; flex-direction: column; overflow: hidden;
   opacity: 0; transform: translateY(16px); pointer-events: none; transition: opacity .2s, transform .2s;
@@ -519,11 +523,22 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 .msg ul { margin: 4px 0; padding-left: 18px; }
 .msg p { margin: 0 0 6px; } .msg p:last-child { margin: 0; }
 .msg.typing { color: var(--muted); }
+.msg-link { color: var(--primary); font-weight: 700; text-decoration: underline; }
 .quick { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 16px; background: var(--surface); border-top: 1px solid var(--outline-variant); }
 .quick button { text-align: left; border: 1px solid var(--outline); background: var(--surface); border-radius: 8px; padding: 6px 12px; font-size: 12.5px; color: var(--ink);
   transition: background .15s, color .15s; }
 .quick button:hover { background: var(--primary-container); border-color: var(--primary-container); color: var(--on-primary-container); }
 .quick button:disabled { opacity: .5; cursor: wait; }
+/* 자주 묻는 질문: 평소엔 한 줄, 누르면 입력창 위로 목록이 올라옴 (대화 위에 겹쳐 뜸) */
+.quick-menu { position: relative; background: var(--surface); border-top: 1px solid var(--outline-variant); }
+.quick-menu summary { list-style: none; cursor: pointer; text-align: center; padding: 7px 16px; font-size: 12.5px; font-weight: 700; color: var(--muted); }
+.quick-menu summary::-webkit-details-marker { display: none; }
+.quick-menu summary::after { content: " ▴"; }
+.quick-menu[open] summary::after { content: " ▾"; }
+.quick-menu summary:hover, .quick-menu[open] summary { color: var(--ink); }
+.quick-menu .quick { position: absolute; left: 0; right: 0; bottom: 100%; z-index: 2; flex-direction: column; flex-wrap: nowrap;
+  border-radius: 16px 16px 0 0; box-shadow: 0 -8px 16px rgba(0,0,0,.08); animation: quick-up .18s ease-out; }
+@keyframes quick-up { from { opacity: 0; transform: translateY(8px); } }
 .chat-input { display: flex; gap: 10px; padding: 4px 16px 10px; background: var(--surface); }
 .chat-input input { flex: 1; border: 1px solid transparent; border-radius: 999px; padding: 11px 16px; font: inherit; background: var(--surface-variant); outline: none; }
 .chat-input input:focus { background: var(--surface); border-color: var(--primary); }
@@ -927,6 +942,7 @@ body.fab-hidden .fab-count { top: -7px; right: -7px; min-width: 0; width: 12px; 
 /* 메뉴별 원가율 카드 (구글 스타일 · 어르신도 한눈에): 메뉴 이름 → 숫자 넷 한 줄(세로 선으로 구분) → 대체 재료 제안 띠 */
 .cost-guide { margin: -4px 0 16px; font-size: 15px; line-height: 1.6; color: var(--muted); }
 .cost-guide b { color: var(--ink); }
+.cost-target { padding: 2px 6px; border: 1px solid var(--outline); border-radius: 8px; font: inherit; font-weight: 700; color: var(--ink); background: var(--surface); cursor: pointer; }
 .cost-cards { display: flex; flex-direction: column; gap: 16px; }
 .cost-card { --tone: var(--down); --tone-bg: #E6F5EF; padding: 20px 24px; border-radius: 16px; background: var(--surface);
   border: 1px solid var(--outline-variant); color: var(--ink); }
@@ -1603,6 +1619,7 @@ main { overflow-x: clip; }   /* 화면 폭 배경이 가로 스크롤을 만들�
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .quick-menu .quick { animation: none; }
   .summary-list, .fab-x, .chip-caret { transition: none; }
   .salpi-fab.has-alert .fab-count { animation: none; }
 }

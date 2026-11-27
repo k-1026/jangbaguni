@@ -16,6 +16,7 @@ load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 from google.genai import models as genai_models   # noqa: E402
 
 from chat import agent as A   # noqa: E402
+import server   # noqa: E402,F401  실제 서버처럼 챗봇 도구가 서버 보관값(시세 · 원가율 · 내일 준비)을 쓰게 (11/27: 없으면 첫 질문이 시세를 처음부터 계산해 17초)
 
 OUT = Path(__file__).resolve().parent / "results" / "chat_timing.json"
 QUESTIONS = ["야채값 시세변동 추이 말해줘.", "지금 사면 이득인 야채 알려줘", "우리 가게 원가율 알려줘", "내일 얼마나 준비할까?",

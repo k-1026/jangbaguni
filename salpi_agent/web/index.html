@@ -13,7 +13,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=345">
+  <link rel="stylesheet" href="/static/style.css?v=346">
 </head>
 <body>
 <script>
@@ -455,6 +455,8 @@
     <button class="chat-close" id="chatClose" aria-label="닫기">×</button>
   </div>
   <div class="chat-body" id="chatBody"></div>
+  <details class="quick-menu" id="quickMenu">
+  <summary>자주 묻는 질문</summary>
   <div class="quick" id="quick">
     <button data-q="야채값 시세변동 추이 말해줘.">야채값 시세변동 추이 말해줘.</button>
     <button data-q="이 가격에 팔아도 남아?">이 가격에 팔아도 남아?</button>
@@ -462,6 +464,7 @@
     <button data-q="내일 얼마나 준비할까?">내일 얼마나 준비할까?</button>
     <button data-q="우리 가게 원가율 알려줘">우리 가게 원가율 알려줘</button>
   </div>
+  </details>
   <form class="chat-input" id="chatForm">
     <input id="chatText" autocomplete="off" placeholder="예: 대파 다음 주에 오를까?">
     <button type="submit">보내기</button>
@@ -484,6 +487,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="/static/app.js?v=292"></script>
+<script src="/static/app.js?v=293"></script>
 </body>
 </html>

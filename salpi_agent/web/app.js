@@ -3225,7 +3225,7 @@ async function send(text) {
   busy = false;
   document.querySelectorAll("#quick button").forEach((b) => (b.disabled = false));
 }
-$("#quick").addEventListener("click", (e) => { const b = e.target.closest("button[data-q]"); if (b) send(b.dataset.q); });
+$("#quick").addEventListener("click", (e) => { const b = e.target.closest("button[data-q]"); if (b) { $("#quickMenu").open = false; send(b.dataset.q); } });
 $("#chatForm").addEventListener("submit", (e) => { e.preventDefault(); const t = $("#chatText"); send(t.value); t.value = ""; });
 
 // ---------------------------------------------------------------

@@ -3070,6 +3070,7 @@ chatEl.addEventListener("pointermove", (e) => {
     if (rs.dir.includes("s")) height += dy;
     if (rs.dir.includes("w")) { width -= dx; left += dx; }
     if (rs.dir.includes("n")) { height -= dy; top += dy; }
+    if (rs.dir === "m") { left += dx; top += dy; }   // 윗부분(머리)을 끌면 크기 그대로 이동
     const w = Math.max(320, Math.min(window.innerWidth - 16, width));
     const h = Math.max(360, Math.min(window.innerHeight - 16, height));
     if (rs.dir.includes("w")) left += width - w;   // 최소 크기에 걸리면 반대쪽이 밀리지 않게
@@ -3078,10 +3079,12 @@ chatEl.addEventListener("pointermove", (e) => {
       left: `${Math.max(0, Math.min(window.innerWidth - w, left))}px`, top: `${Math.max(0, Math.min(window.innerHeight - h, top))}px` });
     return;
   }
-  chatEl.style.cursor = CURSOR[edgeAt(e)] || "";
+  chatEl.style.cursor = CURSOR[edgeAt(e)] || (onChatHead(e) ? "move" : "");
 });
+// 채팅창 윗부분 (× 빼고). 모바일은 아래에서 올라오는 고정 창이라 옮기지 않음
+const onChatHead = (e) => window.innerWidth > 700 && e.target.closest(".chat-head") && !e.target.closest(".chat-close");
 chatEl.addEventListener("pointerdown", (e) => {
-  const dir = edgeAt(e);
+  const dir = edgeAt(e) || (onChatHead(e) ? "m" : "");
   if (!dir) return;
   const r = chatEl.getBoundingClientRect();
   rs = { dir, x: e.clientX, y: e.clientY, box: { left: r.left, top: r.top, width: r.width, height: r.height } };

@@ -1551,7 +1551,10 @@ addEventListener("beforeunload", (e) => { if (salesPending()) e.preventDefault()
 // ---------------------------------------------------------------
 // 우리 가게 내일 준비 (판매 기록 → 예상 그릇 수 → 재료 필요량 · 발주)
 // ---------------------------------------------------------------
-const qty = (v, unit) => (unit === "모" ? `${Math.round(v)}모` : `${(+v).toFixed(1)}${unit}`);
+// 수량 표시는 모든 재고 화면이 같은 규칙: 개 · 모는 정수, kg · L은 소수점 한 자리 (.0은 지움). up = 주문량처럼 모자라지 않게 올림
+const COUNT_UNITS = ["개", "모"];
+const qtyNum = (v, unit, up) => (COUNT_UNITS.includes(unit) ? (up ? Math.ceil(v - 1e-9) : Math.round(v)) : +(+v).toFixed(1));
+const qty = (v, unit, up) => `${qtyNum(v, unit, up)}${unit}`;
 // 메뉴별 재료 양: 1kg · 1L 아래는 g · ml로 (10 단위), 개 · 모는 모자라지 않게 올림
 function ingQty(v, unit) {
   if (unit === "개" || unit === "모") return `${Math.ceil(v)}${unit}`;
@@ -1682,12 +1685,12 @@ function orderItem(i, key) {
     <button class="order-row stock-row" type="button" aria-expanded="false" aria-controls="order-${i.item_id}">
       <span class="order-name">${esc(i.item)}<small>재고 ${qty(i.on_hand, i.unit)}</small></span>
       ${chip}
-      <b>${buy ? qty(i.order_qty, i.unit) : "충분"}</b>
+      <b>${buy ? qty(i.order_qty, i.unit, true) : "충분"}</b>
       <i class="order-arrow" aria-hidden="true"></i>
     </button>
     <div class="order-detail" id="order-${i.item_id}" hidden>
       <dl>
-        <div><dt>내일 필요</dt><dd>${qty(i.need_target, i.unit)}</dd></div>
+        <div><dt>내일 필요</dt><dd>${qty(i.need_target, i.unit, true)}</dd></div>
         <div><dt>재고</dt><dd>${qty(i.on_hand, i.unit)}</dd></div>
       </dl>
     </div>
@@ -1730,8 +1733,8 @@ const STOCK_TABS = [["야채", "지금 남은 양을 고쳐 주세요"], ["과�
   ["육류", "지금 남은 양을 고쳐 주세요"], ["기타", "양념 · 곡류 · 가공 재료예요"]];
 const STOCK_TAB_OF = { 채소: "야채", 과일: "과일", 수산: "수산물", 수산물: "수산물", 육류: "육류" };   // items.category → 탭 (나머지는 기타)
 const stockTab = (c) => STOCK_TAB_OF[c] || "기타";
-const stockStep = (u) => (u === "개" ? "1" : "0.1");
-const stockFix = (v, u) => +(+v).toFixed(u === "개" ? 0 : 1);
+const stockStep = (u) => (COUNT_UNITS.includes(u) ? "1" : "0.1");
+const stockFix = (v, u) => qtyNum(v, u);
 let stock = null;   // { items, catalog, tab, edit, adding }
 function stockAgo(s) {
   if (!s) return { text: "입력 전", old: false };
@@ -2909,7 +2912,7 @@ $("#martAll").onclick = () => {
 };
 
 // ---------------------------------------------------------------
-// 살피 예측률: 지난 7일 화면 예측을 7일 뒤 실제 시세와 비교해 맞춘 비율 (/api/forecast-score?weeks=1)
+// 살피 예측률: 지난 4주 화면 예측을 7일 뒤 실제 시세와 비교해 맞춘 비율 (/api/forecast-score?weeks=4, 재료 페이지와 같은 기간 — 7일이면 품목당 5번뿐이라 한 번에 20%씩 흔들림)
 // 맞춤 = 오를지 · 비슷할지 · 내릴지(±2%) 방향을 맞힘. 품목은 예측 3번 이상만 (적으면 0% · 100%로 들쭉날쭉)
 // ---------------------------------------------------------------
 const SCORE_KINDS = ["과일", "야채", "육류", "수산물"];   // 탭 순서 (그 밖의 종류가 오면 뒤에 붙임)
@@ -2967,7 +2970,7 @@ function renderScore() {
     ${scoreOpen ? scoreDetail(few) : ""}`;
 }
 async function loadScore() {
-  try { score = await getJSON("/api/forecast-score?weeks=1"); }
+  try { score = await getJSON("/api/forecast-score?weeks=4"); }
   catch (e) { $("#scoreCard").innerHTML = `<p class="muted">예측률을 불러오지 못했어요</p>`; return; }
   renderScore();
 }

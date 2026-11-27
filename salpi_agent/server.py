@@ -175,10 +175,17 @@ def _peek_shared(key):
 
 # 우리 가게 자료(영수증 · 메뉴 · 판매 · 재고)로 계산한 보관값 — 자료가 바뀌면 _store_changed 가 메모리 · 보관함에서 같이 지움
 STORE_KEYS = ("costs_report", "receipts_recent", "my_items", "receipts_all")
+# 시연 계정: 로그인해도 시연 가게(더미 영수증 · 메뉴 · 판매 기록)를 봄. Vercel 환경 변수에 아이디를 쉼표로 (예: salpi_demo,salpi_demo2)
+DEMO_ACCOUNTS = {x.strip().lower() for x in os.getenv("DEMO_ACCOUNTS", "").split(",") if x.strip()}
 
 
-def _demand_key():
-    return f"demand_{forecast_log.today().isoformat()}"   # 날이 바뀌면 '내일'이 바뀌므로 날짜를 이름에
+def _sk(key, store):
+    """가게마다 보관값을 따로: 시연 가게는 예전 이름 그대로(보관함 파일 재사용), 다른 가게는 이름 뒤에 가게 번호."""
+    return key if store == supabase_db.DEMO_STORE else f"{key}_{store}"
+
+
+def _demand_key(store=supabase_db.DEMO_STORE):
+    return _sk(f"demand_{forecast_log.today().isoformat()}", store)   # 날이 바뀌면 '내일'이 바뀌므로 날짜를 이름에
 
 
 def _overview():
@@ -377,18 +384,20 @@ def buy_links(item: str = ""):
 
 
 @app.get("/api/cheaper")
-def cheaper(item: str, paid: float | None = None):
+def cheaper(item: str, paid: float | None = None, authorization: str | None = Header(None)):
     """더 싼 판매처: 산 값(최근 영수증 · 없으면 대구 소매 평균)보다 기준 단위당 싼 식봄 상품, 싼 순서.
     paid 를 주면 그 값과 비교 (예: /api/cheaper?item=양파&paid=2300). 10분 보관."""
-    return _guard(lambda: memo(f"cheaper:{item}:{paid}",
-                               lambda: cheaper_sellers.cheaper(item, paid, supabase_db.DEMO_STORE), ttl=600))
+    store = _store(authorization)
+    return _guard(lambda: memo(f"cheaper:{store}:{item}:{paid}",
+                               lambda: cheaper_sellers.cheaper(item, paid, store), ttl=600))
 
 
 @app.get("/api/price-judge")
-def price_judge_api(purchase_id: int | None = None):
+def price_judge_api(purchase_id: int | None = None, authorization: str | None = Header(None)):
     """싸게/비싸게 판정: 영수증 품목마다 산 값을 우리 가게 평소 단가 · 대구 시세와 비교 (없으면 가장 최근 영수증)."""
+    store = _store(authorization)
     try:
-        return _guard(lambda: price_judge.judge(supabase_db.DEMO_STORE, purchase_id))
+        return _guard(lambda: price_judge.judge(store, purchase_id))
     except ValueError as e:
         raise HTTPException(404, str(e))
 
@@ -430,6 +439,7 @@ def _forecasts():
 chat_agent.CACHED.update({
     "overview": lambda: shared("overview", _overview),
     "demand": lambda: shared(_demand_key(), lambda: demand.forecast(price_outlook=_price_outlook()), ttl=600) if _price_outlook() else None,
+    # shortcut: 챗봇 원가율 · 내일 준비는 아직 시연 가게 기준 (채팅에 로그인 표를 안 보냄). 사장님 가게로 답해야 하면 _store 를 SalpiAgent 에 넘길 것
     "costs": lambda: shared("costs_report", lambda: receipts.cost_report(supabase_db.DEMO_STORE, _forecasts()), 600),
 })
 
@@ -452,6 +462,7 @@ def _sales_user(authorization, check=True):
 
 @app.get("/api/demand")
 def demand_forecast(target: str | None = None, authorization: str | None = Header(None)):
+    store = _store(authorization)
     """내일 예상 판매 (판매율 분석). 로그인 표를 같이 보내고 무료 5회(판매 올린 날짜 수)를 다 썼으면 402.
     보는 것은 횟수를 세지 않음 (세는 곳은 PUT /api/sales). 표 없이 부르는 곳(모바일 시연 화면)은 지금처럼."""
     user = _sales_user(authorization)
@@ -462,10 +473,10 @@ def demand_forecast(target: str | None = None, authorization: str | None = Heade
     # 대시보드 시세가 아직 준비 전이면 기다리지 않고 시세 없이 계산 (1분 뒤 다시 계산할 때 시세 반영)
     outlook = _price_outlook()
     if day is None and outlook:   # 보통의 경우(내일 · 시세 있음): 보관함에도 둠 → 새로 켜진 서버도 바로 (9초 → 0.5초)
-        out = _guard(lambda: shared(_demand_key(), lambda: demand.forecast(price_outlook=outlook), ttl=600))
+        out = _guard(lambda: shared(_demand_key(store), lambda: demand.forecast(store, price_outlook=outlook), ttl=600))
     else:
-        key = f"demand:{day}:{'price' if outlook else 'noprice'}"
-        out = _guard(lambda: memo(key, lambda: demand.forecast(target=day, price_outlook=outlook or {}), ttl=600 if outlook else 60))
+        key = f"demand:{store}:{day}:{'price' if outlook else 'noprice'}"
+        out = _guard(lambda: memo(key, lambda: demand.forecast(store, target=day, price_outlook=outlook or {}), ttl=600 if outlook else 60))
     return {**out, "trial": trial._state(user, "sales")} if user else out
 
 
@@ -475,9 +486,10 @@ class SalesIn(BaseModel):
 
 
 @app.get("/api/sales")
-def sales_day(date: str | None = None):
+def sales_day(date: str | None = None, authorization: str | None = Header(None)):
     """판매 기록 확인: 그날(기본 오늘) 메뉴별 홀 · 배달 그릇 수 · 합계 · 매출 · 마지막으로 넣은 날."""
-    return _receipt_guard(lambda: sales.day(supabase_db.DEMO_STORE, date))
+    store = _store(authorization)
+    return _receipt_guard(lambda: sales.day(store, date))
 
 
 class HoursIn(BaseModel):
@@ -486,22 +498,24 @@ class HoursIn(BaseModel):
 
 
 @app.put("/api/sales/hours")
-def sales_hours(body: HoursIn):
+def sales_hours(body: HoursIn, authorization: str | None = Header(None)):
     """영업시간 저장 (마감이 자정을 넘기면 새벽 판매도 전날 영업일로). → {open_time, close_time, today}"""
-    return _receipt_guard(lambda: sales.set_hours(supabase_db.DEMO_STORE, body.open, body.close))
+    store = _store(authorization)
+    return _receipt_guard(lambda: sales.set_hours(store, body.open, body.close))
 
 
 @app.put("/api/sales")
 def sales_save(body: SalesIn, authorization: str | None = Header(None)):
     """판매 기록 입력 → 내일 준비 · 원가율 다시 계산. 로그인 표가 있으면 새 날짜를 올릴 때 판매율 분석 1회
     (같은 날짜를 고치면 안 셈, 무료 5회를 다 썼으면 새 날짜는 402)."""
+    store = _store(authorization)
     user = _sales_user(authorization)
     if user:
         st = trial._state(user, "sales")
-        new = not _receipt_guard(lambda: sales.day(supabase_db.DEMO_STORE, body.date))["entered"]
+        new = not _receipt_guard(lambda: sales.day(store, body.date))["entered"]
         if new and not st["paid"] and st["used"] >= trial.FREE:
             raise HTTPException(402, trial.LOCKED_MSG)
-    out = _receipt_guard(lambda: _store_changed(sales.save(supabase_db.DEMO_STORE, body.model_dump())))
+    out = _receipt_guard(lambda: _store_changed(sales.save(store, body.model_dump()), store))
     if user:
         out["trial"] = _auth(lambda: trial.count(user, "sales")) if out["new"] else trial._state(user, "sales")
     return out
@@ -617,7 +631,8 @@ def receipt_trial_found(body: FoundIn, authorization: str | None = Header(None))
     if not _bearer(authorization):
         raise HTTPException(401, "로그인이 필요해요.")
     try:
-        extra = (_guard(lambda: price_judge.judge(supabase_db.DEMO_STORE, body.purchase_id)).get("summary") or {}).get("extra_paid", 0)
+        store = _store(authorization)
+        extra = (_guard(lambda: price_judge.judge(store, body.purchase_id)).get("summary") or {}).get("extra_paid", 0)
     except ValueError as e:
         raise HTTPException(404, str(e))
     return _auth(lambda: trial.add_found(_bearer(authorization), body.purchase_id, extra))
@@ -661,10 +676,11 @@ def subscribe_cancel(body: CancelIn, authorization: str | None = Header(None)):
 
 
 @app.post("/api/receipt/save")
-def receipt_save(body: ReceiptSave, request: Request):
+def receipt_save(body: ReceiptSave, request: Request, authorization: str | None = Header(None)):
     _limit(request, "receipt_save")
+    store = _store(authorization)
     photos = _photos(body)
-    return _receipt_guard(lambda: _store_changed(receipts.save(supabase_db.DEMO_STORE, body.model_dump(), photos)))
+    return _receipt_guard(lambda: _store_changed(receipts.save(store, body.model_dump(), photos), store))
 
 
 @app.get("/api/costs")
@@ -672,7 +688,8 @@ def costs(authorization: str | None = Header(None)):
     """메뉴별 원가율 · 남는 돈 (판매율 분석) + 최근 영수증 목록.
     로그인 표를 보내고 판매율 분석 무료 5회를 다 썼으면 원가율 · 마진은 빼고 {locked: true, trial, receipts} 만 (영수증 목록은 그대로 보여 주게).
     보는 것은 횟수를 세지 않음 (세는 곳은 PUT /api/sales)."""
-    data = _receipt_guard(_costs_data)
+    store, target = _store(authorization), _target(authorization)
+    data = _receipt_guard(lambda: _costs_data(store, target))
     user = _sales_user(authorization, check=False)
     if user:
         st = trial._state(user, "sales")
@@ -681,27 +698,36 @@ def costs(authorization: str | None = Header(None)):
     return data
 
 
-def _costs_data():
+def _costs_data(store=supabase_db.DEMO_STORE, target=receipts.TARGET_RATIO):
     """원가율(보관 10분) + 최근 영수증(사진 주소가 1시간이라 보관값은 40분까지만). 둘 다 보관함에도 둠 → 새로 켜진 서버도 바로 (11초 → 0.5초).
     영수증 저장 · 고치기 · 지우기 · 메뉴 · 판매 · 재고를 바꾸면 _store_changed 가 비움."""
     with ThreadPoolExecutor(max_workers=2) as pool:   # 보관함 파일 하나 받는 데 0.3~0.8초 → 둘을 동시에
-        f_report = pool.submit(shared, "costs_report", lambda: receipts.cost_report(supabase_db.DEMO_STORE, _forecasts()), 600)
-        f_recent = pool.submit(shared, "receipts_recent", lambda: receipts.recent(supabase_db.DEMO_STORE), 600, 2400)
+        f_report = pool.submit(_costs_report, store, target)
+        f_recent = pool.submit(shared, _sk("receipts_recent", store), lambda: receipts.recent(store), 600, 2400)
         return {**f_report.result(), "receipts": f_recent.result()}
 
 
-def _store_changed(result):
-    """가게 자료가 바뀌면 원가율 · 내일 준비 · 영수증 목록 · 내 메뉴 재료 보관값을 메모리와 보관함에서 지움 (다른 서버도 새로 계산)."""
-    keys = [*STORE_KEYS, _demand_key()]
-    for k in [k for k in _memo if k in keys or k.startswith("demand")]:
+def _costs_report(store, target):
+    """원가율 보관값: 기본 기준(40%)은 보관함에도, 사장님이 고른 다른 기준은 메모리에만 (기준마다 보관함 파일이 쌓이지 않게)."""
+    fn = lambda: receipts.cost_report(store, _forecasts(), target)
+    if target == receipts.TARGET_RATIO:
+        return shared(_sk("costs_report", store), fn, 600)
+    return memo(f"{_sk('costs_report', store)}_t{target}", fn, 600)
+
+
+def _store_changed(result, store=supabase_db.DEMO_STORE):
+    """가게 자료가 바뀌면 그 가게의 원가율 · 내일 준비 · 영수증 목록 · 내 메뉴 재료 보관값을 메모리와 보관함에서 지움 (다른 서버도 새로 계산)."""
+    keys = [*(_sk(k, store) for k in STORE_KEYS), _demand_key(store)]
+    for k in [k for k in _memo if k.startswith(tuple(keys)) or k.startswith("demand")]:   # startswith: 기준을 바꾼 원가율(_t35 등)까지
         _memo.pop(k, None)
     supabase_db.remove_files(CACHE_BUCKET, [f"cache/{k}.json" for k in keys])
     return result
 
 
 @app.get("/api/receipt/{purchase_id}")
-def receipt_detail(purchase_id: int):
-    return _receipt_guard(lambda: receipts.detail(supabase_db.DEMO_STORE, purchase_id))
+def receipt_detail(purchase_id: int, authorization: str | None = Header(None)):
+    store = _store(authorization)
+    return _receipt_guard(lambda: receipts.detail(store, purchase_id))
 
 
 class ReceiptEdit(BaseModel):
@@ -711,15 +737,17 @@ class ReceiptEdit(BaseModel):
 
 
 @app.put("/api/receipt/{purchase_id}")
-def receipt_edit(purchase_id: int, body: ReceiptEdit):
+def receipt_edit(purchase_id: int, body: ReceiptEdit, authorization: str | None = Header(None)):
     """저장한 영수증 고치기 (최근 영수증 → 수정하기 팝업)."""
-    return _receipt_guard(lambda: _store_changed(receipts.edit(supabase_db.DEMO_STORE, purchase_id, body.model_dump())))
+    store = _store(authorization)
+    return _receipt_guard(lambda: _store_changed(receipts.edit(store, purchase_id, body.model_dump()), store))
 
 
 @app.get("/api/my-items")
-def my_items():
+def my_items(authorization: str | None = Header(None)):
     """우리 가게 메뉴에 들어가는 재료 (알림 '내 메뉴 재료만'). 메뉴가 자주 바뀌지 않아 10분 보관."""
-    return _receipt_guard(lambda: shared("my_items", lambda: receipts.my_ingredients(supabase_db.DEMO_STORE), ttl=600))
+    store = _store(authorization)
+    return _receipt_guard(lambda: shared(_sk("my_items", store), lambda: receipts.my_ingredients(store), ttl=600))
 
 
 class MenuIn(BaseModel):
@@ -728,26 +756,29 @@ class MenuIn(BaseModel):
     recipe: list[dict] = []
 
 
-def _menu_changed(result):
+def _menu_changed(result, store, target=receipts.TARGET_RATIO):
     """메뉴를 바꾸면 '내 메뉴 재료' 보관값을 비우고, 화면이 다시 그릴 원가율을 함께 돌려줌."""
-    _store_changed(None)
-    return {**result, **_costs_data()}
+    _store_changed(None, store)
+    return {**result, **_costs_data(store, target)}
 
 
 @app.get("/api/menus")
-def menu_list():
+def menu_list(authorization: str | None = Header(None)):
     """메뉴 입력 창용: 재료 목록(최근 영수증 단가) · 메뉴(레시피 포함) · 자주 쓰는 메뉴 틀."""
-    return _receipt_guard(lambda: menus.editor_data(supabase_db.DEMO_STORE))
+    store = _store(authorization)
+    return _receipt_guard(lambda: menus.editor_data(store))
 
 
 @app.post("/api/menus")
-def menu_add(body: MenuIn):
-    return _receipt_guard(lambda: _menu_changed(menus.save(supabase_db.DEMO_STORE, None, body.model_dump())))
+def menu_add(body: MenuIn, authorization: str | None = Header(None)):
+    store = _store(authorization)
+    return _receipt_guard(lambda: _menu_changed(menus.save(store, None, body.model_dump()), store, _target(authorization)))
 
 
 @app.put("/api/menus/{menu_id}")
-def menu_edit(menu_id: int, body: MenuIn):
-    return _receipt_guard(lambda: _menu_changed(menus.save(supabase_db.DEMO_STORE, menu_id, body.model_dump())))
+def menu_edit(menu_id: int, body: MenuIn, authorization: str | None = Header(None)):
+    store = _store(authorization)
+    return _receipt_guard(lambda: _menu_changed(menus.save(store, menu_id, body.model_dump()), store, _target(authorization)))
 
 
 class PriceIn(BaseModel):
@@ -756,15 +787,17 @@ class PriceIn(BaseModel):
 
 
 @app.post("/api/menus/price")
-def menu_item_price(body: PriceIn):
+def menu_item_price(body: PriceIn, authorization: str | None = Header(None)):
     """영수증 가격이 없는 재료에 가격 직접 넣기 (메뉴 고치기 창의 [가격 넣기])."""
-    return _receipt_guard(lambda: _store_changed(menus.set_price(supabase_db.DEMO_STORE, body.item_id, body.price)))
+    store = _store(authorization)
+    return _receipt_guard(lambda: _store_changed(menus.set_price(store, body.item_id, body.price), store))
 
 
 @app.post("/api/menus/{menu_id}/stop")
-def menu_stop(menu_id: int):
+def menu_stop(menu_id: int, authorization: str | None = Header(None)):
     """판매 중지 (메뉴를 지우면 판매 기록까지 지워져서 지우지 않음)."""
-    return _receipt_guard(lambda: _menu_changed(menus.stop(supabase_db.DEMO_STORE, menu_id)))
+    store = _store(authorization)
+    return _receipt_guard(lambda: _menu_changed(menus.stop(store, menu_id), store, _target(authorization)))
 
 
 class StockIn(BaseModel):
@@ -772,15 +805,17 @@ class StockIn(BaseModel):
 
 
 @app.get("/api/inventory")
-def inventory_list():
+def inventory_list(authorization: str | None = Header(None)):
     """재고 입력 창용: 메뉴 재료 + 재고 있는 재료의 남은 양 (영수증 저장 · 고치기 · 지우기 때 자동으로 바뀜)."""
-    return _receipt_guard(lambda: inventory.listing(supabase_db.DEMO_STORE))
+    store = _store(authorization)
+    return _receipt_guard(lambda: inventory.listing(store))
 
 
 @app.put("/api/inventory")
-def inventory_set(body: StockIn):
+def inventory_set(body: StockIn, authorization: str | None = Header(None)):
     """사장님이 고친 남은 양 저장 → 내일 준비(주문량) 다시 계산."""
-    return _receipt_guard(lambda: _store_changed(inventory.set_qty(supabase_db.DEMO_STORE, body.items)))
+    store = _store(authorization)
+    return _receipt_guard(lambda: _store_changed(inventory.set_qty(store, body.items), store))
 
 
 class NewItemIn(BaseModel):
@@ -790,27 +825,31 @@ class NewItemIn(BaseModel):
 
 
 @app.post("/api/inventory/item")
-def inventory_new_item(body: NewItemIn):
+def inventory_new_item(body: NewItemIn, authorization: str | None = Header(None)):
     """재고 창 검색에 없는 재료를 새로 만듦 → {item_id, item, unit, category} (남은 양은 [저장] 때 PUT 으로)."""
-    return _receipt_guard(lambda: _store_changed(inventory.new_item(body.name, body.unit, body.tab)))
+    store = _store(authorization)
+    return _receipt_guard(lambda: _store_changed(inventory.new_item(body.name, body.unit, body.tab), store))
 
 
 @app.delete("/api/inventory/{item_id}")
-def inventory_remove(item_id: int):
+def inventory_remove(item_id: int, authorization: str | None = Header(None)):
     """직접 넣은 재료 빼기 (메뉴 재료는 400)."""
-    return _receipt_guard(lambda: _store_changed(inventory.remove(supabase_db.DEMO_STORE, item_id)))
+    store = _store(authorization)
+    return _receipt_guard(lambda: _store_changed(inventory.remove(store, item_id), store))
 
 
 @app.get("/api/receipts")
-def receipt_list():
+def receipt_list(authorization: str | None = Header(None)):
+    store = _store(authorization)
     # shortcut: 1000장(Supabase 한 번에 주는 최대)까지, 넘으면 페이지 나눠 받기
     # 보관값 10분 (사진 주소가 1시간이라 보관함 값은 40분까지만) · 영수증 저장 · 고치기 · 지우기면 _store_changed 가 비움 (11/25: 매번 1.5 ~ 2.7초 → 보관값 0.1초)
-    return _receipt_guard(lambda: shared("receipts_all", lambda: {"receipts": receipts.recent(supabase_db.DEMO_STORE, limit=1000)}, 600, 2400))
+    return _receipt_guard(lambda: shared(_sk("receipts_all", store), lambda: {"receipts": receipts.recent(store, limit=1000)}, 600, 2400))
 
 
 @app.delete("/api/receipt/{purchase_id}")
-def receipt_delete(purchase_id: int):
-    return _receipt_guard(lambda: _store_changed(receipts.remove(supabase_db.DEMO_STORE, purchase_id)))
+def receipt_delete(purchase_id: int, authorization: str | None = Header(None)):
+    store = _store(authorization)
+    return _receipt_guard(lambda: _store_changed(receipts.remove(store, purchase_id), store))
 
 
 # ---------------------------------------------------------------
@@ -853,6 +892,38 @@ def _bearer(authorization):
     return (authorization or "").removeprefix("Bearer ").strip()
 
 
+def _store(authorization):
+    """로그인 표 → 그 사장님 가게 번호 (11/27 피드백: 새로 가입한 사장님에게 더미 영수증이 보이지 않게).
+    표가 없으면 시연 가게 (첫 화면 체험 · 모바일 시연 화면), 시연 계정(DEMO_ACCOUNTS)도 시연 가게.
+    표가 만료면 401, 가게가 아직 없으면(카카오 첫 로그인) 404. 같은 표는 5분 동안 다시 묻지 않음."""
+    token = _bearer(authorization)
+    if not token:
+        return supabase_db.DEMO_STORE
+    user = _user(token)
+    meta = user.get("user_metadata") or {}
+    if (meta.get("login_id") or "").lower() in DEMO_ACCOUNTS:
+        return supabase_db.DEMO_STORE
+    store = meta.get("store_id") or (_auth(lambda: auth._store_of(user["id"])) or {}).get("id")
+    if not store:
+        raise HTTPException(404, "가게 정보를 먼저 넣어 주세요.")
+    return store
+
+
+def _user_key(token):
+    return "user:" + hashlib.sha256(token.encode()).hexdigest()[:24]
+
+
+def _user(token):
+    """로그인 표 → 계정 (같은 표는 5분 동안 로그인 서버에 다시 묻지 않음). 만료면 401."""
+    return _auth(lambda: memo(_user_key(token), lambda: auth.user_of(token), ttl=300))
+
+
+def _target(authorization):
+    """사장님이 고른 원가율 기준(%). 로그인 전이거나 고른 적 없으면 40."""
+    token = _bearer(authorization)
+    return (store_costs.target_of(_user(token)) if token else None) or receipts.TARGET_RATIO
+
+
 def _auth(fn):
     try:
         return fn()
@@ -888,7 +959,9 @@ def auth_kakao(request: Request, next: str = "/", talk: bool = False, app: bool 
 @app.post("/api/auth/store")
 def auth_store(body: StoreSetupIn, authorization: str | None = Header(None)):
     """카카오로 처음 온 사장님의 가게 · 약관 한 번 받기."""
-    return _auth(lambda: {"user": auth.setup_store(_bearer(authorization), body.model_dump())})
+    out = _auth(lambda: {"user": auth.setup_store(_bearer(authorization), body.model_dump())})
+    _memo.pop(_user_key(_bearer(authorization)), None)   # 보관한 계정 정보에 새 가게가 들어가게
+    return out
 
 
 class KakaoConnectIn(BaseModel):
@@ -1019,9 +1092,10 @@ def jobs_cost_alerts(preview: bool = False):
 
 
 @app.get("/api/cost-alerts")
-def cost_alerts(days: int = 7):
+def cost_alerts(days: int = 7, authorization: str | None = Header(None)):
     """원가율 알림 목록 (새것부터, 최근 days일): [{id, message, sent_at, clicked_at}] — 화면 '다음 주 오름 → 다른 재료 어때?' 말풍선용."""
-    return _receipt_guard(lambda: memo(f"cost_alerts:{days}", lambda: cost_alert.recent(supabase_db.DEMO_STORE, max(1, min(days, 30))), ttl=300))
+    store = _store(authorization)
+    return _receipt_guard(lambda: memo(f"cost_alerts:{days}:{store}", lambda: cost_alert.recent(store, max(1, min(days, 30))), ttl=300))
 
 
 @app.post("/api/jobs/alerts")
@@ -1076,6 +1150,22 @@ def store_costs_get(authorization: str | None = Header(None)):
 def store_costs_put(body: CostsIn, authorization: str | None = Header(None)):
     """가게 비용 저장 (계정 정보에 → 다른 기기에서도 같은 값). 모양이 틀린 칸은 버리고 저장한 값을 돌려줌."""
     return _auth(lambda: store_costs.save(_bearer(authorization), body.costs))
+
+
+class TargetIn(BaseModel):
+    target: int
+
+
+@app.put("/api/store/target")
+def store_target_put(body: TargetIn, authorization: str | None = Header(None)):
+    """원가율 기준 바꾸기 (30 · 35 · 40 · 45%, 계정 정보에 저장) → 새 기준으로 다시 계산한 원가율 (GET /api/costs 와 같은 모양)."""
+    token = _bearer(authorization)
+    if not token:
+        raise HTTPException(401, "로그인이 필요해요.")
+    store = _store(authorization)
+    _auth(lambda: store_costs.set_target(token, body.target))
+    _memo.pop(_user_key(token), None)   # 보관한 계정 정보에 새 기준이 들어가게
+    return _receipt_guard(lambda: _costs_data(store, body.target))
 
 
 class ProfileEditIn(BaseModel):

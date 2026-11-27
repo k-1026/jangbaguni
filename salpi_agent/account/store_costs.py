@@ -76,3 +76,23 @@ def save(token, costs):
     if not r.ok:
         raise ApiError(f"가게 비용을 저장하지 못했어요 ({r.status_code})")
     return {"costs": value}
+
+
+TARGETS = (30, 35, 40, 45)   # 원가율 기준(%) 고를 수 있는 값: 자영업자 카페 답 30 · 35 · 40% + 고기 위주 가게 45%
+
+
+def target_of(user):
+    """계정 → 원가율 기준(%). 고른 적 없으면 None (= 기본 40%)."""
+    return (user.get("user_metadata") or {}).get("cost_target")
+
+
+def set_target(token, target):
+    """원가율 기준 저장 (계정 정보에 → 다른 기기에서도 같은 값). 11/27 피드백: 사장님마다 원가율 기준이 다를 수 있음."""
+    if target not in TARGETS:
+        raise auth.AuthError(f"원가율 기준은 {' · '.join(map(str, TARGETS))}% 중에서 골라 주세요.")
+    user = auth.user_of(token)
+    meta = {**(user.get("user_metadata") or {}), "cost_target": target}
+    r = auth._call("PUT", f"admin/users/{user['id']}", admin=True, json={"user_metadata": meta})
+    if not r.ok:
+        raise ApiError(f"원가율 기준을 저장하지 못했어요 ({r.status_code})")
+    return target

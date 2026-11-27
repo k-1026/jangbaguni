@@ -163,7 +163,8 @@ $("#loginBtn").hidden = SIGNED_IN || AUTH_VIEW;
 $("#loginBtn").href = LOGIN_URL;
 
 // 페이지를 열 때 로그인 표 확인: 서버 연결 전 임시 로그인이면 다시 로그인, 곧 끝나는 표는 새로 받음 (못 받으면 로그아웃)
-(async () => {
+// getJSON · sendJSON 은 이게 끝난 뒤 보냄 (끝난 표로 내 가게 자료를 부르지 않게)
+const LOGIN_READY = (async () => {
   const u = readLogin();
   if (!u) return;
   const relogin = () => { clearLogin(); location.replace(PAGE === "store" ? LOGIN_URL : location.href); };
@@ -363,9 +364,10 @@ if (SIGNUP_VIEW) {
   $("#suName").focus();
 }
 
-// auth: 로그인했으면 로그인 표를 같이 보냄 (판매율 분석 무료 횟수를 세는 곳). 실패하면 status 가 붙은 오류
-async function getJSON(url, { auth = false } = {}) {
-  const token = auth && SIGNED_IN ? readLogin()?.access_token : null;
+// 로그인했으면 로그인 표를 같이 보냄 → 서버가 내 가게 자료를 줌 (판매율 분석 무료 횟수도 이걸로 셈). 실패하면 status 가 붙은 오류
+async function getJSON(url) {
+  await LOGIN_READY;
+  const token = SIGNED_IN ? readLogin()?.access_token : null;
   const r = await fetch(url, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
   const body = await r.json();
   if (!r.ok) throw Object.assign(new Error(body.detail || "데이터를 불러오지 못했어요"), { status: r.status });
@@ -1937,7 +1939,10 @@ let receipt = null;
 const supplierName = (s) => (s || "판매처 모름").replace(/\s*\(시연용\)/g, "");   // { image, mime, data(읽은 결과) }
 
 async function sendJSON(url, method, body) {
-  const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: body && JSON.stringify(body) });
+  await LOGIN_READY;
+  const token = SIGNED_IN ? readLogin()?.access_token : null;   // 내 가게에 저장되게
+  const r = await fetch(url, { method, headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: body && JSON.stringify(body) });
   const out = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(out.detail || "잠시 뒤 다시 해 주세요");
   return out;
@@ -2154,12 +2159,25 @@ function showPraise(net, best) {
   pop.onclick = (e) => { if (e.target === pop) close(); };
 }
 
-const ratioCls = (v) => (v == null ? "" : v >= 40 ? "up" : "down");   // 원가율 40% 기준 (유저플로우 v2)
+let costTarget = 40;   // 원가율 기준(%): 기본 40% (유저플로우 v2), 로그인한 사장님은 직접 고름 (서버가 target_ratio_pct 로 줌)
+const ratioCls = (v) => (v == null ? "" : v >= costTarget ? "up" : "down");
+const COST_TARGETS = [30, 35, 40, 45];   // 서버 account/store_costs.py TARGETS 와 같게
+// 기준을 고르면 서버(계정)에 저장 → 새 기준으로 다시 계산한 원가율로 다시 그림 (11/27 피드백)
+$("#costCard")?.addEventListener("change", async (e) => {
+  if (e.target.id !== "costTarget") return;
+  const sel = e.target, before = costTarget;
+  sel.disabled = true;
+  try { renderCosts(await sendJSON("/api/store/target", "PUT", { target: +sel.value }), false); }
+  catch (err) { sel.value = before; sel.disabled = false; alert(err.message); }
+});
 
 function renderCosts(r, withChange) {
-  const T = r.target_ratio_pct;
+  const T = costTarget = r.target_ratio_pct;
+  const pick = SIGNED_IN
+    ? `<select id="costTarget" class="cost-target" aria-label="원가율 기준">${COST_TARGETS.map((t) => `<option value="${t}"${t === T ? " selected" : ""}>${t}%</option>`).join("")}</select>`
+    : `<b>${T}%</b>`;
   $("#costCard").innerHTML = `
-    <p class="cost-guide"><b>원가율</b> = 판매가 중 <b>재료비 비율</b>. 보통 <b>${T}% 아래</b>면 괜찮아요.</p>
+    <p class="cost-guide"><b>원가율</b> = 판매가 중 <b>재료비 비율</b>. 우리 가게 기준 ${pick} <b>아래</b>면 괜찮아요.</p>
     <div class="cost-cards">${r.menus.map((m) => {
       const v = m.cost_ratio_pct;
       const ch = withChange && m.change_pt

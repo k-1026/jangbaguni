@@ -24,6 +24,7 @@ KST = timezone(timedelta(hours=9))
 BAND = 2.0          # 오를 · 유지 · 내릴 기준 (화면 문구와 같음)
 LOOK_AHEAD = 3      # 7일 뒤 시세가 없으면 사흘 안의 첫 시세로 채점
 WEEK_MIN_DAYS = 4   # 주 평균 모델: 다음 주 거래일이 이만큼 모이면 먼저 채점 (잠정)
+SURE_PCT = 8.0      # 확신 높은 예측: 예측 폭이 이만큼 이상 (11/27 실전 기록: 방향 맞음 83.3% · 예측의 14%, plan/forecast/1127_accuracy_80.md)
 
 
 def today():
@@ -157,7 +158,7 @@ def scorecard(weeks=4):
     """최근 weeks주 동안 채점된 예측 요약: 종류별 · 품목별 방향 적중 · 범위 적중 · 정반대 비율."""
     since = (today() - timedelta(weeks * 7)).isoformat()
     rows = supabase_db.select("forecast_log", actual_date=f"gte.{since}", actual_price="not.is.null",
-                              select="item,kind,base_date,run_date,direction,actual_change_pct,direction_hit,in_range,formula_version")
+                              select="item,kind,base_date,run_date,direction,expected_change_pct,actual_change_pct,direction_hit,in_range,formula_version")
     # 주말 · 휴장일에는 같은 기준 날짜로 만든 예측이 여러 날 저장됨 → 품목 · 기준 날짜마다 처음 저장한 것 하나만 셈
     first = {}
     for r in sorted(rows, key=lambda r: r["run_date"]):
@@ -174,10 +175,13 @@ def scorecard(weeks=4):
         n = len(said)
         opp = sum(1 for r in said if {r["direction"], _direction(float(r["actual_change_pct"]))} == {"up", "down"})
         ranged = [r for r in group if r["in_range"] is not None]
+        sure = [r for r in said if abs(float(r.get("expected_change_pct") or 0)) >= SURE_PCT]
         return {"n": n, "direction_hit_pct": round(sum(bool(r["direction_hit"]) for r in said) / n * 100, 1) if n else None,
                 "in_range_pct": round(sum(r["in_range"] for r in ranged) / len(ranged) * 100, 1) if ranged else None,
                 "opposite_pct": round(opp / n * 100, 1) if n else None,
-                "stated_share_pct": round(n / len(group) * 100, 1), "scored": len(group)}
+                "stated_share_pct": round(n / len(group) * 100, 1), "scored": len(group),
+                "sure": {"n": len(sure), "share_pct": round(len(sure) / len(group) * 100, 1),
+                         "direction_hit_pct": round(sum(bool(r["direction_hit"]) for r in sure) / len(sure) * 100, 1) if sure else None}}
 
     weekly = summary([r for r in rows if _is_week(r)])
     by_kind, by_item = {}, {}

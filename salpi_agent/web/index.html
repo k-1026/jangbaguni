@@ -13,7 +13,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=341">
+  <link rel="stylesheet" href="/static/style.css?v=348">
 </head>
 <body>
 <script>
@@ -363,7 +363,8 @@
 
 <!-- 살피 챗봇: 버튼 모양 없이 살피 캐릭터 자체를 누름 -->
 <div class="salpi-fab" id="fab">
-  <div class="bubbles"><div class="bubble"><span id="fabBubble">살피 챗봇에게 물어보세요</span></div><button class="bubble fab-x" id="fabX" type="button" aria-label="살피 작게 줄이기" title="작게 줄여 오른쪽 아래로">닫기</button></div>
+  <div class="bubbles"><div class="bubble"><span id="fabBubble">살피 챗봇에게 물어보세요</span></div></div>
+  <button class="fab-x" id="fabX" type="button" aria-label="살피 작게 줄이기" title="작게 줄여 오른쪽 아래로">×</button>
   <button class="fab-main" id="fabMain" type="button" aria-label="살피 챗봇 열기 (끌어서 옮길 수 있어요)" title="누르면 대화, 끌면 이동">
     <span class="fab-count" id="fabCount" hidden></span>
     <img src="/static/img/salpi_wave.png" alt="" draggable="false">
@@ -454,13 +455,16 @@
     <button class="chat-close" id="chatClose" aria-label="닫기">×</button>
   </div>
   <div class="chat-body" id="chatBody"></div>
+  <details class="quick-menu" id="quickMenu">
+  <summary>자주 묻는 질문</summary>
   <div class="quick" id="quick">
-    <button data-q="야채값 시세변동 추이 말해줘.">야채값 시세변동 추이 말해줘.</button>
-    <button data-q="이 가격에 팔아도 남아?">이 가격에 팔아도 남아?</button>
+    <button data-q="야채값 시세 변동 추이 말해줘">야채값 시세 변동 추이 말해줘</button>
+    <button data-q="이 가격에 팔아도 남아?" data-login>이 가격에 팔아도 남아?</button>
     <button data-q="지금 사면 이득인 야채 알려줘">지금 사면 이득인 야채 알려줘</button>
-    <button data-q="내일 얼마나 준비할까?">내일 얼마나 준비할까?</button>
-    <button data-q="우리 가게 원가율 알려줘">우리 가게 원가율 알려줘</button>
+    <button data-q="내일 얼마나 준비할까?" data-login>내일 얼마나 준비할까?</button>
+    <button data-q="우리 가게 원가율 알려줘" data-login>우리 가게 원가율 알려줘</button>
   </div>
+  </details>
   <form class="chat-input" id="chatForm">
     <input id="chatText" autocomplete="off" placeholder="예: 대파 다음 주에 오를까?">
     <button type="submit">보내기</button>
@@ -483,6 +487,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="/static/app.js?v=291"></script>
+<script src="/static/app.js?v=295"></script>
 </body>
 </html>

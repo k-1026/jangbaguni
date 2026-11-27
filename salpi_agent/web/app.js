@@ -3088,38 +3088,52 @@ chatEl.addEventListener("pointermove", (e) => {
     if (rs.dir.includes("s")) height += dy;
     if (rs.dir.includes("w")) { width -= dx; left += dx; }
     if (rs.dir.includes("n")) { height -= dy; top += dy; }
+    if (rs.dir === "m") { left += dx; top += dy; }   // 윗부분(머리)을 끌면 크기 그대로 이동
     const w = Math.max(320, Math.min(window.innerWidth - 16, width));
     const h = Math.max(360, Math.min(window.innerHeight - 16, height));
     if (rs.dir.includes("w")) left += width - w;   // 최소 크기에 걸리면 반대쪽이 밀리지 않게
     if (rs.dir.includes("n")) top += height - h;
     Object.assign(chatEl.style, { width: `${w}px`, height: `${h}px`, right: "auto", bottom: "auto",
       left: `${Math.max(0, Math.min(window.innerWidth - w, left))}px`, top: `${Math.max(0, Math.min(window.innerHeight - h, top))}px` });
+    if (rs.fab) placeFab(rs.fab.left + dx, rs.fab.top + dy, false);   // 살피 캐릭터도 같은 만큼 함께 이동
     return;
   }
-  chatEl.style.cursor = CURSOR[edgeAt(e)] || "";
+  chatEl.style.cursor = CURSOR[edgeAt(e)] || (onChatHead(e) ? "move" : "");
 });
+// 채팅창 윗부분 (× 빼고). 모바일은 아래에서 올라오는 고정 창이라 옮기지 않음
+const onChatHead = (e) => window.innerWidth > 700 && e.target.closest(".chat-head") && !e.target.closest(".chat-close");
 chatEl.addEventListener("pointerdown", (e) => {
-  const dir = edgeAt(e);
+  const dir = edgeAt(e) || (onChatHead(e) ? "m" : "");
   if (!dir) return;
   const r = chatEl.getBoundingClientRect();
-  rs = { dir, x: e.clientX, y: e.clientY, box: { left: r.left, top: r.top, width: r.width, height: r.height } };
+  rs = { dir, x: e.clientX, y: e.clientY, box: { left: r.left, top: r.top, width: r.width, height: r.height },
+         fab: dir === "m" ? fab.getBoundingClientRect() : null };
   chatEl.setPointerCapture(e.pointerId);
   chatEl.classList.add("resizing");
   e.preventDefault();
 }, true);
-chatEl.addEventListener("pointerup", () => { if (rs) { rs = null; chatEl.classList.remove("resizing"); } });
+chatEl.addEventListener("pointerup", () => {
+  if (!rs) return;
+  if (rs.fab) saveFabPos();
+  rs = null;
+  chatEl.classList.remove("resizing");
+});
 chatEl.addEventListener("pointerleave", () => { if (!rs) chatEl.style.cursor = ""; });
 
 // 살피 캐릭터 끌어서 옮기기 (살짝 누르면 채팅 열기 · 끌면 이동), 놓은 자리는 이 브라우저에 기억
 const fab = $("#fab");
 const FAB_KEY = "salpi_fab_pos";
-function placeFab(x, y) {
+function placeFab(x, y, follow = true) {   // follow = false: 채팅창을 직접 옮기는 중이라 채팅창은 그대로
   const w = fab.offsetWidth, h = fab.offsetHeight;
   x = Math.max(0, Math.min(window.innerWidth - w, x));
   y = Math.max(64, Math.min(window.innerHeight - h, y));
   Object.assign(fab.style, { left: `${x}px`, top: `${y}px`, right: "auto", bottom: "auto" });
   fab.classList.toggle("on-left", x + w / 2 < window.innerWidth / 2);   // 왼쪽에 있으면 말풍선을 오른쪽에
-  placeChat();
+  if (follow) placeChat();
+}
+function saveFabPos() {
+  const r = fab.getBoundingClientRect();
+  try { localStorage.setItem(FAB_KEY, JSON.stringify({ x: r.left / window.innerWidth, y: r.top / window.innerHeight })); } catch (e) {}
 }
 function placeChat() {
   // 채팅창을 살피가 있는 쪽에 붙임 (넓은 화면만, 모바일은 아래에서 올라옴)
@@ -3152,8 +3166,7 @@ fab.addEventListener("pointerup", () => {
   if (!drag) return;
   fab.classList.remove("dragging");
   if (drag.moved) {
-    const r = fab.getBoundingClientRect();
-    try { localStorage.setItem(FAB_KEY, JSON.stringify({ x: r.left / window.innerWidth, y: r.top / window.innerHeight })); } catch (e) {}
+    saveFabPos();
   } else if (fabHidden()) {
     setFabHidden(false);
   } else {
@@ -3230,7 +3243,18 @@ async function send(text) {
   busy = false;
   document.querySelectorAll("#quick button").forEach((b) => (b.disabled = false));
 }
-$("#quick").addEventListener("click", (e) => { const b = e.target.closest("button[data-q]"); if (b) send(b.dataset.q); });
+$("#quick").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-q]");
+  if (!b || busy) return;
+  $("#quickMenu").open = false;
+  if (b.hasAttribute("data-login") && !SIGNED_IN) {   // 우리 가게 질문은 가게 정보가 있어야 답함 → 로그인 안내 (서버에 묻지 않음)
+    addMsg("me", b.dataset.q);
+    addMsg("bot", "이 질문은 **사장님 가게 정보**로 답해 드려요.\n로그인하면 바로 볼 수 있어요.")
+      .insertAdjacentHTML("beforeend", `<p><a class="msg-link" href="${LOGIN_URL}">로그인하러 가기 →</a></p>`);
+    return;
+  }
+  send(b.dataset.q);
+});
 $("#chatForm").addEventListener("submit", (e) => { e.preventDefault(); const t = $("#chatText"); send(t.value); t.value = ""; });
 
 // ---------------------------------------------------------------

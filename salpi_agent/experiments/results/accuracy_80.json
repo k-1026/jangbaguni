@@ -1,0 +1,417 @@
+{
+ "period": [
+  "2026-11-11",
+  "2026-11-19"
+ ],
+ "all": {
+  "n": 257,
+  "hit_pct": 56.8,
+  "opposite_pct": 14.4,
+  "by_cut": [
+   {
+    "cut_pct": 0,
+    "coverage_pct": 100.0,
+    "n": 257,
+    "hit_pct": 56.8,
+    "opposite_pct": 14.4
+   },
+   {
+    "cut_pct": 2,
+    "coverage_pct": 51.8,
+    "n": 133,
+    "hit_pct": 62.4,
+    "opposite_pct": 27.8
+   },
+   {
+    "cut_pct": 4,
+    "coverage_pct": 29.2,
+    "n": 75,
+    "hit_pct": 69.3,
+    "opposite_pct": 25.3
+   },
+   {
+    "cut_pct": 6,
+    "coverage_pct": 17.9,
+    "n": 46,
+    "hit_pct": 80.4,
+    "opposite_pct": 15.2
+   },
+   {
+    "cut_pct": 8,
+    "coverage_pct": 14.0,
+    "n": 36,
+    "hit_pct": 83.3,
+    "opposite_pct": 13.9
+   },
+   {
+    "cut_pct": 10,
+    "coverage_pct": 8.9,
+    "n": 23,
+    "hit_pct": 87.0,
+    "opposite_pct": 13.0
+   },
+   {
+    "cut_pct": 15,
+    "coverage_pct": 0.8,
+    "n": 2,
+    "hit_pct": 100.0,
+    "opposite_pct": 0.0
+   }
+  ]
+ },
+ "kinds": {
+  "과일": {
+   "n": 70,
+   "hit_pct": 51.4,
+   "opposite_pct": 14.3,
+   "by_cut": [
+    {
+     "cut_pct": 0,
+     "coverage_pct": 100.0,
+     "n": 70,
+     "hit_pct": 51.4,
+     "opposite_pct": 14.3
+    },
+    {
+     "cut_pct": 2,
+     "coverage_pct": 67.1,
+     "n": 47,
+     "hit_pct": 68.1,
+     "opposite_pct": 21.3
+    },
+    {
+     "cut_pct": 4,
+     "coverage_pct": 34.3,
+     "n": 24,
+     "hit_pct": 70.8,
+     "opposite_pct": 16.7
+    },
+    {
+     "cut_pct": 6,
+     "coverage_pct": 17.1,
+     "n": 12,
+     "hit_pct": 66.7,
+     "opposite_pct": 16.7
+    },
+    {
+     "cut_pct": 8,
+     "coverage_pct": 10.0,
+     "n": 7,
+     "hit_pct": 71.4,
+     "opposite_pct": 14.3
+    },
+    {
+     "cut_pct": 10,
+     "coverage_pct": 2.9,
+     "n": 2,
+     "hit_pct": 100.0,
+     "opposite_pct": 0.0
+    },
+    {
+     "cut_pct": 15,
+     "coverage_pct": 1.4,
+     "n": 1,
+     "hit_pct": 100.0,
+     "opposite_pct": 0.0
+    }
+   ],
+   "baselines": {
+    "random_3way_pct": 33.3,
+    "majority": "down",
+    "majority_pct": 44.3,
+    "always_up_pct": 42.9,
+    "actual_share_pct": {
+     "down": 44.3,
+     "up": 42.9,
+     "flat": 12.9
+    }
+   }
+  },
+  "수산물": {
+   "n": 40,
+   "hit_pct": 85.0,
+   "opposite_pct": 0.0,
+   "by_cut": [
+    {
+     "cut_pct": 0,
+     "coverage_pct": 100.0,
+     "n": 40,
+     "hit_pct": 85.0,
+     "opposite_pct": 0.0
+    },
+    {
+     "cut_pct": 2,
+     "coverage_pct": 5.0,
+     "n": 2,
+     "hit_pct": 0.0,
+     "opposite_pct": 0.0
+    },
+    {
+     "cut_pct": 4,
+     "coverage_pct": 0.0,
+     "n": 0
+    },
+    {
+     "cut_pct": 6,
+     "coverage_pct": 0.0,
+     "n": 0
+    },
+    {
+     "cut_pct": 8,
+     "coverage_pct": 0.0,
+     "n": 0
+    },
+    {
+     "cut_pct": 10,
+     "coverage_pct": 0.0,
+     "n": 0
+    },
+    {
+     "cut_pct": 15,
+     "coverage_pct": 0.0,
+     "n": 0
+    }
+   ],
+   "baselines": {
+    "random_3way_pct": 33.3,
+    "majority": "flat",
+    "majority_pct": 90.0,
+    "always_up_pct": 7.5,
+    "actual_share_pct": {
+     "flat": 90.0,
+     "up": 7.5,
+     "down": 2.5
+    }
+   }
+  },
+  "야채": {
+   "n": 105,
+   "hit_pct": 48.6,
+   "opposite_pct": 25.7,
+   "by_cut": [
+    {
+     "cut_pct": 0,
+     "coverage_pct": 100.0,
+     "n": 105,
+     "hit_pct": 48.6,
+     "opposite_pct": 25.7
+    },
+    {
+     "cut_pct": 2,
+     "coverage_pct": 79.0,
+     "n": 83,
+     "hit_pct": 61.4,
+     "opposite_pct": 32.5
+    },
+    {
+     "cut_pct": 4,
+     "coverage_pct": 48.6,
+     "n": 51,
+     "hit_pct": 68.6,
+     "opposite_pct": 29.4
+    },
+    {
+     "cut_pct": 6,
+     "coverage_pct": 32.4,
+     "n": 34,
+     "hit_pct": 85.3,
+     "opposite_pct": 14.7
+    },
+    {
+     "cut_pct": 8,
+     "coverage_pct": 27.6,
+     "n": 29,
+     "hit_pct": 86.2,
+     "opposite_pct": 13.8
+    },
+    {
+     "cut_pct": 10,
+     "coverage_pct": 20.0,
+     "n": 21,
+     "hit_pct": 85.7,
+     "opposite_pct": 14.3
+    },
+    {
+     "cut_pct": 15,
+     "coverage_pct": 1.0,
+     "n": 1,
+     "hit_pct": 100.0,
+     "opposite_pct": 0.0
+    }
+   ],
+   "baselines": {
+    "random_3way_pct": 33.3,
+    "majority": "down",
+    "majority_pct": 52.4,
+    "always_up_pct": 42.9,
+    "actual_share_pct": {
+     "up": 42.9,
+     "down": 52.4,
+     "flat": 4.8
+    }
+   }
+  },
+  "육류": {
+   "n": 42,
+   "hit_pct": 59.5,
+   "opposite_pct": 0.0,
+   "by_cut": [
+    {
+     "cut_pct": 0,
+     "coverage_pct": 100.0,
+     "n": 42,
+     "hit_pct": 59.5,
+     "opposite_pct": 0.0
+    },
+    {
+     "cut_pct": 2,
+     "coverage_pct": 2.4,
+     "n": 1,
+     "hit_pct": 0.0,
+     "opposite_pct": 0.0
+    },
+    {
+     "cut_pct": 4,
+     "coverage_pct": 0.0,
+     "n": 0
+    },
+    {
+     "cut_pct": 6,
+     "coverage_pct": 0.0,
+     "n": 0
+    },
+    {
+     "cut_pct": 8,
+     "coverage_pct": 0.0,
+     "n": 0
+    },
+    {
+     "cut_pct": 10,
+     "coverage_pct": 0.0,
+     "n": 0
+    },
+    {
+     "cut_pct": 15,
+     "coverage_pct": 0.0,
+     "n": 0
+    }
+   ],
+   "baselines": {
+    "random_3way_pct": 33.3,
+    "majority": "flat",
+    "majority_pct": 61.9,
+    "always_up_pct": 0.0,
+    "actual_share_pct": {
+     "down": 38.1,
+     "flat": 61.9
+    }
+   }
+  }
+ },
+ "baselines": {
+  "random_3way_pct": 33.3,
+  "majority": "down",
+  "majority_pct": 40.1,
+  "always_up_pct": 30.4,
+  "actual_share_pct": {
+   "up": 30.4,
+   "flat": 29.6,
+   "down": 40.1
+  }
+ },
+ "not_luck_pct": {
+  "5": 100.0,
+  "7": 85.7,
+  "10": 80.0,
+  "20": 65.0,
+  "50": 54.0
+ },
+ "items_80": [
+  [
+   "갈치",
+   100.0,
+   5,
+   "수산물"
+  ],
+  [
+   "고등어",
+   100.0,
+   5,
+   "수산물"
+  ],
+  [
+   "닭고기",
+   100.0,
+   6,
+   "육류"
+  ],
+  [
+   "멸치액젓",
+   100.0,
+   5,
+   "수산물"
+  ],
+  [
+   "명태",
+   100.0,
+   5,
+   "수산물"
+  ],
+  [
+   "상추",
+   100.0,
+   7,
+   "야채"
+  ],
+  [
+   "새우",
+   100.0,
+   5,
+   "수산물"
+  ],
+  [
+   "수입 소고기 갈비살",
+   100.0,
+   6,
+   "육류"
+  ],
+  [
+   "홍합",
+   100.0,
+   5,
+   "수산물"
+  ],
+  [
+   "깻잎",
+   85.7,
+   7,
+   "야채"
+  ],
+  [
+   "오이",
+   85.7,
+   7,
+   "야채"
+  ],
+  [
+   "키위",
+   85.7,
+   7,
+   "과일"
+  ],
+  [
+   "돼지고기 앞다리",
+   83.3,
+   6,
+   "육류"
+  ],
+  [
+   "새우젓",
+   80.0,
+   5,
+   "수산물"
+  ]
+ ],
+ "items_70": 18,
+ "items_scored": 40
+}
